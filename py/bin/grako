@@ -1,0 +1,3 @@
+#!/Users/shaz/Dropbox/Penn/GrammaTech/git/gramma/py/bin/python3.4
+import grako
+grako.main()
