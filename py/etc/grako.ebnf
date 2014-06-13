@@ -1,0 +1,145 @@
+(*
+ * This grammar defines the Grako variation of EBNF.
+ *
+ * Grako uses its own hand-written bootstrap parser, and this
+ * grammar is only used for testing.
+ *
+ * See the accompanying README for details.
+ *
+ *)
+
+grammar
+    =
+    @{rule}+
+    $
+    ;
+
+rule
+    =
+    name:word '=' >> rhs:expre ('.' | ';') >>
+    ;
+
+expre
+    =
+      choice
+    | sequence
+    ;
+
+choice
+    =
+    options+:sequence {'|' >> options:sequence}+
+    ;
+
+sequence
+    =
+    sequence:{element}+
+    ;
+
+element
+    =
+      named
+    | override
+    | term
+    ;
+
+named
+    =
+    name:name (force_list:'+:'|':') value:element
+    ;
+
+name
+    =
+    word|'@'
+    ;
+
+override
+    =
+    '@' >> @element
+    ;
+
+term
+    =
+      void
+    | group
+    | closure
+    | optional
+    | special
+    | kif
+    | knot
+    | atom
+    ;
+
+group
+    =
+    '(' >> @expre ')' >>
+    ;
+
+closure
+    =
+    '{' >> exp:expre '}' >> (plus:('-' | '+') | ['*']) >>
+    ;
+
+optional
+    =
+    '[' >> @expre ']' >>
+    ;
+
+special
+    =
+    '?(' >> @?/(.*)/? ')?' >>
+    ;
+
+kif
+    =
+    '&' >> @term
+    ;
+
+knot
+    =
+    '!' >> @term
+    ;
+
+atom
+    =
+      cut
+    | token
+    | call
+    | pattern
+    | eof
+    ;
+
+call
+    =
+    word
+    ;
+
+void
+    =
+    '()' >>
+    ;
+
+cut
+    =
+    '>>' >>
+    ;
+
+token
+    =
+      '"' >> @?/([^"\\\n]|\\"|\\\\)*/? '"'
+    | "'" >> @?/([^'\\\n]|\\'|\\\\)*/? "'"
+    ;
+
+word
+    =
+    ?/[-_A-Za-z0-9]+/?
+    ;
+
+pattern
+    =
+    '?/' >> @?/(.*?)(?=/\?)/? '/?' >>
+    ;
+
+eof
+    =
+    '$' >>
+    ;
