@@ -6,56 +6,104 @@
 
 object
     =
-    [‘identity’ {variable_declaration}+]
-    [‘state’ {variable_declaration}+]
-    ‘events’
-        ‘imported’ event_definition {‘,’ event_definition}*
-        [‘exported’ event_definition {‘,’ event_definition}*]
-    ‘scenarios’
+    ['identity' {variable_declaration}+]
+    ['state' {variable_declaration}+]
+    'events'
+        'imported' event_definition {',' event_definition}*
+        ['exported' event_definition {',' event_definition}*]
+    'scenarios'
         {scenario_definition}+
     $
     ;
 
 variable_declaration
     =
-    type identifier {‘,’ identifier}*
+    type identifier {',' identifier}*
+    ;
+
+type
+    =
+    ()
+    ;
+
+identifier
+    =
+    ()
+    ;
+
+boolean_expression
+    =
+    ()
+    ;
+
+expression
+    =
+    ()
+    ;
+
+target
+    =
+    ()
     ;
 
 event_definition
     =
-    [‘error’] identifier [‘(‘ parameter_list ‘)’]
+    ['error'] identifier ['(' parameter_list ')']
     ;
 
 parameter_list
     =
-      type {‘,’ type}*
+      type {',' type}*
     | ()
+    ;
+
+expression_list
+    =
+      expression {',' expression}*
+    | ()
+    ;
+
+identifier_list
+    =
+      identifier {',' identifier}*
+    | ()
+    ;
+
+state_update_list
+    =
+      state_update {',' state_update}*
+    | ()
+    ;
+
+nonempty_action_item_list
+    =
+      action_item {',' action_item}*
     ;
 
 scenario_definition
     =
-    [‘atomic’] identifier ‘:’ {trace_definition}+
+    ['atomic'] identifier ':' {trace_definition}+
     ;
 
 trace_definition
     =
-    identifier ‘->’ {step_definition}+
+    identifier '->' {step_definition}+
     ;
 
 step_definition
     =
-    event_instance ‘->’ [action] [identifier [‘(‘ state_update_list ‘)’]]
-        [‘else’ ‘->’ [action] [identifier [‘(‘ state_update_list ‘)’]]]
+    event_instance '->' [action] [identifier ['(' state_update_list ')']]
+        ['else' '->' [action] [identifier ['(' state_update_list ')']]]
     ;
 
 event_instance
     =
-    identifier ‘(‘ identifier_list ‘)’ [‘when’ boolean_expression]
+    identifier '(' identifier_list ')' ['when' boolean_expression]
     ;
 
 action
     =
-    ‘{‘ nonempty_action_item_list ‘}’
+    '{' nonempty_action_item_list '}'
     ;
 
 action_item
@@ -67,16 +115,16 @@ action_item
 
 state_update
     =
-      target ‘=’ expression
-    | target ‘(‘ expression_list ‘)’
+      target '=' expression
+    | target '(' expression_list ')'
     ;
 
 raise_stmt
     =
-    ‘raise’ identifier ‘(‘ expression_list ‘)’
+    'raise' identifier '(' expression_list ')'
     ;
 
 instantiation_stmt
     =
-    ‘new’ identifier ‘(‘ state_update_list ‘)’
+    'new' identifier '(' state_update_list ')'
     ;
