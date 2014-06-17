@@ -1,0 +1,82 @@
+(*
+ * This grammar defines SMEDL in the Grako-variation of EBNF.
+ *
+ * Written June 17 2014.
+ *)
+
+object
+    =
+    [‘identity’ {variable_declaration}+]
+    [‘state’ {variable_declaration}+]
+    ‘events’
+        ‘imported’ event_definition {‘,’ event_definition}*
+        [‘exported’ event_definition {‘,’ event_definition}*]
+    ‘scenarios’
+        {scenario_definition}+
+    $
+    ;
+
+variable_declaration
+    =
+    type identifier {‘,’ identifier}*
+    ;
+
+event_definition
+    =
+    [‘error’] identifier [‘(‘ parameter_list ‘)’]
+    ;
+
+parameter_list
+    =
+      type {‘,’ type}*
+    | ()
+    ;
+
+scenario_definition
+    =
+    [‘atomic’] identifier ‘:’ {trace_definition}+
+    ;
+
+trace_definition
+    =
+    identifier ‘->’ {step_definition}+
+    ;
+
+step_definition
+    =
+    event_instance ‘->’ [action] [identifier [‘(‘ state_update_list ‘)’]]
+        [‘else’ ‘->’ [action] [identifier [‘(‘ state_update_list ‘)’]]]
+    ;
+
+event_instance
+    =
+    identifier ‘(‘ identifier_list ‘)’ [‘when’ boolean_expression]
+    ;
+
+action
+    =
+    ‘{‘ nonempty_action_item_list ‘}’
+    ;
+
+action_item
+    =
+      state_update
+    | raise_stmt
+    | instantiation_stmt
+    ;
+
+state_update
+    =
+      target ‘=’ expression
+    | target ‘(‘ expression_list ‘)’
+    ;
+
+raise_stmt
+    =
+    ‘raise’ identifier ‘(‘ expression_list ‘)’
+    ;
+
+instantiation_stmt
+    =
+    ‘new’ identifier ‘(‘ state_update_list ‘)’
+    ;
