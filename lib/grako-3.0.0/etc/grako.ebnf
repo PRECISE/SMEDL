@@ -1,0 +1,245 @@
+grammar
+    =
+    @:{rule}+ $
+    ;
+
+
+paramdef
+    =
+        '::' ~ params:params
+    |
+        '('
+        ~
+        (
+              kwparams:kwparams
+            | params:params ',' ~ kwparams:kwparams
+            | params:params
+        )
+        ')'
+    ;
+
+
+rule
+    =
+    name:new_name ~ [>paramdef] ['<' ~ base:known_name] '=' ~ rhs:expre ';' ~
+    ;
+
+
+params
+    =
+    @+:literal {',' @+:literal}
+    ;
+
+
+kwparams
+    =
+    @+:pair {',' @+:pair}
+    ;
+
+
+pair
+    =
+    @+:word '=' @+:literal
+    ;
+
+
+expre
+    =
+    choice | sequence
+    ;
+
+
+choice
+    =
+    @+:sequence {'|' @+:sequence}+
+    ;
+
+
+sequence
+    =
+    {element}+
+    ;
+
+
+element
+    =
+    rule_include | named | override | term
+    ;
+
+
+rule_include
+    =
+    '>' @:known_name
+    ;
+
+
+named
+    =
+    named_list | named_single
+    ;
+
+
+named_list
+    =
+    name:name '+:' value:element
+    ;
+
+
+named_single
+    =
+    name:name ':' value:element
+    ;
+
+
+override
+    =
+    override_list | override_single
+    ;
+
+
+override_list
+    =
+    '@+:' @:element
+    ;
+
+
+override_single
+    =
+    '@:' @:element
+    ;
+
+
+term
+    =
+      void
+    | group
+    | positive_closure
+    | closure
+    | optional
+    | special
+    | kif
+    | knot
+    | atom
+    ;
+
+
+group
+    =
+    '(' @:expre ')' ~
+    ;
+
+
+positive_closure
+    =
+    '{' @:expre '}' ('-' | '+') ~
+    ;
+
+
+closure
+    =
+    '{' @:expre '}' ['*'] ~
+    ;
+
+
+optional
+    =
+    '[' @:expre ']' ~
+    ;
+
+
+special
+    =
+    '?(' @:?/(.*)/? ')?' ~
+    ;
+
+
+kif
+    =
+    '&' @:term
+    ;
+
+
+knot
+    =
+    '!' @:term
+    ;
+
+
+atom
+    =
+    cut | token | call | pattern | eof
+    ;
+
+
+call
+    =
+    word
+    ;
+
+
+void
+    =
+    '()' ~
+    ;
+
+
+cut
+    =
+    '~' ~
+    ;
+
+
+new_name
+    =
+    name ~
+    ;
+
+
+known_name
+    =
+    name ~
+    ;
+
+
+name
+    =
+    word
+    ;
+
+
+literal
+    =
+    token | number | word
+    ;
+
+
+token
+    =
+    '"' @:?/([^"\n]|\\"|\\\\)*/? '"' | "'" @:?/([^'\n]|\\'|\\\\)*/? "'"
+    ;
+
+
+number
+    =
+    ?/[0-9]+/?
+    ;
+
+
+word
+    =
+    ?/[-_A-Za-z0-9]+/?
+    ;
+
+
+pattern
+    =
+    '?/' @:?/(.*?)(?=/\?)/?? ?//\?+/?? ~
+    ;
+
+
+eof
+    =
+    '$' ~
+    ;
+
+

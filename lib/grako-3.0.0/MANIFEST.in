@@ -1,0 +1,14 @@
+include *.txt
+include *.rst
+include Makefile
+include tox.ini
+recursive-include etc *
+recursive-include examples *
+recursive-exclude examples genparser.py
+recursive-exclude examples parser_base.py
+recursive-exclude examples/antlr2grako antlr_parser.py
+recursive-exclude examples/antlr2grako python.ebnf
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.orig
+global-exclude *~
