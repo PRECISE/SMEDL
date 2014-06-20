@@ -1,0 +1,15 @@
+object Tab
+    identity
+        opaque id
+    state
+        URL currentUrl
+        Renderer rengine
+    events
+        imported store(Tab, Cookie), render(Renderer, URL)
+        exported error cookieIntegrityAlarm
+    scenarios
+        cookieIntegrity:
+        Tab -> store(this, cookie) when isSubdomain(cookie.domain, currentUrl.getHost()) -> Tab
+            else raise cookieIntegrityAlarm -> Tab
+        PageRendering:
+        Tab -> Kernel.displayURL(this, url) -> render(rengine, url) {currentUrl=url} -> Tab
