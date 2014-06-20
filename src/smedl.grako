@@ -21,63 +21,9 @@ variable_declaration
     type identifier {',' identifier}*
     ;
 
-type
-    =
-    ()
-    ;
-
-identifier
-    =
-    ()
-    ;
-
-boolean_expression
-    =
-    ()
-    ;
-
-expression
-    =
-    ()
-    ;
-
-target
-    =
-    ()
-    ;
-
 event_definition
     =
     ['error'] identifier ['(' parameter_list ')']
-    ;
-
-parameter_list
-    =
-      type {',' type}*
-    | ()
-    ;
-
-expression_list
-    =
-      expression {',' expression}*
-    | ()
-    ;
-
-identifier_list
-    =
-      identifier {',' identifier}*
-    | ()
-    ;
-
-state_update_list
-    =
-      state_update {',' state_update}*
-    | ()
-    ;
-
-nonempty_action_item_list
-    =
-      action_item {',' action_item}*
     ;
 
 scenario_definition
@@ -127,4 +73,58 @@ raise_stmt
 instantiation_stmt
     =
     'new' identifier '(' state_update_list ')'
+    ;
+
+type
+    =
+    ()
+    ;
+
+identifier
+    =
+    ()
+    ;
+
+boolean_expression
+    =
+    ()
+    ;
+
+expression
+    =
+    ()
+    ;
+
+target
+    =
+    ()
+    ;
+
+parameter_list
+    =
+      type {',' type}*
+    | ()
+    ;
+
+expression_list
+    =
+      expression {',' expression}*
+    | ()
+    ;
+
+identifier_list
+    =
+      identifier {',' identifier}*
+    | ()
+    ;
+
+state_update_list
+    =
+      state_update {',' state_update}*
+    | ()
+    ;
+
+nonempty_action_item_list
+    =
+      action_item {',' action_item}*
     ;
