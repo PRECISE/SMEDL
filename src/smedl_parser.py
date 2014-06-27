@@ -16,7 +16,7 @@ from grako.parsing import graken, Parser
 from grako.exceptions import *  # noqa
 
 
-__version__ = '2014.06.17.22.46.17.01'
+__version__ = '2014.06.27.16.13.29.04'
 
 __all__ = [
     'smedlParser',
@@ -32,6 +32,8 @@ class smedlParser(Parser):
 
     @graken()
     def _object_(self):
+        self._token('object')
+        self._identifier_()
         with self._optional():
             self._token('identity')
 
@@ -77,26 +79,7 @@ class smedlParser(Parser):
             self._token(',')
             self._identifier_()
         self._closure(block0)
-
-    @graken()
-    def _type_(self):
-        pass
-
-    @graken()
-    def _identifier_(self):
-        pass
-
-    @graken()
-    def _boolean_expression_(self):
-        pass
-
-    @graken()
-    def _expression_(self):
-        pass
-
-    @graken()
-    def _target_(self):
-        pass
+        self._token(';')
 
     @graken()
     def _event_definition_(self):
@@ -107,6 +90,269 @@ class smedlParser(Parser):
             self._token('(')
             self._parameter_list_()
             self._token(')')
+
+    @graken()
+    def _scenario_definition_(self):
+        with self._optional():
+            self._token('atomic')
+        self._identifier_()
+        self._token(':')
+
+        def block0():
+            self._trace_definition_()
+        self._positive_closure(block0)
+
+    @graken()
+    def _trace_definition_(self):
+        self._identifier_()
+        self._token('->')
+
+        def block0():
+            self._step_definition_()
+        self._positive_closure(block0)
+
+    @graken()
+    def _step_definition_(self):
+        self._event_instance_()
+        self._token('->')
+        with self._optional():
+            self._action_()
+        with self._optional():
+            self._identifier_()
+            with self._optional():
+                self._token('(')
+                self._state_update_list_()
+                self._token(')')
+        with self._optional():
+            self._token('else')
+            self._token('->')
+            with self._optional():
+                self._action_()
+            with self._optional():
+                self._identifier_()
+                with self._optional():
+                    self._token('(')
+                    self._state_update_list_()
+                    self._token(')')
+
+    @graken()
+    def _event_instance_(self):
+        self._identifier_()
+        self._token('(')
+        self._identifier_list_()
+        self._token(')')
+        with self._optional():
+            self._token('when')
+            self._expression_()
+
+    @graken()
+    def _action_(self):
+        self._token('{')
+        self._nonempty_action_item_list_()
+        self._token('}')
+
+    @graken()
+    def _action_item_(self):
+        with self._choice():
+            with self._option():
+                self._state_update_()
+            with self._option():
+                self._raise_stmt_()
+            with self._option():
+                self._instantiation_stmt_()
+            self._error('no available options')
+
+    @graken()
+    def _state_update_(self):
+        with self._choice():
+            with self._option():
+                self._target_()
+                self._token('=')
+                self._expression_()
+            with self._option():
+                self._target_()
+                self._token('(')
+                self._expression_list_()
+                self._token(')')
+            self._error('no available options')
+
+    @graken()
+    def _raise_stmt_(self):
+        self._token('raise')
+        self._identifier_()
+        self._token('(')
+        self._expression_list_()
+        self._token(')')
+
+    @graken()
+    def _instantiation_stmt_(self):
+        self._token('new')
+        self._identifier_()
+        self._token('(')
+        self._state_update_list_()
+        self._token(')')
+
+    @graken()
+    def _type_(self):
+        self._pattern(r'[a-zA-Z][A-Za-z0-9_]*')
+
+    @graken()
+    def _identifier_(self):
+        self._pattern(r'[a-zA-Z][A-Za-z0-9_]*')
+
+    @graken()
+    def _integer_(self):
+        self._pattern(r'[-+]?[0-9]+')
+
+    @graken()
+    def _float_(self):
+        self._pattern(r'[-+]?[0-9]*\.?[0-9]+')
+
+    @graken()
+    def _expression_(self):
+        with self._choice():
+            with self._option():
+                self._and_expr_()
+
+                def block0():
+                    self._token('||')
+                    self._and_expr_()
+                self._closure(block0)
+            with self._option():
+                self._token('!')
+                self._expression_()
+            with self._option():
+                self._token('(')
+                self._expression_()
+                self._token(')')
+            self._error('no available options')
+
+    @graken()
+    def _and_expr_(self):
+        self._comp_expr_()
+
+        def block0():
+            self._token('&&')
+            self._comp_expr_()
+        self._closure(block0)
+
+    @graken()
+    def _comp_expr_(self):
+        self._arith_expr_()
+
+        def block0():
+            with self._group():
+                with self._choice():
+                    with self._option():
+                        self._token('>')
+                    with self._option():
+                        self._token('<')
+                    with self._option():
+                        self._token('>=')
+                    with self._option():
+                        self._token('<=')
+                    with self._option():
+                        self._token('==')
+                    self._error('expecting one of: < <= == > >=')
+            self._arith_expr_()
+        self._closure(block0)
+
+    @graken()
+    def _arith_expr_(self):
+        self._term_()
+
+        def block0():
+            with self._group():
+                with self._choice():
+                    with self._option():
+                        self._token('+')
+                    with self._option():
+                        self._token('-')
+                    self._error('expecting one of: + -')
+            self._term_()
+        self._closure(block0)
+
+    @graken()
+    def _term_(self):
+        self._factor_()
+
+        def block0():
+            with self._group():
+                with self._choice():
+                    with self._option():
+                        self._token('*')
+                    with self._option():
+                        self._token('/')
+                    with self._option():
+                        self._token('%')
+                    self._error('expecting one of: % * /')
+            self._factor_()
+        self._closure(block0)
+
+    @graken()
+    def _factor_(self):
+        with self._choice():
+            with self._option():
+                with self._group():
+                    with self._choice():
+                        with self._option():
+                            self._token('+')
+                        with self._option():
+                            self._token('-')
+                        with self._option():
+                            self._token('~')
+                        self._error('expecting one of: + - ~')
+                self._factor_()
+            with self._option():
+                self._atom_()
+
+                def block1():
+                    self._trailer_()
+                self._closure(block1)
+            self._error('no available options')
+
+    @graken()
+    def _atom_(self):
+        with self._choice():
+            with self._option():
+                self._integer_()
+            with self._option():
+                self._float_()
+            with self._option():
+                self._identifier_()
+            with self._option():
+                self._token('true')
+            with self._option():
+                self._token('false')
+            with self._option():
+                self._token('null')
+            self._error('expecting one of: false null true')
+
+    @graken()
+    def _trailer_(self):
+        with self._choice():
+            with self._option():
+                self._token('[')
+                with self._optional():
+                    self._expression_()
+                self._token(']')
+            with self._option():
+                self._token('(')
+                with self._optional():
+                    self._expression_list_()
+                self._token(')')
+            with self._option():
+                self._token('.')
+                self._identifier_()
+
+                def block0():
+                    self._trailer_()
+                self._closure(block0)
+            self._error('expecting one of: ( [')
+
+    @graken()
+    def _target_(self):
+        self._identifier_()
 
     @graken()
     def _parameter_list_(self):
@@ -173,107 +419,6 @@ class smedlParser(Parser):
             self._action_item_()
         self._closure(block0)
 
-    @graken()
-    def _scenario_definition_(self):
-        with self._optional():
-            self._token('atomic')
-        self._identifier_()
-        self._token(':')
-
-        def block0():
-            self._trace_definition_()
-        self._positive_closure(block0)
-
-    @graken()
-    def _trace_definition_(self):
-        self._identifier_()
-        self._token('->')
-
-        def block0():
-            self._step_definition_()
-        self._positive_closure(block0)
-
-    @graken()
-    def _step_definition_(self):
-        self._event_instance_()
-        self._token('->')
-        with self._optional():
-            self._action_()
-        with self._optional():
-            self._identifier_()
-            with self._optional():
-                self._token('(')
-                self._state_update_list_()
-                self._token(')')
-        with self._optional():
-            self._token('else')
-            self._token('->')
-            with self._optional():
-                self._action_()
-            with self._optional():
-                self._identifier_()
-                with self._optional():
-                    self._token('(')
-                    self._state_update_list_()
-                    self._token(')')
-
-    @graken()
-    def _event_instance_(self):
-        self._identifier_()
-        self._token('(')
-        self._identifier_list_()
-        self._token(')')
-        with self._optional():
-            self._token('when')
-            self._boolean_expression_()
-
-    @graken()
-    def _action_(self):
-        self._token('{')
-        self._nonempty_action_item_list_()
-        self._token('}')
-
-    @graken()
-    def _action_item_(self):
-        with self._choice():
-            with self._option():
-                self._state_update_()
-            with self._option():
-                self._raise_stmt_()
-            with self._option():
-                self._instantiation_stmt_()
-            self._error('no available options')
-
-    @graken()
-    def _state_update_(self):
-        with self._choice():
-            with self._option():
-                self._target_()
-                self._token('=')
-                self._expression_()
-            with self._option():
-                self._target_()
-                self._token('(')
-                self._expression_list_()
-                self._token(')')
-            self._error('no available options')
-
-    @graken()
-    def _raise_stmt_(self):
-        self._token('raise')
-        self._identifier_()
-        self._token('(')
-        self._expression_list_()
-        self._token(')')
-
-    @graken()
-    def _instantiation_stmt_(self):
-        self._token('new')
-        self._identifier_()
-        self._token('(')
-        self._state_update_list_()
-        self._token(')')
-
 
 class smedlSemantics(object):
     def object(self, ast):
@@ -282,37 +427,7 @@ class smedlSemantics(object):
     def variable_declaration(self, ast):
         return ast
 
-    def type(self, ast):
-        return ast
-
-    def identifier(self, ast):
-        return ast
-
-    def boolean_expression(self, ast):
-        return ast
-
-    def expression(self, ast):
-        return ast
-
-    def target(self, ast):
-        return ast
-
     def event_definition(self, ast):
-        return ast
-
-    def parameter_list(self, ast):
-        return ast
-
-    def expression_list(self, ast):
-        return ast
-
-    def identifier_list(self, ast):
-        return ast
-
-    def state_update_list(self, ast):
-        return ast
-
-    def nonempty_action_item_list(self, ast):
         return ast
 
     def scenario_definition(self, ast):
@@ -340,6 +455,60 @@ class smedlSemantics(object):
         return ast
 
     def instantiation_stmt(self, ast):
+        return ast
+
+    def type(self, ast):
+        return ast
+
+    def identifier(self, ast):
+        return ast
+
+    def integer(self, ast):
+        return ast
+
+    def float(self, ast):
+        return ast
+
+    def expression(self, ast):
+        return ast
+
+    def and_expr(self, ast):
+        return ast
+
+    def comp_expr(self, ast):
+        return ast
+
+    def arith_expr(self, ast):
+        return ast
+
+    def term(self, ast):
+        return ast
+
+    def factor(self, ast):
+        return ast
+
+    def atom(self, ast):
+        return ast
+
+    def trailer(self, ast):
+        return ast
+
+    def target(self, ast):
+        return ast
+
+    def parameter_list(self, ast):
+        return ast
+
+    def expression_list(self, ast):
+        return ast
+
+    def identifier_list(self, ast):
+        return ast
+
+    def state_update_list(self, ast):
+        return ast
+
+    def nonempty_action_item_list(self, ast):
         return ast
 
 

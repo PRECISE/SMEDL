@@ -6,6 +6,7 @@
 
 object
     =
+    'object' identifier
     ['identity' {variable_declaration}+]
     ['state' {variable_declaration}+]
     'events'
@@ -18,7 +19,7 @@ object
 
 variable_declaration
     =
-    type identifier {',' identifier}*
+    type identifier {',' identifier}* ';'
     ;
 
 event_definition
@@ -44,7 +45,7 @@ step_definition
 
 event_instance
     =
-    identifier '(' identifier_list ')' ['when' boolean_expression]
+    identifier '(' identifier_list ')' ['when' expression]
     ;
 
 action
@@ -77,27 +78,78 @@ instantiation_stmt
 
 type
     =
-    ()
+    ?/[a-zA-Z][A-Za-z0-9_]*/?
     ;
 
 identifier
     =
-    ()
+    ?/[a-zA-Z][A-Za-z0-9_]*/?
     ;
 
-boolean_expression
+integer
     =
-    ()
+    ?/[-+]?[0-9]+/?
+    ;
+
+float
+    =
+    ?/[-+]?[0-9]*\.?[0-9]+/?
     ;
 
 expression
     =
-    ()
+      and_expr {'||' and_expr}*
+    | '!' expression
+    | '(' expression ')'
+    ;
+
+and_expr
+    =
+    comp_expr {'&&' comp_expr}*
+    ;
+
+comp_expr
+    =
+    arith_expr {('>' | '<' | '>=' | '<=' | '==') arith_expr}*
+    ;
+
+arith_expr
+    =
+    term {('+' | '-') term}*
+    ;
+
+term
+    =
+    factor {('*' | '/' | '%') factor}*
+    ;
+
+factor
+    =
+      ('+' | '-' | '~') factor
+    | atom {trailer}*
+    ;
+
+atom
+    =
+      integer
+    | float
+    | identifier
+    | 'true'
+    | 'false'
+    | 'null'
+    ;
+
+trailer
+    =
+      '[' [expression] ']'
+    | '(' [expression_list] ')'
+    | '.' identifier {trailer}*
     ;
 
 target
     =
-    ()
+    (* To be improved *)
+    identifier
     ;
 
 parameter_list
