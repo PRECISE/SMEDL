@@ -1,14 +1,14 @@
 object Tab
     identity
-        opaque id
+        opaque id;
     state
-        URL currentUrl
-        Renderer rengine
+        URL currentUrl;
+        Renderer rengine;
     events
         imported store(Tab, Cookie), render(Renderer, URL)
         exported error cookieIntegrityAlarm
     scenarios
-        cookieIntegrity:
+        CookieIntegrity:
         Tab -> store(this, cookie) when isSubdomain(cookie.domain, currentUrl.getHost()) -> Tab
             else raise cookieIntegrityAlarm -> Tab
         PageRendering:
