@@ -34,18 +34,19 @@ scenario_definition
 
 trace_definition
     =
-    identifier '->' {step_definition}+
+    identifier '->' step_definition
     ;
 
 step_definition
     =
-    event_instance '->' [action] [identifier ['(' state_update_list ')']]
-        ['else' '->' [action] [identifier ['(' state_update_list ')']]]
+      event_instance '->' step_definition
+    | event_instance '->' [expression] [action]
+          ['else' '->' [expression] [action]]
     ;
 
 event_instance
     =
-    identifier '(' identifier_list ')' ['when' expression]
+    expression ['when' expression]
     ;
 
 action
@@ -68,12 +69,12 @@ state_update
 
 raise_stmt
     =
-    'raise' identifier '(' expression_list ')'
+    'raise' identifier ['(' expression_list ')']
     ;
 
 instantiation_stmt
     =
-    'new' identifier '(' state_update_list ')'
+    'new' identifier ['(' state_update_list ')']
     ;
 
 type

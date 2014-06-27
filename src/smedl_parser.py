@@ -16,7 +16,7 @@ from grako.parsing import graken, Parser
 from grako.exceptions import *  # noqa
 
 
-__version__ = '2014.06.27.16.13.29.04'
+__version__ = '2014.06.27.17.25.56.04'
 
 __all__ = [
     'smedlParser',
@@ -106,41 +106,34 @@ class smedlParser(Parser):
     def _trace_definition_(self):
         self._identifier_()
         self._token('->')
-
-        def block0():
-            self._step_definition_()
-        self._positive_closure(block0)
+        self._step_definition_()
 
     @graken()
     def _step_definition_(self):
-        self._event_instance_()
-        self._token('->')
-        with self._optional():
-            self._action_()
-        with self._optional():
-            self._identifier_()
-            with self._optional():
-                self._token('(')
-                self._state_update_list_()
-                self._token(')')
-        with self._optional():
-            self._token('else')
-            self._token('->')
-            with self._optional():
-                self._action_()
-            with self._optional():
-                self._identifier_()
+        with self._choice():
+            with self._option():
+                self._event_instance_()
+                self._token('->')
+                self._step_definition_()
+            with self._option():
+                self._event_instance_()
+                self._token('->')
                 with self._optional():
-                    self._token('(')
-                    self._state_update_list_()
-                    self._token(')')
+                    self._expression_()
+                with self._optional():
+                    self._action_()
+                with self._optional():
+                    self._token('else')
+                    self._token('->')
+                    with self._optional():
+                        self._expression_()
+                    with self._optional():
+                        self._action_()
+            self._error('no available options')
 
     @graken()
     def _event_instance_(self):
-        self._identifier_()
-        self._token('(')
-        self._identifier_list_()
-        self._token(')')
+        self._expression_()
         with self._optional():
             self._token('when')
             self._expression_()
@@ -180,17 +173,19 @@ class smedlParser(Parser):
     def _raise_stmt_(self):
         self._token('raise')
         self._identifier_()
-        self._token('(')
-        self._expression_list_()
-        self._token(')')
+        with self._optional():
+            self._token('(')
+            self._expression_list_()
+            self._token(')')
 
     @graken()
     def _instantiation_stmt_(self):
         self._token('new')
         self._identifier_()
-        self._token('(')
-        self._state_update_list_()
-        self._token(')')
+        with self._optional():
+            self._token('(')
+            self._state_update_list_()
+            self._token(')')
 
     @graken()
     def _type_(self):
