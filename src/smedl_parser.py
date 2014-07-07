@@ -16,7 +16,7 @@ from grako.parsing import graken, Parser
 from grako.exceptions import *  # noqa
 
 
-__version__ = '2014.06.27.17.25.56.04'
+__version__ = '2014.07.06.02.35.24.06'
 
 __all__ = [
     'smedlParser',
@@ -106,29 +106,35 @@ class smedlParser(Parser):
     def _trace_definition_(self):
         self._identifier_()
         self._token('->')
+        self._event_instance_()
+        with self._optional():
+            self._action_()
+        self._token('->')
         self._step_definition_()
 
     @graken()
     def _step_definition_(self):
         with self._choice():
             with self._option():
-                self._event_instance_()
-                self._token('->')
-                self._step_definition_()
-            with self._option():
-                self._event_instance_()
-                self._token('->')
-                with self._optional():
-                    self._expression_()
-                with self._optional():
-                    self._action_()
+                self._identifier_()
                 with self._optional():
                     self._token('else')
-                    self._token('->')
-                    with self._optional():
-                        self._expression_()
                     with self._optional():
                         self._action_()
+                    self._token('->')
+                    self._step_definition_()
+            with self._option():
+                self._event_instance_()
+                with self._optional():
+                    self._action_()
+                self._token('->')
+                self._step_definition_()
+                with self._optional():
+                    self._token('else')
+                    with self._optional():
+                        self._action_()
+                    self._token('->')
+                    self._step_definition_()
             self._error('no available options')
 
     @graken()

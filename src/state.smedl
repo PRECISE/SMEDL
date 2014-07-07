@@ -1,0 +1,9 @@
+object Min1
+    state
+        int bar;
+    events
+        imported foo(int)
+    scenarios
+        sc1:
+           Min1 -> foo(x) -> Min1
+

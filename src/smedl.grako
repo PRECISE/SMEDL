@@ -32,6 +32,7 @@ scenario_definition
     ['atomic'] identifier ':' {trace_definition}+
     ;
 
+(*
 trace_definition
     =
     identifier '->' step_definition
@@ -43,7 +44,21 @@ step_definition
     | event_instance '->' [expression] [action]
           ['else' '->' [expression] [action]]
     ;
+*)
 
+trace_definition
+    =
+    identifier '->' event_instance [action] '->' step_definition
+    ;
+
+step_definition
+    =
+      identifier
+          ['else' [action] '->' step_definition ]
+    | event_instance [action] '->' step_definition
+          ['else' [action] '->' step_definition ]
+    ;
+      
 event_instance
     =
     expression ['when' expression]

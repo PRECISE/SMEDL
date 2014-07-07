@@ -1,0 +1,7 @@
+object Min
+    events
+        imported foo
+    scenarios
+        sc1:
+           Min -> foo -> Min
+

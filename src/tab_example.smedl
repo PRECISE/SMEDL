@@ -10,6 +10,6 @@ object Tab
     scenarios
         CookieIntegrity:
         Tab -> store(this, cookie) when isSubdomain(cookie.domain, currentUrl.getHost()) -> Tab
-            else -> { raise cookieIntegrityAlarm }
+            else { raise cookieIntegrityAlarm } -> Tab
         PageRendering:
         Tab -> Kernel.displayURL(this, url) -> render(rengine, url) {currentUrl=url} -> Tab
