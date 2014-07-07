@@ -53,9 +53,9 @@ trace_definition
 
 step_definition
     =
-      identifier
+      event_instance [action] '->' step_definition
           ['else' [action] '->' step_definition ]
-    | event_instance [action] '->' step_definition
+    | identifier
           ['else' [action] '->' step_definition ]
     ;
       

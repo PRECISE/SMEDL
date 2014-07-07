@@ -16,7 +16,7 @@ from grako.parsing import graken, Parser
 from grako.exceptions import *  # noqa
 
 
-__version__ = '2014.07.06.02.35.24.06'
+__version__ = '2014.07.07.00.30.52.00'
 
 __all__ = [
     'smedlParser',
@@ -116,7 +116,11 @@ class smedlParser(Parser):
     def _step_definition_(self):
         with self._choice():
             with self._option():
-                self._identifier_()
+                self._event_instance_()
+                with self._optional():
+                    self._action_()
+                self._token('->')
+                self._step_definition_()
                 with self._optional():
                     self._token('else')
                     with self._optional():
@@ -124,11 +128,7 @@ class smedlParser(Parser):
                     self._token('->')
                     self._step_definition_()
             with self._option():
-                self._event_instance_()
-                with self._optional():
-                    self._action_()
-                self._token('->')
-                self._step_definition_()
+                self._identifier_()
                 with self._optional():
                     self._token('else')
                     with self._optional():
