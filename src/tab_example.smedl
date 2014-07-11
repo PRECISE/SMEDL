@@ -1,8 +1,9 @@
 object Tab
     identity
         opaque id;
+        opaque test;
     state
-        URL currentUrl;
+        URL currentUrl, test;
         Renderer rengine;
     events
         imported store(Tab, Cookie), render(Renderer, URL)

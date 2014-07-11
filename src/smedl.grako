@@ -6,30 +6,30 @@
 
 object
     =
-    'object' identifier
-    ['identity' {variable_declaration}+]
-    ['state' {variable_declaration}+]
+    'object' object:identifier
+    ['identity' identity+:{variable_declaration}+]
+    ['state' state+:{variable_declaration}+]
     'events'
-        'imported' event_definition {',' event_definition}*
-        ['exported' event_definition {',' event_definition}*]
+        'imported' imported_events+:event_definition_list
+        ['exported' exported_events+:event_definition_list]
     'scenarios'
-        {scenario_definition}+
+        scenarios+:{scenario_definition}+
     $
     ;
 
 variable_declaration
     =
-    type identifier {',' identifier}* ';'
+    type:type var:identifier {',' var:identifier}* ';'
     ;
 
 event_definition
     =
-    ['error'] identifier ['(' parameter_list ')']
+    error:['error'] event_id:identifier ['(' params:parameter_list ')']
     ;
 
 scenario_definition
     =
-    ['atomic'] identifier ':' {trace_definition}+
+    atomic:['atomic'] scenario_id:identifier ':' traces:{trace_definition}+
     ;
 
 (*
@@ -46,40 +46,44 @@ step_definition
     ;
 *)
 
+(* TODO: test for other arrangements of 'else', add names to AST output, figure out why empty lists are appearing (ask author), construct symbol table with variables, build state machine from AST (python library?) *)
+
 trace_definition
     =
-    identifier '->' event_instance [action] '->' step_definition
+    start:identifier '->' trace_event:event_instance [action] '->' @:step_definition
     ;
 
 step_definition
     =
+    step:(
       event_instance [action] '->' step_definition
           ['else' [action] '->' step_definition ]
     | identifier
           ['else' [action] '->' step_definition ]
+    )
     ;
-      
+
 event_instance
     =
-    expression ['when' expression]
+    expression:expression ['when' when:expression]
     ;
 
 action
     =
-    '{' nonempty_action_item_list '}'
+    '{' actions+:nonempty_action_item_list '}'
     ;
 
 action_item
     =
-      state_update
-    | raise_stmt
-    | instantiation_stmt
+      state_update:state_update
+    | raise:raise_stmt
+    | inst:instantiation_stmt
     ;
 
 state_update
     =
-      target '=' expression
-    | target '(' expression_list ')'
+      target:target '=' expression:expression
+    | target:target '(' expression_list+:expression_list ')'
     ;
 
 raise_stmt
@@ -114,35 +118,29 @@ float
 
 expression
     =
-      and_expr {'||' and_expr}*
-    | '!' expression
-    | '(' expression ')'
+      @:and_expr {'||' or:and_expr}*
+    | '!' not_expr:expression
+    | '(' @:expression ')'
     ;
 
 and_expr
     =
-    comp_expr {'&&' comp_expr}*
+    @:comp_expr {'&&' and:comp_expr}*
     ;
 
 comp_expr
     =
-    arith_expr {('>' | '<' | '>=' | '<=' | '==') arith_expr}*
+    @:arith_expr {operator:('>' | '<' | '>=' | '<=' | '==') comp:arith_expr}*
     ;
 
 arith_expr
     =
-    term {('+' | '-') term}*
+    @:term {operator:('+' | '-' | '*' | '/' | '%') arith:term}*
     ;
 
 term
     =
-    factor {('*' | '/' | '%') factor}*
-    ;
-
-factor
-    =
-      ('+' | '-' | '~') factor
-    | atom {trailer}*
+      {operator:('+' | '-' | '~')}* atom:atom {trailer:trailer}*
     ;
 
 atom
@@ -157,9 +155,9 @@ atom
 
 trailer
     =
-      '[' [expression] ']'
-    | '(' [expression_list] ')'
-    | '.' identifier {trailer}*
+      '[' [index:expression] ']'
+    | '(' [params:expression_list] ')'
+    | '.' dot:identifier {trailer:trailer}*
     ;
 
 target
@@ -170,29 +168,34 @@ target
 
 parameter_list
     =
-      type {',' type}*
+      @:type {',' @:type}*
     | ()
     ;
 
 expression_list
     =
-      expression {',' expression}*
+      @:expression {',' @:expression}*
     | ()
+    ;
+
+event_definition_list
+    =
+    @:event_definition {',' @:event_definition}*
     ;
 
 identifier_list
     =
-      identifier {',' identifier}*
+      @:identifier {',' @:identifier}*
     | ()
     ;
 
 state_update_list
     =
-      state_update {',' state_update}*
+      @:state_update {',' @:state_update}*
     | ()
     ;
 
 nonempty_action_item_list
     =
-      action_item {',' action_item}*
+      @:action_item {',' @:action_item}*
     ;
