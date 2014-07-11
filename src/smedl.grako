@@ -77,7 +77,7 @@ action_item
     =
       state_update:state_update
     | raise:raise_stmt
-    | inst:instantiation_stmt
+    | instantiation:instantiation_stmt
     ;
 
 state_update
@@ -88,12 +88,12 @@ state_update
 
 raise_stmt
     =
-    'raise' identifier ['(' expression_list ')']
+    'raise' id:identifier ['(' expr_list+:expression_list ')']
     ;
 
 instantiation_stmt
     =
-    'new' identifier ['(' state_update_list ')']
+    'new' id:identifier ['(' state_update_list+:state_update_list ')']
     ;
 
 type
