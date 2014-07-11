@@ -16,7 +16,7 @@ from grako.parsing import graken, Parser
 from grako.exceptions import *  # noqa
 
 
-__version__ = '2014.07.11.17.01.37.04'
+__version__ = '2014.07.11.18.01.53.04'
 
 __all__ = [
     'smedlParser',
@@ -225,11 +225,11 @@ class smedlParser(Parser):
                 self.ast['raise_'] = self.last_node
             with self._option():
                 self._instantiation_stmt_()
-                self.ast['inst'] = self.last_node
+                self.ast['instantiation'] = self.last_node
             self._error('no available options')
 
         self.ast._define(
-            ['state_update', 'raise', 'inst'],
+            ['state_update', 'raise', 'instantiation'],
             []
         )
 
@@ -260,19 +260,33 @@ class smedlParser(Parser):
     def _raise_stmt_(self):
         self._token('raise')
         self._identifier_()
+        self.ast['id'] = self.last_node
         with self._optional():
             self._token('(')
             self._expression_list_()
+            self.ast._append('expr_list', self.last_node)
             self._token(')')
+
+        self.ast._define(
+            ['id'],
+            ['expr_list']
+        )
 
     @graken()
     def _instantiation_stmt_(self):
         self._token('new')
         self._identifier_()
+        self.ast['id'] = self.last_node
         with self._optional():
             self._token('(')
             self._state_update_list_()
+            self.ast._append('state_update_list', self.last_node)
             self._token(')')
+
+        self.ast._define(
+            ['id'],
+            ['state_update_list']
+        )
 
     @graken()
     def _type_(self):
