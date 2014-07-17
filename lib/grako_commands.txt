@@ -1,0 +1,9 @@
+-- To generate a SMEDL parser using the grammar --
+(grako GRAMMAR -o OUTPUT_PARSER)
+grako smedl.grako -o smedl_parser.py
+
+-- To parse a SMEDL file using the generated parser --
+(python PARSER INPUT_FILE START_RULE)
+python smedl_parser.py example.smedl object
+
+(Use '-t' command-line option to enable debug tracing)
