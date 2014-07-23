@@ -1,0 +1,7 @@
+object OneTwo
+    events
+        imported foo, bar
+    scenarios
+        sc1:
+           OneTwo -> foo -> Min -> bar -> TwoOne
+
