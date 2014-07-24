@@ -29,7 +29,7 @@ event_definition
 
 scenario_definition
     =
-    atomic:['atomic'] scenario_id:identifier ':' trace:{trace_definition}+
+    atomic:['atomic'] scenario_id:identifier ':' traces:{trace_definition}+
     ;
 
 (*
