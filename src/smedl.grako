@@ -29,7 +29,7 @@ event_definition
 
 scenario_definition
     =
-    atomic:['atomic'] scenario_id:identifier ':' traces:{trace_definition}+
+    atomic:['atomic'] scenario_id:identifier ':' trace:{trace_definition}+
     ;
 
 (*
@@ -46,21 +46,17 @@ step_definition
     ;
 *)
 
-(* TODO: test for other arrangements of 'else', add names to AST output, figure out why empty lists are appearing (ask author), construct symbol table with variables, build state machine from AST (python library?) *)
+(* TODO: test for other arrangements of 'else', construct symbol table with variables, build state machine from AST (python library?) *)
 
 trace_definition
     =
-    start:identifier '->' trace_event:event_instance [action] '->' @:step_definition
+    start:identifier {'->' trace_step:step_definition}+
+          ['else' [trace_action:action] {'->' trace_action_step:step_definition}+ ]
     ;
 
 step_definition
     =
-    step:(
-      event_instance [action] '->' step_definition
-          ['else' [action] '->' step_definition ]
-    | identifier
-          ['else' [action] '->' step_definition ]
-    )
+      step_event:event_instance [step_action:action]
     ;
 
 event_instance

@@ -16,7 +16,7 @@ from grako.parsing import graken, Parser
 from grako.exceptions import *  # noqa
 
 
-__version__ = '2014.07.11.18.01.53.04'
+__version__ = '2014.07.24.15.44.19.03'
 
 __all__ = [
     'smedlParser',
@@ -27,11 +27,7 @@ __all__ = [
 
 
 class smedlParser(Parser):
-    def __init__(
-        self,
-        whitespace=None,
-        nameguard=True,
-        **kwargs):
+    def __init__(self, whitespace=None, nameguard=True, **kwargs):
         super(smedlParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
@@ -131,10 +127,10 @@ class smedlParser(Parser):
             self._trace_definition_()
         self._positive_closure(block3)
 
-        self.ast['traces'] = self.last_node
+        self.ast['trace'] = self.last_node
 
         self.ast._define(
-            ['atomic', 'scenario_id', 'traces'],
+            ['atomic', 'scenario_id', 'trace'],
             []
         )
 
@@ -142,49 +138,40 @@ class smedlParser(Parser):
     def _trace_definition_(self):
         self._identifier_()
         self.ast['start'] = self.last_node
-        self._token('->')
-        self._event_instance_()
-        self.ast['trace_event'] = self.last_node
+
+        def block1():
+            self._token('->')
+            self._step_definition_()
+            self.ast['trace_step'] = self.last_node
+        self._positive_closure(block1)
+
         with self._optional():
-            self._action_()
-        self._token('->')
-        self._step_definition_()
-        self.ast['@'] = self.last_node
+            self._token('else')
+            with self._optional():
+                self._action_()
+                self.ast['trace_action'] = self.last_node
+
+            def block4():
+                self._token('->')
+                self._step_definition_()
+                self.ast['trace_action_step'] = self.last_node
+            self._positive_closure(block4)
 
         self.ast._define(
-            ['start', 'trace_event'],
+            ['start', 'trace_step', 'trace_action', 'trace_action_step'],
             []
         )
 
     @graken()
     def _step_definition_(self):
-        with self._group():
-            with self._choice():
-                with self._option():
-                    self._event_instance_()
-                    with self._optional():
-                        self._action_()
-                    self._token('->')
-                    self._step_definition_()
-                    with self._optional():
-                        self._token('else')
-                        with self._optional():
-                            self._action_()
-                        self._token('->')
-                        self._step_definition_()
-                with self._option():
-                    self._identifier_()
-                    with self._optional():
-                        self._token('else')
-                        with self._optional():
-                            self._action_()
-                        self._token('->')
-                        self._step_definition_()
-                self._error('no available options')
-        self.ast['step'] = self.last_node
+        self._event_instance_()
+        self.ast['step_event'] = self.last_node
+        with self._optional():
+            self._action_()
+            self.ast['step_action'] = self.last_node
 
         self.ast._define(
-            ['step'],
+            ['step_event', 'step_action'],
             []
         )
 
