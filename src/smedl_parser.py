@@ -16,7 +16,7 @@ from grako.parsing import graken, Parser
 from grako.exceptions import *  # noqa
 
 
-__version__ = '2014.07.24.15.44.19.03'
+__version__ = '2014.08.07.19.48.21.03'
 
 __all__ = [
     'smedlParser',
@@ -127,17 +127,17 @@ class smedlParser(Parser):
             self._trace_definition_()
         self._positive_closure(block3)
 
-        self.ast['trace'] = self.last_node
+        self.ast['traces'] = self.last_node
 
         self.ast._define(
-            ['atomic', 'scenario_id', 'trace'],
+            ['atomic', 'scenario_id', 'traces'],
             []
         )
 
     @graken()
     def _trace_definition_(self):
         self._identifier_()
-        self.ast['start'] = self.last_node
+        self.ast['start_id'] = self.last_node
 
         def block1():
             self._token('->')
@@ -158,7 +158,7 @@ class smedlParser(Parser):
             self._positive_closure(block4)
 
         self.ast._define(
-            ['start', 'trace_step', 'trace_action', 'trace_action_step'],
+            ['start_id', 'trace_step', 'trace_action', 'trace_action_step'],
             []
         )
 
