@@ -32,25 +32,9 @@ scenario_definition
     atomic:['atomic'] scenario_id:identifier ':' traces:{trace_definition}+
     ;
 
-(*
 trace_definition
     =
-    identifier '->' step_definition
-    ;
-
-step_definition
-    =
-      event_instance '->' step_definition
-    | event_instance '->' [expression] [action]
-          ['else' '->' [expression] [action]]
-    ;
-*)
-
-(* TODO: test for other arrangements of 'else', construct symbol table with variables, build state machine from AST (python library?) *)
-
-trace_definition
-    =
-    start:identifier {'->' trace_step:step_definition}+
+    start_id:identifier {'->' trace_step:step_definition}+
           ['else' [trace_action:action] {'->' trace_action_step:step_definition}+ ]
     ;
 
