@@ -4,108 +4,31 @@
 from __future__ import print_function, division, absolute_import, unicode_literals
 from .smedl_parser import smedlParser
 
-class smedlSymbolTable(object):
+class smedlSymbolTable(dict):
+
     def __init__(self):
-        return
+        super(smedlSymbolTable, self).__init__()
 
+    def add(self, symbol, attributes=None):
+        if attributes is None:
+            self[symbol] = {}
+        else:
+            self[symbol] = attributes
 
+    def get(self, symbol, attribute=None):
+        if attribute is None:
+            return self[symbol]
+        else:
+            return self[symbol][attribute]
 
+    def update(self, symbol, attribute, value):
+        self[symbol][attribute] = value
 
-
-
-
-
-
-class smedlSemantics(object):
-    def object(self, ast):
-        return ast
-
-    def variable_declaration(self, ast):
-        return ast
-
-    def event_definition(self, ast):
-        return ast
-
-    def scenario_definition(self, ast):
-        return ast
-
-    def trace_definition(self, ast):
-        return ast
-
-    def step_definition(self, ast):
-        return ast
-
-    def event_instance(self, ast):
-        return ast
-
-    def action(self, ast):
-        return ast
-
-    def action_item(self, ast):
-        return ast
-
-    def state_update(self, ast):
-        return ast
-
-    def raise_stmt(self, ast):
-        return ast
-
-    def instantiation_stmt(self, ast):
-        return ast
-
-    def type(self, ast):
-        return ast
-
-    def identifier(self, ast):
-        return ast
-
-    def integer(self, ast):
-        return ast
-
-    def float(self, ast):
-        return ast
-
-    def expression(self, ast):
-        return ast
-
-    def and_expr(self, ast):
-        return ast
-
-    def comp_expr(self, ast):
-        return ast
-
-    def arith_expr(self, ast):
-        return ast
-
-    def term(self, ast):
-        return ast
-
-    def factor(self, ast):
-        return ast
-
-    def atom(self, ast):
-        return ast
-
-    def trailer(self, ast):
-        return ast
-
-    def target(self, ast):
-        return ast
-
-    def parameter_list(self, ast):
-        return ast
-
-    def expression_list(self, ast):
-        return ast
-
-    def identifier_list(self, ast):
-        return ast
-
-    def state_update_list(self, ast):
-        return ast
-
-    def nonempty_action_item_list(self, ast):
-        return ast
+    def delete(self, symbol, attribute=None):
+        if attribute is None:
+            self[symbol] = None
+        else:
+            self[symbol[attribute] = None
 
 
 def main(filename, startrule, trace=False, whitespace=None):
@@ -119,12 +42,17 @@ def main(filename, startrule, trace=False, whitespace=None):
         filename=filename,
         trace=trace,
         whitespace=whitespace)
-    print('AST:')
-    print(ast)
-    print()
-    print('JSON:')
-    print(json.dumps(ast, indent=2))
-    print()
+    symbolTable = smedlSymbolTable()
+    parseAstToSymbolTable(ast, symbolTable)
+    print(symbolTable)
+
+def parseAstToSymbolTable(label, ast, symbolTable):
+    for k, v in ast:
+        if isinstance(v, AST):
+            parseAstToSymbolTable(k, v, symbolTable)
+        else:
+            if ('_id' in k) and v not in symbolTable:
+                symbolTable.add(v)
 
 if __name__ == '__main__':
     import argparse
