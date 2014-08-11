@@ -7,6 +7,6 @@ void foo() {
   case ONETWO:
       currentState = TWOONE; 
   case TWOONE:
-      /; 
+      currentState = ONETWO; 
   }
 }
