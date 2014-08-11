@@ -1,0 +1,19 @@
+The purpose of this example is to illustrate construction and operation of parametric checkers.
+
+meander.c is a program with two threads, each of which counts up to an upper bound, then switches and counts down to a lower bound.
+
+The property of each thread, captured by meander.smedl, is that as soon as a bound is reached, the switch will occur.  The program is correct with respect to this spec; the goal is to consider instrumentation and instantiation of monitors.
+
+meander.pedl describes the instrumentation for meander.c.  In addition to defining events used in the SMEDL model, it also specifies parameterization of the checker.
+
+meander-instrumented.c shows where instrumentation would be applied in the meander program.  We should discuss with Grammatech, how this instrumentation can be implemented with Sysense.
+
+finally, safemon.c is a complete instantiation of the checker in C, including a naive implementation of parametric event routing.
+
+To compile the programs:
+
+original:
+gcc meander.c -o meander -lpthread
+
+monitored:
+gcc meander-instrumented.c safemon.c -o meander-monitored -lpthread

@@ -1,0 +1,5 @@
+non-instrumented:
+gcc meander.c -o meander -lpthread
+
+instrumented:
+gcc meander-instrumented.c safemon.c -o meander-monitored -lpthread
