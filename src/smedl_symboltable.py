@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function, division, absolute_import, unicode_literals
-from .smedl_parser import smedlParser
+from smedl_parser import smedlParser
+from grako.ast import AST
 
 class smedlSymbolTable(dict):
 
@@ -28,7 +29,7 @@ class smedlSymbolTable(dict):
         if attribute is None:
             self[symbol] = None
         else:
-            self[symbol[attribute] = None
+            self[symbol][attribute] = None
 
 
 def main(filename, startrule, trace=False, whitespace=None):
@@ -42,17 +43,32 @@ def main(filename, startrule, trace=False, whitespace=None):
         filename=filename,
         trace=trace,
         whitespace=whitespace)
+    print('AST:')
+    print(ast)
+    print()
     symbolTable = smedlSymbolTable()
-    parseAstToSymbolTable(ast, symbolTable)
+    parseToSymbolTable('top', ast, symbolTable)
+    print('Symbol Table:')
     print(symbolTable)
+    print()
 
-def parseAstToSymbolTable(label, ast, symbolTable):
-    for k, v in ast:
-        if isinstance(v, AST):
-            parseAstToSymbolTable(k, v, symbolTable)
-        else:
-            if ('_id' in k) and v not in symbolTable:
-                symbolTable.add(v)
+def parseToSymbolTable(label, object, symbolTable):
+    if isinstance(object, AST):
+        print('1')
+        for k, v in object.iteritems():
+            if isinstance(v, AST):
+                print('ast: ' + k)
+                parseToSymbolTable(k, v, symbolTable)
+            else:
+                print('3 ' + k)
+                if ('_id' in k) and (v not in symbolTable):
+                    print('ADD: ' + k + '   ' + v)
+                    symbolTable.add(v, {'type' : label})
+    if isinstance(object, list):
+        print('2')
+        for elem in object:
+            print('list: ' + label)
+            parseToSymbolTable(label, elem, symbolTable)
 
 if __name__ == '__main__':
     import argparse
