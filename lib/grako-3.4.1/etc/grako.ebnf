@@ -1,0 +1,292 @@
+(* The language for Grako grammars *)
+grammar(Grammar)
+    =
+    rules:{rule}+ $
+    ;
+
+
+paramdef
+    =
+        (* no keyword params if ':: *)
+        '::' ~ params:params_only
+    |
+        '('
+        ~
+        (
+              kwparams:kwparams
+            | params:params ',' ~ kwparams:kwparams
+            | params:params
+        )
+        ')'
+    ;
+
+
+rule(Rule)
+    =
+    name:new_name
+    ~
+    [>paramdef]
+    ['<' ~ base:known_name]
+    '='
+    ~
+    exp:expre
+    ';'
+    ~
+    ;
+
+
+params
+    =
+    @+:literal {',' @+:literal !'='}
+    ;
+
+
+params_only
+    =
+    @+:literal {',' @+:literal}
+    ;
+
+
+kwparams
+    =
+    @+:pair {',' ~ @+:pair}
+    ;
+
+
+pair
+    =
+    @+:word '=' ~ @+:literal
+    ;
+
+
+expre
+    =
+    choice | sequence
+    ;
+
+
+choice(Choice)
+    =
+    @+:sequence {'|' ~ @+:sequence}+
+    ;
+
+
+sequence(Sequence)
+    =
+    sequence:{element}+
+    ;
+
+
+element
+    =
+    rule_include | named | override | term
+    ;
+
+
+rule_include(RuleInclude)
+    =
+    '>' ~ @:known_name
+    ;
+
+
+named
+    =
+    named_list | named_single
+    ;
+
+
+named_list(NamedList)
+    =
+    name:name '+:' ~ exp:element
+    ;
+
+
+named_single(Named)
+    =
+    name:name ':' ~ exp:element
+    ;
+
+
+override
+    =
+    override_list | override_single | override_single_deprecated
+    ;
+
+
+override_list(OverrideList)
+    =
+    '@+:' ~ @:element
+    ;
+
+
+override_single(Override)
+    =
+    '@:' ~ @:element
+    ;
+
+
+override_single_deprecated(Override)
+    =
+    '@' ~ @:element
+    ;
+
+
+term
+    =
+      void
+    | group
+    | positive_closure
+    | closure
+    | optional
+    | special
+    | kif
+    | knot
+    | atom
+    ;
+
+
+group(Group)
+    =
+    '(' ~ exp:expre ')' ~
+    ;
+
+
+positive_closure(PositiveClosure)
+    =
+    '{' @:expre '}' ('-' | '+') ~
+    ;
+
+
+closure(Closure)
+    =
+    '{' @:expre '}' ['*'] ~
+    ;
+
+
+optional(Optional)
+    =
+    '[' ~ @:expre ']' ~
+    ;
+
+
+special(Special)
+    =
+    '?(' ~ @:/.*?(?!\)\?)/ ')?' ~
+    ;
+
+
+kif(Lookahead)
+    =
+    '&' ~ @:term
+    ;
+
+
+knot(NegativeLookahead)
+    =
+    '!' ~ @:term
+    ;
+
+
+atom
+    =
+    cut | cut_deprecated | token | call | pattern | eof
+    ;
+
+
+call(RuleRef)
+    =
+    word
+    ;
+
+
+void(Void)
+    =
+    '()' ~
+    ;
+
+
+cut(Cut)
+    =
+    '~' ~
+    ;
+
+
+cut_deprecated(Cut)
+    =
+    '>>' ~
+    ;
+
+
+new_name
+    =
+    name ~
+    ;
+
+
+known_name
+    =
+    name ~
+    ;
+
+
+name
+    =
+    word
+    ;
+
+
+literal
+    =
+    string | word | hex | float | int
+    ;
+
+
+token(Token)
+    =
+    string
+    ;
+
+
+string
+    =
+    (* allow single and double quotes *)
+    ('"' ~ @:/([^"\n]|\\"|\\\\)*/ '"' | "'" ~ @:/([^'\n]|\\'|\\\\)*/ "'") ~
+    ;
+
+
+hex
+    =
+    /0[xX](\d|[a-fA-F])+/
+    ;
+
+
+float
+    =
+    /[-+]?\d+\.(?:\d*)?(?:[Ee][-+]?\d+)?/ | /[-+]?\d*\.\d+(?:[Ee][-+]?\d+)?/
+    ;
+
+
+int
+    =
+    /[-+]?\d+/
+    ;
+
+
+word
+    =
+    /(?!\d)\w+/
+    ;
+
+
+pattern(Pattern)
+    =
+      '?/' ~ @:?/(.|\n)+?(?=/\?)/?? ?//\?+/?? ~
+    | '/' ~ @:?/(.|\n)+?(?=/)/? '/' ~
+    ;
+
+
+eof(EOF)
+    =
+    '$' ~
+    ;
+
