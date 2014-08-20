@@ -56,11 +56,14 @@ def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
         print('1')
         for k, v in object.iteritems():
+            if isinstance(v, list):
+                for vi in v:
+                    parseToSymbolTable(k, vi, symbolTable)
             if isinstance(v, AST):
                 print('ast: ' + k)
                 parseToSymbolTable(k, v, symbolTable)
             else:
-                print('3 ' + k)
+                print('2 ' + k)
                 if ('_id' in k) and (v not in symbolTable):
                     print('ADD: ' + k + '   ' + v)
                     symbolTable.add(v, {'type' : label})
