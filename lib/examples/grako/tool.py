@@ -3,22 +3,26 @@
 Parse and translate an EBNF grammar into a Python parser for
 the described language.
 """
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 import codecs
 import argparse
 import os
 import pickle
 import sys
 
+from grako._version import __version__
 from grako.util import eval_escapes
 from grako.exceptions import GrakoException
 from grako.parser import GrakoGrammarGenerator
 
-DESCRIPTION = ('GRAKO (for "grammar compiler") takes grammars'
-               ' in a variation of EBNF as input, and outputs a memoizing'
-               ' PEG/Packrat parser in Python.'
-               )
+# we hook the tool to the Python code generator as the default
+from grako.codegen import pythoncg
+
+DESCRIPTION = (
+    'Grako (for "grammar compiler") takes grammars'
+    ' in a variation of EBNF as input, and outputs a memoizing'
+    ' PEG/Packrat parser in Python.'
+)
 
 
 argparser = argparse.ArgumentParser(prog='grako',
@@ -36,14 +40,16 @@ argparser.add_argument('filename',
                        metavar='GRAMMAR',
                        help='The filename of the Grako grammar'
                        )
-argparser.add_argument('-n', '--no-nameguard',
-                       help='allow tokens that are prefixes of others',
-                       dest="nameguard", action='store_false', default=True
-                       )
 argparser.add_argument('-m', '--name',
                        nargs=1,
                        metavar='NAME',
                        help='Name for the grammar (defaults to GRAMMAR base name)'
+                       )
+argparser.add_argument('-n', '--no-nameguard',
+                       help='allow tokens that are prefixes of others',
+                       dest="nameguard",
+                       action='store_false',
+                       default=True
                        )
 argparser.add_argument('-o', '--output',
                        metavar='FILE',
@@ -69,16 +75,21 @@ def genmodel(name, grammar, trace=False, filename=None):
     return parser.parse(grammar, filename=filename)
 
 
-def gencode(name, grammar, trace=False, filename=None):
+def gencode(name, grammar, trace=False, filename=None, codegen=pythoncg):
     model = genmodel(name, grammar, trace=trace, filename=filename)
-    return model.render()
+    return codegen(model)
 
 
 def _error(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def main():
+def main(codegen=pythoncg, outer_version=''):
+    argparser.add_argument('-v', '--version',
+                        help='provide version information and exit',
+                        action='version',
+                        version=outer_version + 'Grako ' + __version__
+                        )
     try:
         args = argparser.parse_args()
     except Exception as e:
@@ -133,7 +144,7 @@ def main():
         elif pretty:
             result = str(model)
         else:
-            result = model.render()
+            result = codegen(model)
 
         if draw:
             from grako import diagrams

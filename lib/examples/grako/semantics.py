@@ -1,111 +1,78 @@
 # -*- coding: utf-8 -*-
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
-import re
 from collections import OrderedDict
 
 from grako.util import simplify_list, eval_escapes, warning
+from grako.util import re, RE_FLAGS
 from grako import grammars
 from grako.exceptions import FailedSemantics
+from grako.model import ModelBuilderSemantics
 
 
 class GrakoASTSemantics(object):
 
-    def group(self, ast):
+    def group(self, ast, *args):
         return simplify_list(ast)
 
-    def element(self, ast):
+    def element(self, ast, *args):
         return simplify_list(ast)
 
-    def sequence(self, ast):
+    def sequence(self, ast, *args):
         return simplify_list(ast)
 
-    def choice(self, ast):
+    def choice(self, ast, *args):
         if len(ast) == 1:
             return simplify_list(ast[0])
         return ast
 
 
-class GrakoSemantics(object):
+class GrakoSemantics(ModelBuilderSemantics):
     def __init__(self, grammar_name):
-        super(GrakoSemantics, self).__init__()
+        super(GrakoSemantics, self).__init__(
+            baseType=grammars.Model,
+            types=grammars.Model.classes()
+        )
         self.grammar_name = grammar_name
         self.rules = OrderedDict()
 
-    def token(self, ast):
+    def token(self, ast, *args):
         token = eval_escapes(ast)
         return grammars.Token(token)
 
-    def call(self, ast):
-        return grammars.RuleRef(ast)
-
-    def pattern(self, ast):
+    def pattern(self, ast, *args):
         pattern = ast
         try:
-            re.compile(pattern)
+            re.compile(pattern, RE_FLAGS)
         except re.error as e:
             raise FailedSemantics('regexp error: ' + str(e))
         return grammars.Pattern(ast)
 
-    def cut(self, ast):
-        return grammars.Cut()
+    def hext(self, ast):
+        return int(ast, 16)
 
-    def cut_deprecated(self, ast):
+    def float(self, ast):
+        return float(ast)
+
+    def int(self, ast):
+        return int(ast)
+
+    def cut_deprecated(self, ast, *args):
         warning('The use of >> for cut is deprecated. Use the ~ symbol instead.')
         return grammars.Cut()
 
-    def eof(self, ast):
-        return grammars.EOF()
-
-    def void(self, ast):
-        return grammars.Void()
-
-    def group(self, ast):
-        return grammars.Group(ast)
-
-    def optional(self, ast):
-        return grammars.Optional(ast)
-
-    def positive_closure(self, ast):
-        return grammars.PositiveClosure(ast)
-
-    def closure(self, ast):
-        return grammars.Closure(ast)
-
-    def special(self, ast):
-        return grammars.Special(ast)
-
-    def kif(self, ast):
-        return grammars.Lookahead(ast)
-
-    def knot(self, ast):
-        return grammars.LookaheadNot(ast)
-
-    def named_list(self, ast):
-        return grammars.NamedList(ast.name, ast.value)
-
-    def named_single(self, ast):
-        return grammars.Named(ast.name, ast.value)
-
-    def override_list(self, ast):
-        return grammars.OverrideList(ast)
-
-    def override_single(self, ast):
-        return grammars.Override(ast)
-
-    def override_single_deprecated(self, ast):
+    def override_single_deprecated(self, ast, *args):
         warning('The use of @ for override is deprecated. Use @: instead')
         return grammars.Override(ast)
 
-    def sequence(self, ast):
-        seq = ast
+    def sequence(self, ast, *args):
+        seq = ast.sequence
         assert isinstance(seq, list), str(seq)
         if len(seq) == 1:
             return seq[0]
-        return grammars.Sequence(seq)
+        return grammars.Sequence(ast)
 
-    def choice(self, ast):
+    def choice(self, ast, *args):
         if len(ast) == 1:
             return ast[0]
         return grammars.Choice(ast)
@@ -120,31 +87,34 @@ class GrakoSemantics(object):
             raise FailedSemantics('rule "%s" not yet defined' % str(ast))
         return ast
 
-    def rule(self, ast):
+    def rule(self, ast, *args):
         name = ast.name
-        rhs = ast.rhs
+        exp = ast.exp
         base = ast.base
         params = ast.params
-        kwparams = ast.kwparams
+        kwparams = OrderedDict(ast.kwparams) if ast.kwparams else None
 
         self.new_name(name)
 
         if not base:
-            rule = grammars.Rule(name, rhs, params, kwparams)
+            rule = grammars.Rule(ast, name, exp, params, kwparams)
         else:
             self.known_name(base)
             base_rule = self.rules[base]
-            rule = grammars.BasedRule(name, rhs, base_rule, params, kwparams)
+            rule = grammars.BasedRule(ast, name, exp, base_rule, params, kwparams)
 
         self.rules[name] = rule
         return rule
 
-    def rule_include(self, ast):
+    def rule_include(self, ast, *args):
         name = str(ast)
         self.known_name(name)
 
         rule = self.rules[name]
         return grammars.RuleInclude(rule)
 
-    def grammar(self, ast):
-        return grammars.Grammar(self.grammar_name, list(self.rules.values()))
+    def grammar(self, ast, *args):
+        return grammars.Grammar(
+            self.grammar_name,
+            list(self.rules.values())
+        )

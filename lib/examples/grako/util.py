@@ -1,22 +1,37 @@
 # -*- coding: utf-8 -*-
-from __future__ import (absolute_import, division, print_function,
-                        unicode_literals)
+from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys
 import collections
 import json
 import datetime
-import re
 import codecs
-import keyword
+
+try:
+    import regex as re
+    WHITESPACE_RE = re.compile(r'\p{IsPattern_White_Space}+', re.UNICODE)
+except ImportError:
+    import re
+    WHITESPACE_RE = re.compile(r'\s+', re.UNICODE)
+RE_FLAGS = re.UNICODE | re.MULTILINE
 
 
 PY3 = sys.version_info[0] >= 3
 
 if PY3:
     strtype = str
+    basestring = None
+    unicode = None
 else:
-    strtype = basestring
+    strtype = basestring  # noqa
+
+
+def info(*args, **kwargs):
+    kwargs['file'] = sys.stderr
+    if PY3:
+        print(*args, **kwargs)
+    else:
+        print(*(a.encode('utf-8') for a in args), **kwargs)
 
 
 def debug(*args, **kwargs):
@@ -42,6 +57,16 @@ def to_list(o):
         return [o]
 
 
+def compress_seq(seq):
+    seen = set()
+    result = []
+    for x in seq:
+        if x not in seen:
+            result.append(x)
+            seen.add(x)
+    return result
+
+
 def ustr(s):
     if PY3:
         return str(s)
@@ -50,7 +75,11 @@ def ustr(s):
     elif isinstance(s, str):
         return unicode(s, 'utf-8')
     else:
-        return unicode(str(s), 'utf-8')
+        return ustr(s.__str__())  # FIXME: last case resource!  We don't know unicode, period.
+
+
+def urepr(obj):
+    return ustr(repr(obj)).lstrip('u')
 
 
 ESCAPE_SEQUENCE_RE = re.compile(
@@ -172,9 +201,3 @@ def prune_dict(d, predicate):
     keys = [k for k, v in d.items() if predicate(k, v)]
     for k in keys:
         del d[k]
-
-
-def safe_name(s):
-    if keyword.iskeyword(s):
-        return s + '_'
-    return s

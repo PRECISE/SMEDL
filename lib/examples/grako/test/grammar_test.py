@@ -6,8 +6,10 @@ import unittest
 
 from grako.exceptions import FailedSemantics
 from grako.grammars import ModelContext
+from grako.parser import GrakoGrammarGenerator
 from grako.tool import genmodel
-from grako.util import trim
+from grako.util import trim, ustr, PY3
+from grako.codegen import codegen
 
 
 class GrammarTests(unittest.TestCase):
@@ -42,7 +44,40 @@ class GrammarTests(unittest.TestCase):
         '''
         m = genmodel('Update', grammar)
         ast = m.parse("1101110100", nameguard=False)
-        self.assertEquals([['11'], ['111'], ['1'], []], ast.items)
+        self.assertEquals([['11'], ['111'], ['1'], []], ast.items_)
+
+    def test_ast_assignment(self):
+        grammar = '''
+            n  = @: {"a"}* $ ;
+            f  = @+: {"a"}* $ ;
+            nn = @: {"a"}*  @: {"b"}* $ ;
+            nf = @: {"a"}*  @+: {"b"}* $ ;
+            fn = @+: {"a"}* @: {"b"}* $ ;
+            ff = @+: {"a"}* @+: {"b"}* $ ;
+        '''
+
+        model = genmodel("test", grammar)
+
+        def p(input, rule):
+            return model.parse(input, start=rule, whitespace='')
+
+        e = self.assertEqual
+
+        e([], p('', 'n'))
+        e(['a'], p('a', 'n'))
+        e(['a', 'a'], p('aa', 'n'))
+
+        e([[]], p('', 'f'))
+        e([['a']], p('a', 'f'))
+        e([['a', 'a']], p('aa', 'f'))
+
+        for r in ('nn', 'nf', 'fn', 'ff'):
+            e([[], []], p('', r))
+            e([['a'], []], p('a', r))
+            e([[], ['b']], p('b', r))
+            e([['a', 'a'], []], p('aa', r))
+            e([[], ['b', 'b']], p('bb', r))
+            e([['a', 'a'], ['b']], p('aab', r))
 
     def test_stateful(self):
         # Parser for mediawiki-style unordered lists.
@@ -50,15 +85,15 @@ class GrammarTests(unittest.TestCase):
         document = @:ul [ nl ] $ ;
         ul = "*" ul_start el+:li { nl el:li } * ul_end ;
         li = ul | li_text ;
-        (* Quirk: If a text line is followed by a sublist, the sublist does not get its own li.  *)
+        (* Quirk: If a text line is followed by a sublist, the sublist does not get its own li. *)
         li_text = text:text [ ul:li_followed_by_ul ] ;
         li_followed_by_ul = nl @:ul ;
         text = ?/.*/? ;
         nl = ?/\n/? ul_marker ;
-        (* The following rules are placeholders for state transitions.  *)
+        (* The following rules are placeholders for state transitions. *)
         ul_start = () ;
         ul_end = () ;
-        (* The following rules are placeholders for state validations and grammar rules.  *)
+        (* The following rules are placeholders for state validations and grammar rules. *)
         ul_marker = () ;
         '''
 
@@ -97,13 +132,13 @@ class GrammarTests(unittest.TestCase):
         ast = model.parse('*abc', "document", context=context, semantics=StatefulSemantics(context), whitespace='', nameguard=False)
         self.assertEqual(ast, "<ul><li>abc</li></ul>")
         ast = model.parse('*abc\n', "document", context=context, semantics=StatefulSemantics(context), whitespace='', nameguard=False)
-        self.assertEqual(ast, "<ul><li>abc</li></ul>")
+        self.assertEqual("<ul><li>abc</li></ul>", ast)
         ast = model.parse('*abc\n*def\n', "document", context=context, semantics=StatefulSemantics(context), whitespace='', nameguard=False)
-        self.assertEqual(ast, "<ul><li>abc</li><li>def</li></ul>")
+        self.assertEqual("<ul><li>abc</li><li>def</li></ul>", ast)
         ast = model.parse('**abc', "document", context=context, semantics=StatefulSemantics(context), whitespace='', nameguard=False)
-        self.assertEqual(ast, "<ul><li><ul><li>abc</li></ul></li></ul>")
+        self.assertEqual("<ul><li><ul><li>abc</li></ul></li></ul>", ast)
         ast = model.parse('*abc\n**def\n', "document", context=context, semantics=StatefulSemantics(context), whitespace='', nameguard=False)
-        self.assertEqual(ast, "<ul><li>abc<ul><li>def</li></ul></li></ul>")
+        self.assertEqual("<ul><li>abc<ul><li>def</li></ul></li></ul>", ast)
 
     def test_optional_closure(self):
         grammar = 'start = foo+:"x" foo:{"y"}* {foo:"z"}* ;'
@@ -189,6 +224,32 @@ class GrammarTests(unittest.TestCase):
         ast = model.parse("A", nameguard=False)
         self.assertEquals({'x': 'A', 'o': None}, ast)
 
+    def test_patterns_with_newlines(self):
+        grammar = '''
+            start
+                =
+                blanklines $
+                ;
+
+            blanklines
+                =
+                blankline [blanklines]
+                ;
+
+            blankline
+                =
+                /^[^\n]*\n?$/
+                ;
+
+            blankline2 =
+                ?/^[^\n]*\n?$/?
+                ;
+        '''
+
+        model = genmodel("test", grammar)
+        ast = model.parse('\n\n')
+        self.assertEqual('', ustr(ast))
+
     def test_new_override(self):
         grammar = '''
             start
@@ -242,12 +303,11 @@ class GrammarTests(unittest.TestCase):
                 =
                 {@:'b'}
                 ;
-
             '''
         model = genmodel("test", grammar)
         ast = model.parse("abb", nameguard=False)
         self.assertEquals(['a', 'b', 'b'], ast)
-        self.assertEqual(trim(grammar), str(model))
+        self.assertEqual(trim(grammar), ustr(model))
 
     def test_rule_include(self):
         grammar = '''
@@ -383,38 +443,221 @@ class GrammarTests(unittest.TestCase):
         ast = model_b.parse("(((1+2)))")
         self.assertEquals(['1', '+', '2'], ast)
 
-    def test_ast_assignment(self):
+    def test_keyword_params(self):
         grammar = '''
-            n  = @: {"a"}* $ ;
-            f  = @+: {"a"}* $ ;
-            nn = @: {"a"}*  @: {"b"}* $ ;
-            nf = @: {"a"}*  @+: {"b"}* $ ;
-            fn = @+: {"a"}* @: {"b"}* $ ;
-            ff = @+: {"a"}* @+: {"b"}* $ ;
+            start(k1=1, k2=2)
+                =
+                {'a'} $
+                ;
+        '''
+        g = GrakoGrammarGenerator('Keywords')
+        model = g.parse(grammar, trace=False)
+        code = codegen(model)
+        self.assertEquals('#!/usr/bin/env python', code.splitlines()[0])
+        pass
+
+    def test_35_only_keyword_params(self):
+        grammar = '''
+            rule(kwdA=A, kwdB=B)
+                =
+                'a'
+                ;
+        '''
+        model = genmodel("test", grammar)
+        self.assertEquals(trim(grammar), ustr(model))
+
+    def test_36_params_and_keyword_params(self):
+        grammar = '''
+            rule(A, kwdB=B)
+                =
+                'a'
+                ;
+        '''
+        model = genmodel("test", grammar)
+        self.assertEquals(trim(grammar), ustr(model))
+
+    def test_36_param_combinations(self):
+        def assert_equal(target, value):
+            self.assertEqual(target, value)
+
+        class TC36Semantics(object):
+
+            """Check all rule parameters for expected types and values"""
+
+            def rule_positional(self, ast, p1, p2, p3, p4):
+                assert_equal("ABC", p1)
+                assert_equal(123, p2)
+                assert_equal('=', p3)
+                assert_equal("+", p4)
+                return ast
+
+            def rule_keyword(self, ast, k1, k2, k3, k4):
+                assert_equal("ABC", k1)
+                assert_equal(123, k2)
+                assert_equal('=', k3)
+                assert_equal('+', k4)
+                return ast
+
+            def rule_all(self, ast, p1, p2, p3, p4, k1, k2, k3, k4):
+                assert_equal("DEF", p1)
+                assert_equal(456, p2)
+                assert_equal('=', p3)
+                assert_equal("+", p4)
+                assert_equal("HIJ", k1)
+                assert_equal(789, k2)
+                assert_equal('=', k3)
+                assert_equal('+', k4)
+                return ast
+
+        grammar = '''
+            start
+                =
+                {rule_positional | rule_keywords | rule_all} $
+                ;
+
+
+            rule_positional('ABC', 123, '=', '+')
+                =
+                'a'
+                ;
+
+
+            rule_keywords(k1=ABC, k3='=', k4='+', k2=123)
+                =
+                'b'
+                ;
+
+
+            rule_all('DEF', 456, '=', '+', k1=HIJ, k3='=', k4='+', k2=789)
+                =
+                'c'
+                ;
         '''
 
+        pretty = '''
+            start
+                =
+                {rule_positional | rule_keywords | rule_all} $
+                ;
+
+
+            rule_positional(ABC, 123, '=', '+')
+                =
+                'a'
+                ;
+
+
+            rule_keywords(k1=ABC, k3='=', k4='+', k2=123)
+                =
+                'b'
+                ;
+
+
+            rule_all(DEF, 456, '=', '+', k1=HIJ, k3='=', k4='+', k2=789)
+                =
+                'c'
+                ;
+        '''
+
+        model = genmodel('RuleArguments', grammar)
+        self.assertEqual(trim(pretty), ustr(model))
+        model = genmodel('RuleArguments', pretty)
+
+        ast = model.parse("a b c")
+        self.assertEqual(['a', 'b', 'c'], ast)
+        semantics = TC36Semantics()
+        ast = model.parse("a b c", semantics=semantics)
+        self.assertEqual(['a', 'b', 'c'], ast)
+        codegen(model)
+
+    def test_36_unichars(self):
+        grammar = '''
+            start = { rule_positional | rule_keywords | rule_all }* $ ;
+
+            rule_positional("ÄÖÜäöüß") = 'a' ;
+
+            rule_keywords(k1='äöüÄÖÜß') = 'b' ;
+
+            rule_all('ßÄÖÜäöü', k1="ßäöüÄÖÜ") = 'c' ;
+        '''
+
+        def _trydelete(pymodule):
+            import os
+            try:
+                os.unlink(pymodule + ".py")
+            except EnvironmentError:
+                pass
+            try:
+                os.unlink(pymodule + ".pyc")
+            except EnvironmentError:
+                pass
+            try:
+                os.unlink(pymodule + ".pyo")
+            except EnvironmentError:
+                pass
+
+        def assert_equal(target, value):
+            self.assertEqual(target, value)
+
+        class UnicharsSemantics(object):
+            """Check all rule parameters for expected types and values"""
+            def rule_positional(self, ast, p1):
+                assert_equal("ÄÖÜäöüß", p1)
+                return ast
+
+            def rule_keyword(self, ast, k1):
+                assert_equal("äöüÄÖÜß", k1)
+                return ast
+
+            def rule_all(self, ast, p1, k1):
+                assert_equal("ßÄÖÜäöü", p1)
+                assert_equal("ßäöüÄÖÜ", k1)
+                return ast
+
+        m = genmodel("UnicodeRuleArguments", grammar)
+        ast = m.parse("a b c")
+        self.assertEqual(['a', 'b', 'c'], ast)
+
+        semantics = UnicharsSemantics()
+        ast = m.parse("a b c", semantics=semantics)
+        self.assertEqual(['a', 'b', 'c'], ast)
+
+        code = codegen(m)
+        import codecs
+        with codecs.open("tc36unicharstest.py", "w", "utf-8") as f:
+            f.write(code)
+        import tc36unicharstest
+        tc36unicharstest
+        _trydelete("tc36unicharstest")
+
+    def test_numbers_and_unicode(self):
+        grammar = '''
+            rúle(1, -23, 4.56, 7.89e-11, 0xABCDEF, Añez)
+                =
+                'a'
+                ;
+        '''
+        rule2 = '''
+
+            rulé(Añez)
+                =
+                '\\xf1'
+                ;
+        '''
+        rule3 = '''
+
+            rúlé(Añez)
+                =
+                'ñ'
+                ;
+        '''
+        if PY3:
+            grammar += rule3
+        else:
+            grammar += rule2
+
         model = genmodel("test", grammar)
-
-        def p(input, rule):
-            return model.parse(input, start=rule, whitespace='')
-
-        e = self.assertEqual
-
-        e([], p('', 'n'))
-        e(['a'], p('a', 'n'))
-        e(['a', 'a'], p('aa', 'n'))
-
-        e([[]], p('', 'f'))
-        e([['a']], p('a', 'f'))
-        e([['a', 'a']], p('aa', 'f'))
-
-        for r in ('nn', 'nf', 'fn', 'ff'):
-            e([[], []], p('', r))
-            e([['a'], []], p('a', r))
-            e([[], ['b']], p('b', r))
-            e([['a', 'a'], []], p('aa', r))
-            e([[], ['b', 'b']], p('bb', r))
-            e([['a', 'a'], ['b']], p('aab', r))
+        self.assertEquals(trim(grammar), ustr(model))
 
 
 def suite():

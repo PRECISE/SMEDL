@@ -10,12 +10,10 @@ from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
 import os
-import re as regexp
-import string
 from bisect import bisect_left
 from collections import namedtuple
 
-from grako.util import ustr
+from grako.util import ustr, strtype, re as regexp, WHITESPACE_RE, RE_FLAGS
 from grako.exceptions import ParseError
 
 # TODO: There could be a file buffer using random access
@@ -24,8 +22,14 @@ __all__ = ['Buffer']
 
 RETYPE = type(regexp.compile('.'))
 
+
 PosLine = namedtuple('PosLine', ['pos', 'line'])
-LineInfo = namedtuple('LineInfo', ['filename', 'line', 'col', 'start', 'text'])
+
+
+LineInfo = namedtuple(
+    'LineInfo',
+    ['filename', 'line', 'col', 'start', 'end', 'text']
+)
 
 
 class Buffer(object):
@@ -35,32 +39,56 @@ class Buffer(object):
                  whitespace=None,
                  tabwidth=None,
                  comments_re=None,
+                 eol_comments_re=None,
                  ignorecase=False,
                  trace=False,
                  nameguard=None,
+                 comment_recovery=False,
                  **kwargs):
         self.original_text = text
         self.text = ustr(text)
         self.filename = filename or ''
-        self.whitespace = set(whitespace
-                              if whitespace is not None
-                              else string.whitespace)
+
+        self.whitespace_re = self._build_whitespace_re(whitespace)
+
         self.tabwidth = tabwidth
         self.comments_re = comments_re
+        self.eol_comments_re = eol_comments_re
         self.ignorecase = ignorecase
         self.trace = True
         self.nameguard = (nameguard
                           if nameguard is not None
-                          else bool(self.whitespace))
+                          else bool(self.whitespace_re))
+        self.comment_recovery = comment_recovery
+
         self._pos = 0
         self._len = 0
         self._linecount = 0
         self._line_index = []
+        self._comment_index = []
         self._preprocess()
         self._linecache = []
         self._build_line_cache()
+        self._comment_index = [[] for _ in self._line_index]
         self._len = len(self.text)
         self._re_cache = {}
+
+    @staticmethod
+    def _build_whitespace_re(whitespace):
+        if whitespace is None:
+            return WHITESPACE_RE
+        elif isinstance(whitespace, RETYPE):
+            return whitespace
+        elif whitespace:
+            if not isinstance(whitespace, strtype):
+                # a list or a set?
+                whitespace = ''.join(c for c in whitespace)
+            return regexp.compile(
+                '[%s]+' % regexp.escape(whitespace),
+                RE_FLAGS | regexp.DOTALL
+            )
+        else:
+            return None
 
     def _preprocess(self, *args, **kwargs):
         lines, index = self._preprocess_block(self.filename, self.text)
@@ -153,25 +181,61 @@ class Buffer(object):
     def move(self, n):
         self.goto(self.pos + n)
 
-    def eatwhitespace(self):
-        p = self._pos
-        le = self._len
-        ws = self.whitespace
-        while p < le and self.text[p] in ws:
-            p += 1
-        self.goto(p)
+    def comments(self, p, clear=True):
+        if not self.comment_recovery:
+            return [], []
 
-    def eatcomments(self):
-        if self.comments_re is not None:
-            while self.matchre(self.comments_re, regexp.MULTILINE):
+        n = self.line_info(p).line
+        if n >= len(self._comment_index):
+            n -= 1
+
+        eolcmm = self._comment_index[n]
+        if clear:
+            self._comment_index[n] = []
+        n -= 1
+
+        cmm = []
+        while n >= 0 and self._comment_index[n]:
+            cmm.insert(0, self._comment_index[n])
+            if clear:
+                self._comment_index[n] = []
+            n -= 1
+
+        return cmm, eolcmm
+
+    def eat_whitespace(self):
+        if self.whitespace_re is not None:
+            while self.matchre(self.whitespace_re):
                 pass
+
+    def eat_comments(self):
+        if self.comments_re is not None:
+            while True:
+                comment = self.matchre(self.comments_re)
+                if not comment:
+                    break
+                if self.comment_recovery:
+                    n = self.line
+                    self._comment_index[n].append(comment)
+
+    def eat_eol_comments(self):
+        if self.eol_comments_re is not None:
+            while True:
+                if self.comment_recovery:
+                    n = self.line
+                comment = self.matchre(self.eol_comments_re)
+                if not comment:
+                    break
+                if self.comment_recovery:
+                    self._comment_index[n].append(comment)
 
     def next_token(self):
         p = None
         while self._pos != p:
             p = self._pos
-            self.eatcomments()
-            self.eatwhitespace()
+            self.eat_eol_comments()
+            self.eat_comments()
+            self.eat_whitespace()
 
     def skip_to(self, c):
         p = self._pos
@@ -189,8 +253,14 @@ class Buffer(object):
     def skip_to_eol(self):
         return self.skip_to('\n')
 
+    def scan_space(self, offset=0):
+        return (
+            self.whitespace_re
+            and self._scanre(self.whitespace_re, offset=offset) is not None
+        )
+
     def is_space(self):
-        return self.current() in self.whitespace
+        return self.scan_space()
 
     def is_name_char(self, c):
         return c is not None and c.isalnum()
@@ -222,11 +292,13 @@ class Buffer(object):
         self.goto(p)
 
     def matchre(self, pattern, ignorecase=None):
-        matched = self._do_matchre(pattern, ignorecase=ignorecase)
+        matched = self._scanre(pattern, ignorecase=ignorecase)
         if matched:
-            return matched.group()
+            token = matched.group()
+            self.move(len(token))
+            return token
 
-    def _do_matchre(self, pattern, ignorecase=None):
+    def _scanre(self, pattern, ignorecase=None, offset=0):
         ignorecase = ignorecase if ignorecase is not None else self.ignorecase
 
         if isinstance(pattern, RETYPE):
@@ -234,16 +306,13 @@ class Buffer(object):
         elif pattern in self._re_cache:
             re = self._re_cache[pattern]
         else:
+            flags = RE_FLAGS | (regexp.IGNORECASE if ignorecase else 0)
             re = regexp.compile(
                 pattern,
-                regexp.MULTILINE | (regexp.IGNORECASE if ignorecase else 0)
+                flags
             )
             self._re_cache[pattern] = re
-        matched = re.match(self.text, self.pos)
-        if matched:
-            token = matched.group()
-            self.move(len(token))
-        return matched
+        return re.match(self.text, self.pos + offset)
 
     def _build_line_cache(self):
         # The line cache holds the position of the last character
@@ -270,18 +339,22 @@ class Buffer(object):
     def line_info(self, pos=None):
         if pos is None:
             pos = self._pos
+
         nmax = len(self._linecache) - 1
         if pos >= self._len:
-            return LineInfo(self.filename, nmax, 0, self._len, "")
+            return LineInfo(self.filename, nmax, 0, self._len, self._len, '')
+
         n = bisect_left(self._linecache, PosLine(pos, 0))
         start, line = self._linecache[n - 1]
         start = start + 1
         end = self._linecache[n].pos + 1
-        text = self.text[start:end]
         col = pos - start
+
+        text = self.text[start:end]
         n = min(len(self._line_index) - 1, line)
         filename, line = self._line_index[n]
-        return LineInfo(filename, line, col, start, text)
+
+        return LineInfo(filename, line, col, start, end, text)
 
     def lookahead(self):
         if self.atend():

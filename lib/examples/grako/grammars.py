@@ -3,9 +3,7 @@
 Elements for a model of a parsed Grako grammar.
 
 A model constructed with these elements, and rooted in a Grammar instance is
-able to parse the language defined by the grammar, but the main purpose of
-the model is the generation of independent, top-down, verbose, and debugable
-parsers through the inline templates from the .rendering module.
+able to parse the language defined by the grammar.
 
 Models calculate the LL(k) FIRST function to aid in providing more significant
 error messages when a choice fails to parse. FOLLOW(k) and LA(k) should be
@@ -14,46 +12,88 @@ computed, but they are not.
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
-import re
 import sys
 import functools
-from collections import defaultdict
+from collections import defaultdict, Mapping
 from copy import copy
 
-from grako.util import indent, trim, timestamp, safe_name
-from grako.exceptions import FailedRef, GrammarError
+from grako.util import indent, trim, ustr, urepr, strtype, compress_seq
+from grako.util import re, RE_FLAGS
+from grako.exceptions import FailedRef, GrammarError, ParseError
 from grako.ast import AST
-from grako.model import Node
-from grako.rendering import render, Renderer
+from grako.buffering import Buffer
 from grako.contexts import ParseContext
+from grako.model import Node
 
 
 PEP8_LLEN = 72
 
 
-def check(result):
-    assert isinstance(result, _Model), str(result)
+COMMENTS_RE = r'\(\*((?:.|\n)*?)\*\)'
+EOL_COMMENTS_RE = r'#([^\n]*?)$'
+PRAGMA_RE = r'^\s*#[a-z]+'
 
 
 def dot(x, y, k):
     return set([(a + b)[:k] for a in x for b in y])
 
 
-def urepr(obj):
-    return repr(obj).lstrip('u')
+class GrakoBuffer(Buffer):
+    def __init__(self, text, filename=None, **kwargs):
+        super(GrakoBuffer, self).__init__(
+            text,
+            filename=filename,
+            comments_re=COMMENTS_RE,
+            eol_comments_re=EOL_COMMENTS_RE,
+            memoize_lookaheads=False,
+            comment_recovery=True,
+            **kwargs
+        )
+
+    def process_block(self, name, lines, index, **kwargs):
+        # search for pragmas of the form
+        # .. pragma_name :: params
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            if re.match(PRAGMA_RE, line):
+                directive, arg = line.split('#', 1)[1], ''
+                if '::' in directive:
+                    directive, arg = directive.split('::')
+                directive, arg = directive.strip(), arg.strip()
+                i = self.pragma(name, directive, arg, lines, index, i)
+            else:
+                i += 1
+        return lines, index
+
+    def pragma(self, source, name, arg, lines, index, i):
+        # we only recognize the 'include' pragama
+        if name == 'include':
+            filename = arg.strip('\'"')
+            return self.include_file(source, filename, lines, index, i, i)
+        else:
+            raise ParseError('Unknown pragma: %s' % name)
 
 
-def compress_seq(seq):
-    seen = set()
-    result = []
-    for x in seq:
-        if x not in seen:
-            result.append(x)
-            seen.add(x)
-    return result
+class GrakoContext(ParseContext):
+    def parse(self, text, rule='grammar', filename=None, parseinfo=True, **kwargs):
+        if not isinstance(text, Buffer):
+            text = GrakoBuffer(
+                text,
+                filename=filename,
+                **kwargs
+            )
+        return super(GrakoContext, self).parse(
+            text,
+            rule,
+            filename=filename,
+            parseinfo=parseinfo,
+            **kwargs
+        )
 
 
-class ModelContext(ParseContext):
+class ModelContext(GrakoContext):
     def __init__(self, rules, semantics=None, trace=False, **kwargs):
         super(ModelContext, self).__init__(
             semantics=semantics,
@@ -74,9 +114,16 @@ class ModelContext(ParseContext):
         return functools.partial(self.rules[name].parse, self)
 
 
-class _Model(Node, Renderer):
-    def __init__(self):
-        super(_Model, self).__init__()
+class Model(Node):
+    @staticmethod
+    def classes():
+        return [
+            c for c in globals().values()
+            if isinstance(c, type) and issubclass(c, Model)
+        ]
+
+    def __init__(self, ast=None, ctx=None):
+        super(Model, self).__init__(ast=ast, ctx=ctx)
         self._lookahead = None
         self._first_set = None
         self._follow_set = set()
@@ -112,36 +159,41 @@ class _Model(Node, Renderer):
     def _follow(self, k, FL, A):
         return A
 
+    def comments_str(self):
+        comments, eol = self.comments
+        if not comments:
+            return ''
 
-class Void(_Model):
+        return '\n'.join(
+            '(* %s *)\n' % '\n'.join(c).replace('(*', '').replace('*)', '').strip()
+            for c in comments
+        )
+
+
+class Void(Model):
     def __str__(self):
         return '()'
 
-    template = 'pass'
 
-
-class Fail(_Model):
+class Fail(Model):
     def __str__(self):
         return '!()'
 
-    template = 'self._fail()'
 
-
-class Comment(_Model):
-    def __init__(self, comment):
-        super(Comment, self).__init__()
-        self.comment = comment.strip()
+class Comment(Model):
+    def __init__(self, ast=None, **kwargs):
+        super(Comment, self).__init__(ast=AST(comment=ast))
 
     def __str__(self):
-        return self.render()
-
-    template = '''
-        (* {comment} *)
-
-        '''
+        return '(* %s *)' % self.comment
 
 
-class EOF(_Model):
+class EOLComment(Comment):
+    def __str__(self):
+        return '  # %s\n' % self.comment
+
+
+class EOF(Model):
     def parse(self, ctx):
         ctx._next_token()
         if not ctx.buf.atend():
@@ -150,15 +202,13 @@ class EOF(_Model):
     def __str__(self):
         return '$'
 
-    template = 'self._check_eof()'
 
-
-class _Decorator(_Model):
-    def __init__(self, exp):
-        assert isinstance(exp, _Model), str(exp)
-        super(_Decorator, self).__init__()
-        self.exp = exp
-        self._adopt_children(exp)
+class _Decorator(Model):
+    def __init__(self, ast=None, **kwargs):
+        if not isinstance(ast, AST):
+            ast = AST(exp=ast)
+        super(_Decorator, self).__init__(ast)
+        assert isinstance(self.exp, Model)
 
     def parse(self, ctx):
         return self.exp.parse(ctx)
@@ -176,9 +226,7 @@ class _Decorator(_Model):
         return self.exp._follow(k, FL, A)
 
     def __str__(self):
-        return str(self.exp)
-
-    template = '{exp}'
+        return ustr(self.exp)
 
 
 class Group(_Decorator):
@@ -188,24 +236,17 @@ class Group(_Decorator):
             return ctx.last_node
 
     def __str__(self):
-        exp = str(self.exp)
+        exp = ustr(self.exp)
         if len(exp.splitlines()) > 1:
             return '(\n%s\n)' % indent(exp)
         else:
             return '(%s)' % trim(exp)
 
-    template = '''\
-                with self._group():
-                {exp:1::}\
-                '''
 
-
-class Token(_Model):
-    def __init__(self, token):
-        super(Token, self).__init__()
-        self.token = token
-        if not self.token:
-            raise GrammarError('invalid token %s' % self.token)
+class Token(Model):
+    def __postinit__(self, ast):
+        super(Token, self).__postinit__(ast)
+        self.token = ast
 
     def parse(self, ctx):
         return ctx._token(self.token)
@@ -216,17 +257,12 @@ class Token(_Model):
     def __str__(self):
         return urepr(self.token)
 
-    def render_fields(self, fields):
-        fields.update(token=urepr(self.token))
 
-    template = "self._token({token})"
-
-
-class Pattern(_Model):
-    def __init__(self, pattern):
-        super(Pattern, self).__init__()
-        self.pattern = pattern
-        re.compile(pattern)
+class Pattern(Model):
+    def __postinit__(self, ast):
+        re.compile(ast, RE_FLAGS)
+        super(Pattern, self).__postinit__(ast)
+        self.pattern = ast
 
     def parse(self, ctx):
         return ctx._pattern(self.pattern)
@@ -235,57 +271,40 @@ class Pattern(_Model):
         return set([(self.pattern,)])
 
     def __str__(self):
-        pattern = str(self.pattern)
-        template = '/%s/' if '/' not in pattern else '?/%s/?'
-        result = template % pattern
-        if pattern.count('?') % 2:
-            return result + '?'
+        pattern = ustr(self.pattern)
+        if '/' not in pattern:
+            template = '/%s/'
+            return template % pattern
         else:
+            template = '?/%s/?'
+            result = template % pattern
+            if result.count('?') % 2:
+                result += '?'  # for the VIM syntax
             return result
-
-    def render_fields(self, fields):
-        raw_repr = 'r' + urepr(self.pattern).replace("\\\\", '\\')
-        fields.update(pattern=raw_repr)
-
-    template = 'self._pattern({pattern})'
 
 
 class Lookahead(_Decorator):
-    def __str__(self):
-        return '&' + str(self.exp)
-
     def parse(self, ctx):
         with ctx._if():
             super(Lookahead, self).parse(ctx)
 
-    template = '''\
-                with self._if():
-                {exp:1::}\
-                '''
-
-
-class LookaheadNot(_Decorator):
     def __str__(self):
-        return '!' + str(self.exp)
+        return '&' + ustr(self.exp)
+
+
+class NegativeLookahead(_Decorator):
+    def __str__(self):
+        return '!' + ustr(self.exp)
 
     def parse(self, ctx):
         with ctx._ifnot():
-            super(LookaheadNot, self).parse(ctx)
-
-    template = '''\
-                with self._ifnot():
-                {exp:1::}\
-                '''
+            super(NegativeLookahead, self).parse(ctx)
 
 
-class Sequence(_Model):
-    def __init__(self, sequence):
-        super(Sequence, self).__init__()
-        assert isinstance(sequence, list), str(sequence)
-        self.sequence = sequence
-        self._adopt_children(sequence)
-        for s in self.sequence:
-            assert isinstance(s, _Model), str(s)
+class Sequence(Model):
+    def __init__(self, ast, **kwargs):
+        assert ast.sequence
+        super(Sequence, self).__init__(ast=ast)
 
     def parse(self, ctx):
         ctx.last_node = [s.parse(ctx) for s in self.sequence]
@@ -295,7 +314,7 @@ class Sequence(_Model):
         return [d for s in self.sequence for d in s.defines()]
 
     def _validate(self, rules):
-        return all(s._validate(rules) for s in self.sequence)
+        return {True} == {s._validate(rules) for s in self.sequence}
 
     def _first(self, k, F):
         result = {()}
@@ -313,29 +332,19 @@ class Sequence(_Model):
         return A
 
     def __str__(self):
-        seq = [str(s) for s in self.sequence]
+        comments = self.comments_str()
+        seq = [ustr(s) for s in self.sequence]
         single = ' '.join(seq)
-        if len(single) <= PEP8_LLEN or len(single.splitlines()) <= 1:
-            return single
+        if len(single) <= PEP8_LLEN and len(single.splitlines()) <= 1:
+            return comments + single
         else:
-            return '\n'.join(seq)
-
-    def render_fields(self, fields):
-        fields.update(seq='\n'.join(render(s) for s in self.sequence))
-
-    template = '''
-                {seq}\
-                '''
+            return comments + '\n'.join(seq)
 
 
-class Choice(_Model):
-    def __init__(self, options):
-        super(Choice, self).__init__()
-        assert isinstance(options, list), urepr(options)
-        self.options = options
-        self._adopt_children(options)
-        for o in self.options:
-            assert isinstance(o, _Model), str(o)
+class Choice(Model):
+    def __init__(self, ast=None, **kwargs):
+        super(Choice, self).__init__(ast=AST(options=ast))
+        assert isinstance(self.options, list), urepr(self.options)
 
     def parse(self, ctx):
         with ctx._choice():
@@ -344,7 +353,7 @@ class Choice(_Model):
                     ctx.last_node = o.parse(ctx)
                     return ctx.last_node
 
-            lookahead = ' '.join(str(urepr(f[0])) for f in self.lookahead if f)
+            lookahead = ' '.join(ustr(urepr(f[0])) for f in self.lookahead if f)
             if lookahead:
                 ctx._error('expecting one of {%s}' % lookahead)
             ctx._error('no available options')
@@ -353,7 +362,7 @@ class Choice(_Model):
         return [d for o in self.options for d in o.defines()]
 
     def _validate(self, rules):
-        return all(o._validate(rules) for o in self.options)
+        return {True} == {o._validate(rules) for o in self.options}
 
     def _first(self, k, F):
         result = set()
@@ -367,7 +376,7 @@ class Choice(_Model):
         return A
 
     def __str__(self):
-        options = [str(o) for o in self.options]
+        options = [ustr(o) for o in self.options]
 
         multi = any(len(o.splitlines()) > 1 for o in options)
         single = ' | '.join(o for o in options)
@@ -378,37 +387,6 @@ class Choice(_Model):
             return '  ' + '\n| '.join(o for o in options)
         else:
             return single
-
-    def render_fields(self, fields):
-        template = trim(self.option_template)
-        options = [template.format(option=indent(render(o))) for o in self.options]
-        options = '\n'.join(o for o in options)
-        firstset = ' '.join(f[0] for f in sorted(self.firstset) if f)
-        if firstset:
-            error = 'expecting one of: ' + firstset
-        else:
-            error = 'no available options'
-        fields.update(n=self.counter(),
-                      options=indent(options),
-                      error=urepr(error)
-                      )
-
-    def render(self, **fields):
-        if len(self.options) == 1:
-            return render(self.options[0], **fields)
-        else:
-            return super(Choice, self).render(**fields)
-
-    option_template = '''\
-                    with self._option():
-                    {option}\
-                    '''
-
-    template = '''\
-                with self._choice():
-                {options}
-                    self._error({error})\
-                '''
 
 
 class Closure(_Decorator):
@@ -423,25 +401,11 @@ class Closure(_Decorator):
         return {()} | result
 
     def __str__(self):
-        sexp = str(self.exp)
+        sexp = ustr(self.exp)
         if len(sexp.splitlines()) <= 1:
             return '{%s}' % sexp
         else:
             return '{\n%s\n}' % indent(sexp)
-
-    def render_fields(self, fields):
-        fields.update(n=self.counter())
-
-    def render(self, **fields):
-        if {()} in self.exp.firstset:
-            raise GrammarError('may repeat empty sequence')
-        return '\n' + super(Closure, self).render(**fields)
-
-    template = '''\
-                def block{n}():
-                {exp:1::}
-                self._closure(block{n})\
-                '''
 
 
 class PositiveClosure(Closure):
@@ -458,15 +422,6 @@ class PositiveClosure(Closure):
     def __str__(self):
         return super(PositiveClosure, self).__str__() + '+'
 
-    def render_fields(self, fields):
-        fields.update(n=self.counter())
-
-    template = '''
-                def block{n}():
-                {exp:1::}
-                self._positive_closure(block{n})
-                '''
-
 
 class Optional(_Decorator):
     def parse(self, ctx):
@@ -478,18 +433,13 @@ class Optional(_Decorator):
         return {()} | self.exp._first(k, F)
 
     def __str__(self):
-        exp = str(self.exp)
+        exp = ustr(self.exp)
         template = '[%s]'
         if isinstance(self.exp, Choice):
             template = trim(self.str_template)
         elif isinstance(self.exp, Group):
             exp = self.exp.exp
         return template % exp
-
-    template = '''\
-                with self._optional():
-                {exp:1::}\
-                '''
 
     str_template = '''
             [
@@ -498,7 +448,7 @@ class Optional(_Decorator):
             '''
 
 
-class Cut(_Model):
+class Cut(Model):
     def parse(self, ctx):
         ctx._cut()
         return None
@@ -509,87 +459,65 @@ class Cut(_Model):
     def __str__(self):
         return '~'
 
-    template = 'self._cut()'
-
 
 class Named(_Decorator):
-    def __init__(self, name, exp):
-        super(Named, self).__init__(exp)
-        assert isinstance(exp, _Model), str(exp)
-        self.name = name
+    def __init__(self, ast=None, **kwargs):
+        super(Named, self).__init__(ast.exp)
+        self.name = ast.name
 
     def parse(self, ctx):
         value = self.exp.parse(ctx)
-        ctx.ast._add(self.name, value)
+        ctx.ast[self.name] = value
         return value
 
     def defines(self):
         return [(self.name, False)] + super(Named, self).defines()
 
     def __str__(self):
-        return '%s:%s' % (self.name, str(self.exp))
-
-    def render_fields(self, fields):
-        fields.update(n=self.counter(),
-                      name=safe_name(self.name)
-                      )
-
-    template = '''
-                {exp}
-                self.ast['{name}'] = self.last_node\
-                '''
+        return '%s:%s' % (self.name, ustr(self.exp))
 
 
 class NamedList(Named):
     def parse(self, ctx):
         value = self.exp.parse(ctx)
-        ctx.ast._append(self.name, value)
+        ctx.ast.setlist(self.name, value)
         return value
 
     def defines(self):
         return [(self.name, True)] + super(Named, self).defines()
 
     def __str__(self):
-        return '%s+:%s' % (self.name, str(self.exp))
-
-    template = '''
-                {exp}
-                self.ast._append('{name}', self.last_node)\
-                '''
+        return '%s+:%s' % (self.name, ustr(self.exp))
 
 
 class Override(Named):
-    def __init__(self, exp):
-        super(Override, self).__init__('@', exp)
+    def __init__(self, ast=None, **kwargs):
+        super(Override, self).__init__(ast=AST(name='@', exp=ast))
 
     def defines(self):
         return []
 
 
 class OverrideList(NamedList):
-    def __init__(self, exp):
-        super(OverrideList, self).__init__('@', exp)
+    def __init__(self, ast=None, **kwargs):
+        super(OverrideList, self).__init__(ast=AST(name='@', exp=ast))
 
     def defines(self):
         return []
 
 
-class Special(_Model):
-    def __init__(self, special):
-        super(Special, self).__init__()
-        self.special = special
-
+class Special(Model):
     def _first(self, k, F):
-        return set([(self.special,)])
+        return set([(self.value,)])
 
     def __str__(self):
-        return '?%s?' % self.special
+        return '?%s?' % self.value
 
 
-class RuleRef(_Model):
-    def __init__(self, name):
-        super(RuleRef, self).__init__()
-        self.name = name
+class RuleRef(Model):
+    def __postinit__(self, ast):
+        super(RuleRef, self).__postinit__(ast)
+        self.name = ast
 
     def parse(self, ctx):
         try:
@@ -617,39 +545,33 @@ class RuleRef(_Model):
     def __str__(self):
         return self.name
 
-    template = "self._{name}_()"
-
 
 class RuleInclude(_Decorator):
     def __init__(self, rule):
-        assert isinstance(rule, Rule), str(rule.name)
+        assert isinstance(rule, Rule), ustr(rule.name)
         super(RuleInclude, self).__init__(rule.exp)
         self.rule = rule
 
     def __str__(self):
         return '>%s' % (self.rule.name)
 
-    def render_fields(self, fields):
-        super(RuleInclude, self).render_fields(fields)
-        fields.update(exp=self.rule.exp)
-
-    template = '''
-                {exp}
-                '''
-
 
 class Rule(_Decorator):
-    def __init__(self, name, exp, params, kwparams):
-        super(Rule, self).__init__(exp)
+    def __init__(self, ast, name, exp, params, kwparams):
+        assert kwparams is None or isinstance(kwparams, Mapping), kwparams
+        super(Rule, self).__init__(ast)
         self.name = name
         self.params = params
         self.kwparams = kwparams
+        self._adopt_children([params, kwparams])
+
+        self.base = None
 
     def parse(self, ctx):
         return self._parse_rhs(ctx, self.exp)
 
     def _parse_rhs(self, ctx, exp):
-        result = ctx._call(exp.parse, self.name)
+        result = ctx._call(exp.parse, self.name, self.params, self.kwparams)
         if isinstance(result, AST):
             defines = compress_seq(self.defines())
             result._define(
@@ -666,71 +588,66 @@ class Rule(_Decorator):
     def _follow(self, k, FL, A):
         return self.exp._follow(k, FL, FL[self.name])
 
+    @staticmethod
+    def param_repr(p):
+        if isinstance(p, (int, float)):
+            return ustr(p)
+        elif isinstance(p, strtype) and p.isalnum():
+            return ustr(p)
+        else:
+            return urepr(p)
+
     def __str__(self):
-        return trim(self.str_template) % (self.name, indent(str(self.exp)))
+        comments = self.comments_str()
+        params = ', '.join(
+            self.param_repr(p) for p in self.params
+        ) if self.params else ''
 
-    def render_fields(self, fields):
-        self.reset_counter()
-
-        params = kwparams = ''
-        if self.params:
-            params = ', '.join(repr(str(p)) for p in self.params)
+        kwparams = ''
         if self.kwparams:
-            kwparams = ', '.join('%s=%s' % (k, repr(str(v))) for k, v in self.kwparams.items())
+            kwparams = ', '.join(
+                '%s=%s' % (k, self.param_repr(v)) for (k, v)
+                in self.kwparams.items()
+            )
 
         if params and kwparams:
-            params = params + ', ' + kwparams
+            params = '(%s, %s)' % (params, kwparams)
         elif kwparams:
-            params = kwparams
+                params = '(%s)' % (kwparams)
+        elif params:
+            params = '(%s)' % params
 
-        fields.update(params=params)
+        base = ' < %s' % ustr(self.base.name) if self.base else ''
 
-        defines = compress_seq(self.defines())
-        sdefs = [d for d, l in defines if not l]
-        ldefs = [d for d, l in defines if l]
-        if not (sdefs or ldefs):
-            sdefines = ''
-        else:
-            sdefs = '[%s]' % ', '.join(urepr(d) for d in sdefs)
-            ldefs = '[%s]' % ', '.join(urepr(d) for d in ldefs)
-            if not ldefs:
-                sdefines = '\n\n    self.ast._define(%s, %s)' % (sdefs, ldefs)
-            else:
-                sdefines = indent('\n\n' + trim('''\
-                                                self.ast._define(
-                                                    %s,
-                                                    %s
-                                                )''' % (sdefs, ldefs)
-                                                )
-                                  )
-
-        fields.update(defines=sdefines)
-
-    template = '''
-                @graken({params})
-                def _{name}_(self):
-                {exp:1::}{defines}
-
-                '''
+        return trim(self.str_template).format(
+            name=self.name,
+            base=base,
+            params=params,
+            exp=indent(str(self.exp)),
+            comments=comments
+        )
 
     str_template = '''\
-                %s
+                {comments}{name}{base}{params}
                     =
-                %s
+                {exp}
                     ;
                 '''
 
 
 class BasedRule(Rule):
-    def __init__(self, name, exp, base, params, kwparams):
+    def __init__(self, ast, name, exp, base, params, kwparams):
         super(BasedRule, self).__init__(
+            ast,
             name,
             exp,
             params or base.params,
             kwparams or base.kwparams
         )
         self.base = base
-        self.rhs = Sequence([self.base.exp, self.exp])
+        ast = AST(sequence=[self.base.exp, self.exp])
+        ast._parseinfo = self.base.parseinfo
+        self.rhs = Sequence(ast)
 
     def parse(self, ctx):
         return self._parse_rhs(ctx, self.rhs)
@@ -738,26 +655,8 @@ class BasedRule(Rule):
     def defines(self):
         return self.rhs.defines()
 
-    def render_fields(self, fields):
-        super(BasedRule, self).render_fields(fields)
-        fields.update(exp=self.rhs)
 
-    def __str__(self):
-        return trim(self.str_template) % (
-            self.name,
-            self.base.name,
-            indent(str(self.exp))
-        )
-
-    str_template = '''\
-                %s < %s
-                    =
-                %s
-                    ;
-                '''
-
-
-class Grammar(_Model):
+class Grammar(Model):
     def __init__(self, name, rules, whitespace=None, nameguard=None):
         super(Grammar, self).__init__()
         assert isinstance(rules, list), str(rules)
@@ -771,7 +670,7 @@ class Grammar(_Model):
         self._calc_lookahead_sets()
 
     def _validate(self, ruleset):
-        return all(rule._validate(ruleset) for rule in self.rules)
+        return {True} == {rule._validate(ruleset) for rule in self.rules}
 
     @property
     def first_sets(self):
@@ -823,124 +722,8 @@ class Grammar(_Model):
             **kwargs
         )
 
-    def codegen(self):
-        return self.render()
-
     def __str__(self):
-        return '\n\n'.join(str(rule) for rule in self.rules) + '\n'
-
-    def render_fields(self, fields):
-        abstract_template = trim(self.abstract_rule_template)
-        abstract_rules = [abstract_template.format(name=safe_name(rule.name)) for rule in self.rules]
-        abstract_rules = indent('\n'.join(abstract_rules))
-
-        if self.whitespace is None:
-            whitespace = 'None'
-        else:
-            whitespace = urepr(self.whitespace)
-
-        if self.nameguard is None:
-            nameguard = 'None'
-        else:
-            nameguard = urepr(self.nameguard)
-
-        fields.update(rules=indent(render(self.rules)),
-                      abstract_rules=abstract_rules,
-                      version=timestamp(),
-                      whitespace=whitespace,
-                      nameguard=nameguard
-                      )
-
-    abstract_rule_template = '''
-            def {name}(self, ast):
-                return ast
-            '''
-
-    template = '''\
-                #!/usr/bin/env python
-                # -*- coding: utf-8 -*-
-
-                # CAVEAT UTILITOR
-                #
-                # This file was automatically generated by Grako.
-                #
-                #    https://pypi.python.org/pypi/grako/
-                #
-                # Any changes you make to it will be overwritten the next time
-                # the file is generated.
-
-
-                from __future__ import print_function, division, absolute_import, unicode_literals
-                from grako.parsing import graken, Parser
-                from grako.exceptions import *  # noqa
-
-
-                __version__ = '{version}'
-
-                __all__ = [
-                    '{name}Parser',
-                    '{name}SemanticParser',
-                    '{name}Semantics',
-                    'main'
-                ]
-
-
-                class {name}Parser(Parser):
-                    def __init__(self, whitespace={whitespace}, nameguard={nameguard}, **kwargs):
-                        super({name}Parser, self).__init__(
-                            whitespace=whitespace,
-                            nameguard=nameguard,
-                            **kwargs
-                        )
-
-                {rules}
-
-                class {name}Semantics(object):
-                {abstract_rules}
-
-
-                def main(filename, startrule, trace=False, whitespace=None):
-                    import json
-                    with open(filename) as f:
-                        text = f.read()
-                    parser = {name}Parser(parseinfo=False)
-                    ast = parser.parse(
-                        text,
-                        startrule,
-                        filename=filename,
-                        trace=trace,
-                        whitespace=whitespace)
-                    print('AST:')
-                    print(ast)
-                    print()
-                    print('JSON:')
-                    print(json.dumps(ast, indent=2))
-                    print()
-
-                if __name__ == '__main__':
-                    import argparse
-                    import string
-                    import sys
-
-                    class ListRules(argparse.Action):
-                        def __call__(self, parser, namespace, values, option_string):
-                            print('Rules:')
-                            for r in {name}Parser.rule_list():
-                                print(r)
-                            print()
-                            sys.exit(0)
-
-                    parser = argparse.ArgumentParser(description="Simple parser for {name}.")
-                    parser.add_argument('-l', '--list', action=ListRules, nargs=0,
-                                        help="list all rules and exit")
-                    parser.add_argument('-t', '--trace', action='store_true',
-                                        help="output trace information")
-                    parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
-                                        help="whitespace specification")
-                    parser.add_argument('file', metavar="FILE", help="the input file to parse")
-                    parser.add_argument('startrule', metavar="STARTRULE",
-                                        help="the start rule for parsing")
-                    args = parser.parse_args()
-
-                    main(args.file, args.startrule, trace=args.trace, whitespace=args.whitespace)
-                    '''
+        return (
+            '\n\n'.join(ustr(rule)
+                        for rule in self.rules)
+        ).rstrip() + '\n'
