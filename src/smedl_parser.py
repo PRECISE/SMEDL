@@ -13,14 +13,12 @@
 
 from __future__ import print_function, division, absolute_import, unicode_literals
 from grako.parsing import graken, Parser
-from grako.exceptions import *  # noqa
 
 
-__version__ = '2014.08.07.19.48.21.03'
+__version__ = (2014, 8, 20, 17, 15, 44, 2)
 
 __all__ = [
     'smedlParser',
-    'smedlSemanticParser',
     'smedlSemantics',
     'main'
 ]
@@ -46,7 +44,7 @@ class smedlParser(Parser):
                 self._variable_declaration_()
             self._positive_closure(block2)
 
-            self.ast._append('identity', self.last_node)
+            self.ast.setlist('identity', self.last_node)
         with self._optional():
             self._token('state')
 
@@ -54,22 +52,22 @@ class smedlParser(Parser):
                 self._variable_declaration_()
             self._positive_closure(block4)
 
-            self.ast._append('state', self.last_node)
+            self.ast.setlist('state', self.last_node)
         self._token('events')
         self._token('imported')
         self._event_definition_list_()
-        self.ast._append('imported_events', self.last_node)
+        self.ast.setlist('imported_events', self.last_node)
         with self._optional():
             self._token('exported')
             self._event_definition_list_()
-            self.ast._append('exported_events', self.last_node)
+            self.ast.setlist('exported_events', self.last_node)
         self._token('scenarios')
 
         def block8():
             self._scenario_definition_()
         self._positive_closure(block8)
 
-        self.ast._append('scenarios', self.last_node)
+        self.ast.setlist('scenarios', self.last_node)
         self._check_eof()
 
         self.ast._define(
@@ -193,7 +191,7 @@ class smedlParser(Parser):
     def _action_(self):
         self._token('{')
         self._nonempty_action_item_list_()
-        self.ast._append('actions', self.last_node)
+        self.ast.setlist('actions', self.last_node)
         self._token('}')
 
         self.ast._define(
@@ -234,7 +232,7 @@ class smedlParser(Parser):
                 self.ast['target'] = self.last_node
                 self._token('(')
                 self._expression_list_()
-                self.ast._append('expression_list', self.last_node)
+                self.ast.setlist('expression_list', self.last_node)
                 self._token(')')
             self._error('no available options')
 
@@ -251,7 +249,7 @@ class smedlParser(Parser):
         with self._optional():
             self._token('(')
             self._expression_list_()
-            self.ast._append('expr_list', self.last_node)
+            self.ast.setlist('expr_list', self.last_node)
             self._token(')')
 
         self.ast._define(
@@ -267,7 +265,7 @@ class smedlParser(Parser):
         with self._optional():
             self._token('(')
             self._state_update_list_()
-            self.ast._append('state_update_list', self.last_node)
+            self.ast.setlist('state_update_list', self.last_node)
             self._token(')')
 
         self.ast._define(
@@ -695,4 +693,9 @@ if __name__ == '__main__':
                         help="the start rule for parsing")
     args = parser.parse_args()
 
-    main(args.file, args.startrule, trace=args.trace, whitespace=args.whitespace)
+    main(
+        args.file,
+        args.startrule,
+        trace=args.trace,
+        whitespace=args.whitespace
+    )
