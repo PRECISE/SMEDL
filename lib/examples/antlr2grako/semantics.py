@@ -4,6 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import re
 
+from grako.ast import AST
 from grako import grammars as model
 
 
@@ -15,7 +16,7 @@ class ANTLRSemantics(object):
         return model.Grammar(self.name, ast.rules)
 
     def rule(self, ast):
-        return model.Rule(ast.name, ast.exp, ast.params, ast.kwparams)
+        return model.Rule(ast, ast.name, ast.exp, ast.params, ast.kwparams)
 
     def alternatives(self, ast):
         options = [o for o in ast.options if o is not None]
@@ -31,7 +32,7 @@ class ANTLRSemantics(object):
         elif len(elements) == 1:
             return elements[0]
         else:
-            return model.Sequence(elements)
+            return model.Sequence(AST(sequence=elements))
 
     def predicate_or_action(self, ast):
         def flatten(s):
@@ -46,9 +47,9 @@ class ANTLRSemantics(object):
 
     def named(self, ast):
         if ast.force_list:
-            return model.NamedList(ast.name, ast.exp)
+            return model.NamedList(ast)
         else:
-            return model.Named(ast.name, ast.exp)
+            return model.Named(ast)
 
     def syntactic_predicate(self, ast):
         return model.Lookahead(ast)
@@ -63,9 +64,9 @@ class ANTLRSemantics(object):
         return model.PositiveClosure(ast)
 
     def negative(self, ast):
-        neg = model.LookaheadNot(ast)
+        neg = model.NegativeLookahead(ast)
         any = model.Pattern('.')
-        return model.Sequence([neg, any])
+        return model.Sequence(AST(sequence=[neg, any]))
 
     def subexp(self, ast):
         return model.Group(ast)
