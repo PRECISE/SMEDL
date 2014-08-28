@@ -4,6 +4,7 @@
 from __future__ import print_function, division, absolute_import, unicode_literals
 from smedl_parser import smedlParser
 from grako.ast import AST
+import os
 
 class smedlSymbolTable(dict):
 
@@ -21,6 +22,13 @@ class smedlSymbolTable(dict):
             return self[symbol]
         else:
             return self[symbol][attribute]
+            
+    def getSymbolsByType(self, type):
+        out = []
+        for s in self.keys():
+            if 'type' in self[s] and self[s]['type'] == type :
+                out.append(s)
+        return out
 
     def update(self, symbol, attribute, value):
         self[symbol][attribute] = value
@@ -48,9 +56,11 @@ def main(filename, startrule, trace=False, whitespace=None):
     print()
     symbolTable = smedlSymbolTable()
     parseToSymbolTable('top', ast, symbolTable)
+    print()
     print('Symbol Table:')
     print(symbolTable)
     print()
+    outputSource(symbolTable, filename)
 
 def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
@@ -72,6 +82,33 @@ def parseToSymbolTable(label, object, symbolTable):
         for elem in object:
             print('list: ' + label)
             parseToSymbolTable(label, elem, symbolTable)
+            
+def outputSource(symbolTable, filename):
+    out = open(os.path.splitext(filename)[0] + '_generated.c', 'w')
+    
+    stateset = symbolTable.getSymbolsByType('traces')
+    stateset_str = ''
+    for s in stateset:
+        if s is not stateset[0]:
+            stateset_str += ','
+        stateset_str += string.upper(s)
+    
+    out.write('enum { ' + stateset_str + ' } stateset;\n\n')
+    out.write('stateset currentState = ' + string.upper(stateset[0]) + ';\n\n')
+    
+    methods = symbolTable.getSymbolsByType('imported_events')
+    for m in methods:
+        out.write('void ' + m + '() {\n')
+        if len(stateset) > 1:
+            out.write('switch (currentState) {\n')
+            for s in stateset:
+                out.write('case ' + string.upper(s) + ':\n')
+                out.write('currentState = ' + string.upper(s) + ';\n')
+        else:
+            out.write('currentState = ' + string.upper(stateset[0]) + ';\n')
+        out.write('}\n\n')
+    
+    out.close()
 
 if __name__ == '__main__':
     import argparse
