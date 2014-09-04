@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2014, 8, 20, 17, 15, 44, 2)
+__version__ = (2014, 9, 4, 18, 13, 20, 3)
 
 __all__ = [
     'smedlParser',
@@ -319,14 +319,20 @@ class smedlParser(Parser):
 
     @graken()
     def _and_expr_(self):
-        self._comp_expr_()
-        self.ast['@'] = self.last_node
+        with self._choice():
+            with self._option():
+                self._comp_expr_()
+                self.ast['and_'] = self.last_node
 
-        def block1():
-            self._token('&&')
-            self._comp_expr_()
-            self.ast['and_'] = self.last_node
-        self._closure(block1)
+                def block1():
+                    self._token('&&')
+                    self._comp_expr_()
+                    self.ast['and_'] = self.last_node
+                self._positive_closure(block1)
+            with self._option():
+                self._comp_expr_()
+                self.ast['@'] = self.last_node
+            self._error('no available options')
 
         self.ast._define(
             ['and'],
@@ -335,59 +341,71 @@ class smedlParser(Parser):
 
     @graken()
     def _comp_expr_(self):
-        self._arith_expr_()
-        self.ast['@'] = self.last_node
+        with self._choice():
+            with self._option():
+                self._arith_expr_()
+                self.ast['comp'] = self.last_node
 
-        def block1():
-            with self._group():
-                with self._choice():
-                    with self._option():
-                        self._token('>')
-                    with self._option():
-                        self._token('<')
-                    with self._option():
-                        self._token('>=')
-                    with self._option():
-                        self._token('<=')
-                    with self._option():
-                        self._token('==')
-                    self._error('expecting one of: < <= == > >=')
-            self.ast['operator'] = self.last_node
-            self._arith_expr_()
-            self.ast['comp'] = self.last_node
-        self._closure(block1)
+                def block1():
+                    with self._group():
+                        with self._choice():
+                            with self._option():
+                                self._token('>')
+                            with self._option():
+                                self._token('<')
+                            with self._option():
+                                self._token('>=')
+                            with self._option():
+                                self._token('<=')
+                            with self._option():
+                                self._token('==')
+                            self._error('expecting one of: < <= == > >=')
+                    self.ast['operator'] = self.last_node
+                    self._arith_expr_()
+                    self.ast['comp'] = self.last_node
+                self._positive_closure(block1)
+            with self._option():
+                self._arith_expr_()
+                self.ast['@'] = self.last_node
+            self._error('no available options')
 
         self.ast._define(
-            ['operator', 'comp'],
+            ['comp', 'operator'],
             []
         )
 
     @graken()
     def _arith_expr_(self):
-        self._term_()
-        self.ast['@'] = self.last_node
+        with self._choice():
+            with self._option():
+                self._term_()
+                self.ast['arith'] = self.last_node
 
-        def block1():
-            with self._group():
-                with self._choice():
-                    with self._option():
-                        self._token('+')
-                    with self._option():
-                        self._token('-')
-                    with self._option():
-                        self._token('*')
-                    with self._option():
-                        self._token('/')
-                    with self._option():
-                        self._token('%')
-                    self._error('expecting one of: % * + - /')
-            self.ast['operator'] = self.last_node
-            self._term_()
-            self.ast['arith'] = self.last_node
-        self._closure(block1)
+                def block1():
+                    with self._group():
+                        with self._choice():
+                            with self._option():
+                                self._token('+')
+                            with self._option():
+                                self._token('-')
+                            with self._option():
+                                self._token('*')
+                            with self._option():
+                                self._token('/')
+                            with self._option():
+                                self._token('%')
+                            self._error('expecting one of: % * + - /')
+                    self.ast['operator'] = self.last_node
+                    self._term_()
+                    self.ast['arith'] = self.last_node
+                self._positive_closure(block1)
+            with self._option():
+                self._term_()
+                self.ast['@'] = self.last_node
+            self._error('no available options')
 
         self.ast._define(
-            ['operator', 'arith'],
+            ['arith', 'operator'],
             []
         )
 
@@ -404,7 +422,7 @@ class smedlParser(Parser):
                     with self._option():
                         self._token('~')
                     self._error('expecting one of: + - ~')
-            self.ast['operator'] = self.last_node
+            self.ast['unary'] = self.last_node
         self._closure(block0)
         self._atom_()
         self.ast['atom'] = self.last_node
@@ -415,7 +433,7 @@ class smedlParser(Parser):
         self._closure(block4)
 
         self.ast._define(
-            ['operator', 'atom', 'trailer'],
+            ['unary', 'atom', 'trailer'],
             []
         )
 

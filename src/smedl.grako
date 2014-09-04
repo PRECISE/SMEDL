@@ -105,22 +105,25 @@ expression
 
 and_expr
     =
-    @:comp_expr {'&&' and:comp_expr}*
+      and:comp_expr {'&&' and:comp_expr}+
+    | @:comp_expr
     ;
 
 comp_expr
     =
-    @:arith_expr {operator:('>' | '<' | '>=' | '<=' | '==') comp:arith_expr}*
+      comp:arith_expr {operator:('>' | '<' | '>=' | '<=' | '==') comp:arith_expr}+
+    | @:arith_expr
     ;
 
 arith_expr
     =
-    @:term {operator:('+' | '-' | '*' | '/' | '%') arith:term}*
+      arith:term {operator:('+' | '-' | '*' | '/' | '%') arith:term}+
+    | @:term
     ;
 
 term
     =
-      {operator:('+' | '-' | '~')}* atom:atom {trailer:trailer}*
+      {unary:('+' | '-' | '~')}* atom:atom {trailer:trailer}*
     ;
 
 atom
