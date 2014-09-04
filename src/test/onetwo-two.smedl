@@ -3,5 +3,5 @@ object OneTwo
         imported foo, bar
     scenarios
         sc1:
-           OneTwo -> foo -> Min -> bar -> TwoOne
+           OneTwo -> foo -> TwoOne -> bar -> OneTwo
 
