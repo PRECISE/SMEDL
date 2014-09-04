@@ -56,38 +56,46 @@ def main(filename, startrule, trace=False, whitespace=None):
     print(ast)
     print()
     symbolTable = smedlSymbolTable()
-    parseToSymbolTable('top', ast, symbolTable)
+    fsm = FSM()
+    parseToSymbolTable('top', ast, symbolTable, fsm)
     print()
     print('Symbol Table:')
     print(symbolTable)
     print()
-    outputSource(symbolTable, filename)
+    outputSource(symbolTable, fsm, filename)
 
-def parseToSymbolTable(label, object, symbolTable):
+def parseToSymbolTable(label, object, symbolTable, fsm):
     if isinstance(object, AST):
-        print('1')
         for k, v in object.iteritems():
             if isinstance(v, list):
                 for vi in v:
-                    parseToSymbolTable(k, vi, symbolTable)
+                    parseToSymbolTable(k, vi, symbolTable, fsm)
             if isinstance(v, AST):
-                print('ast: ' + k)
-                parseToSymbolTable(k, v, symbolTable)
+                #print('ast: ' + k)
+                parseToSymbolTable(k, v, symbolTable, fsm)
             else:
-                print('2 ' + k)
-                if ('_id' in k) and (v not in symbolTable):
-                    print('ADD: ' + k + '   ' + v)
+                print(k + ': ' + str(v))
+                if label == 'state' and k == 'var':
+                    symbolTable.add(v, {'type' : 'state', 'datatype' : object['type']})
+                if '_events' in label and k == 'event_id':
+                    symbolTable.add(v, {'type' : 'event'})
+                if label == 'traces' and k == 'trace_step':
+                    for step in v:
+                        id = step['step_event']['expression']['atom']
+                        if id not in symbolTable:
+                            symbolTable.add(id, {'type' : 'trace_state'})
+                if ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not (v == 'true' or v == 'false' or v == 'null') and v not in symbolTable:
+                    #print('ADD: ' + k + '   ' + v)
                     symbolTable.add(v, {'type' : label})
     if isinstance(object, list):
-        print('2')
         for elem in object:
-            print('list: ' + label)
-            parseToSymbolTable(label, elem, symbolTable)
+            #print('list: ' + label)
+            parseToSymbolTable(label, elem, symbolTable, fsm)
 
-def outputSource(symbolTable, filename):
+def outputSource(symbolTable, fsm, filename):
     out = open(os.path.splitext(filename)[0] + '_generated.c', 'w')
 
-    stateset = symbolTable.getSymbolsByType('traces')
+    stateset = symbolTable.getSymbolsByType('trace_state')
     stateset_str = ''
     for s in stateset:
         if s is not stateset[0]:
