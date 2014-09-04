@@ -34,7 +34,7 @@ scenario_definition
 
 trace_definition
     =
-    start_id:identifier {'->' trace_step:step_definition}+
+    trace_step:step_definition {'->' trace_step:step_definition}+
           ['else' [trace_action:action] {'->' trace_action_step:step_definition}+ ]
     ;
 
