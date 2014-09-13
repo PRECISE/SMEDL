@@ -1,12 +1,4 @@
-enum { ONETWO } stateset;
+enum { TWOONE, ONETWO } stateset;
 
-stateset currentState = ONETWO;
-
-void foo() {
-currentState = ONETWO;
-}
-
-void bar() {
-currentState = ONETWO;
-}
+stateset currentState = TWOONE;
 
