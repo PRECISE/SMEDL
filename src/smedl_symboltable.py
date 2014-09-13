@@ -55,42 +55,61 @@ def main(filename, startrule, trace=False, whitespace=None):
     print('AST:')
     print(ast)
     print()
+    print('JSON:')
+    print(json.dumps(ast, indent=2))
+    print()
     symbolTable = smedlSymbolTable()
-    fsm = FSM()
-    parseToSymbolTable('top', ast, symbolTable, fsm)
+    parseToSymbolTable('top', ast, symbolTable)
     print()
     print('Symbol Table:')
     print(symbolTable)
     print()
+    fsm = generateFSM(ast, symbolTable)
     outputSource(symbolTable, fsm, filename)
 
-def parseToSymbolTable(label, object, symbolTable, fsm):
+def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
         for k, v in object.iteritems():
+            if label == 'state' and k == 'var':
+                if isinstance(v, list):
+                    for var in v:
+                        symbolTable.add(var, {'type' : 'state', 'datatype' : object['type']})
+                else:
+                    symbolTable.add(v, {'type' : 'state', 'datatype' : object['type']})
+            if '_events' in label and k == 'event_id':
+                symbolTable.add(v, {'type' : 'event'})
+            if label == 'traces' and k == 'trace_step':
+                #print('ADDtraces: ' + k + '   ' + str(v))
+                for step in v:
+                    #print('ADDtraces2: ' + str(step))
+                    id = step['step_event']['expression']['atom']
+                    #print('ADDtraces2 id: ' + str(id))
+                    if id not in symbolTable:
+                        #print('ADD1: ' + k + '   ' + str(v))
+                        symbolTable.add(id, {'type' : 'trace_state'})
+            if ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not (v == 'true' or v == 'false' or v == 'null') and v not in symbolTable:
+                #print('ADD2: ' + label + ' ' + k + '   ' + str(v))
+                symbolTable.add(v, {'type' : label})
             if isinstance(v, list):
                 for vi in v:
-                    parseToSymbolTable(k, vi, symbolTable, fsm)
+                    parseToSymbolTable(k, vi, symbolTable)
             if isinstance(v, AST):
-                #print('ast: ' + k)
-                parseToSymbolTable(k, v, symbolTable, fsm)
-            else:
-                print(k + ': ' + str(v))
-                if label == 'state' and k == 'var':
-                    symbolTable.add(v, {'type' : 'state', 'datatype' : object['type']})
-                if '_events' in label and k == 'event_id':
-                    symbolTable.add(v, {'type' : 'event'})
-                if label == 'traces' and k == 'trace_step':
-                    for step in v:
-                        id = step['step_event']['expression']['atom']
-                        if id not in symbolTable:
-                            symbolTable.add(id, {'type' : 'trace_state'})
-                if ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not (v == 'true' or v == 'false' or v == 'null') and v not in symbolTable:
-                    #print('ADD: ' + k + '   ' + v)
-                    symbolTable.add(v, {'type' : label})
+                #print('AST: ' + k)
+                parseToSymbolTable(k, v, symbolTable)
     if isinstance(object, list):
         for elem in object:
-            #print('list: ' + label)
-            parseToSymbolTable(label, elem, symbolTable, fsm)
+            #print('LIST: ' + label)
+            parseToSymbolTable(label, elem, symbolTable)
+
+def generateFSM(ast, symbolTable):
+    fsm = FSM()
+    for scenario in ast['scenarios']:
+        for trace in scenario[0]['traces']:
+            for i in range(len(trace['trace_step'])):
+                if i > 0 and symbolTable[trace['trace_step'][i]['step_event']['expression']['atom']] != 'trace_state':
+                    fsm.addTransition(Transition()) #TODO !!!
+                    fsm.addState(State(step['step_event']['expression']['atom']))
+    return fsm
 
 def outputSource(symbolTable, fsm, filename):
     out = open(os.path.splitext(filename)[0] + '_generated.c', 'w')
@@ -99,7 +118,7 @@ def outputSource(symbolTable, fsm, filename):
     stateset_str = ''
     for s in stateset:
         if s is not stateset[0]:
-            stateset_str += ','
+            stateset_str += ', '
         stateset_str += string.upper(s)
 
     out.write('enum { ' + stateset_str + ' } stateset;\n\n')
