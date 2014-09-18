@@ -65,6 +65,10 @@ def main(filename, startrule, trace=False, whitespace=None):
     print(symbolTable)
     print()
     fsm = generateFSM(ast, symbolTable)
+    print()
+    print('FSM:')
+    print(fsm)
+    print()
     outputSource(symbolTable, fsm, filename)
 
 def parseToSymbolTable(label, object, symbolTable):
