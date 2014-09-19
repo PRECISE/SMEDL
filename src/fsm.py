@@ -61,9 +61,9 @@ class State(object):
 
     def __str__(self):
         s = "State: " + self.name + '\n' + "In Transitions: " + '\n'
-        s = s.join(("  " + str(i) + '\n') for i in self.in_trans)
+        s = s + "\n".join(("  " + str(i)) for i in self.in_trans)
         s = s + "Out Transitions: " + '\n'
-        s = s.join(("  " + str(i) + '\n') for i in self.out_trans)
+        s = s + "\n".join(("  " + str(i)) for i in self.out_trans)
         return s
 
 
