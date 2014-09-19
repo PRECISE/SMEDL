@@ -9,15 +9,29 @@ class FSM(object):
         self.transitions = []
 
     def addState(self, state):
+        if not isinstance(state, State):
+            raise TypeError("Invalid type for state argument.")
         self.states[state.name] = state
+        return self.states[state.name]
 
     def deleteState(self, state):
+        if not isinstance(state, State):
+            raise TypeError("Invalid type for state argument.")
         self.states.pop(state.name)
 
+    def stateExists(self, stateName):
+        if not isinstance(stateName, str):
+            raise TypeError("Invalid type for name argument.")
+        return stateName in self.states
+
     def getStateByName(self, stateName):
+        if not isinstance(stateName, str):
+            raise TypeError("Invalid type for name argument.")
         return self.states[stateName]
 
     def addTransition(self, transition):
+        if not isinstance(transition, Transition):
+            raise TypeError("Invalid type for transition argument.")
         if transition.start in self.states and transition.next in self.states:
             self.transitions.append(transition)
             transition.start.addOutTransition(transition)
@@ -27,8 +41,7 @@ class FSM(object):
         self.transitions.remove(transition)
 
     def __str__(self):
-        for s in states:
-            print(s)
+        return '\n'.join(str(s) for s in self.states)
 
 
 class State(object):
@@ -47,27 +60,24 @@ class State(object):
         self.out_trans.append(transition)
 
     def __str__(self):
-        print("State: " + self.name)
-        print("In Transitions: ")
-        for i in self.in_trans:
-            print("  " + str(i))
-        print("Out Transitions: ")
-        for o in self.out_trans:
-            print("  " + str(o))
-
+        s = "State: " + self.name + '\n' + "In Transitions: " + '\n'
+        s = s.join(("  " + str(i) + '\n') for i in self.in_trans)
+        s = s + "Out Transitions: " + '\n'
+        s = s.join(("  " + str(i) + '\n') for i in self.out_trans)
+        return s
 
 
 class Transition(object):
 
     def __init__(self, start, next, guard=None):
-        if not isinstance(start, State) or not isinstance(next, State) or not isinstance(guard, str):
+        if not isinstance(start, State) or not isinstance(next, State) or (guard is not None and not isinstance(guard, str)):
             raise TypeError("Invalid argument type(s).")
         self.start = start
         self.next = next
         self.guard = guard
 
     def __str__(self):
-        print(self.start.name + " -> " + self.next.name + " / guard: " + self.guard)
+        return self.start.name + " -> " + self.next.name + " / guard: " + self.guard
 
 
 if __name__ == '__main__':
