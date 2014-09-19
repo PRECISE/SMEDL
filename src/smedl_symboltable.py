@@ -110,9 +110,24 @@ def generateFSM(ast, symbolTable):
     for scenario in ast['scenarios']:
         for trace in scenario[0]['traces']:
             for i in range(len(trace['trace_step'])):
-                if i > 0 and symbolTable[trace['trace_step'][i]['step_event']['expression']['atom']] != 'trace_state':
-                    fsm.addTransition(Transition()) #TODO !!!
-                    fsm.addState(State(step['step_event']['expression']['atom']))
+                if i > 0 and i < (len(trace['trace_step']) - 1) and symbolTable.get(trace['trace_step'][i]['step_event']['expression']['atom'], 'type') != 'trace_state':
+                    state1 = str(trace['trace_step'][i-1]['step_event']['expression']['atom'])
+                    state2 = str(trace['trace_step'][i+1]['step_event']['expression']['atom'])
+                    if not fsm.stateExists(state1):
+                        state1 = fsm.addState(State(state1))
+                        print('HERE1')
+                        print(str(state1))
+                    else:
+                        state1 = fsm.getStateByName(state1)
+                    if not fsm.stateExists(state2): #TODO: Fix problem where duplicated state is ignored and not included in AST values
+                        state2 = fsm.addState(State(state2))
+                        print('HERE2')
+                        print(str(state2))
+                    else:
+                        state2 = fsm.getStateByName(state2)
+                    print('HERE3')
+                    print(trace['trace_step'][i]['when'])
+                    fsm.addTransition(Transition(state1, state2, str(trace['trace_step'][i]['when'])))
     return fsm
 
 def outputSource(symbolTable, fsm, filename):
