@@ -32,7 +32,7 @@ class FSM(object):
     def addTransition(self, transition):
         if not isinstance(transition, Transition):
             raise TypeError("Invalid type for transition argument.")
-        if transition.start in self.states and transition.next in self.states:
+        if transition.start in self.states.values() and transition.next in self.states.values():
             self.transitions.append(transition)
             transition.start.addOutTransition(transition)
             transition.next.addInTransition(transition)
@@ -41,7 +41,7 @@ class FSM(object):
         self.transitions.remove(transition)
 
     def __str__(self):
-        return '\n'.join(str(s) for s in self.states)
+        return '\n'.join(str(s) for s in self.states.values())
 
 
 class State(object):
@@ -69,18 +69,21 @@ class State(object):
 
 class Transition(object):
 
-    def __init__(self, start, next, guard=None):
-        if not isinstance(start, State) or not isinstance(next, State) or (guard is not None and not isinstance(guard, str)):
+    def __init__(self, start, next, action=None, guard=None):
+        if not isinstance(start, State) or not isinstance(next, State) or (action is not None and not isinstance(action, str)) or (guard is not None and not isinstance(guard, str)):
             raise TypeError("Invalid argument type(s).")
         self.start = start
         self.next = next
+        self.action = action
         self.guard = guard
 
     def __str__(self):
-        return self.start.name + " -> " + self.next.name + " / guard: " + self.guard
+        return self.start.name + " -> " + self.next.name + " / action: " + self.action + " / guard: " + self.guard + "\n"
 
 
 if __name__ == '__main__':
     import argparse
     import string
     import sys
+
+    # TODO: Add some unit testing
