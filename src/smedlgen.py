@@ -3,52 +3,19 @@
 
 from __future__ import print_function, division, absolute_import, unicode_literals
 from smedl_parser import smedlParser
+from smedl_symboltable import smedlSymbolTable
 from fsm import *
 from grako.ast import AST
 import os
+import json
 
-class smedlSymbolTable(dict):
-
-    def __init__(self):
-        super(smedlSymbolTable, self).__init__()
-
-    def add(self, symbol, attributes=None):
-        if attributes is None:
-            self[symbol] = {}
-        else:
-            self[symbol] = attributes
-
-    def get(self, symbol, attribute=None):
-        if attribute is None:
-            return self[symbol]
-        else:
-            return self[symbol][attribute]
-
-    def getSymbolsByType(self, type):
-        out = []
-        for s in self.keys():
-            if 'type' in self[s] and self[s]['type'] == type :
-                out.append(s)
-        return out
-
-    def update(self, symbol, attribute, value):
-        self[symbol][attribute] = value
-
-    def delete(self, symbol, attribute=None):
-        if attribute is None:
-            self[symbol] = None
-        else:
-            self[symbol][attribute] = None
-
-
-def main(filename, startrule, trace=False, whitespace=None):
-    import json
+def main(filename, trace=False, whitespace=None):
     with open(filename) as f:
         text = f.read()
     parser = smedlParser(parseinfo=False)
     ast = parser.parse(
         text,
-        startrule,
+        'object',
         filename=filename,
         trace=trace,
         whitespace=whitespace)
@@ -201,8 +168,6 @@ if __name__ == '__main__':
     parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
                         help="whitespace specification")
     parser.add_argument('file', metavar="FILE", help="the input file to parse")
-    parser.add_argument('startrule', metavar="STARTRULE",
-                        help="the start rule for parsing")
     args = parser.parse_args()
 
-    main(args.file, args.startrule, trace=args.trace, whitespace=args.whitespace)
+    main(args.file, trace=args.trace, whitespace=args.whitespace)
