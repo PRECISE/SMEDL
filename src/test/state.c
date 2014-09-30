@@ -4,4 +4,6 @@ int bar;
 
 stateset currentState = MIN1;
 
-void foo(int x) { currentState = MIN1; }
+void foo(int x) {
+  currentState = MIN1;
+}
