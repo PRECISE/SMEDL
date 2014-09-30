@@ -117,44 +117,64 @@ def generateFSM(ast, symbolTable):
                     event = str(trace['trace_step'][i]['step_event']['expression']['atom'])
                     if not fsm.stateExists(state1):
                         state1 = fsm.addState(State(state1))
-                        print('HERE1')
-                        print(str(state1))
+                        #print('HERE1')
+                        #print(str(state1))
                     else:
                         state1 = fsm.getStateByName(state1)
                     if not fsm.stateExists(state2): #TODO: Fix problem where duplicated state is ignored and not included in AST values
                         state2 = fsm.addState(State(state2))
-                        print('HERE2')
-                        print(str(state2))
+                        #print('HERE2')
+                        #print(str(state2))
                     else:
                         state2 = fsm.getStateByName(state2)
-                    print('HERE3')
-                    print(trace['trace_step'][i]['when'])
-                    fsm.addTransition(Transition(state1, state2, event, str(trace['trace_step'][i]['when'])))
+                    #print('HERE3')
+                    #print(trace['trace_step'][i]['when'])
+                    when = str(trace['trace_step'][i]['when'])
+                    if when == 'None':
+                        when = None
+                    fsm.addTransition(Transition(state1, state2, event, when))
     return fsm
 
 def outputSource(symbolTable, fsm, filename):
+    # Open file for output (based on input filename)
     out = open(os.path.splitext(filename)[0] + '_generated.c', 'w')
 
-    stateset = symbolTable.getSymbolsByType('trace_state')
+    # Output set of states
+    stateset = fsm.states.keys()
     stateset_str = ''
     for s in stateset:
         if s is not stateset[0]:
             stateset_str += ', '
         stateset_str += string.upper(s)
-
     out.write('enum { ' + stateset_str + ' } stateset;\n\n')
+
+    # Output state variables
+    state_vars = symbolTable.getSymbolsByType('state')
+    for v in state_vars:
+        v_attrs = symbolTable.get(v)
+        out.write(v_attrs['datatype'] + ' ' + v + ';\n')
+    out.write('\n')
+
+    # Output initial state
     out.write('stateset currentState = ' + string.upper(stateset[0]) + ';\n\n')
 
-    methods = symbolTable.getSymbolsByType('imported_events')
+    # Output a method for each event (switch statement to handle FSM transitions)
+    methods = symbolTable.getSymbolsByType('event')
     for m in methods:
         out.write('void ' + m + '() {\n')
         if len(stateset) > 1:
-            out.write('switch (currentState) {\n')
-            for s in stateset:
-                out.write('case ' + string.upper(s) + ':\n')
-                out.write('currentState = ' + string.upper(s) + ';\n')
+            out.write('  switch (currentState) {\n')
+            for t in fsm.getTransitionsByAction(str(m)):
+                out.write('    case ' + string.upper(t.start.name) + ':\n')
+                if t.guard is not None:
+                    out.write('      ' + t.guard + ' {\n')
+                    out.write('        currentState = ' + string.upper(t.next.name) + ';\n')
+                    out.write('      }\n')
+                else:
+                    out.write('      currentState = ' + string.upper(t.next.name) + ';\n')
+                out.write('      break;\n')
         else:
-            out.write('currentState = ' + string.upper(stateset[0]) + ';\n')
+            out.write('  currentState = ' + string.upper(stateset[0]) + ';\n')
         out.write('}\n\n')
 
     out.close()
