@@ -40,8 +40,21 @@ class FSM(object):
     def deleteTransition(self, transition):
         self.transitions.remove(transition)
 
+    def getTransitionsByAction(self, action):
+        if not isinstance(action, str):
+            raise TypeError("Invalid type for action argument.")
+        transitions = []
+        for t in self.transitions:
+            if t.action == action:
+                transitions.append(t)
+        return transitions
+
     def __str__(self):
-        return '\n'.join(str(s) for s in self.states.values())
+        out = "States:\n\n"
+        out += '\n\n'.join(str(s) for s in self.states.values())
+        out += "\n\nTransitions:\n"
+        out += '\n'.join(("  " + str(t)) for t in self.transitions)
+        return out
 
 
 class State(object):
@@ -60,9 +73,9 @@ class State(object):
         self.out_trans.append(transition)
 
     def __str__(self):
-        s = "State: " + self.name + '\n' + "In Transitions: " + '\n'
+        s = "State: " + self.name + "\nIn Transitions:\n"
         s = s + "\n".join(("  " + str(i)) for i in self.in_trans)
-        s = s + "Out Transitions: " + '\n'
+        s = s + "\nOut Transitions:\n"
         s = s + "\n".join(("  " + str(i)) for i in self.out_trans)
         return s
 
@@ -78,7 +91,7 @@ class Transition(object):
         self.guard = guard
 
     def __str__(self):
-        return self.start.name + " -> " + self.next.name + " / action: " + self.action + " / guard: " + self.guard + "\n"
+        return self.start.name + " -> " + self.next.name + " / action: " + self.action + " / guard: " + str(self.guard)
 
 
 if __name__ == '__main__':
