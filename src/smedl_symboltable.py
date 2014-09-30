@@ -150,10 +150,11 @@ def outputSource(symbolTable, fsm, filename):
 
     # Output state variables
     state_vars = symbolTable.getSymbolsByType('state')
-    for v in state_vars:
-        v_attrs = symbolTable.get(v)
-        out.write(v_attrs['datatype'] + ' ' + v + ';\n')
-    out.write('\n')
+    if len(state_vars) > 0:
+        for v in state_vars:
+            v_attrs = symbolTable.get(v)
+            out.write(v_attrs['datatype'] + ' ' + v + ';\n')
+        out.write('\n')
 
     # Output initial state
     out.write('stateset currentState = ' + string.upper(stateset[0]) + ';\n\n')
