@@ -163,7 +163,7 @@ expression_list
 
 event_definition_list
     =
-    @:event_definition {',' @:event_definition}*
+    @:event_definition {',' @:event_definition}* ';'
     ;
 
 identifier_list

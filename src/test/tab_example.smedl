@@ -6,8 +6,8 @@ object Tab
         URL currentUrl, test;
         Renderer rengine;
     events
-        imported store(Tab, Cookie), render(Renderer, URL)
-        exported error cookieIntegrityAlarm
+        imported store(Tab, Cookie), render(Renderer, URL);
+        exported error cookieIntegrityAlarm;
     scenarios
         CookieIntegrity:
         Tab -> store(this, cookie) when isSubdomain(cookie.domain, currentUrl.getHost()) -> Tab

@@ -1,6 +1,6 @@
 object OneTwo
     events
-        imported foo
+        imported foo;
     scenarios
         sc1:
            OneTwo -> foo -> Min -> foo -> TwoOne

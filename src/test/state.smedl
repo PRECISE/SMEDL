@@ -2,7 +2,7 @@ object Min1
     state
         int bar;
     events
-        imported foo(int)
+        imported foo(int);
     scenarios
         sc1:
            Min1 -> foo(x) -> Min1

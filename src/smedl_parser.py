@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2014, 9, 4, 20, 39, 40, 3)
+__version__ = (2014, 9, 30, 21, 20, 48, 1)
 
 __all__ = [
     'smedlParser',
@@ -531,6 +531,7 @@ class smedlParser(Parser):
             self._event_definition_()
             self.ast['@'] = self.last_node
         self._closure(block1)
+        self._token(';')
 
     @graken()
     def _identifier_list_(self):
