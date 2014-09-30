@@ -12,7 +12,7 @@ import json
 def main(filename, trace=False, whitespace=None):
     with open(filename) as f:
         text = f.read()
-    parser = smedlParser(parseinfo=False)
+    parser = smedlParser(parseinfo=False, comments_re="\(\*.*?\*\)")
     ast = parser.parse(
         text,
         'object',
