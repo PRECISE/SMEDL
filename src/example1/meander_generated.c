@@ -1,11 +1,13 @@
 enum { SWITCH, SAFEMON } stateset;
 
-int upbound;
-int lobound;
+struct {
+  int upbound;
+  int lobound;
+};
 
 stateset currentState = SWITCH;
 
-void changeDir() {
+void changeDir(c) {
   switch (currentState) {
     case SWITCH:
       currentState = SAFEMON;
@@ -15,7 +17,7 @@ void changeDir() {
       break;
 }
 
-void updatePos() {
+void updatePos(c) {
   switch (currentState) {
     case SAFEMON:
       currentState = SWITCH;
