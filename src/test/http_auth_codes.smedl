@@ -1,0 +1,12 @@
+object WebServer
+    identity
+        opaque id;
+    state
+        URL url;
+        HTTPStatusCode code;
+    events
+        imported request(URL), response(HTTPStatusCode);
+    scenarios
+        Authentication:
+        WebServer -> request(url) when authRequired(url) -> response(HTTPStatusCode.401)-> WebServer
+            else { response(HTTPStatusCode.403) } -> WebServer
