@@ -2,14 +2,14 @@ enum { TWOONE, ONETWO } stateset;
 
 stateset currentState = TWOONE;
 
-void foo(c) {
+void foo() {
   switch (currentState) {
     case ONETWO:
       currentState = TWOONE;
       break;
 }
 
-void bar(c) {
+void bar() {
   switch (currentState) {
     case TWOONE:
       currentState = ONETWO;
