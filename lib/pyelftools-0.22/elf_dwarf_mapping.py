@@ -31,11 +31,11 @@ def get_ELF_entries(stream):
 
         for i in section.iter_symbols():
             if 'STT_OBJECT' == i.entry['st_info']['type']:
-                entries['OBJECTS'][i.name] = "0x%s"%(i.entry['st_value'],)
+                entries['OBJECTS'][i.name] = "0x%x"%(i.entry['st_value'],)
             elif 'STT_FUNC' == i.entry['st_info']['type']:
-                entries['FUNCTIONS'][i.name] = "0x%s"%(i.entry['st_value'],)
+                entries['FUNCTIONS'][i.name] = "0x%x"%(i.entry['st_value'],)
             elif 'STT_FILE' == i.entry['st_info']['type'] and i.name != "":
-                entries['FILES'][i.name] = "0x%s"%(i.entry['st_value'],) 
+                entries['FILES'][i.name] = "0x%x"%(i.entry['st_value'],) 
         print("\n_____________\n\nELF INFO\n_____________")
         print('\nFiles:')
         for fn in entries['FILES']:
