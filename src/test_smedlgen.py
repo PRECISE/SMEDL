@@ -1,30 +1,42 @@
-from __future__ import print_function, division, absolute_import, unicode_literals
+# from __future__ import print_function, division, absolute_import, unicode_literals
 from smedl_parser import smedlParser
 from smedl_symboltable import smedlSymbolTable
-from fsm import *
-from grako.ast import AST
-import os
-import json
+# from fsm import *
+# from grako.ast import AST
+# import os
+# import json
 import unittest
+import smedlgen
 
 class TestSmedlgen(unittest.TestCase):
 
     def setUp(self):
-        self.writer = SmedlWriter("Thing")
-
-    def test_writer(self):
-        self.writer.add_i("iiii1")
-        self.writer.add_i("iiii2")
-        self.writer.add_st("stststs")
-        self.writer.add_e("eee1")
-        self.writer.add_e("eee2")
+        self.writer = SmedlWriter("SafeMon")
+        self.writer.add_i("opaque id")
+        self.writer.add_st("int upbound, lobound")
+        self.writer.add_e("imported updatePos(int), changeDir")
         self.writer.add_sc("sc1")
-        self.writer.add_t("sc1", "A -> ab -> B")
-        self.writer.add_t("sc1", "A -> bd -> D")
-        self.writer.add_t("sc1", "B -> bc -> C")
-        self.writer.rm_i(0)
-        self.writer.rm_t("sc1", 1)
-        print(self.writer.text)     
+        self.writer.add_t("sc1", "SafeMon -> updatePos(pos) when pos == upbound || pos == lobound -> Switch")
+        self.writer.add_t("sc1", "Switch -> changeDir() -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() -> SafeMon")
+        print(self.writer.text)
+        self.make_ast()
+        # print(self.ast)
+
+    def test_parseToSymbolTable(self):
+        symbolTable = smedlSymbolTable()
+        smedlgen.parseToSymbolTable('top', self.ast, symbolTable)
+        self.assertEquals('int', symbolTable['lobound']['datatype'])
+        self.assertEquals('state', symbolTable['upbound']['type'])
+        self.assertEquals('event', symbolTable['updatePos']['type'])
+        self.assertEquals('scenarios', symbolTable['sc1']['type'])
+        self.assertEquals('trace_state', symbolTable['SafeMon']['type'])
+        self.assertEquals('trace_state', symbolTable['Switch']['type'])
+        # print(symbolTable)
+
+    def make_ast(self) :
+        self.ast = smedlParser(parseinfo=False).parse(
+            self.writer.text, 'object', filename="test", trace=False, whitespace=None) 
 
 class SmedlWriter(object):
 
