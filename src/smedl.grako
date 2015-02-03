@@ -98,20 +98,27 @@ float
 
 expression
     =
-      @:and_expr {'||' or:and_expr}*
-    | '!' not_expr:expression
-    | '(' @:expression ')'
+      or_ex:and_expr {'||' or_ex:and_expr}+
+    | @:and_expr
     ;
 
 and_expr
     =
-      and:comp_expr {'&&' and:comp_expr}+
+      and_ex:sub_expr {'&&' and_ex:sub_expr}+
+    | @:sub_expr
+    ;
+
+sub_expr
+    =
+      '!(' not_ex:expression ')'
+    | '(' @:expression ')'
     | @:comp_expr
     ;
 
 comp_expr
     =
       comp:arith_expr {operator:('>' | '<' | '>=' | '<=' | '==') comp:arith_expr}+
+    | '(' @:comp_expr ')'
     | @:arith_expr
     ;
 

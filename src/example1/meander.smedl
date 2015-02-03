@@ -1,4 +1,4 @@
-(* property: whenever we reach the boundary, change of direction will happen before the next update. *)
+
 
 object SafeMon
 identity
@@ -9,6 +9,6 @@ events
   imported updatePos(int), changeDir;
 scenarios
   sc1:
-    SafeMon -> updatePos(pos) when pos == upbound || pos == lobound -> Switch
+    SafeMon -> updatePos(pos) when pos == upbound && || pos == lobound -> Switch
     Switch -> changeDir() -> SafeMon
     SafeMon -> changeDir() -> SafeMon

@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2014, 9, 30, 21, 20, 48, 1)
+__version__ = (2015, 2, 3, 21, 43, 12, 1)
 
 __all__ = [
     'smedlParser',
@@ -294,26 +294,20 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._and_expr_()
-                self.ast['@'] = self.last_node
+                self.ast['or_ex'] = self.last_node
 
                 def block1():
                     self._token('||')
                     self._and_expr_()
-                    self.ast['or_'] = self.last_node
-                self._closure(block1)
+                    self.ast['or_ex'] = self.last_node
+                self._positive_closure(block1)
             with self._option():
-                self._token('!')
-                self._expression_()
-                self.ast['not_expr'] = self.last_node
-            with self._option():
-                self._token('(')
-                self._expression_()
+                self._and_expr_()
                 self.ast['@'] = self.last_node
-                self._token(')')
             self._error('no available options')
 
         self.ast._define(
-            ['or', 'not_expr'],
+            ['or_ex'],
             []
         )
 
@@ -321,21 +315,44 @@ class smedlParser(Parser):
     def _and_expr_(self):
         with self._choice():
             with self._option():
-                self._comp_expr_()
-                self.ast['and_'] = self.last_node
+                self._sub_expr_()
+                self.ast['and_ex'] = self.last_node
 
                 def block1():
                     self._token('&&')
-                    self._comp_expr_()
-                    self.ast['and_'] = self.last_node
+                    self._sub_expr_()
+                    self.ast['and_ex'] = self.last_node
                 self._positive_closure(block1)
+            with self._option():
+                self._sub_expr_()
+                self.ast['@'] = self.last_node
+            self._error('no available options')
+
+        self.ast._define(
+            ['and_ex'],
+            []
+        )
+
+    @graken()
+    def _sub_expr_(self):
+        with self._choice():
+            with self._option():
+                self._token('!(')
+                self._expression_()
+                self.ast['not_ex'] = self.last_node
+                self._token(')')
+            with self._option():
+                self._token('(')
+                self._expression_()
+                self.ast['@'] = self.last_node
+                self._token(')')
             with self._option():
                 self._comp_expr_()
                 self.ast['@'] = self.last_node
             self._error('no available options')
 
         self.ast._define(
-            ['and'],
+            ['not_ex'],
             []
         )
 
@@ -364,6 +381,11 @@ class smedlParser(Parser):
                     self._arith_expr_()
                     self.ast['comp'] = self.last_node
                 self._positive_closure(block1)
+            with self._option():
+                self._token('(')
+                self._comp_expr_()
+                self.ast['@'] = self.last_node
+                self._token(')')
             with self._option():
                 self._arith_expr_()
                 self.ast['@'] = self.last_node
@@ -630,6 +652,9 @@ class smedlSemantics(object):
         return ast
 
     def and_expr(self, ast):
+        return ast
+
+    def sub_expr(self, ast):
         return ast
 
     def comp_expr(self, ast):
