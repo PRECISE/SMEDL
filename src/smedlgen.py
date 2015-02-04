@@ -95,7 +95,7 @@ def generateFSM(ast, symbolTable):
                     else:
                         state2 = fsm.getStateByName(state2)
                     #print('HERE3')
-                    when = str(guardToString(trace['trace_step'][i]['step_event']['when']))
+                    when = formatGuard(trace['trace_step'][i]['step_event']['when'])
                     if when == 'None':
                         when = None
                     fsm.addTransition(Transition(state1, state2, event, when))
@@ -134,7 +134,7 @@ def outputSource(symbolTable, fsm, filename):
             for t in fsm.getTransitionsByAction(str(m)):
                 out.write('    case ' + string.upper(t.start.name) + ':\n')
                 if t.guard is not None:
-                    out.write('      if' + t.guard + ' {\n')
+                    out.write('      if(' + t.guard + ') {\n')
                     out.write('        currentState = ' + string.upper(t.next.name) + ';\n')
                     out.write('      }\n')
                 else:
@@ -145,6 +145,10 @@ def outputSource(symbolTable, fsm, filename):
         out.write('}\n\n')
 
     out.close()
+
+def formatGuard(object):
+    guard = str(guardToString(object))
+    return removeParentheses(guard)
 
 def guardToString(object):
     if isinstance(object, AST):
@@ -160,9 +164,33 @@ def guardToString(object):
             elif k == 'comp':
                 comps = []
                 for val in v:
-                    unary = val.get('unary') or ""
-                    comps.append("%s%s"%(unary,val['atom']))
+                    arith = val.get('arith')
+                    if arith:
+                        operators = val.get('operator')
+                        result = [None]*(len(arith)+len(operators))
+                        result[::2] = ["%s%s"%(term.get('unary') or "",term['atom']) for term in arith]
+                        result[1::2] = operators
+                        comps.append(" ".join(result))
+                    else:
+                        unary = val.get('unary') or ""
+                        comps.append("%s%s"%(unary,val['atom']))
                 return (" %s "%object['operator']).join(comps)
+
+def removeParentheses(guard):
+    if guard.startswith('(') and guard.endswith(')'):
+        stack = ['s']
+        for ch in guard[1:-1]:
+            if ch == '(':
+                stack.append('(')
+            if ch == ')':
+                stack.pop()
+        if len(stack) == 1 and stack[0] == 's':
+            return removeParentheses(guard[1:-1])
+        else:
+            return guard
+    else:
+        return guard
+
 
 if __name__ == '__main__':
     import argparse
