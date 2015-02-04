@@ -95,8 +95,7 @@ def generateFSM(ast, symbolTable):
                     else:
                         state2 = fsm.getStateByName(state2)
                     #print('HERE3')
-                    #print(trace['trace_step'][i]['when'])
-                    when = str(trace['trace_step'][i]['when'])
+                    when = str(guardToString(trace['trace_step'][i]['step_event']['when']))
                     if when == 'None':
                         when = None
                     fsm.addTransition(Transition(state1, state2, event, when))
@@ -135,7 +134,7 @@ def outputSource(symbolTable, fsm, filename):
             for t in fsm.getTransitionsByAction(str(m)):
                 out.write('    case ' + string.upper(t.start.name) + ':\n')
                 if t.guard is not None:
-                    out.write('      ' + t.guard + ' {\n')
+                    out.write('      if' + t.guard + ' {\n')
                     out.write('        currentState = ' + string.upper(t.next.name) + ';\n')
                     out.write('      }\n')
                 else:
@@ -146,6 +145,24 @@ def outputSource(symbolTable, fsm, filename):
         out.write('}\n\n')
 
     out.close()
+
+def guardToString(object):
+    if isinstance(object, AST):
+        for k, v in object.iteritems():
+            if k == 'or_ex':
+                ored = [guardToString(val) for val in v]
+                return "(" + " || ".join(ored) + ")"
+            elif k == 'and_ex':
+                anded = [guardToString(val) for val in v]
+                return "(" + " && ".join(anded) + ")" 
+            elif k == 'not_ex':
+                return "!(%s)"%guardToString(v)      
+            elif k == 'comp':
+                comps = []
+                for val in v:
+                    unary = val.get('unary') or ""
+                    comps.append("%s%s"%(unary,val['atom']))
+                return (" %s "%object['operator']).join(comps)
 
 if __name__ == '__main__':
     import argparse
