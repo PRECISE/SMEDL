@@ -3,6 +3,8 @@
 
 class smedlSymbolTable(dict):
 
+    generated = 0
+
     def __init__(self):
         super(smedlSymbolTable, self).__init__()
 
@@ -13,10 +15,13 @@ class smedlSymbolTable(dict):
             self[symbol] = attributes
 
     def get(self, symbol, attribute=None):
-        if attribute is None:
-            return self[symbol]
-        else:
-            return self[symbol][attribute]
+        try:
+            if attribute is None:
+                return self[symbol]
+            else:
+                return self[symbol][attribute]
+        except:
+            return None
 
     def getSymbolsByType(self, type):
         out = []
@@ -33,3 +38,11 @@ class smedlSymbolTable(dict):
             self[symbol] = None
         else:
             self[symbol][attribute] = None
+
+    def generate(self, attributes=None):
+        symbol = "Gen%d"%smedlSymbolTable.generated
+        self.add(symbol, attributes)
+        smedlSymbolTable.generated = smedlSymbolTable.generated + 1
+        return symbol
+
+

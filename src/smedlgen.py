@@ -75,30 +75,39 @@ def parseToSymbolTable(label, object, symbolTable):
 def generateFSM(ast, symbolTable):
     fsm = FSM()
     for scenario in ast['scenarios']:
-        for trace in scenario[0]['traces']:
-            for i in range(len(trace['trace_step'])):
-                # DOES NOT YET HANDLE IMPLICIT STATES!
-                if i > 0 and i < (len(trace['trace_step']) - 1) and symbolTable.get(trace['trace_step'][i]['step_event']['expression']['atom'], 'type') != 'trace_state':
-                    state1 = str(trace['trace_step'][i-1]['step_event']['expression']['atom'])
-                    state2 = str(trace['trace_step'][i+1]['step_event']['expression']['atom'])
-                    event = str(trace['trace_step'][i]['step_event']['expression']['atom'])
-                    if not fsm.stateExists(state1):
-                        state1 = fsm.addState(State(state1))
-                        #print('HERE1')
-                        #print(str(state1))
+        for trace in scenario[0]['traces']: # scenario[0] is to handle redundant list structure (a grako parser thing...)
+            generated_state = None
+            before_state = None
+            after_state = None
+            for i in range(1, len(trace['trace_step']) - 1):
+                current = str(trace['trace_step'][i]['step_event']['expression']['atom'])
+                if generated_state is None:
+                    before = str(trace['trace_step'][i-1]['step_event']['expression']['atom'])
+                else:
+                    before = generated_state
+                    generated_state = None
+                after = str(trace['trace_step'][i+1]['step_event']['expression']['atom'])
+                if symbolTable.get(current,'type') == 'event':
+                    if not fsm.stateExists(before):
+                        fsm.addState(State(before))
+                    if symbolTable.get(after, 'type') == 'trace_state':
+                        if not fsm.stateExists(after):
+                            fsm.addState(State(after))
                     else:
-                        state1 = fsm.getStateByName(state1)
-                    if not fsm.stateExists(state2): #TODO: Fix problem where duplicated state is ignored and not included in AST values
-                        state2 = fsm.addState(State(state2))
-                        #print('HERE2')
-                        #print(str(state2))
-                    else:
-                        state2 = fsm.getStateByName(state2)
-                    #print('HERE3')
+                        after = symbolTable.generate({'type' : 'trace_state'})
+                        fsm.addState(State(after))
+                        generated_state = after
+                    before_state = fsm.getStateByName(before)
+                    after_state = fsm.getStateByName(after)
                     when = formatGuard(trace['trace_step'][i]['step_event']['when'])
                     if when == 'None':
                         when = None
-                    fsm.addTransition(Transition(state1, state2, event, when))
+                    print(after_state)
+                    fsm.addTransition(Transition(before_state, after_state, current, when))
+                    print(after_state)
+                else:
+                    if get(before, 'type') != 'event' or get(after, 'type') != 'event':
+                        raise TypeError("Invalid state -> state transition")
     return fsm
 
 def outputSource(symbolTable, fsm, filename):
@@ -106,21 +115,18 @@ def outputSource(symbolTable, fsm, filename):
     out = open(os.path.splitext(filename)[0] + '_generated.c', 'w')
 
     # Output set of states
-    stateset = fsm.states.keys()
-    stateset_str = ''
-    for s in stateset:
-        if s is not stateset[0]:
-            stateset_str += ', '
-        stateset_str += string.upper(s)
+    stateset = [state.upper() for state in fsm.states.keys()]
+    stateset_str = ", ".join(stateset)
     out.write('enum { ' + stateset_str + ' } stateset;\n\n')
 
     # Output state variables
     state_vars = symbolTable.getSymbolsByType('state')
     if len(state_vars) > 0:
+        out.write('struct {\n')
         for v in state_vars:
             v_attrs = symbolTable.get(v)
-            out.write(v_attrs['datatype'] + ' ' + v + ';\n')
-        out.write('\n')
+            out.write('  ' + v_attrs['datatype'] + ' ' + v + ';\n')
+        out.write('};\n')
 
     # Output initial state
     out.write('stateset currentState = ' + string.upper(stateset[0]) + ';\n\n')
@@ -140,6 +146,7 @@ def outputSource(symbolTable, fsm, filename):
                 else:
                     out.write('      currentState = ' + string.upper(t.next.name) + ';\n')
                 out.write('      break;\n')
+            out.write('  }\n')
         else:
             out.write('  currentState = ' + string.upper(stateset[0]) + ';\n')
         out.write('}\n\n')
