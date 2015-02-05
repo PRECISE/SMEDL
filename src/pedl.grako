@@ -1,0 +1,106 @@
+(*
+ * This grammar defines PEDL in the Grako-variation of EBNF.
+ *
+ * Written February 3 2015.
+ *)
+
+monitor
+    =
+    monitors:{new_mon}+
+    event_defs:{event_def}+
+    $
+    ;
+
+new_mon
+    =
+    'new' monitor:identifier ['(' monitor_params:identifier_list ')'] '=' 'create' struct:structure
+    ;
+    
+structure
+    =
+    struct:identifier '{' fields:{field}* '}'
+    ;
+
+field
+    =
+    variable:identifier '=' value:identifier ';'
+    ;
+
+event_def
+    =
+    monitor:identifier '(' monitor_params:identifier_list ').' event:identifier ['(' event_params:identifier_list ')'] '=' 'update(' update:expression ')' ['when' when:expression]
+    ;
+
+identifier
+    =
+    ?/[a-zA-Z][A-Za-z0-9_]*/?
+    ;
+
+integer
+    =
+    ?/[-+]?[0-9]+/?
+    ;
+
+float
+    =
+    ?/[-+]?[0-9]*\.?[0-9]+/?
+    ;
+
+expression
+    =
+      @:and_expr {'||' or:and_expr}*
+    | '!' not_expr:expression
+    | '(' @:expression ')'
+    ;
+
+and_expr
+    =
+      and:comp_expr {'&&' and:comp_expr}+
+    | @:comp_expr
+    ;
+
+comp_expr
+    =
+      comp:arith_expr {operator:('>' | '<' | '>=' | '<=' | '==') comp:arith_expr}+
+    | @:arith_expr
+    ;
+
+arith_expr
+    =
+      arith:term {operator:('+' | '-' | '*' | '/' | '%') arith:term}+
+    | @:term
+    ;
+
+term
+    =
+      {unary:('+' | '-' | '~')}* atom:atom {trailer:trailer}*
+    ;
+
+atom
+    =
+      integer
+    | float
+    | identifier
+    | 'true'
+    | 'false'
+    | 'null'
+    ;
+
+trailer
+    =
+      '[' [index:expression] ']'
+    | '(' [params:expression_list] ')'
+    | '.' dot:identifier {trailer:trailer}*
+    ;
+
+expression_list
+    =
+      @:expression {',' @:expression}*
+    | ()
+    ;
+
+identifier_list
+    =
+      @:identifier {',' @:identifier}*
+    | ()
+    ;
