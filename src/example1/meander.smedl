@@ -9,6 +9,6 @@ events
   imported updatePos(int), changeDir;
 scenarios
   sc1:
-    SafeMon -> updatePos(pos) when ((pos > -y + -2 + 1 && (pos == lobound)))-> Switch
+    SafeMon -> updatePos(pos) when ((+pos(4, 5) > -y.a.b.c(2) + -2 + 1 && (pos == lobound)))-> Switch
     Switch -> changeDir() -> SafeMon
     SafeMon -> changeDir() -> SafeMon

@@ -168,13 +168,37 @@ def guardToString(object):
                     if arith:
                         operators = val.get('operator')
                         result = [None]*(len(arith)+len(operators))
-                        result[::2] = ["%s%s"%(term.get('unary') or "",term['atom']) for term in arith]
+                        result[::2] = [termToString(term) for term in arith]
                         result[1::2] = operators
                         comps.append(" ".join(result))
                     else:
-                        unary = val.get('unary') or ""
-                        comps.append("%s%s"%(unary,val['atom']))
+                        comps.append(termToString(val))
                 return (" %s "%object['operator']).join(comps)
+            elif k == 'index':
+                return "[%s]"%guardToString(v)
+            elif k == 'params':
+                if isinstance(v, list):
+                    return "(%s)"%(",".join([guardToString(val) for val in v]))
+                else:
+                    return "(%s)"%guardToString(v)
+            elif k == 'dot':
+                trailer = ""
+                if object['trailer']:
+                    trailer = guardToString(object['trailer'])
+                return ".%s%s"%(v, trailer)
+            else:
+                return termToString(object)
+
+def termToString(term):
+    if isinstance(term, AST):
+        term_text = "%s%s"%(term.get('unary') or "", term.get('atom') or "")
+        trailer_ast = term.get('trailer')
+        if isinstance(trailer_ast, AST):
+            for k, v in term.iteritems():
+                term_text = "%s%s"%(term_text, guardToString(v) or "")
+        return term_text
+    else:
+        return ""
 
 def removeParentheses(guard):
     if guard.startswith('(') and guard.endswith(')'):

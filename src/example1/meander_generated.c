@@ -18,7 +18,7 @@ void changeDir() {
 void updatePos() {
   switch (currentState) {
     case SAFEMON:
-      if(pos > -y + -2 + 1 && pos == lobound) {
+      if(+pos(4,5) > -y.a.b.c(2) + -2 + 1 && pos == lobound) {
         currentState = SWITCH;
       }
       break;
