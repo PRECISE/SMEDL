@@ -41,6 +41,8 @@ def main(filename, trace=False, whitespace=None):
 def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
         for k, v in object.iteritems():
+            if k == 'object':
+                symbolTable.add("_%s"%v, {'type' : 'object'})
             if label == 'state' and k == 'var':
                 if isinstance(v, list):
                     for var in v:
@@ -103,7 +105,6 @@ def generateFSM(ast, symbolTable):
                         generated_state = after
                     before_state = fsm.getStateByName(before)
                     after_state = fsm.getStateByName(after)
-                    current = str("%s(%s)"%(current, param_names))
                     when = formatGuard(trace['trace_step'][i]['step_event']['when'])
                     if when == 'None':
                         when = None
@@ -136,8 +137,14 @@ def outputSource(symbolTable, fsm, filename):
 
     # Output a method for each event (switch statement to handle FSM transitions)
     methods = symbolTable.getSymbolsByType('event')
+    struct = symbolTable.getSymbolsByType('object')[0] + "* c"
     for m in methods:
-        out.write('void ' + m + '(' + symbolTable.get(m, 'params') + ') {\n')
+        params = symbolTable.get(m, 'params')
+        if len(params) > 0:
+            params = struct + ", " + params
+        else:
+            params = struct
+        out.write('void ' + m + '(' + params + ') {\n')
         if len(stateset) > 1:
             out.write('  switch (currentState) {\n')
             for t in fsm.getTransitionsByAction(str(m)):
@@ -149,6 +156,9 @@ def outputSource(symbolTable, fsm, filename):
                 else:
                     out.write('      currentState = ' + string.upper(t.next.name) + ';\n')
                 out.write('      break;\n')
+            out.write('    default:\n')      
+            out.write('      //Raise error of some sort\n')
+            out.write('      break;\n')
             out.write('  }\n')
         else:
             out.write('  currentState = ' + string.upper(stateset[0]) + ';\n')
