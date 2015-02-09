@@ -4,7 +4,7 @@ from smedl_symboltable import smedlSymbolTable
 # from fsm import *
 # from grako.ast import AST
 # import os
-# import json
+import json
 import unittest
 import smedlgen
 
@@ -19,7 +19,6 @@ class TestSmedlgen(unittest.TestCase):
         self.writer.add_t("sc1", "SafeMon -> updatePos(pos) when pos == upbound || pos == lobound -> Switch")
         self.writer.add_t("sc1", "Switch -> changeDir() -> SafeMon")
         self.writer.add_t("sc1", "SafeMon -> changeDir() -> SafeMon")
-        print(self.writer.text)
         self.make_ast()
         # print(self.ast)
 
@@ -33,6 +32,42 @@ class TestSmedlgen(unittest.TestCase):
         self.assertEquals('trace_state', symbolTable['SafeMon']['type'])
         self.assertEquals('trace_state', symbolTable['Switch']['type'])
         # print(symbolTable)
+
+    # def test_generateFSM(self):
+    #     self.assertTrue(False)
+
+    # def test_findFunctionParams(self):
+    #     self.assertTrue(False)
+
+    # def test_getParamTypes(self):
+    #     self.assertTrue(False)
+
+    # def test_formatGuard(self):
+    #     self.assertTrue(False)
+
+    def test_guardToString(self):
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when fn(helper(2) * 3) == -x(5)  -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when 4 * (5 + 6) == 7 -> SafeMon")
+        self.make_ast()
+        term = self.ast['scenarios'][0][0]['traces'][3]['trace_step'][1]['step_event']['when']
+        self.assertEquals("fn(helper(2) * 3) == -x(5)", smedlgen.guardToString(term))
+        term = self.ast['scenarios'][0][0]['traces'][4]['trace_step'][1]['step_event']['when']
+        self.assertEquals("4 * (5 + 6) == 7", smedlgen.guardToString(term))
+        print(json.dumps(term, indent=2))
+        print(smedlgen.guardToString(term))
+
+    def test_termToString(self):
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when fn(helper(2) * 3) == -x(5)  -> SafeMon")
+        self.make_ast()
+        term = self.ast['scenarios'][0][0]['traces'][3]['trace_step'][1]['step_event']['when']['comp'][0]
+        self.assertEquals("fn(helper(2) * 3)", smedlgen.termToString(term))
+        term = self.ast['scenarios'][0][0]['traces'][3]['trace_step'][1]['step_event']['when']['comp'][1]
+        self.assertEquals("-x(5)", smedlgen.termToString(term))
+
+    def test_removeParentheses(self):
+        self.assertEquals("x", smedlgen.removeParentheses("(x)"))
+        self.assertEquals("()(x)", smedlgen.removeParentheses("()(x)"))
+        self.assertEquals("(y) + ((x + 2))", smedlgen.removeParentheses("(((y) + ((x + 2))))"))
 
     def make_ast(self) :
         self.ast = smedlParser(parseinfo=False).parse(

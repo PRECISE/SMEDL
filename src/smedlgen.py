@@ -88,6 +88,7 @@ def generateFSM(ast, symbolTable):
                     generated_state = None
                 after = str(trace['trace_step'][i+1]['step_event']['expression']['atom'])
                 if symbolTable.get(current,'type') == 'event':
+                    # adds parameters to symbol table for referencing in output
                     params = trace['trace_step'][i]['step_event']['expression']['trailer']['params']
                     param_names = str(findFunctionParams(current, params, ast))
                     symbolTable.update(current, "params", param_names)
@@ -233,11 +234,19 @@ def guardToString(object):
                 if object['trailer']:
                     trailer = guardToString(object['trailer'])
                 return ".%s%s"%(v, trailer)
+            elif k == 'arith':
+                operators = object.get('operator')
+                result = [None]*(len(v)+len(operators))
+                result[::2] = [termToString(term) for term in v]
+                result[1::2] = operators
+                return " ".join(result)
             else:
                 return termToString(object)
 
 def termToString(term):
     if isinstance(term, AST):
+        if(term.get('arith')):
+            return "(" + guardToString(term) + ")"
         term_text = "%s%s"%(term.get('unary') or "", term.get('atom') or "")
         trailer_ast = term.get('trailer')
         if isinstance(trailer_ast, AST):

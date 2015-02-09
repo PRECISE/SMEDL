@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 2, 3, 21, 43, 12, 1)
+__version__ = (2015, 2, 9, 19, 5, 20, 0)
 
 __all__ = [
     'smedlParser',
@@ -433,26 +433,47 @@ class smedlParser(Parser):
 
     @graken()
     def _term_(self):
+        with self._choice():
+            with self._option():
 
-        def block0():
-            with self._group():
-                with self._choice():
-                    with self._option():
-                        self._token('+')
-                    with self._option():
-                        self._token('-')
-                    with self._option():
-                        self._token('~')
-                    self._error('expecting one of: + - ~')
-            self.ast['unary'] = self.last_node
-        self._closure(block0)
-        self._atom_()
-        self.ast['atom'] = self.last_node
+                def block0():
+                    with self._group():
+                        with self._choice():
+                            with self._option():
+                                self._token('+')
+                            with self._option():
+                                self._token('-')
+                            with self._option():
+                                self._token('~')
+                            self._error('expecting one of: + - ~')
+                    self.ast['unary'] = self.last_node
+                self._closure(block0)
+                self._atom_()
+                self.ast['atom'] = self.last_node
 
-        def block4():
-            self._trailer_()
-            self.ast['trailer'] = self.last_node
-        self._closure(block4)
+                def block4():
+                    self._trailer_()
+                    self.ast['trailer'] = self.last_node
+                self._closure(block4)
+            with self._option():
+
+                def block6():
+                    with self._group():
+                        with self._choice():
+                            with self._option():
+                                self._token('+')
+                            with self._option():
+                                self._token('-')
+                            with self._option():
+                                self._token('~')
+                            self._error('expecting one of: + - ~')
+                    self.ast['unary'] = self.last_node
+                self._closure(block6)
+                self._token('(')
+                self._arith_expr_()
+                self.ast['@'] = self.last_node
+                self._token(')')
+            self._error('no available options')
 
         self.ast._define(
             ['unary', 'atom', 'trailer'],

@@ -131,6 +131,7 @@ arith_expr
 term
     =
       {unary:('+' | '-' | '~')}* atom:atom {trailer:trailer}*
+    | {unary:('+' | '-' | '~')}* '(' @:arith_expr ')'
     ;
 
 atom
