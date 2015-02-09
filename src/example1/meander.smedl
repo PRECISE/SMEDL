@@ -12,4 +12,3 @@ scenarios
     SafeMon -> updatePos(pos) when pos == upbound || pos == lobound -> Switch
     Switch -> changeDir() -> SafeMon
     SafeMon -> changeDir() -> SafeMon
-

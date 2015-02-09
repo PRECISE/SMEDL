@@ -27,11 +27,11 @@ def main(filename, trace=False, whitespace=None):
     print()
     symbolTable = smedlSymbolTable()
     parseToSymbolTable('top', ast, symbolTable)
+    fsm = generateFSM(ast, symbolTable)
     print()
     print('Symbol Table:')
     print(symbolTable)
     print()
-    fsm = generateFSM(ast, symbolTable)
     print()
     print('FSM:')
     print(fsm)
@@ -88,6 +88,9 @@ def generateFSM(ast, symbolTable):
                     generated_state = None
                 after = str(trace['trace_step'][i+1]['step_event']['expression']['atom'])
                 if symbolTable.get(current,'type') == 'event':
+                    params = trace['trace_step'][i]['step_event']['expression']['trailer']['params']
+                    param_names = str(findFunctionParams(current, params, ast))
+                    symbolTable.update(current, "params", param_names)
                     if not fsm.stateExists(before):
                         fsm.addState(State(before))
                     if symbolTable.get(after, 'type') == 'trace_state':
@@ -99,12 +102,11 @@ def generateFSM(ast, symbolTable):
                         generated_state = after
                     before_state = fsm.getStateByName(before)
                     after_state = fsm.getStateByName(after)
+                    current = str("%s(%s)"%(current, param_names))
                     when = formatGuard(trace['trace_step'][i]['step_event']['when'])
                     if when == 'None':
                         when = None
-                    print(after_state)
                     fsm.addTransition(Transition(before_state, after_state, current, when))
-                    print(after_state)
                 else:
                     if get(before, 'type') != 'event' or get(after, 'type') != 'event':
                         raise TypeError("Invalid state -> state transition")
@@ -134,7 +136,7 @@ def outputSource(symbolTable, fsm, filename):
     # Output a method for each event (switch statement to handle FSM transitions)
     methods = symbolTable.getSymbolsByType('event')
     for m in methods:
-        out.write('void ' + m + '() {\n')
+        out.write('void ' + m + '(' + symbolTable.get(m, 'params') + ') {\n')
         if len(stateset) > 1:
             out.write('  switch (currentState) {\n')
             for t in fsm.getTransitionsByAction(str(m)):
@@ -152,6 +154,44 @@ def outputSource(symbolTable, fsm, filename):
         out.write('}\n\n')
 
     out.close()
+
+def findFunctionParams(function, params, ast):
+    names = []
+    types = None
+    if isinstance(params, AST):
+        names.append(str(params['atom']))
+    elif isinstance(params, list):
+        for elem in params:
+            if isinstance(elem, AST):
+                names.append(str(elem['atom']))
+    types = getParamTypes(function, ast['imported_events'][0])
+    if types is None and ast['exported_events'] is not None:
+        types = getParamTypes(function, ast['exported_events'][0])
+    if types is None:
+        types = []
+    if len(names) != len(types):
+        raise ValueError("Invalid number of parameters for %s"%function)
+    return (", ".join(["%s %s"%(types[i],names[i]) for i in range(len(names))]))
+
+def getParamTypes(function, events):
+    if isinstance(events, AST):
+        if(events['event_id'] == function):
+            params = events['params']
+            types = []
+            if(params):
+                if isinstance(params, list):
+                    types = [str(p) for p in params]
+                else:
+                    types.append(str(params))
+            return types
+        else:
+            return None
+    elif isinstance(events, list):
+        for elem in events:
+            types = getParamTypes(function, elem)
+            if types is not None:
+                return types
+        return None
 
 def formatGuard(object):
     guard = str(guardToString(object))
