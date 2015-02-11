@@ -20,7 +20,7 @@ void changeDir(_SafeMon* c) {
   }
 }
 
-void updatePos(_SafeMon* c, int pos, float x, bool y) {
+void updatePos(_SafeMon* c, int pos) {
   switch (currentState) {
     case SAFEMON:
       if(pos == upbound || pos == lobound) {

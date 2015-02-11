@@ -176,10 +176,10 @@ def findFunctionParams(function, params, ast):
             if isinstance(elem, AST):
                 names.append(str(elem['atom']))
     types = getParamTypes(function, ast['imported_events'][0])
-    if types is None and ast['exported_events'] is not None:
+    if types is None and ast['exported_events']:
         types = getParamTypes(function, ast['exported_events'][0])
-    if types is None:
-        types = []
+    if types is None: # probably never raised bc called only for events in symbol table 
+        raise ValueError("Unrecognized function, %s, found in scenarios") 
     if len(names) != len(types):
         raise ValueError("Invalid number of parameters for %s"%function)
     return (", ".join(["%s %s"%(types[i],names[i]) for i in range(len(names))]))
@@ -236,7 +236,7 @@ def guardToString(object):
                 return "[%s]"%guardToString(v)
             elif k == 'params':
                 if isinstance(v, list):
-                    return "(%s)"%(",".join([guardToString(val) for val in v]))
+                    return "(%s)"%(", ".join([guardToString(val) for val in v]))
                 else:
                     return "(%s)"%guardToString(v)
             elif k == 'dot':
@@ -257,7 +257,10 @@ def termToString(term):
     if isinstance(term, AST):
         if(term.get('arith')):
             return "(" + guardToString(term) + ")"
-        term_text = "%s%s"%(term.get('unary') or "", term.get('atom') or "")
+        unary = term.get('unary') or ""
+        if isinstance(unary, list):
+            unary = "".join(unary)
+        term_text = "%s%s"%(unary, term.get('atom') or "")
         trailer_ast = term.get('trailer')
         if isinstance(trailer_ast, AST):
             for k, v in term.iteritems():
