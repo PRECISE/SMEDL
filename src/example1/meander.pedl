@@ -4,8 +4,3 @@ new SafeMon(id,upbound,lobound) =
 SafeMon(id).updatePos(pos) = 
     update(meander().pos) when id == meander().md { pos = meander().pos; }
 SafeMon(id).changeDir = update(meander().d) when id == meander().md
-
-// intentions
-// "when" construct is intended to be for routing events to proper monitors
-// the "create" construct corresponds to static or dynamic memory allocation for a data structure of the specified type or, alternatively, completion of initialization of that memory.  For C++, it could be return from the constructor.  For C, it is rather arbitrary.
-// "this" is the data structure being created.
