@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 2, 12, 20, 43, 34, 3)
+__version__ = (2015, 2, 12, 20, 50, 57, 3)
 
 __all__ = [
     'pedlParser',
@@ -76,7 +76,7 @@ class pedlParser(Parser):
     @graken()
     def _structure_(self):
         self._identifier_()
-        self.ast['struct'] = self.last_node
+        self.ast['struct_id'] = self.last_node
         self._token('{')
 
         def block2():
@@ -86,7 +86,7 @@ class pedlParser(Parser):
         self._token('}')
 
         self.ast._define(
-            ['struct', 'fields'],
+            ['struct_id', 'fields'],
             []
         )
 
@@ -122,7 +122,7 @@ class pedlParser(Parser):
         self._token('=')
         self._token('update(')
         self._expression_()
-        self.ast['update'] = self.last_node
+        self.ast['update_exp'] = self.last_node
         self._token(')')
         with self._optional():
             self._token('when')
@@ -133,7 +133,7 @@ class pedlParser(Parser):
             self.ast['event_action'] = self.last_node
 
         self.ast._define(
-            ['monitor', 'monitor_params', 'event', 'event_params', 'update', 'when', 'event_action'],
+            ['monitor', 'monitor_params', 'event', 'event_params', 'update_exp', 'when', 'event_action'],
             []
         )
 

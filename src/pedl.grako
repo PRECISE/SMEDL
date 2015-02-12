@@ -18,7 +18,7 @@ new_mon
     
 structure
     =
-    struct:identifier '{' fields:{field}* '}'
+    struct_id:identifier '{' fields:{field}* '}'
     ;
 
 field
@@ -28,7 +28,7 @@ field
 
 event_def
     =
-    monitor:identifier '(' monitor_params:identifier_list ').' event:identifier ['(' event_params:identifier_list ')'] '=' 'update(' update:expression ')' ['when' when:expression] [event_action:action]
+    monitor:identifier '(' monitor_params:identifier_list ').' event:identifier ['(' event_params:identifier_list ')'] '=' 'update(' update_exp:expression ')' ['when' when:expression] [event_action:action]
     ;
     
 action
