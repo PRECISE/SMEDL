@@ -1,5 +1,3 @@
-
-
 object SafeMon
 identity
   opaque id;

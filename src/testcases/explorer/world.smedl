@@ -1,0 +1,15 @@
+object World
+identity
+  opaque id;
+state
+  int[][] world;
+events
+  internal created(), spawn(int, int);
+  exported view(int, int);
+scenarios
+  creation:
+    Empty -> created() -> View
+  view:
+    View -> view(x, y) -> View
+  spawn:
+    View -> spawn(x, y) when world[x][y] == 0 { world[x][y] = spawn(x, y) } -> View  // it would be nice to have an 'else' that ensures world[x][y] does not get changed if it's not 0

@@ -1,14 +1,36 @@
-
-
-object SafeMon
+object Explorer
 identity
   opaque id;
 state
-  int upbound, lobound;
+  int x, y, heading, interest_threshold;
 events
-  imported updatePos(int), changeDir;
+  imported view(int, int);
+  exported drive(int, int, int), turn(int); // drive(x, y, speed)
+  internal found(), retrieved();
 scenarios
-  sc1:
-    SafeMon -> updatePos(pos) when pos == upbound || pos == lobound -> Switch
-    Switch -> changeDir() -> SafeMon
-    SafeMon -> changeDir() -> SafeMon
+  main:
+    Explore -> found() -> Retrieve
+    Retrieve -> retrieved() -> Explore
+  explore:
+    Explore -> view(x, y) when contains_object(view(x, y)) -> Retrieve
+      else -> Scan
+    Scan -> turn() when turn() != heading -> Scan
+      else -> Drive
+  retrieve:
+    Retrieve -> drive(x, y, heading) when x != object.x && y != object.y -> Retrieve
+    Retrieve -> retrieved() -> Explore
+  mud:
+    Drive -> "slow down" -> Drive
+  ice:
+    Drive -> "slower turns" -> Drive
+    
+
+  turn:
+    Drive -> "perform turn" -> Drive
+  climb:
+    Drive -> "slow down" -> Drive
+  obstacle:
+    Drive -> turn() -> drive() -> Drive
+  hill:
+    Drive -> "prepare to climb" -> Drive
+  

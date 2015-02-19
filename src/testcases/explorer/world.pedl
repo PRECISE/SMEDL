@@ -1,0 +1,4 @@
+new World(id, world) = create WorldData { id = this; world = this.world}
+
+World(id).create() = call(world().make_map()) when id == world().wd
+World(id).spawn(x, y) = call(world().spawn()) when id == world().wd 

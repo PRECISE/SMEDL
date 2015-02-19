@@ -1,6 +1,5 @@
-new SafeMon(id,upbound,lobound) = 
-    create MeanderData { id = this; upbound = this.thresh_up; lobound = this.thresh_dn; }
+new Explorer(id, x, y, heading) = 
+    create ExplorerData { id = this; x = this.x; y = this.y; heading = this.heading}
 
-SafeMon(id).updatePos(pos) = 
-    update(meander().pos) when id == meander().md { pos = meander().pos; }
-SafeMon(id).changeDir = update(meander().d) when id == meander().md
+Explorer(id).found() = update(explorer().found) when id == explorer().ed
+Explorer(id).drive(x, y, heading) = update(explorer().position) when id == explorer().ed // change this to monitor the drive() function instead
