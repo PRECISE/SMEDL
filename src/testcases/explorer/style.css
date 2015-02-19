@@ -1,0 +1,11 @@
+body{
+    background-image: url("mars2.jpg");
+    background-size: 100% 100%;
+    background-repeat: no-repeat;
+}
+
+img{
+   position: absolute;
+   top:150px;
+   left:150px;
+}
