@@ -1,0 +1,6 @@
+new SafeMon(id,upbound,lobound) = 
+    create MeanderData { id = this; upbound = this.thresh_up; lobound = this.thresh_dn; }
+
+SafeMon(id).updatePos(pos) = 
+    update(meander().pos) when id == meander().md { pos = meander().pos; }
+SafeMon(id).changeDir = update(meander().d) when id == meander().md

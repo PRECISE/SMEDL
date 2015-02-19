@@ -18,17 +18,50 @@ new_mon
     
 structure
     =
-    struct:identifier '{' fields:{field}* '}'
+    struct_id:identifier '{' fields:{field}* '}'
     ;
 
 field
     =
-    variable:identifier '=' value:identifier ';'
+    variable:identifier '=' value:expression ';'
     ;
 
 event_def
     =
-    monitor:identifier '(' monitor_params:identifier_list ').' event:identifier ['(' event_params:identifier_list ')'] '=' 'update(' update:expression ')' ['when' when:expression]
+    monitor:identifier '(' monitor_params:identifier_list ').' event:identifier ['(' event_params:identifier_list ')'] '=' 'update(' update_exp:expression ')' ['when' when:expression] [event_action:action]
+    ;
+    
+action
+    =
+    '{' actions+:nonempty_action_item_list '}'
+    ;
+
+action_item
+    =
+      state_update:state_update
+    | raise:raise_stmt
+    | instantiation:instantiation_stmt
+    ;
+
+state_update
+    =
+      target:target '=' expression:expression ';'
+    | target:target '(' expression_list+:expression_list ')'
+    ;
+
+raise_stmt
+    =
+    'raise' id:identifier ['(' expr_list+:expression_list ')']
+    ;
+
+instantiation_stmt
+    =
+    'new' id:identifier ['(' state_update_list+:state_update_list ')']
+    ;
+
+type
+    =
+    ?/[a-zA-Z][A-Za-z0-9_]*/?
     ;
 
 identifier
@@ -48,20 +81,27 @@ float
 
 expression
     =
-      @:and_expr {'||' or:and_expr}*
-    | '!' not_expr:expression
-    | '(' @:expression ')'
+      or_ex:and_expr {'||' or_ex:and_expr}+
+    | @:and_expr
     ;
 
 and_expr
     =
-      and:comp_expr {'&&' and:comp_expr}+
+      and_ex:sub_expr {'&&' and_ex:sub_expr}+
+    | @:sub_expr
+    ;
+
+sub_expr
+    =
+      '!(' not_ex:expression ')'
+    | '(' @:expression ')'
     | @:comp_expr
     ;
 
 comp_expr
     =
       comp:arith_expr {operator:('>' | '<' | '>=' | '<=' | '==') comp:arith_expr}+
+    | '(' @:comp_expr ')'
     | @:arith_expr
     ;
 
@@ -74,6 +114,7 @@ arith_expr
 term
     =
       {unary:('+' | '-' | '~')}* atom:atom {trailer:trailer}*
+    | {unary:('+' | '-' | '~')}* '(' @:arith_expr ')'
     ;
 
 atom
@@ -92,6 +133,12 @@ trailer
     | '(' [params:expression_list] ')'
     | '.' dot:identifier {trailer:trailer}*
     ;
+    
+target
+    =
+    (* To be improved *)
+    identifier
+    ;
 
 expression_list
     =
@@ -103,4 +150,15 @@ identifier_list
     =
       @:identifier {',' @:identifier}*
     | ()
+    ;
+
+state_update_list
+    =
+      @:state_update {',' @:state_update}*
+    | ()
+    ;
+
+nonempty_action_item_list
+    =
+      @:action_item {',' @:action_item}*
     ;
