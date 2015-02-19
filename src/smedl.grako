@@ -110,8 +110,8 @@ and_expr
 
 sub_expr
     =
-      '!(' not_ex:expression ')'
-    | '(' @:expression ')'
+      {'!!'}*'!(' not_ex:expression ')'
+    | {'!!'}*'(' @:expression ')'
     | @:comp_expr
     ;
 
@@ -130,7 +130,7 @@ arith_expr
 
 term
     =
-      {unary:('+' | '-' | '~')}* atom:atom {trailer:trailer}*
+      {unary:('+' | '-' | '~' | '!')}* atom:atom {trailer:trailer}*
     | {unary:('+' | '-' | '~')}* '(' @:arith_expr ')'
     ;
 

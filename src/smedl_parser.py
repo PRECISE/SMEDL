@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 2, 9, 19, 5, 20, 0)
+__version__ = (2015, 2, 11, 19, 2, 15, 2)
 
 __all__ = [
     'smedlParser',
@@ -337,11 +337,19 @@ class smedlParser(Parser):
     def _sub_expr_(self):
         with self._choice():
             with self._option():
+
+                def block0():
+                    self._token('!!')
+                self._closure(block0)
                 self._token('!(')
                 self._expression_()
                 self.ast['not_ex'] = self.last_node
                 self._token(')')
             with self._option():
+
+                def block2():
+                    self._token('!!')
+                self._closure(block2)
                 self._token('(')
                 self._expression_()
                 self.ast['@'] = self.last_node
@@ -445,7 +453,9 @@ class smedlParser(Parser):
                                 self._token('-')
                             with self._option():
                                 self._token('~')
-                            self._error('expecting one of: + - ~')
+                            with self._option():
+                                self._token('!')
+                            self._error('expecting one of: ! + - ~')
                     self.ast['unary'] = self.last_node
                 self._closure(block0)
                 self._atom_()

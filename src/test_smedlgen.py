@@ -120,7 +120,10 @@ class TestSmedlgen(unittest.TestCase):
         self.writer.add_t("sc1", "SafeMon -> changeDir() when obj.thing.thing2[5] == 6 -> SafeMon")
         self.writer.add_t("sc1", "SafeMon -> changeDir() when obj.thing % 5 == 6 && true || x + 5 == null -> SafeMon")
         self.writer.add_t("sc1", "SafeMon -> changeDir() when ((x == 5 || true || y(x)) && z > 3 || b < c) && d -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when !(a < b) && !c || !!!!(d + e) || f < !!!g -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when !(a < b) && !c || !!!!!(d + e) || f < !!!g -> SafeMon")
         self.make_ast()
+        print(json.dumps(self.ast, indent=2))
         term = self.ast['scenarios'][0][0]['traces'][3]['trace_step'][1]['step_event']['when']
         self.assertEquals("+-~~+-~~5", smedlgen.formatGuard(term))
         term = self.ast['scenarios'][0][0]['traces'][4]['trace_step'][1]['step_event']['when']
@@ -131,6 +134,10 @@ class TestSmedlgen(unittest.TestCase):
         self.assertEquals("(obj.thing % 5 == 6 && true) || x + 5 == null", smedlgen.formatGuard(term))
         term = self.ast['scenarios'][0][0]['traces'][7]['trace_step'][1]['step_event']['when']
         self.assertEquals("(((x == 5 || true || y(x)) && z > 3) || b < c) && d", smedlgen.formatGuard(term))
+        term = self.ast['scenarios'][0][0]['traces'][8]['trace_step'][1]['step_event']['when']
+        self.assertEquals("(!(a < b) && !c) || d + e || f < !!!g", smedlgen.formatGuard(term))
+        term = self.ast['scenarios'][0][0]['traces'][9]['trace_step'][1]['step_event']['when']
+        self.assertEquals("(!(a < b) && !c) || !(d + e) || f < !!!g", smedlgen.formatGuard(term))
 
     def test_guardToString(self):
         self.writer.add_t("sc1", "SafeMon -> changeDir() when 5 -> SafeMon")

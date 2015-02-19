@@ -145,17 +145,10 @@ def outputSource(symbolTable, fsm, filename):
         else:
             params = struct
         out.write('void ' + m + '(' + params + ') {\n')
-        if len(stateset) > 1:
+        if len(stateset) > 0:
             out.write('  switch (currentState) {\n')
             for t in fsm.getTransitionsByAction(str(m)):
-                out.write('    case ' + string.upper(t.start.name) + ':\n')
-                if t.guard is not None:
-                    out.write('      if(' + t.guard + ') {\n')
-                    out.write('        currentState = ' + string.upper(t.next.name) + ';\n')
-                    out.write('      }\n')
-                else:
-                    out.write('      currentState = ' + string.upper(t.next.name) + ';\n')
-                out.write('      break;\n')
+                out.write(writeCaseTransition(t))
             out.write('    default:\n')      
             out.write('      //Raise error of some sort\n')
             out.write('      break;\n')
@@ -165,6 +158,17 @@ def outputSource(symbolTable, fsm, filename):
         out.write('}\n\n')
 
     out.close()
+
+def writeCaseTransition(trans):
+    output = ['    case ' + string.upper(trans.start.name) + ':\n']
+    if trans.guard is not None:
+        output.append('      if(' + trans.guard + ') {\n')
+        output.append('        currentState = ' + string.upper(trans.next.name) + ';\n')
+        output.append('      }\n')
+    else:
+        output.append('      currentState = ' + string.upper(trans.next.name) + ';\n')
+    output.append('      break;\n')   
+    return "".join(output)
 
 def findFunctionParams(function, params, ast):
     names = []
@@ -225,9 +229,7 @@ def guardToString(object):
                     arith = val.get('arith')
                     if arith:
                         operators = val.get('operator')
-                        result = [None]*(len(arith)+len(operators))
-                        result[::2] = [termToString(term) for term in arith]
-                        result[1::2] = operators
+                        result = arithToString(arith, operators)
                         comps.append(" ".join(result))
                     else:
                         comps.append(termToString(val))
@@ -246,12 +248,16 @@ def guardToString(object):
                 return ".%s%s"%(v, trailer)
             elif k == 'arith':
                 operators = object.get('operator')
-                result = [None]*(len(v)+len(operators))
-                result[::2] = [termToString(term) for term in v]
-                result[1::2] = operators
+                result = arithToString(v, operators)
                 return " ".join(result)
             else:
                 return termToString(object)
+
+def arithToString(terms, operators):
+    result = [None]*(len(terms)+len(operators))
+    result[::2] = [termToString(term) for term in terms]
+    result[1::2] = operators
+    return result
 
 def termToString(term):
     if isinstance(term, AST):
