@@ -1,11 +1,31 @@
 body{
+    background-color: black;
+}
+
+#map {
+    position: absolute;
+    top:0;
+    left:0;
     background-image: url("mars2.jpg");
     background-size: 100% 100%;
     background-repeat: no-repeat;
+    width:1000px;
+    height:500px;
 }
 
 img{
-   position: absolute;
-   top:150px;
-   left:150px;
+    position: absolute;
+}
+
+#explorer{
+   top:0px;
+   left:0px;
+   z-index:1;
+}
+
+.control{
+    color:white;
+    position: absolute;
+    top:510px;
+    left:20px;
 }

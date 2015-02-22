@@ -7,10 +7,14 @@
     <script src="explorer.js"></script>
 </head>
 <body>
-    <img src="roomba.png" id="img"/>
-    <form>
-        <input id="info" type="button" value="Move!" onclick="moveOnRoute();" />
-    </form>
-    <div id="angle"></div>
+    <div id="map">
+        <img src="roomba.png" id="explorer"/>
+    </div>
+    <div class="control">
+        <form>
+            <input id="info" type="button" value="Move!" onclick="moveOnRoute();" />
+        </form>
+        <div id="angle"></div>
+    </div>
 </body>
 </html>

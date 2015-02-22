@@ -1,9 +1,7 @@
 #include <stdio.h>
 
-int main( int argc, char *argv[] ) {
-    if(argc == 2) {
-        printf("10 -75 95 -15 -730 175 225 90 30 -55 -170 20 45");
-    }
+int main() {
+    printf("2,1 0,3 -1,4 -2,1 -1,0 0,-4 2,-3 2,-2 -2,4 1,4");
     return 0;
 }
 
