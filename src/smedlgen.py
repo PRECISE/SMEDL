@@ -50,7 +50,7 @@ def parseToSymbolTable(label, object, symbolTable):
                 else:
                     symbolTable.add(v, {'type' : 'state', 'datatype' : object['type']})
             if '_events' in label and k == 'event_id':
-                symbolTable.add(v, {'type' : 'event'})
+                symbolTable.add(v, {'type' : 'event', 'params' : ''})
             if label == 'traces' and k == 'trace_step':
                 #print('ADDtraces: ' + k + '   ' + str(v))
                 for step in v:
@@ -179,11 +179,13 @@ def findFunctionParams(function, params, ast):
         for elem in params:
             if isinstance(elem, AST):
                 names.append(str(elem['atom']))
-    types = getParamTypes(function, ast['imported_events'][0])
+    types = getParamTypes(function, ast['imported_events'])
     if types is None and ast['exported_events']:
-        types = getParamTypes(function, ast['exported_events'][0])
+        types = getParamTypes(function, ast['exported_events'])
+    if types is None and ast['internal_events']:
+        types = getParamTypes(function, ast['internal_events'])      
     if types is None: # probably never raised bc called only for events in symbol table 
-        raise ValueError("Unrecognized function, %s, found in scenarios") 
+        raise ValueError("Unrecognized function, %s, found in scenarios"%function) 
     if len(names) != len(types):
         raise ValueError("Invalid number of parameters for %s"%function)
     return (", ".join(["%s %s"%(types[i],names[i]) for i in range(len(names))]))

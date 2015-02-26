@@ -11,9 +11,12 @@ object
     ['identity' identity+:{variable_declaration}+]
     ['state' state+:{variable_declaration}+]
     'events'
+        { 'internal' internal_events+:event_definition_list
+        | 'exported' exported_events+:event_definition_list}*  
         'imported' imported_events+:event_definition_list
-        ['internal' internal_events+:event_definition_list]
-        ['exported' exported_events+:event_definition_list]
+        { 'imported' imported_events+:event_definition_list
+        | 'internal' internal_events+:event_definition_list
+        | 'exported' exported_events+:event_definition_list}* 
     'scenarios'
         scenarios+:{scenario_definition}+
     $

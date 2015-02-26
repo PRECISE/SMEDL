@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 2, 26, 17, 17, 30, 3)
+__version__ = (2015, 2, 26, 19, 53, 42, 3)
 
 __all__ = [
     'smedlParser',
@@ -59,29 +59,51 @@ class smedlParser(Parser):
 
             self.ast.setlist('state', self.last_node)
         self._token('events')
+
+        def block7():
+            with self._choice():
+                with self._option():
+                    self._token('internal')
+                    self._event_definition_list_()
+                    self.ast.setlist('internal_events', self.last_node)
+                with self._option():
+                    self._token('exported')
+                    self._event_definition_list_()
+                    self.ast.setlist('exported_events', self.last_node)
+                self._error('no available options')
+        self._closure(block7)
         self._token('imported')
         self._event_definition_list_()
         self.ast.setlist('imported_events', self.last_node)
-        with self._optional():
-            self._token('internal')
-            self._event_definition_list_()
-            self.ast.setlist('internal_events', self.last_node)
-        with self._optional():
-            self._token('exported')
-            self._event_definition_list_()
-            self.ast.setlist('exported_events', self.last_node)
+
+        def block12():
+            with self._choice():
+                with self._option():
+                    self._token('imported')
+                    self._event_definition_list_()
+                    self.ast.setlist('imported_events', self.last_node)
+                with self._option():
+                    self._token('internal')
+                    self._event_definition_list_()
+                    self.ast.setlist('internal_events', self.last_node)
+                with self._option():
+                    self._token('exported')
+                    self._event_definition_list_()
+                    self.ast.setlist('exported_events', self.last_node)
+                self._error('no available options')
+        self._closure(block12)
         self._token('scenarios')
 
-        def block11():
+        def block18():
             self._scenario_definition_()
-        self._positive_closure(block11)
+        self._positive_closure(block18)
 
         self.ast.setlist('scenarios', self.last_node)
         self._check_eof()
 
         self.ast._define(
             ['object'],
-            ['imports', 'identity', 'state', 'imported_events', 'internal_events', 'exported_events', 'scenarios']
+            ['imports', 'identity', 'state', 'internal_events', 'exported_events', 'imported_events', 'scenarios']
         )
 
     @graken()
@@ -750,7 +772,7 @@ class smedlSemantics(object):
         return ast
 
 
-def main(filename, startrule, trace=False, whitespace=None, nameguard=None):
+def main(filename, startrule, trace=False, whitespace=None):
     import json
     with open(filename) as f:
         text = f.read()
@@ -760,8 +782,7 @@ def main(filename, startrule, trace=False, whitespace=None, nameguard=None):
         startrule,
         filename=filename,
         trace=trace,
-        whitespace=whitespace,
-        nameguard=nameguard)
+        whitespace=whitespace)
     print('AST:')
     print(ast)
     print()
@@ -785,9 +806,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Simple parser for smedl.")
     parser.add_argument('-l', '--list', action=ListRules, nargs=0,
                         help="list all rules and exit")
-    parser.add_argument('-n', '--no-nameguard', action='store_true',
-                        dest='no_nameguard',
-                        help="disable the 'nameguard' feature")
     parser.add_argument('-t', '--trace', action='store_true',
                         help="output trace information")
     parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
@@ -801,6 +819,5 @@ if __name__ == '__main__':
         args.file,
         args.startrule,
         trace=args.trace,
-        whitespace=args.whitespace,
-        nameguard=not args.no_nameguard
+        whitespace=args.whitespace
     )
