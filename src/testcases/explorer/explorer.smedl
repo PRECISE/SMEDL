@@ -5,8 +5,8 @@ state
   int x, y, heading, interest_threshold;
 events
   imported view(int, int);
-  exported drive(int, int, int), turn(int); // drive(x, y, speed)
   internal found(), retrieved();
+  exported drive(int, int, int), turn(int); // drive(x, y, speed)
 scenarios
   main:
     Explore -> found() -> Retrieve
@@ -19,12 +19,14 @@ scenarios
   retrieve:
     Retrieve -> drive(x, y, heading) when x != object.x && y != object.y -> Retrieve
     Retrieve -> retrieved() -> Explore
+    
+  // Add check that it doesn't go off the map
+
+  /*
   mud:
     Drive -> "slow down" -> Drive
   ice:
     Drive -> "slower turns" -> Drive
-    
-
   turn:
     Drive -> "perform turn" -> Drive
   climb:
@@ -33,4 +35,5 @@ scenarios
     Drive -> turn() -> drive() -> Drive
   hill:
     Drive -> "prepare to climb" -> Drive
+  */
   

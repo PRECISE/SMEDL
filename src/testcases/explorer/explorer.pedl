@@ -2,4 +2,4 @@ new Explorer(id, x, y, heading) =
     create ExplorerData { id = this; x = this.x; y = this.y; heading = this.heading}
 
 Explorer(id).found() = update(explorer().found) when id == explorer().ed
-Explorer(id).drive(x, y, heading) = update(explorer().position) when id == explorer().ed // change this to monitor the drive() function instead
+Explorer(id).drive(x, y, heading) = update(explorer().position) when id == explorer().ed  // Change this to monitor the drive() function instead
