@@ -8,25 +8,26 @@ var failed = false;
 $(document).ready(function() { 
     //initExplorer(1,0,-45);
     randomInitExplorer();
-    addTargets(3);
-    addObstacles(7);
-    $("#angle").text(targets); 
+    addTargets(20);
+    addObstacles(50);
+    makeTextMap();
+    // $("#label").text(mapToString(false));
+    $("#label").text(getRoute()); 
 });
 
 function randomInitExplorer() {
-    y = Math.floor(Math.random() * 5);
-    x = Math.floor(Math.random() * 10);
+    y = Math.floor(Math.random() * 10);
+    x = Math.floor(Math.random() * 20);
     angle = Math.floor(Math.random() * 8) * 45;
     initExplorer(y, x, angle);
 }
-
 
 function initExplorer(y, x, angle) {
     coordinates.y = y;
     coordinates.x = x;
     var explorer = document.getElementById("explorer");
-    explorer.style.top = (y * 100) + "px";
-    explorer.style.left = (x * 100) + "px";
+    explorer.style.top = (y * 50) + "px";
+    explorer.style.left = (x * 50) + "px";
     $("#explorer").rotate(angle);
     orientation = angle;
     drive_angles.push(angle);
@@ -45,7 +46,8 @@ function moveOnRoute() {
 
 function getRoute() {
     var xmlHttp = new XMLHttpRequest();
-    xmlHttp.open( "GET", "control.php", false );
+    var params_string = mapToString(false);
+    xmlHttp.open( "GET", "control.php?coordinates=" + params_string, false );
     xmlHttp.send( null );
     return xmlHttp.responseText;
 }
@@ -81,7 +83,7 @@ function calculateMoveTimes(angles) {
     for (i = 1; i < drive_angles.length; i++) { 
         rotation_time = calculateRotationTime(i);
         running_total = move_times[i - 1];
-        move_times.push(running_total + rotation_time + 2000);
+        move_times.push(running_total + rotation_time + 600); //time 2000
     }  
     return move_times; 
 }
@@ -94,7 +96,7 @@ function calculateRotationTime(end_index) {
     if(difference > 180) {
         difference = 360 - difference;
     }  
-    return difference * 30;
+    return difference * 10; //time 20
 }
 
 function calculateDegreeDifference(end_index) {
@@ -108,8 +110,8 @@ function moveOnGrid(loc_change, index) {
     if(failed) {
         return;
     } 
-    var y = 100 * loc_change[0];
-    var x = 100 * loc_change[1];
+    var y = 50 * loc_change[0];
+    var x = 50 * loc_change[1];
     var left_direction = "+=" + x;
     var top_direction = "+=" + y;
     var end_angle = drive_angles[index + 1];
@@ -124,13 +126,13 @@ function moveOnGrid(loc_change, index) {
         animateTo: end_angle,
         easing: $.easing.easeInOutElastic
     });
-    window.setTimeout(function(){moveExplorer(left_direction, top_direction);}, 1000);
+    window.setTimeout(function(){moveExplorer(left_direction, top_direction);}, calculateRotationTime(index + 1)); //time 800
     coordinates.y = coordinates.y + parseInt(loc_change[0]);
     coordinates.x = coordinates.x + parseInt(loc_change[1]);
 }
 
 function moveExplorer(left_direction, top_direction) {
-    $("#explorer").animate({left: left_direction, top: top_direction}, 2000);
+    $("#explorer").animate({left: left_direction, top: top_direction}, 600);   //time 1600
 }
 
 function checkForItems() {
@@ -160,14 +162,14 @@ function addTargets(quantity) {
 function addObstacles(quantity) {
     generateObstacleCoordinates(quantity);
     for(i = 0; i < obstacles.length; i++) {
-        addItem(obstacles[i][0], obstacles[i][1], i, "rock1");
+        addItem(obstacles[i][0], obstacles[i][1], i, "rock");
     }
 }
 
 function generateTargetCoordinates(quantity) {
     while(targets.length < quantity) {
-        y = Math.floor(Math.random() * 5);
-        x = Math.floor(Math.random() * 10);
+        y = Math.floor(Math.random() * 10);
+        x = Math.floor(Math.random() * 20);
         if(validItemLocation(y,x)) {
             targets.push([y,x]);    
         }
@@ -176,8 +178,8 @@ function generateTargetCoordinates(quantity) {
 
 function generateObstacleCoordinates(quantity) {
     while(obstacles.length < quantity) {
-        y = Math.floor(Math.random() * 5);
-        x = Math.floor(Math.random() * 10);
+        y = Math.floor(Math.random() * 10);
+        x = Math.floor(Math.random() * 20);
         if(validItemLocation(y,x)) {
             obstacles.push([y,x]);    
         }
@@ -202,8 +204,8 @@ function validItemLocation(y, x) {
 }
 
 function addItem(y, x, id, type) {
-    y_coord = y * 100;
-    x_coord = x * 100;
+    y_coord = y * 50;
+    x_coord = x * 50;
     var img = document.createElement("img");
     img.style.top = y_coord + "px";
     img.style.left = x_coord + "px";
@@ -212,4 +214,35 @@ function addItem(y, x, id, type) {
     src.appendChild(img);
     img.id = "img" + y + x;
     $("#img" + y + x).rotate(Math.floor(Math.random() * 360));
+}
+
+function makeTextMap() {
+    map = [];
+    for(i = 0; i < 10; i++) {
+        var row = [];
+        for(j = 0; j < 20; j++) {
+            row.push(0);
+        }
+        map.push(row);
+    }
+    // map[coordinates.y][coordinates.x] = "x";
+    for(i = 0; i < targets.length; i++) {
+        map[targets[i][0]][targets[i][1]] = 1;
+    }
+    for(i = 0; i < obstacles.length; i++) {
+        map[obstacles[i][0]][obstacles[i][1]] = -1;
+    }
+    return map;
+}
+
+function mapToString(block) {
+    str = coordinates.y + "%20" + coordinates.x + "%20";
+    for(i = 0; i < 10; i++) {
+        if(block) {
+            str = str + "\n" + map[i].join("\t");
+        } else {
+            str = str + map[i].join("%20") + "%20";
+        }
+    }
+    return str;
 }

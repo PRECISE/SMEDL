@@ -8,13 +8,13 @@
 </head>
 <body>
     <div id="map">
-        <img src="roomba.png" id="explorer"/>
+        <img src="roomba_small.png" id="explorer"/>
     </div>
     <div class="control">
         <form>
             <input id="info" type="button" value="Move!" onclick="moveOnRoute();" />
         </form>
-        <div id="angle"></div>
+        <div id="label"></div>
     </div>
 </body>
 </html>
