@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 2, 11, 19, 2, 15, 2)
+__version__ = (2015, 2, 26, 17, 17, 30, 3)
 
 __all__ = [
     'smedlParser',
@@ -34,23 +34,28 @@ class smedlParser(Parser):
 
     @graken()
     def _object_(self):
+
+        def block1():
+            self._import_definition_()
+        self._closure(block1)
+        self.ast.setlist('imports', self.last_node)
         self._token('object')
         self._identifier_()
         self.ast['object'] = self.last_node
         with self._optional():
             self._token('identity')
 
-            def block2():
+            def block4():
                 self._variable_declaration_()
-            self._positive_closure(block2)
+            self._positive_closure(block4)
 
             self.ast.setlist('identity', self.last_node)
         with self._optional():
             self._token('state')
 
-            def block4():
+            def block6():
                 self._variable_declaration_()
-            self._positive_closure(block4)
+            self._positive_closure(block6)
 
             self.ast.setlist('state', self.last_node)
         self._token('events')
@@ -58,21 +63,25 @@ class smedlParser(Parser):
         self._event_definition_list_()
         self.ast.setlist('imported_events', self.last_node)
         with self._optional():
+            self._token('internal')
+            self._event_definition_list_()
+            self.ast.setlist('internal_events', self.last_node)
+        with self._optional():
             self._token('exported')
             self._event_definition_list_()
             self.ast.setlist('exported_events', self.last_node)
         self._token('scenarios')
 
-        def block8():
+        def block11():
             self._scenario_definition_()
-        self._positive_closure(block8)
+        self._positive_closure(block11)
 
         self.ast.setlist('scenarios', self.last_node)
         self._check_eof()
 
         self.ast._define(
             ['object'],
-            ['identity', 'state', 'imported_events', 'exported_events', 'scenarios']
+            ['imports', 'identity', 'state', 'imported_events', 'internal_events', 'exported_events', 'scenarios']
         )
 
     @graken()
@@ -91,6 +100,17 @@ class smedlParser(Parser):
 
         self.ast._define(
             ['type', 'var'],
+            []
+        )
+
+    @graken()
+    def _import_definition_(self):
+        self._token('#import')
+        self._identifier_()
+        self.ast['import_id'] = self.last_node
+
+        self.ast._define(
+            ['import_id'],
             []
         )
 
@@ -384,7 +404,9 @@ class smedlParser(Parser):
                                 self._token('<=')
                             with self._option():
                                 self._token('==')
-                            self._error('expecting one of: < <= == > >=')
+                            with self._option():
+                                self._token('!=')
+                            self._error('expecting one of: != < <= == > >=')
                     self.ast['operator'] = self.last_node
                     self._arith_expr_()
                     self.ast['comp'] = self.last_node
@@ -637,6 +659,9 @@ class smedlSemantics(object):
     def variable_declaration(self, ast):
         return ast
 
+    def import_definition(self, ast):
+        return ast
+
     def event_definition(self, ast):
         return ast
 
@@ -725,7 +750,7 @@ class smedlSemantics(object):
         return ast
 
 
-def main(filename, startrule, trace=False, whitespace=None):
+def main(filename, startrule, trace=False, whitespace=None, nameguard=None):
     import json
     with open(filename) as f:
         text = f.read()
@@ -735,7 +760,8 @@ def main(filename, startrule, trace=False, whitespace=None):
         startrule,
         filename=filename,
         trace=trace,
-        whitespace=whitespace)
+        whitespace=whitespace,
+        nameguard=nameguard)
     print('AST:')
     print(ast)
     print()
@@ -759,6 +785,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Simple parser for smedl.")
     parser.add_argument('-l', '--list', action=ListRules, nargs=0,
                         help="list all rules and exit")
+    parser.add_argument('-n', '--no-nameguard', action='store_true',
+                        dest='no_nameguard',
+                        help="disable the 'nameguard' feature")
     parser.add_argument('-t', '--trace', action='store_true',
                         help="output trace information")
     parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
@@ -772,5 +801,6 @@ if __name__ == '__main__':
         args.file,
         args.startrule,
         trace=args.trace,
-        whitespace=args.whitespace
+        whitespace=args.whitespace,
+        nameguard=not args.no_nameguard
     )
