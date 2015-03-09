@@ -8,6 +8,7 @@ from fsm import *
 from grako.ast import AST
 import os
 import json
+import collections
 
 def main(filename, trace=False, whitespace=None):
     with open(filename) as f:
@@ -25,18 +26,21 @@ def main(filename, trace=False, whitespace=None):
     print('JSON:')
     print(json.dumps(ast, indent=2))
     print()
+    # TODO: iterate through imports and make list of resulting ASTs
     symbolTable = smedlSymbolTable()
     parseToSymbolTable('top', ast, symbolTable)
-    fsm = generateFSM(ast, symbolTable)
+    allFSMs = generateFSMs(ast, symbolTable)
+    # allFSMs['default'] = makeDefaultScenario(symbolTable)
     print()
     print('Symbol Table:')
     print(symbolTable)
     print()
     print()
-    print('FSM:')
-    print(fsm)
+    for key, fsm in allFSMs.iteritems():
+        print('\nFSM: %s\n'%key)
+        print(fsm)
     print()
-    outputSource(symbolTable, fsm, filename)
+    outputSource(symbolTable, allFSMs, filename)
 
 def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
@@ -50,7 +54,7 @@ def parseToSymbolTable(label, object, symbolTable):
                 else:
                     symbolTable.add(v, {'type' : 'state', 'datatype' : object['type']})
             if '_events' in label and k == 'event_id':
-                symbolTable.add(v, {'type' : 'event', 'params' : ''})
+                symbolTable.add(v, {'type' : 'event', 'error' : object['error'], 'params' : ''})
             if label == 'traces' and k == 'trace_step':
                 #print('ADDtraces: ' + k + '   ' + str(v))
                 for step in v:
@@ -74,10 +78,11 @@ def parseToSymbolTable(label, object, symbolTable):
             #print('LIST: ' + label)
             parseToSymbolTable(label, elem, symbolTable)
 
-def generateFSM(ast, symbolTable):
-    fsm = FSM()
-    for scenario in ast['scenarios']:
-        for trace in scenario[0]['traces']: # scenario[0] is to handle redundant list structure (a grako parser thing...)
+def generateFSMs(ast, symbolTable):
+    allFSMs = collections.OrderedDict()
+    for scenario in ast['scenarios'][0]:
+        fsm = FSM()
+        for trace in scenario['traces']: # scenario[0] is to handle redundant list structure (a grako parser thing...)
             generated_state = None
             before_state = None
             after_state = None
@@ -112,61 +117,108 @@ def generateFSM(ast, symbolTable):
                 else:
                     if get(before, 'type') != 'event' or get(after, 'type') != 'event':
                         raise TypeError("Invalid state -> state transition")
-    return fsm
+        allFSMs[scenario['scenario_id']] = fsm
+    return allFSMs
 
-def outputSource(symbolTable, fsm, filename):
+def makeDefaultScenario(symbolTable):
+    # TODO add scenario attribute to states in symbol table
+    if not symbolTable.get('STOP'):
+        symbolTable.add('STOP', {'type' : 'trace_state'})
+    if not symbolTable.get('RUN'):
+        symbolTable.add('RUN', {'type' : 'trace_state'})
+    if not symbolTable.get('default'):
+        symbolTable.add('default', {'type' : 'scenarios'}) 
+    fsm = FSM()
+    fsm.addState(State(str('RUN')))
+    fsm.addState(State(str('STOP')))
+    fsm.addTransition(Transition(fsm.getStateByName(str('RUN')), fsm.getStateByName(str('STOP')), str('error')))
+    fsm.addTransition(Transition(fsm.getStateByName(str('STOP')), fsm.getStateByName(str('RUN')), str('catch')))   
+    return fsm 
+
+def outputSource(symbolTable, allFSMs, filename):
     # Open file for output (based on input filename)
     out = open(os.path.splitext(filename)[0] + '_generated.c', 'w')
+    out.write("#include <stdlib.h>\n\n")
 
     # Output set of states
-    stateset = [state.upper() for state in fsm.states.keys()]
-    stateset_str = ", ".join(stateset)
-    out.write('enum { ' + stateset_str + ' } stateset;\n\n')
-
+    statesets = collections.OrderedDict()
+    out.write('enum { %s } scenarios;\n'%(", ".join([k.upper() for k in allFSMs.keys()])))
+    for key, fsm in allFSMs.iteritems():
+        stateset = [("%s_%s"%(state, key)).upper() for state in fsm.states.keys()]
+        statesets[key] = stateset
+        stateset_str = ", ".join(stateset)
+        out.write('enum { ' + stateset_str + ' } %s_states;\n'%key.lower())
+    errors = ['DEFAULT']
+    for error in symbolTable.getSymbolsByType('event'):
+        if symbolTable[error]['error']:
+            errors.append(error.upper())
+    out.write('enum { %s } error_types;'%(", ".join(errors)))
+    out.write('\n\n')
     # Output state variables
     state_vars = symbolTable.getSymbolsByType('state')
-    if len(state_vars) > 0:
-        out.write('struct {\n')
+    struct = symbolTable.getSymbolsByType('object')[0]
+    out.write('typedef struct %s{\n'%struct)
+    if len(state_vars) > 0:   
         for v in state_vars:
             v_attrs = symbolTable.get(v)
             out.write('  ' + v_attrs['datatype'] + ' ' + v + ';\n')
-        out.write('};\n')
-
-    # Output initial state
-    out.write('stateset currentState = ' + string.upper(stateset[0]) + ';\n\n')
+        # Output initial state
+    current_states = ", ".join(string.upper(stateset[0]) for key, stateset in statesets.iteritems())
+    out.write('  int state[%d] = { %s };\n'%(len(statesets), current_states))
+    out.write('} %s;\n\n'%struct)
 
     # Output a method for each event (switch statement to handle FSM transitions)
     methods = symbolTable.getSymbolsByType('event')
-    struct = symbolTable.getSymbolsByType('object')[0] + "* c"
     for m in methods:
         params = symbolTable.get(m, 'params')
         if len(params) > 0:
-            params = struct + ", " + params
+            params = struct + "* monitor, " + params
         else:
-            params = struct
-        out.write('void ' + m + '(' + params + ') {\n')
-        if len(stateset) > 0:
-            out.write('  switch (currentState) {\n')
-            for t in fsm.getTransitionsByAction(str(m)):
-                out.write(writeCaseTransition(t))
+            params = struct + "* monitor"
+        out.write('void ' + m + '(' + params + ') {\n')        
+
+        for key, fsm in allFSMs.iteritems():
+            # if fsm.getTransitionsByAction(str(m)): ---------------------------------------------------------------------
+            reference = 'monitor->state[%s]'%key.upper()
+            out.write('  switch (%s) {\n'%reference)                
+            for transition in fsm.getTransitionsByAction(str(m)):
+                out.write(writeCaseTransition(transition, reference, key))
             out.write('    default:\n')      
-            out.write('      //Raise error of some sort\n')
+            out.write('      catch(monitor, %s, %s, 0);\n'%(key.upper(), reference))
             out.write('      break;\n')
             out.write('  }\n')
-        else:
-            out.write('  currentState = ' + string.upper(stateset[0]) + ';\n')
+
         out.write('}\n\n')
 
+    out.write('void catch(' + struct + ' *mon, scenario scen, int next_state, error_types error) {\n')
+    out.write('  int recovered = 0;\n')
+    out.write('  switch(error) {\n')
+    for error in errors:
+        out.write('    case %s:\n'%error)
+        out.write('      //Call to specified function in user\'s recovery .h file\n')
+        out.write('      break;\n')
+    out.write('    default:\n')
+    out.write('      recovered = 1;\n')
+    out.write('      break;\n')
+    out.write('  }\n')
+    out.write('  if(recovered) {\n')
+    out.write('    mon->current_states[scen] = next_state; //Default action\n')
+    out.write('  } else {\n')
+    out.write('    exit(EXIT_FAILURE);\n')
+    out.write('  }\n')
+    out.write('  return;\n')
+    out.write('}')
     out.close()
 
-def writeCaseTransition(trans):
+
+def writeCaseTransition(trans, currentState, scenario):
     output = ['    case ' + string.upper(trans.start.name) + ':\n']
     if trans.guard is not None:
         output.append('      if(' + trans.guard + ') {\n')
-        output.append('        currentState = ' + string.upper(trans.next.name) + ';\n')
+        output.append('        %s = '%currentState + ("%s_%s"%(trans.next.name, scenario)).upper() + ';\n')
         output.append('      }\n')
     else:
-        output.append('      currentState = ' + string.upper(trans.next.name) + ';\n')
+        output.append('      %s = '%currentState + ("%s_%s"%(trans.next.name, scenario)).upper() + ';\n')
     output.append('      break;\n')   
     return "".join(output)
 

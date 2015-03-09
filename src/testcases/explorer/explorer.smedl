@@ -6,7 +6,7 @@ state
 events
   imported view(int, int);
   internal found(), retrieved();
-  exported drive(int, int, int), turn(int); // drive(x, y, speed)
+  exported drive(int, int, int), turn(); // drive(x, y, speed)
 scenarios
   main:
     Explore -> found() -> Retrieve

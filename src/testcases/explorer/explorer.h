@@ -1,3 +1,5 @@
+#ifndef EXPLORER_H
+#define EXPLORER_H
 
 int make_map(char*[]);
 int** make_temp_view();
@@ -33,3 +35,5 @@ void rotate_facing();
 int lawnmower();
 
 void print_view();
+
+#endif

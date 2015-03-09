@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import collections
+
 class FSM(object):
 
     def __init__(self):
-        self.states = {}
+        self.states = collections.OrderedDict()
         self.currentState = None
         self.transitions = []
 
