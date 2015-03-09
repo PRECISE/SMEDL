@@ -137,7 +137,7 @@ def makeDefaultScenario(symbolTable):
 
 def outputSource(symbolTable, allFSMs, filename):
     # Open file for output (based on input filename)
-    out = open(os.path.splitext(filename)[0] + '_generated.c', 'w')
+    out = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
     out.write("#include <stdlib.h>\n\n")
 
     # Output set of states
