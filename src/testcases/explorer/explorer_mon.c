@@ -11,7 +11,7 @@ typedef struct _Explorer{
   int y;
   int x;
   int heading;
-  int state[3] = { EXPLORE_MAIN, EXPLORE_EXPLORE, RETRIEVE_RETRIEVE };
+  int state[3]; // = { EXPLORE_MAIN, EXPLORE_EXPLORE, RETRIEVE_RETRIEVE };
 } _Explorer;
 
 void catch(_Explorer *, int, int, error_type);

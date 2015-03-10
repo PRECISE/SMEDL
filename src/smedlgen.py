@@ -164,7 +164,7 @@ def outputSource(symbolTable, allFSMs, filename):
             out.write('  ' + v_attrs['datatype'] + ' ' + v + ';\n')
         # Output initial state
     current_states = ", ".join(string.upper(stateset[0]) for key, stateset in statesets.iteritems())
-    out.write('  int state[%d] = { %s };\n' % (len(statesets), current_states))
+    out.write("  int state[%d]; // = { %s };\n" % (len(statesets), current_states))
     out.write('} %s;\n\n' % struct)
     
     # Output catch() declaration
