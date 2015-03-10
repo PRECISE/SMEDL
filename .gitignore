@@ -3,4 +3,4 @@ src/.coverage
 
 *.o
 
-src/testcases/explorer/explorer
+bin/
