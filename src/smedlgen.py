@@ -10,7 +10,7 @@ import os
 import json
 import collections
 
-def main(filename, trace=False, whitespace=None):
+def main(filename, trace=False, whitespace=None, helper=None):
     with open(filename) as f:
         text = f.read()
     parser = smedlParser(parseinfo=False, comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
@@ -40,7 +40,7 @@ def main(filename, trace=False, whitespace=None):
         print('\nFSM: %s\n'%key)
         print(fsm)
     print()
-    outputSource(symbolTable, allFSMs, filename)
+    outputSource(symbolTable, allFSMs, filename, helper)
 
 def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
@@ -135,25 +135,36 @@ def makeDefaultScenario(symbolTable):
     fsm.addTransition(Transition(fsm.getStateByName(str('STOP')), fsm.getStateByName(str('RUN')), str('catch')))   
     return fsm 
 
-def outputSource(symbolTable, allFSMs, filename):
+def outputSource(symbolTable, allFSMs, filename, helper):
     # Open file for output (based on input filename)
     out = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
-    out.write("#include <stdlib.h>\n\n")
+    out.write("#include <stdlib.h>\n")
+    out.write("#include <stdio.h>\n")
+    if helper:
+        out.write("#include \"%s\"\n"%helper)
+    out.write("\n")
     
     # Output set of states
     statesets = collections.OrderedDict()
     out.write('typedef enum { %s } scenario;\n' % (", ".join([k.upper() for k in allFSMs.keys()])))
+    state_enums = []
+    state_names_arrays = []
     for key, fsm in allFSMs.iteritems():
         stateset = [("%s_%s" % (state, key)).upper() for state in fsm.states.keys()]
         statesets[key] = stateset
         stateset_str = ", ".join(stateset)
-        out.write('typedef enum { ' + stateset_str + ' } %s_state;\n' % key.lower())
+        state_enums.append('typedef enum { ' + stateset_str + ' } %s_state;\n' % key.lower())
+        state_names = ", ".join(['\"%s\"'%(state) for state in fsm.states.keys()])
+        state_names_arrays.append('const char *%s_states[%d] = {%s};\n'%(key, len(fsm.states.keys()), state_names))
+    out.write(''.join(state_enums))
     errors = ['DEFAULT']
     for error in symbolTable.getSymbolsByType('event'):
         if symbolTable[error]['error']:
             errors.append(error.upper())
-    out.write('typedef enum { %s } error_type;' % (", ".join(errors)))
-    out.write('\n\n')
+    out.write('typedef enum { %s } error_type;\n' % (", ".join(errors)))    
+    out.write(''.join(state_names_arrays))
+    out.write('\n')
+
     # Output state variables
     state_vars = symbolTable.getSymbolsByType('state')
     struct = symbolTable.getSymbolsByType('object')[0]
@@ -165,10 +176,25 @@ def outputSource(symbolTable, allFSMs, filename):
         # Output initial state
     current_states = ", ".join(string.upper(stateset[0]) for key, stateset in statesets.iteritems())
     out.write("  int state[%d]; // = { %s };\n" % (len(statesets), current_states))
+    out.write("  const char **state_names[%d];\n" % (len(statesets)))
     out.write('} %s;\n\n' % struct)
     
     # Output catch() declaration
-    out.write("void catch(%s *, int, int, error_type);\n\n" % struct)
+    out.write("void raise_error(char*, const char*, char*, char*);\n\n")
+
+    out.write("%s* init%s() {\n"%(struct, struct))
+    out.write("  %s* monitor = (%s*)malloc(sizeof(%s));\n"%(struct,struct,struct))
+    scenario_index = 0
+    init_current = []
+    init_names = []
+    for key, fsm in allFSMs.iteritems():
+        init_current.append("  monitor->state[%d] = %s_%s;\n"%(scenario_index, next(iter(fsm.states)).upper(), key.upper()))
+        init_names.append("  monitor->state_names[%d] = %s_states;\n"%(scenario_index, key))
+        scenario_index += 1
+    out.write(''.join(init_current))
+    out.write(''.join(init_names))
+
+    out.write("  return monitor;\n}\n\n")
 
     # Output a method for each event (switch statement to handle FSM transitions)
     methods = symbolTable.getSymbolsByType('event')
@@ -186,31 +212,18 @@ def outputSource(symbolTable, allFSMs, filename):
             out.write('  switch (%s) {\n'%reference)                
             for transition in fsm.getTransitionsByAction(str(m)):
                 out.write(writeCaseTransition(transition, reference, key))
-            out.write('    default:\n')      
-            out.write('      catch(monitor, %s, %s, 0);\n'%(key.upper(), reference))
+            out.write('    default:\n')
+            current_state = "monitor->state_names[%s][monitor->state[%s]]"%(key.upper(), key.upper())
+            out.write('      raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n'%(key, current_state, m))      
             out.write('      break;\n')
             out.write('  }\n')
 
         out.write('}\n\n')
 
-    out.write('void catch(' + struct + ' *mon, int scen, int next_state, error_type error) {\n')
-    out.write('  int recovered = 0;\n')
-    out.write('  switch(error) {\n')
-    for error in errors:
-        out.write('    case %s:\n'%error)
-        out.write('      //Call to specified function in user\'s recovery .h file\n')
-        out.write('      break;\n')
-    out.write('    default:\n')
-    out.write('      recovered = 1;\n')
-    out.write('      break;\n')
-    out.write('  }\n')
-    out.write('  if(recovered) {\n')
-    out.write('    mon->state[scen] = next_state; //Default action\n')
-    out.write('  } else {\n')
-    out.write('    exit(EXIT_FAILURE);\n')
-    out.write('  }\n')
-    out.write('  return;\n')
-    out.write('}')
+    out.write("void raise_error(char *scen, const char *state, char *action, char *type) {\n")
+    out.write("  printf(\"{\\\"scenario\\\":\\\"%s\\\", \\\"state\\\":\\\"%s\\\", \\\"" + \
+        "action\\\":\\\"%s\\\", \\\"type\\\":\\\"%s\\\"}\", scen, state, action, type);")
+    out.write("\n}\n\n")
     out.close()
 
 
@@ -370,7 +383,8 @@ if __name__ == '__main__':
                         help="output trace information")
     parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
                         help="whitespace specification")
+    parser.add_argument('-helper', '--helper', help='Header file for helper functions')
     parser.add_argument('file', metavar="FILE", help="the input file to parse")
     args = parser.parse_args()
 
-    main(args.file, trace=args.trace, whitespace=args.whitespace)
+    main(args.file, trace=args.trace, whitespace=args.whitespace, helper=args.helper)

@@ -6,19 +6,19 @@ state
 events
   imported view(int, int);
   internal found(), retrieved();
-  exported drive(int, int, int), turn(); // drive(x, y, speed)
+  exported drive(int, int, int), turn(int); // drive(x, y, speed)
 scenarios
   main:
     Explore -> found() -> Retrieve
     Retrieve -> retrieved() -> Explore
   explore:
-    Explore -> view(x, y) when contains_object(view(x, y)) -> Retrieve
+    Explore -> view(x, y) when contains_object(x, y) -> Retrieve
       else -> Scan
-    Scan -> turn() when turn() != heading -> Scan
+    Scan -> turn(facing) when facing != this.heading -> Scan
       else -> Drive
   retrieve:
     Retrieve -> drive(x, y, heading) when x != this.x && y != this.y -> Retrieve
-    Retrieve -> retrieved() -> Explore
+    Retrieve -> retrieved() {raise found()} -> Explore
     
   // Add check that it doesn't go off the map
   // We can delay events...
