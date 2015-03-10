@@ -216,8 +216,8 @@ def outputSource(symbolTable, allFSMs, filename):
 
 def writeCaseTransition(trans, currentState, scenario):
     output = ['    case %s_%s:\n'%(trans.start.name.upper() ,scenario.upper())]
-    if trans.guard is not None:
-        output.append('      if(' + trans.guard + ') {\n')
+    if trans.guard:
+        output.append('      if(' + trans.guard.replace('this.', 'monitor->') + ') {\n')
         output.append('        %s = '%currentState + ("%s_%s"%(trans.next.name, scenario)).upper() + ';\n')
         output.append('      }\n')
     else:

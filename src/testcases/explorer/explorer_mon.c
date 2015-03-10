@@ -19,9 +19,7 @@ void catch(_Explorer *, int, int, error_type);
 void retrieved(_Explorer* monitor) {
   switch (monitor->state[MAIN]) {
     case RETRIEVE_MAIN:
-      if() {
-        monitor->state[MAIN] = EXPLORE_MAIN;
-      }
+      monitor->state[MAIN] = EXPLORE_MAIN;
       break;
     default:
       catch(monitor, MAIN, monitor->state[MAIN], 0);
@@ -34,9 +32,7 @@ void retrieved(_Explorer* monitor) {
   }
   switch (monitor->state[RETRIEVE]) {
     case RETRIEVE_RETRIEVE:
-      if() {
-        monitor->state[RETRIEVE] = EXPLORE_RETRIEVE;
-      }
+      monitor->state[RETRIEVE] = EXPLORE_RETRIEVE;
       break;
     default:
       catch(monitor, RETRIEVE, monitor->state[RETRIEVE], 0);
@@ -57,7 +53,7 @@ void drive(_Explorer* monitor, int x, int y, int heading) {
   }
   switch (monitor->state[RETRIEVE]) {
     case RETRIEVE_RETRIEVE:
-      if(x != this.x && y != this.y) {
+      if(x != monitor->x && y != monitor->y) {
         monitor->state[RETRIEVE] = RETRIEVE_RETRIEVE;
       }
       break;
@@ -93,9 +89,7 @@ void turn(_Explorer* monitor) {
 void found(_Explorer* monitor) {
   switch (monitor->state[MAIN]) {
     case EXPLORE_MAIN:
-      if() {
-        monitor->state[MAIN] = RETRIEVE_MAIN;
-      }
+      monitor->state[MAIN] = RETRIEVE_MAIN;
       break;
     default:
       catch(monitor, MAIN, monitor->state[MAIN], 0);
