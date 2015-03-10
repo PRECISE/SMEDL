@@ -17,10 +17,12 @@ scenarios
     Scan -> turn() when turn() != heading -> Scan
       else -> Drive
   retrieve:
-    Retrieve -> drive(x, y, heading) when x != object.x && y != object.y -> Retrieve
+    Retrieve -> drive(x, y, heading) when x != this.x && y != this.y -> Retrieve
     Retrieve -> retrieved() -> Explore
     
   // Add check that it doesn't go off the map
+  // We can delay events...
+  // Do higher-level state switches need to make other checkers aware of their transition to allow them to change their behavior
 
   /*
   mud:
