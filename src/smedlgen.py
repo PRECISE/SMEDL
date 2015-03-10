@@ -215,7 +215,7 @@ def outputSource(symbolTable, allFSMs, filename):
 
 
 def writeCaseTransition(trans, currentState, scenario):
-    output = ['    case ' + string.upper(trans.start.name) + ':\n']
+    output = ['    case %s_%s:\n'%(trans.start.name.upper() ,scenario.upper())]
     if trans.guard is not None:
         output.append('      if(' + trans.guard + ') {\n')
         output.append('        %s = '%currentState + ("%s_%s"%(trans.next.name, scenario)).upper() + ';\n')
@@ -309,6 +309,8 @@ def guardToString(object):
                 return " ".join(result)
             else:
                 return termToString(object)
+    elif object is None:
+        return ""
 
 def arithToString(terms, operators):
     result = [None]*(len(terms)+len(operators))
