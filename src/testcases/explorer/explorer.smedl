@@ -18,7 +18,7 @@ scenarios
       else -> Drive
   retrieve:
     Retrieve -> drive(x, y, heading) when x != this.x && y != this.y -> Retrieve
-    Retrieve -> retrieved() {raise found()} -> Explore
+    Retrieve -> retrieved() -> Explore
     
   // Add check that it doesn't go off the map
   // We can delay events...
