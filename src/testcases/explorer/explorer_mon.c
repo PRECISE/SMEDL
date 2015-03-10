@@ -72,6 +72,8 @@ void drive(_Explorer* monitor, int x, int y, int heading) {
     case RETRIEVE_RETRIEVE:
       if(x != monitor->x && y != monitor->y) {
         monitor->state[RETRIEVE] = RETRIEVE_RETRIEVE;
+      } else {
+        raise_error("retrieve", monitor->state_names[RETRIEVE][monitor->state[RETRIEVE]], "drive", "DEFAULT");
       }
       break;
     default:
@@ -90,6 +92,8 @@ void turn(_Explorer* monitor, int facing) {
     case SCAN_EXPLORE:
       if(facing != monitor->heading) {
         monitor->state[EXPLORE] = GEN0_EXPLORE;
+      } else {
+        raise_error("explore", monitor->state_names[EXPLORE][monitor->state[EXPLORE]], "turn", "DEFAULT");
       }
       break;
     default:
@@ -134,6 +138,8 @@ void view(_Explorer* monitor, int x, int y) {
     case EXPLORE_EXPLORE:
       if(contains_object(x, y)) {
         monitor->state[EXPLORE] = RETRIEVE_EXPLORE;
+      } else {
+        raise_error("explore", monitor->state_names[EXPLORE][monitor->state[EXPLORE]], "view", "DEFAULT");
       }
       break;
     default:

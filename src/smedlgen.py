@@ -221,30 +221,30 @@ def outputSource(symbolTable, allFSMs, filename, helper):
         for key, fsm in allFSMs.iteritems():
             # if fsm.getTransitionsByAction(str(m)): ---------------------------------------------------------------------
             reference = 'monitor->state[%s]' % key.upper()
+            name_reference = "monitor->state_names[%s][monitor->state[%s]]"%(key.upper(), key.upper())
             out.write('  switch (%s) {\n' % reference)
             for transition in fsm.getTransitionsByAction(str(m)):
-                out.write(writeCaseTransition(transition, reference, key))
+                out.write(writeCaseTransition(transition, reference, name_reference, key, m))
             out.write('    default:\n')
-            current_state = "monitor->state_names[%s][monitor->state[%s]]"%(key.upper(), key.upper())
-            out.write('      raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n'%(key, current_state, m))      
+            out.write('      raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n'%(key, name_reference, m))      
             out.write('      break;\n')
             out.write('  }\n')
 
         out.write('}\n\n')
-        
     out.write("void raise_error(char *scen, const char *state, char *action, char *type) {\n")
     out.write("  printf(\"{\\\"scenario\\\":\\\"%s\\\", \\\"state\\\":\\\"%s\\\", \\\"" + \
         "action\\\":\\\"%s\\\", \\\"type\\\":\\\"%s\\\"}\", scen, state, action, type);")
     out.write("\n}\n\n")
     out.close()
 
-
-def writeCaseTransition(trans, currentState, scenario):
+def writeCaseTransition(trans, currentState, stateName, scenario, action):
     output = ['    case %s_%s:\n' % (trans.start.name.upper(), scenario.upper())]
     if trans.guard:
         output.append('      if(' + trans.guard.replace('this.', 'monitor->') + ') {\n')
         output.append('        %s = ' % currentState + ("%s_%s" % (trans.next.name, scenario)).upper() + ';\n')
-        output.append('      }\n')
+        output.append('      } else {\n')
+        output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
+        output.append('      }\n')   
     else:
         output.append('      %s = ' % currentState + ("%s_%s" % (trans.next.name, scenario)).upper() + ';\n')
     output.append('      break;\n')

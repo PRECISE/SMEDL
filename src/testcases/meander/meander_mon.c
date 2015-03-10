@@ -41,6 +41,8 @@ void updatePos(_SafeMon* monitor, int pos) {
     case SAFEMON_SC1:
       if(pos == monitor->upbound || pos == monitor->lobound) {
         monitor->state[SC1] = SWITCH_SC1;
+      } else {
+        raise_error("sc1", monitor->state_names[SC1][monitor->state[SC1]], "updatePos", "DEFAULT");
       }
       break;
     default:
