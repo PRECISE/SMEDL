@@ -4,22 +4,21 @@ identity
 state
   int x, y, heading, interest_threshold;
 events
-  imported view(int, int);
-  internal found(), retrieved();
-  exported drive(int, int, int), turn(int); // drive(x, y, speed)
+  imported view(int, int), drive(int, int, int), turn(int);
+  internal found();
+  exported retrieved();
 scenarios
   main:
     Explore -> found() -> Retrieve
     Retrieve -> retrieved() -> Explore
   explore:
-    Explore -> view(x, y) when contains_object(x, y) -> Retrieve
-      else -> Scan
-    Scan -> turn(facing) when facing != this.heading -> Scan
-      else -> Drive
-  retrieve:
-    Retrieve -> drive(x, y, heading) when x != this.x && y != this.y -> Retrieve
-    Retrieve -> retrieved() -> Explore
-    
+    Look -> view(x, y) when contains_object(x, y) { raise found() } -> Move
+      else -> Move
+    Move -> turn(facing) when facing != this.heading -> Look
+      else -> Move
+    Move -> drive(x, y, heading) when x == this.x && y == this.y { raise retrieved() } -> Look
+      else -> Look
+
   // Add check that it doesn't go off the map
   // We can delay events...
   // Do higher-level state switches need to make other checkers aware of their transition to allow them to change their behavior
@@ -38,4 +37,3 @@ scenarios
   hill:
     Drive -> "prepare to climb" -> Drive
   */
-  

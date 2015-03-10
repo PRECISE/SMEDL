@@ -1,5 +1,6 @@
-new Explorer(id, x, y, heading) = 
-    create ExplorerData { id = this; x = this.x; y = this.y; heading = this.heading}
-
-Explorer(id).found() = update(explorer().found) when id == explorer().ed
-Explorer(id).drive(x, y, heading) = update(explorer().position) when id == explorer().ed  // Change this to monitor the drive() function instead
+object Explorer
+events
+    new Explorer(id, x, y, heading) =
+        create ExplorerData { id = this; x = this.x; y = this.y; heading = this.heading}
+    Explorer(id).found() = update(explorer().found) when id == explorer().ed
+    Explorer(id).drive(x, y, heading) = { call(explorer().move) || update(explorer().facing) } when id == explorer().ed
