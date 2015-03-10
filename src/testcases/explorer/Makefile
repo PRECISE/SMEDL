@@ -9,15 +9,15 @@ OBJS = $(SRCS:.c=.o)
 
 ## These define the rules to make each version
 non-instrumented : explorer.o
-	$(CC) $(CFLAGS) explorer.o -o explorer
+	$(CC) $(CFLAGS) explorer.o -o bin/explorer
 
 instrumented : explorer.o explorer_mon.o
-	$(CC) $(CFLAGS) explorer.o explorer_mon.o -o explorer-instrumented
+	$(CC) $(CFLAGS) explorer.o explorer_mon.o helper.c -o bin/explorer-instrumented
 
 ## Source file rules
 explorer.o : explorer.c explorer.h
 	$(CC) $(CFLAGS) -c explorer.c
-	
+
 explorer_mon.o : explorer_mon.c explorer.h
 	$(CC) $(CFLAGS) -c explorer_mon.c
 
