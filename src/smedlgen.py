@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, division, absolute_import, unicode_literals
+from __future__ import print_function, division, absolute_import, \
+    unicode_literals
 from smedl_parser import smedlParser
 from smedl_symboltable import smedlSymbolTable
 from fsm import *
@@ -13,7 +14,9 @@ import collections
 def main(filename, trace=False, whitespace=None, helper=None):
     with open(filename) as f:
         text = f.read()
-    parser = smedlParser(parseinfo=False, comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
+    parser = smedlParser(
+        parseinfo=False,
+        comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
     ast = parser.parse(
         text,
         'object',
@@ -37,52 +40,59 @@ def main(filename, trace=False, whitespace=None, helper=None):
     print()
     print()
     for key, fsm in allFSMs.iteritems():
-        print('\nFSM: %s\n'%key)
+        print('\nFSM: %s\n' % key)
         print(fsm)
     print()
     outputSource(symbolTable, allFSMs, filename, helper)
+
 
 def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
         for k, v in object.iteritems():
             if k == 'object':
-                symbolTable.add("_%s"%v, {'type' : 'object'})
+                symbolTable.add("_%s" % v, {'type': 'object'})
             if label == 'state' and k == 'var':
                 if isinstance(v, list):
                     for var in v:
-                        symbolTable.add(var, {'type' : 'state', 'datatype' : object['type']})
+                        symbolTable.add(var, {'type': 'state',
+                                              'datatype': object['type']})
                 else:
-                    symbolTable.add(v, {'type' : 'state', 'datatype' : object['type']})
+                    symbolTable.add(v, {'type': 'state',
+                                        'datatype': object['type']})
             if '_events' in label and k == 'event_id':
-                symbolTable.add(v, {'type' : 'event', 'error' : object['error'], 'params' : ''})
+                symbolTable.add(v, {'type': 'event',
+                                    'error': object['error'],
+                                    'params': ''})
             if label == 'traces' and k == 'trace_step':
-                #print('ADDtraces: ' + k + '   ' + str(v))
+                # print('ADDtraces: ' + k + '   ' + str(v))
                 for step in v:
-                    #print('ADDtraces2: ' + str(step))
+                    # print('ADDtraces2: ' + str(step))
                     id = step['step_event']['expression']['atom']
-                    #print('ADDtraces2 id: ' + str(id))
+                    # print('ADDtraces2 id: ' + str(id))
                     if id not in symbolTable:
-                        #print('ADD1: ' + k + '   ' + str(v))
-                        symbolTable.add(id, {'type' : 'trace_state'})
+                        # print('ADD1: ' + k + '   ' + str(v))
+                        symbolTable.add(id, {'type': 'trace_state'})
             if ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not (v == 'true' or v == 'false' or v == 'null') and v not in symbolTable:
-                #print('ADD2: ' + label + ' ' + k + '   ' + str(v))
-                symbolTable.add(v, {'type' : label})
+                # print('ADD2: ' + label + ' ' + k + '   ' + str(v))
+                symbolTable.add(v, {'type': label})
             if isinstance(v, list):
                 for vi in v:
                     parseToSymbolTable(k, vi, symbolTable)
             if isinstance(v, AST):
-                #print('AST: ' + k)
+                # print('AST: ' + k)
                 parseToSymbolTable(k, v, symbolTable)
     if isinstance(object, list):
         for elem in object:
-            #print('LIST: ' + label)
+            # print('LIST: ' + label)
             parseToSymbolTable(label, elem, symbolTable)
+
 
 def generateFSMs(ast, symbolTable):
     allFSMs = collections.OrderedDict()
     for scenario in ast['scenarios'][0]:
         fsm = FSM()
-        for trace in scenario['traces']: # scenario[0] is to handle redundant list structure (a grako parser thing...)
+        # scenario[0] is to handle redundant list structure (grako parser thing...)
+        for trace in scenario['traces']:
             generated_state = None
             before_state = None
             after_state = None
@@ -94,7 +104,7 @@ def generateFSMs(ast, symbolTable):
                     before = generated_state
                     generated_state = None
                 after = str(trace['trace_step'][i+1]['step_event']['expression']['atom'])
-                if symbolTable.get(current,'type') == 'event':
+                if symbolTable.get(current, 'type') == 'event':
                     # adds parameters to symbol table for referencing in output
                     params = trace['trace_step'][i]['step_event']['expression']['trailer']['params']
                     param_names = str(findFunctionParams(current, params, ast))
@@ -105,7 +115,7 @@ def generateFSMs(ast, symbolTable):
                         if not fsm.stateExists(after):
                             fsm.addState(State(after))
                     else:
-                        after = symbolTable.generate({'type' : 'trace_state'})
+                        after = symbolTable.generate({'type': 'trace_state'})
                         fsm.addState(State(after))
                         generated_state = after
                     before_state = fsm.getStateByName(before)
@@ -120,20 +130,22 @@ def generateFSMs(ast, symbolTable):
         allFSMs[scenario['scenario_id']] = fsm
     return allFSMs
 
+
 def makeDefaultScenario(symbolTable):
     # TODO add scenario attribute to states in symbol table
     if not symbolTable.get('STOP'):
-        symbolTable.add('STOP', {'type' : 'trace_state'})
+        symbolTable.add('STOP', {'type': 'trace_state'})
     if not symbolTable.get('RUN'):
-        symbolTable.add('RUN', {'type' : 'trace_state'})
+        symbolTable.add('RUN', {'type': 'trace_state'})
     if not symbolTable.get('default'):
-        symbolTable.add('default', {'type' : 'scenarios'}) 
+        symbolTable.add('default', {'type': 'scenarios'})
     fsm = FSM()
     fsm.addState(State(str('RUN')))
     fsm.addState(State(str('STOP')))
     fsm.addTransition(Transition(fsm.getStateByName(str('RUN')), fsm.getStateByName(str('STOP')), str('error')))
-    fsm.addTransition(Transition(fsm.getStateByName(str('STOP')), fsm.getStateByName(str('RUN')), str('catch')))   
-    return fsm 
+    fsm.addTransition(Transition(fsm.getStateByName(str('STOP')), fsm.getStateByName(str('RUN')), str('catch')))
+    return fsm
+
 
 def outputSource(symbolTable, allFSMs, filename, helper):
     # Open file for output (based on input filename)
@@ -143,7 +155,7 @@ def outputSource(symbolTable, allFSMs, filename, helper):
     if helper:
         out.write("#include \"%s\"\n"%helper)
     out.write("\n")
-    
+
     # Output set of states
     statesets = collections.OrderedDict()
     out.write('typedef enum { %s } scenario;\n' % (", ".join([k.upper() for k in allFSMs.keys()])))
@@ -169,7 +181,7 @@ def outputSource(symbolTable, allFSMs, filename, helper):
     state_vars = symbolTable.getSymbolsByType('state')
     struct = symbolTable.getSymbolsByType('object')[0]
     out.write('typedef struct %s{\n' % struct)
-    if len(state_vars) > 0:   
+    if len(state_vars) > 0:
         for v in state_vars:
             v_attrs = symbolTable.get(v)
             out.write('  ' + v_attrs['datatype'] + ' ' + v + ';\n')
@@ -178,7 +190,7 @@ def outputSource(symbolTable, allFSMs, filename, helper):
     out.write("  int state[%d]; // = { %s };\n" % (len(statesets), current_states))
     out.write("  const char **state_names[%d];\n" % (len(statesets)))
     out.write('} %s;\n\n' % struct)
-    
+
     # Output catch() declaration
     out.write("void raise_error(char*, const char*, char*, char*);\n\n")
 
@@ -204,12 +216,12 @@ def outputSource(symbolTable, allFSMs, filename, helper):
             params = struct + "* monitor, " + params
         else:
             params = struct + "* monitor"
-        out.write('void ' + m + '(' + params + ') {\n')        
+        out.write('void ' + m + '(' + params + ') {\n')
 
         for key, fsm in allFSMs.iteritems():
             # if fsm.getTransitionsByAction(str(m)): ---------------------------------------------------------------------
-            reference = 'monitor->state[%s]'%key.upper()
-            out.write('  switch (%s) {\n'%reference)                
+            reference = 'monitor->state[%s]' % key.upper()
+            out.write('  switch (%s) {\n' % reference)
             for transition in fsm.getTransitionsByAction(str(m)):
                 out.write(writeCaseTransition(transition, reference, key))
             out.write('    default:\n')
@@ -219,7 +231,7 @@ def outputSource(symbolTable, allFSMs, filename, helper):
             out.write('  }\n')
 
         out.write('}\n\n')
-
+        
     out.write("void raise_error(char *scen, const char *state, char *action, char *type) {\n")
     out.write("  printf(\"{\\\"scenario\\\":\\\"%s\\\", \\\"state\\\":\\\"%s\\\", \\\"" + \
         "action\\\":\\\"%s\\\", \\\"type\\\":\\\"%s\\\"}\", scen, state, action, type);")
@@ -228,15 +240,16 @@ def outputSource(symbolTable, allFSMs, filename, helper):
 
 
 def writeCaseTransition(trans, currentState, scenario):
-    output = ['    case %s_%s:\n'%(trans.start.name.upper() ,scenario.upper())]
+    output = ['    case %s_%s:\n' % (trans.start.name.upper(), scenario.upper())]
     if trans.guard:
         output.append('      if(' + trans.guard.replace('this.', 'monitor->') + ') {\n')
-        output.append('        %s = '%currentState + ("%s_%s"%(trans.next.name, scenario)).upper() + ';\n')
+        output.append('        %s = ' % currentState + ("%s_%s" % (trans.next.name, scenario)).upper() + ';\n')
         output.append('      }\n')
     else:
-        output.append('      %s = '%currentState + ("%s_%s"%(trans.next.name, scenario)).upper() + ';\n')
-    output.append('      break;\n')   
+        output.append('      %s = ' % currentState + ("%s_%s" % (trans.next.name, scenario)).upper() + ';\n')
+    output.append('      break;\n')
     return "".join(output)
+
 
 def findFunctionParams(function, params, ast):
     names = []
@@ -251,12 +264,14 @@ def findFunctionParams(function, params, ast):
     if types is None and ast['exported_events']:
         types = getParamTypes(function, ast['exported_events'])
     if types is None and ast['internal_events']:
-        types = getParamTypes(function, ast['internal_events'])      
-    if types is None: # probably never raised bc called only for events in symbol table 
-        raise ValueError("Unrecognized function, %s, found in scenarios"%function) 
+        types = getParamTypes(function, ast['internal_events'])
+    # probably never raised bc called only for events in symbol table
+    if types is None:
+        raise ValueError("Unrecognized function, %s, found in scenarios" % function)
     if len(names) != len(types):
-        raise ValueError("Invalid number of parameters for %s"%function)
-    return (", ".join(["%s %s"%(types[i],names[i]) for i in range(len(names))]))
+        raise ValueError("Invalid number of parameters for %s" % function)
+    return (", ".join(["%s %s" % (types[i], names[i]) for i in range(len(names))]))
+
 
 def getParamTypes(function, events):
     if isinstance(events, AST):
@@ -278,9 +293,11 @@ def getParamTypes(function, events):
                 return types
         return None
 
+
 def formatGuard(object):
     guard = str(guardToString(object))
     return removeParentheses(guard)
+
 
 def guardToString(object):
     if isinstance(object, AST):
@@ -290,9 +307,9 @@ def guardToString(object):
                 return "(" + " || ".join(ored) + ")"
             elif k == 'and_ex':
                 anded = [guardToString(val) for val in v]
-                return "(" + " && ".join(anded) + ")" 
+                return "(" + " && ".join(anded) + ")"
             elif k == 'not_ex':
-                return "!(%s)"%guardToString(v)      
+                return "!(%s)" % guardToString(v)
             elif k == 'comp':
                 comps = []
                 for val in v:
@@ -303,19 +320,19 @@ def guardToString(object):
                         comps.append(" ".join(result))
                     else:
                         comps.append(termToString(val))
-                return (" %s "%object['operator']).join(comps)
+                return (" %s " % object['operator']).join(comps)
             elif k == 'index':
-                return "[%s]"%guardToString(v)
+                return "[%s]" % guardToString(v)
             elif k == 'params':
                 if isinstance(v, list):
-                    return "(%s)"%(", ".join([guardToString(val) for val in v]))
+                    return "(%s)" % (", ".join([guardToString(val) for val in v]))
                 else:
-                    return "(%s)"%guardToString(v)
+                    return "(%s)" % guardToString(v)
             elif k == 'dot':
                 trailer = ""
                 if object['trailer']:
                     trailer = guardToString(object['trailer'])
-                return ".%s%s"%(v, trailer)
+                return ".%s%s" % (v, trailer)
             elif k == 'arith':
                 operators = object.get('operator')
                 result = arithToString(v, operators)
@@ -325,11 +342,13 @@ def guardToString(object):
     elif object is None:
         return ""
 
+
 def arithToString(terms, operators):
     result = [None]*(len(terms)+len(operators))
     result[::2] = [termToString(term) for term in terms]
     result[1::2] = operators
     return result
+
 
 def termToString(term):
     if isinstance(term, AST):
@@ -338,14 +357,15 @@ def termToString(term):
         unary = term.get('unary') or ""
         if isinstance(unary, list):
             unary = "".join(unary)
-        term_text = "%s%s"%(unary, term.get('atom') or "")
+        term_text = "%s%s" % (unary, term.get('atom') or "")
         trailer_ast = term.get('trailer')
         if isinstance(trailer_ast, AST):
             for k, v in term.iteritems():
-                term_text = "%s%s"%(term_text, guardToString(v) or "")
+                term_text = "%s%s" % (term_text, guardToString(v) or "")
         return term_text
     else:
         return ""
+
 
 def removeParentheses(guard):
     if guard.startswith('(') and guard.endswith(')'):
