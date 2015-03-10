@@ -139,33 +139,36 @@ def outputSource(symbolTable, allFSMs, filename):
     # Open file for output (based on input filename)
     out = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
     out.write("#include <stdlib.h>\n\n")
-
+    
     # Output set of states
     statesets = collections.OrderedDict()
-    out.write('enum { %s } scenarios;\n'%(", ".join([k.upper() for k in allFSMs.keys()])))
+    out.write('typedef enum { %s } scenario;\n' % (", ".join([k.upper() for k in allFSMs.keys()])))
     for key, fsm in allFSMs.iteritems():
-        stateset = [("%s_%s"%(state, key)).upper() for state in fsm.states.keys()]
+        stateset = [("%s_%s" % (state, key)).upper() for state in fsm.states.keys()]
         statesets[key] = stateset
         stateset_str = ", ".join(stateset)
-        out.write('enum { ' + stateset_str + ' } %s_states;\n'%key.lower())
+        out.write('typedef enum { ' + stateset_str + ' } %s_state;\n' % key.lower())
     errors = ['DEFAULT']
     for error in symbolTable.getSymbolsByType('event'):
         if symbolTable[error]['error']:
             errors.append(error.upper())
-    out.write('enum { %s } error_types;'%(", ".join(errors)))
+    out.write('typedef enum { %s } error_type;' % (", ".join(errors)))
     out.write('\n\n')
     # Output state variables
     state_vars = symbolTable.getSymbolsByType('state')
     struct = symbolTable.getSymbolsByType('object')[0]
-    out.write('typedef struct %s{\n'%struct)
+    out.write('typedef struct %s{\n' % struct)
     if len(state_vars) > 0:   
         for v in state_vars:
             v_attrs = symbolTable.get(v)
             out.write('  ' + v_attrs['datatype'] + ' ' + v + ';\n')
         # Output initial state
     current_states = ", ".join(string.upper(stateset[0]) for key, stateset in statesets.iteritems())
-    out.write('  int state[%d] = { %s };\n'%(len(statesets), current_states))
-    out.write('} %s;\n\n'%struct)
+    out.write('  int state[%d] = { %s };\n' % (len(statesets), current_states))
+    out.write('} %s;\n\n' % struct)
+    
+    # Output catch() declaration
+    out.write("void catch(%s *, int, int, error_type);\n\n" % struct)
 
     # Output a method for each event (switch statement to handle FSM transitions)
     methods = symbolTable.getSymbolsByType('event')
@@ -190,7 +193,7 @@ def outputSource(symbolTable, allFSMs, filename):
 
         out.write('}\n\n')
 
-    out.write('void catch(' + struct + ' *mon, scenario scen, int next_state, error_types error) {\n')
+    out.write('void catch(' + struct + ' *mon, int scen, int next_state, error_type error) {\n')
     out.write('  int recovered = 0;\n')
     out.write('  switch(error) {\n')
     for error in errors:
@@ -202,7 +205,7 @@ def outputSource(symbolTable, allFSMs, filename):
     out.write('      break;\n')
     out.write('  }\n')
     out.write('  if(recovered) {\n')
-    out.write('    mon->current_states[scen] = next_state; //Default action\n')
+    out.write('    mon->state[scen] = next_state; //Default action\n')
     out.write('  } else {\n')
     out.write('    exit(EXIT_FAILURE);\n')
     out.write('  }\n')
