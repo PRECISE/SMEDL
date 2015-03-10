@@ -1,2 +1,4 @@
 *.pyc
 src/.coverage
+
+*.o
