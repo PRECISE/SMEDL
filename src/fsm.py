@@ -34,20 +34,23 @@ class FSM(object):
     def addTransition(self, transition):
         if not isinstance(transition, Transition):
             raise TypeError("Invalid type for transition argument.")
-        if transition.start in self.states.values() and transition.next in self.states.values():
+        if transition.startState in self.states.values() and transition.nextState in self.states.values():
             self.transitions.append(transition)
-            transition.start.addOutTransition(transition)
-            transition.next.addInTransition(transition)
+            transition.startState.addOutTransition(transition)
+            transition.nextState.addInTransition(transition)
+        if transition.elseState and transition.elseState in self.states.values():
+            transition.elseState.addInTransition(transition)
+
 
     def deleteTransition(self, transition):
         self.transitions.remove(transition)
 
-    def getTransitionsByAction(self, action):
-        if not isinstance(action, str):
-            raise TypeError("Invalid type for action argument.")
+    def getTransitionsByEvent(self, event):
+        if not isinstance(event, str):
+            raise TypeError("Invalid type for event argument.")
         transitions = []
         for t in self.transitions:
-            if t.action == action:
+            if t.event == event:
                 transitions.append(t)
         return transitions
 
@@ -76,24 +79,69 @@ class State(object):
 
     def __str__(self):
         s = "State: " + self.name + "\nIn Transitions:\n"
-        s = s + "\n".join(("  " + str(i)) for i in self.in_trans)
+        for trans in self.in_trans:
+            if trans.nextState == self:
+                s = s + '  ' + trans.str_next() + '\n'
+            if trans.elseState == self:
+                s = s + '  ' + trans.str_else() + '\n'
         s = s + "\nOut Transitions:\n"
-        s = s + "\n".join(("  " + str(i)) for i in self.out_trans)
+        for trans in self.out_trans:
+            s = s + '  ' + trans.str_next() + '\n'
+            if trans.elseState:
+                s = s + '  ' + trans.str_else() + '\n'
         return s
 
 
 class Transition(object):
 
-    def __init__(self, start, next, action=None, guard=None):
-        if not isinstance(start, State) or not isinstance(next, State) or (action is not None and not isinstance(action, str)) or (guard is not None and not isinstance(guard, str)):
+    def __init__(self, startState, event, nextState, nextActions=None, guard=None, elseState=None, elseActions=None):
+        if not isinstance(startState, State) or \
+        not isinstance(event, str) or \
+        not isinstance(nextState, State) or \
+        (nextActions is not None and not isinstance(nextActions, list)) or \
+        (guard is not None and not isinstance(guard, str)) or \
+        (elseState is not None and not isinstance(elseState, State)) or \
+        (elseActions is not None and not isinstance(elseActions, list)):
             raise TypeError("Invalid argument type(s).")
-        self.start = start
-        self.next = next
-        self.action = action
+        self.startState = startState
+        self.event = event
+        self.nextState = nextState
+        self.nextActions = nextActions
         self.guard = guard
+        self.elseState = elseState
+        self.elseActions = elseActions
+
+    def str_next(self):
+        s = self.startState.name + ' -> ' + self.nextState.name + ' / event: ' + self.event
+        if self.guard:
+            s = s + ' / if: ' + self.guard 
+        if self.nextActions:
+            s = s + ' / actions: ' + ", ".join(self.nextActions)
+        return s
+
+    def str_else(self):
+        if not self.elseState:
+            return ''
+        s = self.startState.name + ' -> ' + self.elseState.name + ' / event: ' + self.event
+        if self.guard:
+            s = s + ' / if not: ' + self.guard 
+        if self.elseActions:
+            s = s + ' / actions: ' + ", ".join(self.elseActions)
+        return s
 
     def __str__(self):
-        return self.start.name + " -> " + self.next.name + " / action: " + self.action + " / guard: " + str(self.guard)
+        s = self.startState.name + ' -> ' + self.event
+        if self.guard:
+            s = s + ' when ' + self.guard
+        if self.nextActions:
+            s = s + ' {' + ', '.join(self.nextActions) + '}'
+        s = s + ' -> ' + self.nextState.name
+        if self.elseState:
+            s = s + '\n    else'    
+            if self.elseActions:
+                s = s + ' {' + ', '.join(self.elseActions) + '}'
+            s = s + ' -> ' + self.elseState.name
+        return s
 
 
 if __name__ == '__main__':

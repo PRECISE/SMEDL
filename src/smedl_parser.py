@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 2, 26, 19, 53, 42, 3)
+__version__ = (2015, 3, 26, 12, 44, 29, 3)
 
 __all__ = [
     'smedlParser',
@@ -189,16 +189,13 @@ class smedlParser(Parser):
             self._token('else')
             with self._optional():
                 self._action_()
-                self.ast['trace_action'] = self.last_node
-
-            def block4():
-                self._token('->')
-                self._step_definition_()
-                self.ast['trace_action_step'] = self.last_node
-            self._positive_closure(block4)
+                self.ast['else_action'] = self.last_node
+            self._token('->')
+            self._step_definition_()
+            self.ast['else_step'] = self.last_node
 
         self.ast._define(
-            ['trace_step', 'trace_action', 'trace_action_step'],
+            ['trace_step', 'else_action', 'else_step'],
             []
         )
 
@@ -249,7 +246,7 @@ class smedlParser(Parser):
                 self.ast['state_update'] = self.last_node
             with self._option():
                 self._raise_stmt_()
-                self.ast['raise_'] = self.last_node
+                self.ast['raise'] = self.last_node
             with self._option():
                 self._instantiation_stmt_()
                 self.ast['instantiation'] = self.last_node
@@ -668,7 +665,7 @@ class smedlParser(Parser):
         self.ast['@'] = self.last_node
 
         def block1():
-            self._token(',')
+            self._token(';')
             self._action_item_()
             self.ast['@'] = self.last_node
         self._closure(block1)

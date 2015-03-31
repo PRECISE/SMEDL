@@ -45,7 +45,7 @@ scenario_definition
 trace_definition
     =
     trace_step:step_definition {'->' trace_step:step_definition}+
-          ['else' [trace_action:action] {'->' trace_action_step:step_definition}+ ]
+          ['else' [else_action:action] '->' else_step:step_definition ]
     ;
 
 step_definition
@@ -198,5 +198,5 @@ state_update_list
 
 nonempty_action_item_list
     =
-      @:action_item {',' @:action_item}*
+      @:action_item {';' @:action_item}*
     ;

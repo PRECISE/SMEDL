@@ -36,7 +36,8 @@ class TestSmedlgen(unittest.TestCase):
     def test_generateFSM(self):
         symbolTable = smedlSymbolTable()
         smedlgen.parseToSymbolTable('top', self.ast, symbolTable)
-        fsm = smedlgen.generateFSM(self.ast, symbolTable)
+        fsm = next(iter(smedlgen.generateFSMs(self.ast, symbolTable).values()))
+        print(type(fsm))
         self.assertEquals(2, len(fsm.states))
         self.assertEquals(3, len(fsm.transitions))
         self.assertTrue(fsm.stateExists('SafeMon'))
@@ -47,7 +48,7 @@ class TestSmedlgen(unittest.TestCase):
         self.assertEquals('pos == upbound || pos == lobound', updatePos[0].guard)
         changeDir = fsm.getTransitionsByAction('changeDir')
         self.assertEquals(2, len(changeDir))
-        # print(fsm)
+        print(fsm)
 
     def test_findFunctionParams(self):
         trace = self.ast['scenarios'][0][0]['traces'][0]['trace_step'][1]['step_event']['expression']

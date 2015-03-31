@@ -30,6 +30,10 @@ class smedlSymbolTable(dict):
                 out.append(s)
         return out
 
+    def getEvents(self):
+        return self.getSymbolsByType('imported_events') + \
+        self.getSymbolsByType('internal_events') + self.getSymbolsByType('exported_events')
+
     def update(self, symbol, attribute, value):
         self[symbol][attribute] = value
 

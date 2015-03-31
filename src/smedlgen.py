@@ -10,6 +10,7 @@ from grako.ast import AST
 import os
 import json
 import collections
+import re
 
 def main(filename, trace=False, whitespace=None, helper=None):
     with open(filename) as f:
@@ -25,24 +26,17 @@ def main(filename, trace=False, whitespace=None, helper=None):
         whitespace=whitespace)
     print('AST:')
     print(ast)
-    print()
-    print('JSON:')
+    print('\nJSON:')
     print(json.dumps(ast, indent=2))
-    print()
-    # TODO: iterate through imports and make list of resulting ASTs
     symbolTable = smedlSymbolTable()
     parseToSymbolTable('top', ast, symbolTable)
     allFSMs = generateFSMs(ast, symbolTable)
-    # allFSMs['default'] = makeDefaultScenario(symbolTable)
-    print()
-    print('Symbol Table:')
-    print(symbolTable)
-    print()
-    print()
+    print('\nSymbol Table:')
+    for k in symbolTable:
+        print('%s: %s'%(k,symbolTable[k]))
     for key, fsm in allFSMs.iteritems():
         print('\nFSM: %s\n' % key)
-        print(fsm)
-    print()
+        print('%s\n'%fsm)
     outputSource(symbolTable, allFSMs, filename, helper)
 
 
@@ -51,60 +45,74 @@ def parseToSymbolTable(label, object, symbolTable):
         for k, v in object.iteritems():
             if k == 'object':
                 symbolTable.add("_%s" % v, {'type': 'object'})
-            if label == 'state' and k == 'var':
+            elif label == 'state' and k == 'var':
                 if isinstance(v, list):
                     for var in v:
-                        symbolTable.add(var, {'type': 'state',
-                                              'datatype': object['type']})
+                        symbolTable.add(var, {'type': 'state', 'datatype': object['type']})
                 else:
-                    symbolTable.add(v, {'type': 'state',
-                                        'datatype': object['type']})
-            if '_events' in label and k == 'event_id':
-                symbolTable.add(v, {'type': 'event',
-                                    'error': object['error'],
-                                    'params': ''})
-            if label == 'traces' and k == 'trace_step':
-                # print('ADDtraces: ' + k + '   ' + str(v))
+                    symbolTable.add(v, {'type': 'state', 'datatype': object['type']})
+            elif '_events' in label and k == 'event_id':
+                symbolTable.add(v, {'type': label, 'error': object['error'], 'params': ''})
+            elif label == 'traces' and k == 'trace_step':
                 for step in v:
-                    # print('ADDtraces2: ' + str(step))
                     id = step['step_event']['expression']['atom']
-                    # print('ADDtraces2 id: ' + str(id))
                     if id not in symbolTable:
-                        # print('ADD1: ' + k + '   ' + str(v))
                         symbolTable.add(id, {'type': 'trace_state'})
-            if ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not (v == 'true' or v == 'false' or v == 'null') and v not in symbolTable:
-                # print('ADD2: ' + label + ' ' + k + '   ' + str(v))
+            elif label == 'traces' and k == 'else_step':
+                if isinstance(v, AST):
+                    id = v['step_event']['expression']['atom']
+                    if id not in symbolTable:
+                        symbolTable.add(id, {'type': 'trace_state'})              
+            elif ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not \
+                (v == 'true' or v == 'false' or v == 'null' or v == 'this') and v not in symbolTable:
                 symbolTable.add(v, {'type': label})
-            if isinstance(v, list):
-                for vi in v:
-                    parseToSymbolTable(k, vi, symbolTable)
-            if isinstance(v, AST):
-                # print('AST: ' + k)
-                parseToSymbolTable(k, v, symbolTable)
+            parseToSymbolTable(k, v, symbolTable)  
     if isinstance(object, list):
         for elem in object:
-            # print('LIST: ' + label)
             parseToSymbolTable(label, elem, symbolTable)
 
 
 def generateFSMs(ast, symbolTable):
     allFSMs = collections.OrderedDict()
-    for scenario in ast['scenarios'][0]:
+    for scenario in ast['scenarios'][0]: #[0] handles grako's nested list structure
         fsm = FSM()
-        # scenario[0] is to handle redundant list structure (grako parser thing...)
         for trace in scenario['traces']:
+            elseStep = None
+            elseActions = None
+            if trace['else_step']:
+                elseStep = trace['else_step']['step_event']['expression']['atom']
+                elseStepName = str(trace['else_step']['step_event']['expression']['atom']) #TODO-------------------------
+                if not fsm.stateExists(elseStepName):
+                    fsm.addState(State(elseStepName))
+                elseStep = fsm.getStateByName(elseStepName)
+                if trace['else_action']:
+                    elseActions = []
+                    if isinstance(trace['else_action']['actions'][0], list):
+                        for action in trace['else_action']['actions'][0]:
+                            # TODO all action types
+                            elseActions.append(str(action['raise']['id']))
+                    else:
+                        elseActions.append(str(trace['else_action']['actions'][0]['raise']['id']))
+                    print(elseActions)
             generated_state = None
-            before_state = None
-            after_state = None
-            for i in range(1, len(trace['trace_step']) - 1):
+            for i in range(1, len(trace['trace_step']) - 1): #second step through second to last
                 current = str(trace['trace_step'][i]['step_event']['expression']['atom'])
-                if generated_state is None:
-                    before = str(trace['trace_step'][i-1]['step_event']['expression']['atom'])
-                else:
+                after = str(trace['trace_step'][i+1]['step_event']['expression']['atom'])
+                before = str(trace['trace_step'][i-1]['step_event']['expression']['atom'])
+                if generated_state is not None:
                     before = generated_state
                     generated_state = None
-                after = str(trace['trace_step'][i+1]['step_event']['expression']['atom'])
-                if symbolTable.get(current, 'type') == 'event':
+                if 'event' in symbolTable.get(current, 'type'):
+                    actions = None
+                    if trace['trace_step'][i]['step_action']: #TODO------------------------------------------
+                        actions = []
+                        if isinstance(trace['trace_step'][i]['step_action']['actions'][0], list):
+                            for action in trace['trace_step'][i]['step_action']['actions'][0]:
+                                # TODO all action types
+                                actions.append(str(action['raise']['id']))
+                        else:
+                            actions.append(str(trace['trace_step'][i]['step_action']['actions'][0]['raise']['id']))
+                    # print(actions)
                     # adds parameters to symbol table for referencing in output
                     params = trace['trace_step'][i]['step_event']['expression']['trailer']['params']
                     param_names = str(findFunctionParams(current, params, ast))
@@ -123,35 +131,21 @@ def generateFSMs(ast, symbolTable):
                     when = formatGuard(trace['trace_step'][i]['step_event']['when'])
                     if when == 'None':
                         when = None
-                    fsm.addTransition(Transition(before_state, after_state, current, when))
+                    fsm.addTransition(Transition(before_state, current, after_state, actions, when, elseStep, elseActions))
                 else:
-                    if get(before, 'type') != 'event' or get(after, 'type') != 'event':
-                        raise TypeError("Invalid state -> state transition")
+                    if i > 0:
+                        raise TypeError("Named states only valid at beginning/end of trace. Invalid: %s"%current)
+                    if 'event' not in symbolTable.get(before, 'type') or 'event' not in symbolTable.get(after, 'type'):
+                        raise TypeError("Invalid state -> state transition: %s -> %s"%(before, after))
         allFSMs[scenario['scenario_id']] = fsm
     return allFSMs
-
-
-def makeDefaultScenario(symbolTable):
-    # TODO add scenario attribute to states in symbol table
-    if not symbolTable.get('STOP'):
-        symbolTable.add('STOP', {'type': 'trace_state'})
-    if not symbolTable.get('RUN'):
-        symbolTable.add('RUN', {'type': 'trace_state'})
-    if not symbolTable.get('default'):
-        symbolTable.add('default', {'type': 'scenarios'})
-    fsm = FSM()
-    fsm.addState(State(str('RUN')))
-    fsm.addState(State(str('STOP')))
-    fsm.addTransition(Transition(fsm.getStateByName(str('RUN')), fsm.getStateByName(str('STOP')), str('error')))
-    fsm.addTransition(Transition(fsm.getStateByName(str('STOP')), fsm.getStateByName(str('RUN')), str('catch')))
-    return fsm
-
 
 def outputSource(symbolTable, allFSMs, filename, helper):
     # Open file for output (based on input filename)
     out = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
     out.write("#include <stdlib.h>\n")
     out.write("#include <stdio.h>\n")
+    out.write("#include \"actions.h\"\n")
     if helper:
         out.write("#include \"%s\"\n"%helper)
     out.write("\n")
@@ -169,10 +163,12 @@ def outputSource(symbolTable, allFSMs, filename, helper):
         state_names = ", ".join(['\"%s\"'%(state) for state in fsm.states.keys()])
         state_names_arrays.append('const char *%s_states[%d] = {%s};\n'%(key, len(fsm.states.keys()), state_names))
     out.write(''.join(state_enums))
+    events = [str(e).upper() for e in symbolTable.getEvents()]
     errors = ['DEFAULT']
-    for error in symbolTable.getSymbolsByType('event'):
-        if symbolTable[error]['error']:
-            errors.append(error.upper())
+    for e in symbolTable.getSymbolsByType('event'):
+        if symbolTable[e]['error']:
+            errors.append(e.upper())
+    out.write('typedef enum { %s } event;\n' % (", ".join(events))) 
     out.write('typedef enum { %s } error_type;\n' % (", ".join(errors)))    
     out.write(''.join(state_names_arrays))
     out.write('\n')
@@ -189,9 +185,11 @@ def outputSource(symbolTable, allFSMs, filename, helper):
     current_states = ", ".join(string.upper(stateset[0]) for key, stateset in statesets.iteritems())
     out.write("  int state[%d]; // = { %s };\n" % (len(statesets), current_states))
     out.write("  const char **state_names[%d];\n" % (len(statesets)))
+    out.write("  action *action_queue;\n")
     out.write('} %s;\n\n' % struct)
 
     # Output catch() declaration
+    out.write("void call_next_action(%s*);\n"%struct)
     out.write("void raise_error(char*, const char*, char*, char*);\n\n")
 
     out.write("%s* init%s() {\n"%(struct, struct))
@@ -209,7 +207,8 @@ def outputSource(symbolTable, allFSMs, filename, helper):
     out.write("  return monitor;\n}\n\n")
 
     # Output a method for each event (switch statement to handle FSM transitions)
-    methods = symbolTable.getSymbolsByType('event')
+    methods = symbolTable.getEvents()
+    callCases = []
     for m in methods:
         params = symbolTable.get(m, 'params')
         if len(params) > 0:
@@ -219,18 +218,38 @@ def outputSource(symbolTable, allFSMs, filename, helper):
         out.write('void ' + m + '(' + params + ') {\n')
 
         for key, fsm in allFSMs.iteritems():
-            # if fsm.getTransitionsByAction(str(m)): ---------------------------------------------------------------------
             reference = 'monitor->state[%s]' % key.upper()
             name_reference = "monitor->state_names[%s][monitor->state[%s]]"%(key.upper(), key.upper())
             out.write('  switch (%s) {\n' % reference)
-            for transition in fsm.getTransitionsByAction(str(m)):
+            for transition in fsm.getTransitionsByEvent(str(m)):
                 out.write(writeCaseTransition(transition, reference, name_reference, key, m))
             out.write('    default:\n')
             out.write('      raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n'%(key, name_reference, m))      
             out.write('      break;\n')
             out.write('  }\n')
 
+        #move
+        callCases.append(writeCallCase(symbolTable, m))
+
         out.write('}\n\n')
+
+        out.write(writeRaiseFunction(symbolTable, m, struct))
+
+    for s in state_vars:
+        out.write('void set%s_%s(%s *monitor, %s new_%s) {\n'%(struct.lower(), s, struct, 
+            symbolTable.get(s)['datatype'], s))
+        out.write('  monitor->%s = new_%s;\n  return;\n}\n\n'%(s, s))
+
+    out.write('void call_next_action(%s *monitor) {\n'%struct)
+    out.write('  switch (monitor->action_queue->id) {\n')
+    out.write('\n'.join(callCases))
+    out.write('\n  }\n}\n\n')    
+
+    out.write('void exec_actions(%s *monitor) {\n'%struct)
+    out.write('  while(monitor->action_queue != NULL) {\n')
+    out.write('    call_next_action(monitor);\n')
+    out.write('    pop_action(&monitor->action_queue);\n')
+    out.write('  }\n}\n\n')  
     out.write("void raise_error(char *scen, const char *state, char *action, char *type) {\n")
     out.write("  printf(\"{\\\"scenario\\\":\\\"%s\\\", \\\"state\\\":\\\"%s\\\", \\\"" + \
         "action\\\":\\\"%s\\\", \\\"type\\\":\\\"%s\\\"}\", scen, state, action, type);")
@@ -238,18 +257,64 @@ def outputSource(symbolTable, allFSMs, filename, helper):
     out.close()
 
 def writeCaseTransition(trans, currentState, stateName, scenario, action):
-    output = ['    case %s_%s:\n' % (trans.start.name.upper(), scenario.upper())]
+    output = ['    case %s_%s:\n' % (trans.startState.name.upper(), scenario.upper())]
     if trans.guard:
         output.append('      if(' + trans.guard.replace('this.', 'monitor->') + ') {\n')
-        output.append('        %s = ' % currentState + ("%s_%s" % (trans.next.name, scenario)).upper() + ';\n')
+        output.append('        %s = ' % currentState + ("%s_%s" % (trans.nextState.name, scenario)).upper() + ';\n')
         output.append('      } else {\n')
-        output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
+        if trans.elseState:
+            output.append('        %s = ' % currentState + ("%s_%s" % (trans.elseState.name, scenario)).upper() + ';\n')
+        else:
+            output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
         output.append('      }\n')   
     else:
-        output.append('      %s = ' % currentState + ("%s_%s" % (trans.next.name, scenario)).upper() + ';\n')
+        output.append('      %s = ' % currentState + ("%s_%s" % (trans.nextState.name, scenario)).upper() + ';\n')
     output.append('      break;\n')
     return "".join(output)
 
+def getEventParams(paramString):
+    paramsList = []
+    params = [str(s) for s in paramString.split(', ')]
+    for p in params:
+        paramsList.append([str(s) for s in p.split(' ')])
+    return paramsList
+
+def writeCallCase(symbolTable, event):
+    output = []
+    output.append('    case %s: ;'%event.upper())
+    paramString = str(symbolTable.get(event)['params'])
+    if paramString == '':
+        output.append('      %s(monitor);'%event)
+    else:
+        params = getEventParams(paramString)
+        for p in params:
+            output.append('      %s %s_%s = monitor->action_queue->params->%c;'%(p[0], p[1], event, p[0][0]))
+            output.append('      pop_param(&monitor->action_queue->params);')
+        callParams = ", ".join('%s_%s'%(p[1], event) for p in params)
+        output.append('      %s(%s);'%(event, ", ".join(['monitor', callParams])))
+    output.append('      break;')
+    return '\n'.join(output)
+
+def writeRaiseFunction(symbolTable, event, struct):
+    paramString = symbolTable.get(event, 'params')
+    if len(paramString) > 0:
+        paramString = struct + "* monitor, " + paramString
+    else:
+        paramString = struct + "* monitor"
+    output = []
+    output.append('void raise_%s(%s) {'%(event, paramString))
+    output.append('  param *p_head = NULL;')
+    if len(paramString) > 0:
+        for p in getEventParams(paramString):
+            if p[0] == 'int':
+                output.append('  push_param(&p_head, &%s, NULL, NULL);'%p[1])
+            elif p[0] == 'char':
+                output.append('  push_param(&p_head, NULL, &%s, NULL);'%p[1])
+            elif p[0] == 'double':
+                output.append('  push_param(&p_head, NULL, NULL, &%s);'%p[1])
+    output.append('  push_action(&monitor->action_queue, %s, p_head);'%event.upper())
+    output.append('}\n\n')
+    return "\n".join(output)
 
 def findFunctionParams(function, params, ast):
     names = []
@@ -265,8 +330,7 @@ def findFunctionParams(function, params, ast):
         types = getParamTypes(function, ast['exported_events'])
     if types is None and ast['internal_events']:
         types = getParamTypes(function, ast['internal_events'])
-    # probably never raised bc called only for events in symbol table
-    if types is None:
+    if types is None: #probably never raised - called only for events in symbolTable
         raise ValueError("Unrecognized function, %s, found in scenarios" % function)
     if len(names) != len(types):
         raise ValueError("Invalid number of parameters for %s" % function)
@@ -296,6 +360,7 @@ def getParamTypes(function, events):
 
 def formatGuard(object):
     guard = str(guardToString(object))
+    # guard = checkReferences(guard) #TODO--------------------------------------------------------------------------
     return removeParentheses(guard)
 
 
@@ -357,7 +422,8 @@ def termToString(term):
         unary = term.get('unary') or ""
         if isinstance(unary, list):
             unary = "".join(unary)
-        term_text = "%s%s" % (unary, term.get('atom') or "")
+        atom = term.get('atom') or ""
+        term_text = "%s%s" % (unary, atom)
         trailer_ast = term.get('trailer')
         if isinstance(trailer_ast, AST):
             for k, v in term.iteritems():
@@ -381,6 +447,9 @@ def removeParentheses(guard):
             return guard
     else:
         return guard
+
+def checkReferences(guard):
+    objects = re.findall(r'\s([A-Za-z_]\w*).\w+\W+', guard)
 
 
 if __name__ == '__main__':
