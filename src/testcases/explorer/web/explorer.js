@@ -47,7 +47,7 @@ function moveOnRoute() {
 function getRoute() {
     var xmlHttp = new XMLHttpRequest();
     var params_string = mapToString(false);
-    xmlHttp.open( "GET", "web/control.php?coordinates=" + params_string, false );
+    xmlHttp.open( "GET", "control.php?coordinates=" + params_string, false );
     xmlHttp.send( null );
     return xmlHttp.responseText;
 }
@@ -209,7 +209,7 @@ function addItem(y, x, id, type) {
     var img = document.createElement("img");
     img.style.top = y_coord + "px";
     img.style.left = x_coord + "px";
-    img.src = "web/img/" + type + ".png";
+    img.src = "img/" + type + ".png";
     var src = document.getElementById("map");
     src.appendChild(img);
     img.id = "img" + y + x;
