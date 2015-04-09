@@ -1,6 +1,6 @@
 from subprocess import call
 
-cmd = ["./explorer"]
+cmd = ["../c/bin/explorer"]
 
 cmd.append(str(5))
 cmd.append(str(4))

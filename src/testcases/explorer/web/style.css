@@ -6,7 +6,7 @@ body{
     position: absolute;
     top:0;
     left:0;
-    background-image: url("mars.jpg");
+    background-image: url("img/mars.jpg");
     background-size: 100% 100%;
     background-repeat: no-repeat;
     width:1000px;

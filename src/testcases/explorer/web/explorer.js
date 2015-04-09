@@ -5,14 +5,14 @@ var targets = [];
 var obstacles = [];
 var failed = false;
 
-$(document).ready(function() { 
+$(document).ready(function() {
     //initExplorer(1,0,-45);
     randomInitExplorer();
     addTargets(20);
     addObstacles(50);
     makeTextMap();
     // $("#label").text(mapToString(false));
-    $("#label").text(getRoute()); 
+    $("#label").text(getRoute());
 });
 
 function randomInitExplorer() {
@@ -37,7 +37,7 @@ function moveOnRoute() {
     var input = parseRouteString(getRoute());
     calculateDriveAngles(input);
     var move_times = calculateMoveTimes(drive_angles);
-    for (i = 0; i < input.length; i++) { 
+    for (i = 0; i < input.length; i++) {
         (function(index) {
             setTimeout(function() { moveOnGrid(input[index], index); }, move_times[index]);
         })(i);
@@ -47,7 +47,7 @@ function moveOnRoute() {
 function getRoute() {
     var xmlHttp = new XMLHttpRequest();
     var params_string = mapToString(false);
-    xmlHttp.open( "GET", "control.php?coordinates=" + params_string, false );
+    xmlHttp.open( "GET", "web/control.php?coordinates=" + params_string, false );
     xmlHttp.send( null );
     return xmlHttp.responseText;
 }
@@ -57,7 +57,7 @@ function parseRouteString(str) {
     return pairs.map( function(pair) { return pair.split(","); } );
 }
 
-function calculateDriveAngles(input) { 
+function calculateDriveAngles(input) {
     for(i = 0; i < input.length; i++) {
         var y_change = input[i][0];
         var x_change = input[i][1];
@@ -66,42 +66,42 @@ function calculateDriveAngles(input) {
         } else if(x_change == 0 && y_change < 0) {
             angle = 270;
         } else if(x_change > 0 && y_change >= 0) {
-            angle = Math.atan(y_change/x_change) * 180 / Math.PI;            
+            angle = Math.atan(y_change/x_change) * 180 / Math.PI;
         } else if(x_change > 0 && y_change < 0) {
             angle = 360 + Math.atan(y_change/x_change) * 180 / Math.PI;
         } else if(x_change < 0 && y_change >= 0) {
             angle = 180 + Math.atan(y_change/x_change) * 180 / Math.PI;;
         } else if(x_change < 0 && y_change < 0) {
             angle = 180 + Math.atan(y_change/x_change) * 180 / Math.PI;;
-        }        
+        }
         drive_angles.push(angle);
     }
 }
 
 function calculateMoveTimes(angles) {
-    var move_times = [0]; 
-    for (i = 1; i < drive_angles.length; i++) { 
+    var move_times = [0];
+    for (i = 1; i < drive_angles.length; i++) {
         rotation_time = calculateRotationTime(i);
         running_total = move_times[i - 1];
         move_times.push(running_total + rotation_time + 600); //time 2000
-    }  
-    return move_times; 
+    }
+    return move_times;
 }
 
 function calculateRotationTime(end_index) {
     if(end_index == 0) {
         return 0;
-    } 
+    }
     var difference = Math.abs(calculateDegreeDifference(end_index));
     if(difference > 180) {
         difference = 360 - difference;
-    }  
+    }
     return difference * 10; //time 20
 }
 
 function calculateDegreeDifference(end_index) {
     start_angle = drive_angles[end_index - 1];
-    end_angle = drive_angles[end_index];   
+    end_angle = drive_angles[end_index];
     return end_angle - start_angle;
 }
 
@@ -109,7 +109,7 @@ function moveOnGrid(loc_change, index) {
     checkForItems();
     if(failed) {
         return;
-    } 
+    }
     var y = 50 * loc_change[0];
     var x = 50 * loc_change[1];
     var left_direction = "+=" + x;
@@ -122,7 +122,7 @@ function moveOnGrid(loc_change, index) {
     }
     $("#explorer").rotate({
         duration: calculateRotationTime(index + 1),
-        angle: drive_angles[index], 
+        angle: drive_angles[index],
         animateTo: end_angle,
         easing: $.easing.easeInOutElastic
     });
@@ -146,7 +146,7 @@ function checkForItems() {
     for(i = 0; i < obstacles.length; i ++) {
         if(obstacles[i][0] == coordinates.y && obstacles[i][1] == coordinates.x) {
             var img = document.getElementById("explorer");
-            img.src = "explosion.png";
+            img.src = "img/explosion.png";
             failed = true;
         }
     }
@@ -171,7 +171,7 @@ function generateTargetCoordinates(quantity) {
         y = Math.floor(Math.random() * 10);
         x = Math.floor(Math.random() * 20);
         if(validItemLocation(y,x)) {
-            targets.push([y,x]);    
+            targets.push([y,x]);
         }
     }
 }
@@ -181,7 +181,7 @@ function generateObstacleCoordinates(quantity) {
         y = Math.floor(Math.random() * 10);
         x = Math.floor(Math.random() * 20);
         if(validItemLocation(y,x)) {
-            obstacles.push([y,x]);    
+            obstacles.push([y,x]);
         }
     }
 }
@@ -209,7 +209,7 @@ function addItem(y, x, id, type) {
     var img = document.createElement("img");
     img.style.top = y_coord + "px";
     img.style.left = x_coord + "px";
-    img.src = type + ".png";
+    img.src = "web/img/" + type + ".png";
     var src = document.getElementById("map");
     src.appendChild(img);
     img.id = "img" + y + x;
