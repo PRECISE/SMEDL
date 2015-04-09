@@ -8,7 +8,7 @@ int location[2];
 
 int target_route[9] = {6, 7, 8, 5, 4, 3, 0, 1, 2};
 
-typedef enum { up, left, down, right } Direction; 
+typedef enum { up, left, down, right } Direction;
 Direction scan_direction = right;
 Direction facing = right;
 
@@ -20,7 +20,7 @@ int make_map(char *data[]) {
 		if(sscanf(data[i], "%i", &map[(i-3)/20][(i-3)%20]) != 1) {
 			return 1;
 		}
-	} 
+	}
 	return 0;
 }
 
@@ -48,7 +48,7 @@ int** make_temp_view() {
 void free_temp_view(int **view) {
     for (int i = 0; i < 3; i++) {
     	free(view[i]);
-    }	
+    }
     free(view);
 }
 
@@ -111,6 +111,11 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
+    // drive event
+    //struct _Explorer* c = getChecker(ed);
+    //drive(location[1] + y_delta, location[0] + x_delta, facing);
+    // end drive event
+
 	location[0] += y_delta;
 	location[1] += x_delta;
 	if(map[location[0]][location[1]] > 0) {
@@ -120,14 +125,14 @@ void update_map(int y_delta, int x_delta) {
 }
 
 void move(int forward, int side) {
-	if(facing == up) {
+    if(facing == up) {
 		update_map(-forward, side);
 	} else if(facing == left) {
 		update_map(-side, -forward);
 	} else if(facing == down) {
 		update_map(forward, -side);
 	} else if(facing == right) {
-		update_map(side, forward);	
+		update_map(side, forward);
 	}
 }
 
@@ -155,7 +160,7 @@ int get_targets_in_view() {
 					pivot();
 					return 1;
 				} else {
-					move_to_spot(spot);			
+					move_to_spot(spot);
 				}
 			} else {
 				move_within_view(location, spot);
@@ -177,7 +182,7 @@ int move_max_straight() {
 			distance++;
 		} else {
 			break;
-		}		
+		}
 	}
 	move(distance, 0);
 	return distance;
@@ -206,7 +211,7 @@ int pivot() {
 		move_to_spot(apex);
 		if(target >= 0) {
 			move_within_view(apex,target);
-		}	
+		}
 		return 1;
 	} else {
 		return 0;
@@ -245,10 +250,10 @@ void rotate_facing() {
 		if(move_max_straight() == 0) {
 			pivot();
 		}
-		facing = (facing + 1) % 4;	
+		facing = (facing + 1) % 4;
 		get_view();
 	}
-	
+
 }
 
 int lawnmower() {
@@ -258,7 +263,7 @@ int lawnmower() {
 	}
 	if(is_wall()) {
 		rotate_facing();
-		return 1;	
+		return 1;
 	}
 	if(move_max_straight()) {
 		return 1;
@@ -280,11 +285,11 @@ void print_view() {
 int main(int argc, char *argv[]) {
 	if(argc == 203) {
 		if(make_map(argv) == 1) {
-			printf("Invalid non-int args");
+			printf("Invalid non-int args\n");
 			return 1;
 		}
 	} else {
-		printf("Invalid number of args %i", argc);
+		printf("Invalid number of args %i\n", argc);
 		return 1;
 	}
 	int move_count = 0;
@@ -293,10 +298,9 @@ int main(int argc, char *argv[]) {
 		move_count++;
 	}
 	lawnmower();
+	printf("\n");
 	return 0;
 }
-
-
 
 // void print_map() {
 // 	for(int i = 0; i < 10; i++) {

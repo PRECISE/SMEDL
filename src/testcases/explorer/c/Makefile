@@ -3,24 +3,25 @@ CC = gcc
 CFLAGS = -g -Wall -std=c99
 HDRS = explorer.h
 SRCS = explorer.c explorer_mon.c
+BIN_DIR = bin
 
 ## This assigns the object file names to match the .c files
-OBJS = $(SRCS:.c=.o)
+#OBJS = $(SRCS:.c=.o)
 
 ## These define the rules to make each version
 non-instrumented : explorer.o
-	$(CC) $(CFLAGS) explorer.o -o bin/explorer
+	$(CC) $(CFLAGS) $(BIN_DIR)/explorer.o -o $(BIN_DIR)/explorer
 
 instrumented : explorer.o explorer_mon.o
-	$(CC) $(CFLAGS) explorer.o explorer_mon.o helper.c -o bin/explorer-instrumented
+	$(CC) $(CFLAGS) $(BIN_DIR)/explorer.o $(BIN_DIR)/explorer_mon.o helper.c -o $(BIN_DIR)/explorer-instrumented
 
 ## Source file rules
 explorer.o : explorer.c explorer.h
-	$(CC) $(CFLAGS) -c explorer.c
+	$(CC) $(CFLAGS) -c explorer.c -o $(BIN_DIR)/explorer.o
 
 explorer_mon.o : explorer_mon.c explorer.h
-	$(CC) $(CFLAGS) -c explorer_mon.c
+	$(CC) $(CFLAGS) -c explorer_mon.c -o $(BIN_DIR)/explorer_mon.o
 
 ## Remove all intermediate and executable files
 clean :
-	rm -f explorer explorer-instrumented $(OBJS)
+	rm -f $(BIN_DIR)/explorer $(BIN_DIR)/explorer-instrumented $(BIN_DIR)/explorer.o $(BIN_DIR)/explorer_mon.o

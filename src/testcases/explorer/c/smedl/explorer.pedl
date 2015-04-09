@@ -1,0 +1,10 @@
+object Explorer
+events
+    new Explorer(id, x, y, heading) =
+        create ExplorerData { id = this; x = this.x; y = this.y; heading = this.heading}
+    Explorer(id).found() = update(explorer().found) when id == explorer().ed
+    Explorer(id).drive(x = location[1] + x_delta,
+                       y = location[0] + y_delta, heading = facing) =
+                       call(explorer().update_map) when id == explorer().ed
+    Explorer(id).drive(x = location[1], y = location[0], heading = facing) =
+                       update(explorer().facing) when id == explorer().ed
