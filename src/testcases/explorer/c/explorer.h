@@ -2,6 +2,7 @@
 #define EXPLORER_H
 
 int make_map(char*[]);
+
 int** make_temp_view();
 
 void free_temp_view(int**);

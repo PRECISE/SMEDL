@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "explorer.h"
+#include "explorer_mon.h"
 
 int map[10][20];
 int view[3][3];
@@ -111,7 +112,12 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
-    location[0] += y_delta;
+    // drive event
+    //struct _Explorer* c = getChecker(ed);
+    //drive(location[1] + y_delta, location[0] + x_delta, facing);
+    // end drive event
+
+	location[0] += y_delta;
 	location[1] += x_delta;
 	if(map[location[0]][location[1]] > 0) {
 		map[location[0]][location[1]] = 0;
@@ -287,6 +293,12 @@ int main(int argc, char *argv[]) {
 		printf("Invalid number of args %i\n", argc);
 		return 1;
 	}
+
+	_Explorer* ed = init_Explorer();
+    ed->id = 1;
+    // create first checker
+    addChecker( ed );
+
 	int move_count = 0;
 	while(move_count < 200 && count_targets() > 0) {
 		lawnmower();
