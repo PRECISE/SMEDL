@@ -24,7 +24,7 @@ typedef struct _Explorer{
 void call_next_action(_Explorer*);
 void raise_error(char*, const char*, char*, char*);
 
-_Explorer* init_Explorer() {
+_Explorer* init_Explorer(int interest_threshold, int y, int x, int heading) {
   _Explorer* monitor = (_Explorer*)malloc(sizeof(_Explorer));
   monitor->state[0] = EXPLORE_MAIN;
   monitor->state[1] = MOVE_EXPLORE;
@@ -218,4 +218,35 @@ void exec_actions(_Explorer *monitor) {
 void raise_error(char *scen, const char *state, char *action, char *type) {
   printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}", scen, state, action, type);
 }
+
+// Checker Storage Functions
+
+typedef struct CheckerRecord {
+  _Explorer* checker;
+  struct CheckerRecord* next;
+} CheckerRecord;
+
+CheckerRecord* checkStore;
+
+void initCheckerStorage() {
+  checkStore = NULL;
+}
+
+void addChecker( _Explorer* c) {
+  CheckerRecord* tmp = checkStore;
+  checkStore = (CheckerRecord*)malloc(sizeof(CheckerRecord));
+  checkStore->checker = c;
+  checkStore->next = tmp;
+}
+
+_Explorer* getChecker( _Explorer* key ) {
+  CheckerRecord* iter = checkStore;
+  while (iter != NULL) {
+    if (iter->checker == key)
+       break;
+    iter = iter->next;
+  }
+  return iter->checker;
+}
+
 

@@ -3,16 +3,9 @@
 
 struct _Explorer;
 
-struct ExplorerData {
-  int id;
-  int y;
-  int x;
-  int heading;
-} ExplorerData;
-
 // checker initialization
 
-struct _Explorer* init_Explorer( const struct ExplorerData* t );
+struct _Explorer* init_Explorer(int interest_threshold, int y, int x, int heading);
 
 // checker event interface
 
