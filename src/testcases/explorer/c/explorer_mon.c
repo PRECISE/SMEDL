@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "actions.h"
+#include "explorer_mon.h"
 
 typedef enum { MAIN, EXPLORE } scenario;
 typedef enum { EXPLORE_MAIN, RETRIEVE_MAIN } main_state;

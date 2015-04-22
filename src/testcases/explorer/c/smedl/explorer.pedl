@@ -8,22 +8,3 @@ events
                        call(explorer().update_map, false) when id == explorer().ed
     Explorer(id).drive(x = location[1], y = location[0], heading = facing) =
                        update(explorer().facing) when id == explorer().ed
-
-
-
-
-
-
-
-
-
-                int foo() {
-                    int temp = bar();
-                    checker_update_here
-                    return temp;
-                }
-
-                int temp = bar();
-                checker_update_here
-
-                bar();

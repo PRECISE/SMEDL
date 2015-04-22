@@ -1,4 +1,14 @@
+#ifndef EXPLORER_MON_H
+#define EXPLORER_MON_H
+
 struct _Explorer;
+
+struct ExplorerData {
+  int id;
+  int y;
+  int x;
+  int heading;
+} ExplorerData;
 
 // checker initialization
 
@@ -18,3 +28,5 @@ struct _Explorer* getChecker( int );
 // dummy checker storage
 
 void initCheckerStorage();
+
+#endif

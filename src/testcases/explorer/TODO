@@ -1,2 +1,14 @@
 - Add checker lookup functions to auto-generation
 - Have explorer_mon.h auto-generated
+
+Instrumentation example:
+int foo() {
+    int temp = bar();
+    checker_update_here
+    return temp;
+}
+
+int temp = bar();
+checker_update_here
+
+bar();
