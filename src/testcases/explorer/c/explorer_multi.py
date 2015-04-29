@@ -1,7 +1,7 @@
 from subprocess import call
 from random import randint
 
-cmd = ["./explorer"]
+cmd = ["./explorer_multi"]
 
 for i in range(0,3):
     cmd.append(str(randint(0,9)))
