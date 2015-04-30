@@ -1,20 +1,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include "explorer_mon.h"
 #include "explorer_multi.h"
+
+
+typedef enum { up, left, down, right } Direction;
+pthread_mutex_t print_lock;
+pthread_mutex_t checker_lock;
 
 __thread int explorer_id;
 __thread int map[10][20];
 __thread int view[3][3];
 __thread int location[2];
-
-pthread_mutex_t print_lock;
+__thread Direction scan_direction;
+__thread Direction facing;
+__thread struct ExplorerData *data;
 
 int target_route[9] = {6, 7, 8, 5, 4, 3, 0, 1, 2};
-
-typedef enum { up, left, down, right } Direction;
-Direction scan_direction = right;
-Direction facing = right;
 
 ThreadList *thread_head = NULL;
 ExplorerInput *input_head = NULL;
@@ -141,6 +144,7 @@ void update_map(int y_delta, int x_delta) {
 	pthread_mutex_lock(&print_lock);
 	printf("{%d:[%d,%d]},\n", explorer_id, y_delta, x_delta);
 	pthread_mutex_unlock(&print_lock);
+	drive(get_checker(data), location[1], location[0], facing);
 }
 
 void move(int forward, int side) {
@@ -303,10 +307,23 @@ void print_view() {
 
 void *run(void* input) {
 	explorer_id = ((ExplorerInput*)input)->id;
+	data = (ExplorerData*)malloc(sizeof(ExplorerData));
 	if(make_map(input) == 1) {
 		printf("Invalid non-int args\n");
 		pthread_exit(NULL);
 	}
+	scan_direction = right;
+	facing = right;
+	pthread_mutex_lock(&print_lock);
+	printf("WTF %d\n", location[0]);
+	pthread_mutex_unlock(&print_lock);
+	data->y = location[0];
+	data->x = location[1];
+	data->heading = facing;
+	pthread_mutex_lock(&checker_lock);
+	add_checker(init_Explorer(data));
+	pthread_mutex_unlock(&checker_lock);
+
 	print_map();
 	int move_count = 0;
 	while(move_count < 200 && count_targets() > 0) {
@@ -314,6 +331,8 @@ void *run(void* input) {
 		move_count++;
 	}
 	lawnmower();
+	print_map();
+	free(data);
 	pthread_exit(NULL);
 }
 
@@ -322,6 +341,11 @@ int main(int argc, char *argv[]) {
 		printf("{\"Status\":\"Failed - Invalid number of args %i\n\"}]}", argc);
 		return 1;
 	}
+	if (pthread_mutex_init(&print_lock, NULL) != 0 || pthread_mutex_init(&checker_lock, NULL) != 0) {
+        printf("{\"Status\":\"Failed - Mutex init failed %i\n\"}]}", argc);
+        return 1;
+    }
+    init_checker_storage();
 	printf("{\"Data\":[\n");
 	int explorer_count = (argc - 1) / 202;
 	for(int i = 0; i < explorer_count; i++) {
@@ -346,13 +370,13 @@ void print_map() {
 	for(int i = 0; i < 10; i++) {
 		for(int j = 0; j < 20; j++) {
 			if(location[0] == i && location[1] == j) {
-				printf("x ");
-			}
-			printf("%d ", map[i][j]);
+				printf("x");
+			} else printf("%d", map[i][j]);
+			if(j < 19) printf(" ");
 		}
-		if(i < 9) printf("\n");
+		if(i == 9) printf("\",");
+		printf("\n");
 	}
-	printf("\"},\n");
-
+	printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", get_checker(data)->y, get_checker(data)->x, get_checker(data)->heading);
 	pthread_mutex_unlock(&print_lock);
 }
