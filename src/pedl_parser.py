@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 5, 6, 21, 42, 21, 2)
+__version__ = (2015, 5, 7, 15, 20, 59, 3)
 
 __all__ = [
     'pedlParser',
@@ -35,23 +35,27 @@ class pedlParser(Parser):
         )
 
     @graken()
-    def _monitor_(self):
+    def _object_(self):
+        self._token('object')
+        self._identifier_()
+        self.ast['object'] = self.last_node
+        self._token('events')
 
-        def block1():
+        def block2():
             self._new_mon_()
-        self._positive_closure(block1)
+        self._positive_closure(block2)
 
         self.ast['monitors'] = self.last_node
 
-        def block3():
+        def block4():
             self._event_def_()
-        self._positive_closure(block3)
+        self._positive_closure(block4)
 
         self.ast['event_defs'] = self.last_node
         self._check_eof()
 
         self.ast._define(
-            ['monitors', 'event_defs'],
+            ['object', 'monitors', 'event_defs'],
             []
         )
 
@@ -116,16 +120,27 @@ class pedlParser(Parser):
         self._token(').')
         self._identifier_()
         self.ast['event'] = self.last_node
+        self._token('(')
         with self._optional():
-            self._token('(')
-            self._identifier_list_()
+            self._state_update_list_()
             self.ast['event_params'] = self.last_node
-            self._token(')')
-        self._token('=')
-        self._token('update(')
-        self._expression_()
-        self.ast['update_exp'] = self.last_node
         self._token(')')
+        self._token('=')
+
+        def block4():
+            with self._choice():
+                with self._option():
+                    self._token('update(')
+                    self._expression_list_()
+                    self.ast['update_params'] = self.last_node
+                    self._token(')')
+                with self._option():
+                    self._token('call(')
+                    self._expression_list_()
+                    self.ast['call_params'] = self.last_node
+                    self._token(')')
+                self._error('no available options')
+        self._closure(block4)
         with self._optional():
             self._token('when')
             self._expression_()
@@ -135,7 +150,7 @@ class pedlParser(Parser):
             self.ast['event_action'] = self.last_node
 
         self.ast._define(
-            ['monitor', 'monitor_params', 'event', 'event_params', 'update_exp', 'when', 'event_action'],
+            ['monitor', 'monitor_params', 'event', 'event_params', 'update_params', 'call_params', 'when', 'event_action'],
             []
         )
 
@@ -179,7 +194,6 @@ class pedlParser(Parser):
                 self._token('=')
                 self._expression_()
                 self.ast['expression'] = self.last_node
-                self._token(';')
             with self._option():
                 self._target_()
                 self.ast['target'] = self.last_node
@@ -290,11 +304,19 @@ class pedlParser(Parser):
     def _sub_expr_(self):
         with self._choice():
             with self._option():
+
+                def block0():
+                    self._token('!!')
+                self._closure(block0)
                 self._token('!(')
                 self._expression_()
                 self.ast['not_ex'] = self.last_node
                 self._token(')')
             with self._option():
+
+                def block2():
+                    self._token('!!')
+                self._closure(block2)
                 self._token('(')
                 self._expression_()
                 self.ast['@'] = self.last_node
@@ -329,7 +351,9 @@ class pedlParser(Parser):
                                 self._token('<=')
                             with self._option():
                                 self._token('==')
-                            self._error('expecting one of: < <= == > >=')
+                            with self._option():
+                                self._token('!=')
+                            self._error('expecting one of: != < <= == > >=')
                     self.ast['operator'] = self.last_node
                     self._arith_expr_()
                     self.ast['comp'] = self.last_node
@@ -398,7 +422,9 @@ class pedlParser(Parser):
                                 self._token('-')
                             with self._option():
                                 self._token('~')
-                            self._error('expecting one of: + - ~')
+                            with self._option():
+                                self._token('!')
+                            self._error('expecting one of: ! + - ~')
                     self.ast['unary'] = self.last_node
                 self._closure(block0)
                 self._atom_()
@@ -539,14 +565,14 @@ class pedlParser(Parser):
         self.ast['@'] = self.last_node
 
         def block1():
-            self._token(',')
+            self._token(';')
             self._action_item_()
             self.ast['@'] = self.last_node
         self._closure(block1)
 
 
 class pedlSemantics(object):
-    def monitor(self, ast):
+    def object(self, ast):
         return ast
 
     def new_mon(self, ast):

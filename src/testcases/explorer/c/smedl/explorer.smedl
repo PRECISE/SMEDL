@@ -36,4 +36,9 @@ scenarios
     Drive -> turn() -> drive() -> Drive
   hill:
     Drive -> "prepare to climb" -> Drive
+
+
+  Have an event that would update all state variables...
+
+  Event ordering is such that variables update immmediately, events are queued
   */
