@@ -2,25 +2,15 @@
 #include <stdio.h>
 #include "actions.h"
 #include "explorer_mon.h"
+#include "helper.h"
 
 typedef enum { MAIN, EXPLORE } scenario;
 typedef enum { EXPLORE_MAIN, RETRIEVE_MAIN } main_state;
 typedef enum { MOVE_EXPLORE, LOOK_EXPLORE } explore_state;
-typedef enum { DRIVE, TURN, EXPVIEW, FOUND, RETRIEVED } event; //Changed all VIEW and view() to EXPVIEW, exp_view()
+typedef enum { DRIVE, TURN, SCAN_VIEW, FOUND, RETRIEVED } event; //Changed all VIEW and view() to SCAN_VIEW, scan_view()
 typedef enum { DEFAULT } error_type;
 const char *main_states[2] = {"Explore", "Retrieve"};
 const char *explore_states[2] = {"Move", "Look"};
-
-// typedef struct _Explorer{
-//   struct ExplorerData *id;
-//   int interest_threshold;
-//   int y;
-//   int x;
-//   int heading;
-//   int state[2]; // = { EXPLORE_MAIN, MOVE_EXPLORE };
-//   const char **state_names[2];
-//   action *action_queue;
-// } _Explorer;
 
 void call_next_action(_Explorer*);
 void raise_error(char*, const char*, char*, char*);
@@ -98,23 +88,24 @@ void raise_drive(_Explorer* monitor, int x, int y, int heading) {
 }
 
 void turn(_Explorer* monitor, int facing) {
-  switch (monitor->state[MAIN]) {
-    default:
-      raise_error("main", monitor->state_names[MAIN][monitor->state[MAIN]], "turn", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[EXPLORE]) {
-    case MOVE_EXPLORE:
-      if(facing != monitor->heading) {
-        monitor->state[EXPLORE] = LOOK_EXPLORE;
-      } else {
-        monitor->state[EXPLORE] = MOVE_EXPLORE;
-      }
-      break;
-    default:
-      raise_error("explore", monitor->state_names[EXPLORE][monitor->state[EXPLORE]], "turn", "DEFAULT");
-      break;
-  }
+  monitor->heading = facing;
+  // switch (monitor->state[MAIN]) {
+  //   default:
+  //     raise_error("main", monitor->state_names[MAIN][monitor->state[MAIN]], "turn", "DEFAULT");
+  //     break;
+  // }
+  // switch (monitor->state[EXPLORE]) {
+  //   case MOVE_EXPLORE:
+  //     if(facing != monitor->heading) {
+  //       monitor->state[EXPLORE] = LOOK_EXPLORE;
+  //     } else {
+  //       monitor->state[EXPLORE] = MOVE_EXPLORE;
+  //     }
+  //     break;
+  //   default:
+  //     raise_error("explore", monitor->state_names[EXPLORE][monitor->state[EXPLORE]], "turn", "DEFAULT");
+  //     break;
+  // }
 }
 
 void raise_turn(_Explorer* monitor, int facing) {
@@ -123,7 +114,12 @@ void raise_turn(_Explorer* monitor, int facing) {
   push_action(&monitor->action_queue, TURN, p_head);
 }
 
-void exp_view(_Explorer* monitor, int x, int y) {
+void scan_view(_Explorer* monitor, int x, int y, int heading, const void* map) { //changed params from smedl
+  monitor->x = x;
+  monitor->y = y;
+  monitor->heading = heading;
+  //This raise needs to be immediate, not in queue
+  set_view(monitor, map); 
   switch (monitor->state[MAIN]) {
     default:
       raise_error("main", monitor->state_names[MAIN][monitor->state[MAIN]], "view", "DEFAULT");
@@ -147,7 +143,7 @@ void raise_view(_Explorer* monitor, int x, int y) {
   param *p_head = NULL;
   push_param(&p_head, &x, NULL, NULL);
   push_param(&p_head, &y, NULL, NULL);
-  push_action(&monitor->action_queue, EXPVIEW, p_head);
+  push_action(&monitor->action_queue, SCAN_VIEW, p_head);
 }
 
 void found(_Explorer* monitor) {
@@ -228,12 +224,15 @@ void call_next_action(_Explorer *monitor) {
       pop_param(&monitor->action_queue->params);
       turn(monitor, facing_turn);
       break;
-    case EXPVIEW: ;
+    case SCAN_VIEW: ;
       int x_view = monitor->action_queue->params->i;
       pop_param(&monitor->action_queue->params);
       int y_view = monitor->action_queue->params->i;
       pop_param(&monitor->action_queue->params);
-      exp_view(monitor, x_view, y_view);
+      int heading_view = monitor->action_queue->params->i;
+      pop_param(&monitor->action_queue->params);
+      //add void* param
+      // scan_view(monitor, x_view, y_view, heading_view, map_view );
       break;
     case FOUND: ;
       found(monitor);

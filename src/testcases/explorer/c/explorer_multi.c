@@ -136,6 +136,7 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
+	drive(get_checker(data), location[1] + y_delta, location[0] + x_delta, facing);
     location[0] += y_delta;
 	location[1] += x_delta;
 	if(map[location[0]][location[1]] > 0) {
@@ -144,7 +145,6 @@ void update_map(int y_delta, int x_delta) {
 	pthread_mutex_lock(&print_lock);
 	printf("{%d:[%d,%d]},\n", explorer_id, y_delta, x_delta);
 	pthread_mutex_unlock(&print_lock);
-	drive(get_checker(data), location[1], location[0], facing);
 }
 
 void move(int forward, int side) {
@@ -275,6 +275,7 @@ void rotate_facing() {
 		}
 		facing = (facing + 1) % 4;
 		get_view();
+		turn(get_checker(data), facing);
 	}
 
 }
@@ -315,7 +316,6 @@ void *run(void* input) {
 	scan_direction = right;
 	facing = right;
 	pthread_mutex_lock(&print_lock);
-	printf("WTF %d\n", location[0]);
 	pthread_mutex_unlock(&print_lock);
 	data->y = location[0];
 	data->x = location[1];

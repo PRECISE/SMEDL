@@ -12,3 +12,13 @@ int temp = bar();
 checker_update_here
 
 bar();
+
+Add all loop transitions to multi.smedl and add extra cases to _mon
+Change scan_view function with contains_object function call
+set view action on scan_view event
+contains_object function just takes in map and checks view already set
+make cleared function
+
+add prefix to monitor function and var names to avoid conflict
+
+struct internal variable and struct parameters for helpers

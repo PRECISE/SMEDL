@@ -3,7 +3,6 @@
 
 typedef struct ThreadList {
   pthread_t id;
-  void *retval;
   struct ThreadList *next;
 } ThreadList;
 

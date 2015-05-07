@@ -15,6 +15,7 @@ typedef struct _Explorer{
   int y;
   int x;
   int heading;
+  void *explorer_view;
   int state[2]; // = { EXPLORE_MAIN, MOVE_EXPLORE };
   const char **state_names[2];
   action *action_queue;
@@ -29,6 +30,7 @@ struct _Explorer* init_Explorer(struct ExplorerData*);
 void retrieved(struct _Explorer* monitor);
 void drive(struct _Explorer* monitor, int x, int y, int heading);
 void turn(struct _Explorer* monitor, int facing);
+void exp_view(_Explorer*, const void*);
 
 // checker lookup interface
 
