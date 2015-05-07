@@ -4,18 +4,21 @@
  * Written February 3 2015.
  *)
 
-monitor
+object
     =
-    monitors:{new_mon}+
-    event_defs:{event_def}+
+    'object' object:identifier
+    'events'
+        monitors:{new_mon}+
+        event_defs:{event_def}+
     $
     ;
 
 new_mon
     =
-    'new' monitor:identifier ['(' monitor_params:identifier_list ')'] '=' 'create' struct:structure
+    'new' monitor:identifier ['(' monitor_params:identifier_list ')'] '='
+        'create' struct:structure
     ;
-    
+
 structure
     =
     struct_id:identifier '{' fields:{field}* '}'
@@ -28,9 +31,13 @@ field
 
 event_def
     =
-    monitor:identifier '(' monitor_params:identifier_list ').' event:identifier ['(' event_params:identifier_list ')'] '=' 'update(' update_exp:expression ')' ['when' when:expression] [event_action:action]
+    monitor:identifier '(' monitor_params:identifier_list ').' event:identifier
+        '(' [event_params:state_update_list] ')' '='
+        {'update(' update_params:expression_list ')' |
+        'call(' call_params:expression_list ')'}
+        ['when' when:expression] [event_action:action]
     ;
-    
+
 action
     =
     '{' actions+:nonempty_action_item_list '}'
@@ -45,7 +52,7 @@ action_item
 
 state_update
     =
-      target:target '=' expression:expression ';'
+      target:target '=' expression:expression
     | target:target '(' expression_list+:expression_list ')'
     ;
 
@@ -93,14 +100,14 @@ and_expr
 
 sub_expr
     =
-      '!(' not_ex:expression ')'
-    | '(' @:expression ')'
+      {'!!'}*'!(' not_ex:expression ')'
+    | {'!!'}*'(' @:expression ')'
     | @:comp_expr
     ;
 
 comp_expr
     =
-      comp:arith_expr {operator:('>' | '<' | '>=' | '<=' | '==') comp:arith_expr}+
+      comp:arith_expr {operator:('>' | '<' | '>=' | '<=' | '==' | '!=') comp:arith_expr}+
     | '(' @:comp_expr ')'
     | @:arith_expr
     ;
@@ -113,7 +120,7 @@ arith_expr
 
 term
     =
-      {unary:('+' | '-' | '~')}* atom:atom {trailer:trailer}*
+      {unary:('+' | '-' | '~' | '!')}* atom:atom {trailer:trailer}*
     | {unary:('+' | '-' | '~')}* '(' @:arith_expr ')'
     ;
 
@@ -133,7 +140,7 @@ trailer
     | '(' [params:expression_list] ')'
     | '.' dot:identifier {trailer:trailer}*
     ;
-    
+
 target
     =
     (* To be improved *)
@@ -160,5 +167,5 @@ state_update_list
 
 nonempty_action_item_list
     =
-      @:action_item {',' @:action_item}*
+      @:action_item {';' @:action_item}*
     ;

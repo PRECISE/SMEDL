@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 3, 26, 12, 44, 29, 3)
+__version__ = (2015, 5, 6, 21, 42, 7, 2)
 
 __all__ = [
     'smedlParser',
@@ -29,6 +29,8 @@ class smedlParser(Parser):
         super(smedlParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
+            comments_re=None,
+            eol_comments_re=None,
             **kwargs
         )
 
@@ -246,7 +248,7 @@ class smedlParser(Parser):
                 self.ast['state_update'] = self.last_node
             with self._option():
                 self._raise_stmt_()
-                self.ast['raise'] = self.last_node
+                self.ast['raise_'] = self.last_node
             with self._option():
                 self._instantiation_stmt_()
                 self.ast['instantiation'] = self.last_node
@@ -769,7 +771,7 @@ class smedlSemantics(object):
         return ast
 
 
-def main(filename, startrule, trace=False, whitespace=None):
+def main(filename, startrule, trace=False, whitespace=None, nameguard=None):
     import json
     with open(filename) as f:
         text = f.read()
@@ -779,7 +781,8 @@ def main(filename, startrule, trace=False, whitespace=None):
         startrule,
         filename=filename,
         trace=trace,
-        whitespace=whitespace)
+        whitespace=whitespace,
+        nameguard=nameguard)
     print('AST:')
     print(ast)
     print()
@@ -803,6 +806,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Simple parser for smedl.")
     parser.add_argument('-l', '--list', action=ListRules, nargs=0,
                         help="list all rules and exit")
+    parser.add_argument('-n', '--no-nameguard', action='store_true',
+                        dest='no_nameguard',
+                        help="disable the 'nameguard' feature")
     parser.add_argument('-t', '--trace', action='store_true',
                         help="output trace information")
     parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
@@ -816,5 +822,6 @@ if __name__ == '__main__':
         args.file,
         args.startrule,
         trace=args.trace,
-        whitespace=args.whitespace
+        whitespace=args.whitespace,
+        nameguard=not args.no_nameguard
     )

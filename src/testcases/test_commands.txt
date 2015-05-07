@@ -1,3 +1,2 @@
 grako -t -o smedl_parser.py smedl.grako
-
 python smedl_parser.py -t onetwo.smedl object

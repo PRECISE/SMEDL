@@ -1,7 +1,9 @@
 - Add checker lookup functions to auto-generation
 - Have explorer_mon.h auto-generated
+- Make thread-local variables for storing monitor ID so we can access it from anywhere in the program
 
 Instrumentation example:
+
 int foo() {
     int temp = bar();
     checker_update_here

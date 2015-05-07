@@ -1,3 +1,0 @@
-build up list of issues with grammar: when expressions are legal?, ensuring trace pattern goes State -> event -> State (should we improve the grammar to force this?)
-Think of State machine checks to detect when guards are not mutually exclusive
-finish building fsm and turn into switch statement
