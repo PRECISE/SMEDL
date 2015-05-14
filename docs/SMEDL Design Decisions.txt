@@ -1,0 +1,32 @@
+SMEDL Language Development Design Decisions
+
+Newest language features:
+- Internal events
+- Single step traces
+- Imports
+- Concept of multiple interacting state machines
+- Action queue
+- Event queue
+- Helper functions (and associated libraries)
+- Multi-threaded monitor support
+- Implicit versus explicit error state handling
+
+Implementation features:
+- FSM generation
+- C code generation
+
+Discussion
+----------
+
+"We have also been discussing ideas as we work, and occasionally we come up with some questions that we think we should resolve as a group. One such question relates to the scenarios defined in SMEDL. We were wondering about how we should handle a situation where one scenario defines a high-level trace of events while another scenario defines a lower-level trace of events, that trace being a subset of the high-level scenario. Would this lead to any problems, or can they both simply proceed simultaneously without concern? My thoughts are that they will be able to proceed normally, but I wanted to make sure there wasn’t any issue we may be glossing over." - Peter
+
+"I think the only other one that comes to mind would be this:
+Can a ‘when’ condition ever include a call to a helper function? Maybe a comparison in the ‘when' involves a very complex arithmetic operation. Where would such a function be defined?
+On the other hand, the programmer could just as easily call a function in their main program to perform the complex operation and set a variable of interest based on the result." - Brad
+
+"Different scenarios should not interfere with each other, even if they share some events.  Of course, it is possible to introduce unintended conflicts through shared checker state.  I don't think that we should aim to exclude such interactions.  Peter's example is a case in point: the purpose of the low-level scenario may be to compute conditions to be used in the higher-level scenario.
+
+Now, Brad's question is even more interesting.  I think there may be good value in "checker libraries", that is, collections of helper functions that abstract away complex calculations from 'when' conditions.  They can be linked with the checker when the C code generated from a SMEDL script is compiled.  I have not given it much thought, but proposals for infrastructure that would support such checker libraries would be very welcome.  I guess, we would need an extension of SMEDL syntax with calls to helper functions, an extension of type checking to connect with header files from the library, a mechanism for connecting helper functions with the checker state (and the program state?).  Maybe guidelines for defining these helper functions: at the very least, we should require them to avoid side effects.  OTOH, requiring application programmers to introduce functions into the program source code for the purpose of helping the checker may be problematic: not only it is an extra burden for the programmer, but also the programmer may not know about the checker state.
+
+There is also a related (but more general) question about what variables can be used in 'when' clauses.  Can the checker refer to a program variable directly?  The alternative is to create shadow copies of program variables within the checker space using update events (this is the approach MaC took).  Here, since we are targeting synchronous checking, it may be more efficient to read program variables directly, but instrumentation becomes more complex.  A third alternative is to use the MaC mechanism, but hide it from the language level.  That is, when we generate code for the script, whenever a program variable is mentioned, the generator creates a shadow copy automatically, introducing the necessary update events.  I'm not sure if we discussed it in Phase I.  In any case, let us revisit this question now.  Please let me know your thoughts.  If my ramblings do not make sense, let us discuss next week in person." - Oleg
+
