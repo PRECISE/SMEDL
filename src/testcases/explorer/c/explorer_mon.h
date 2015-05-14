@@ -30,7 +30,7 @@ struct _Explorer* init_Explorer(struct ExplorerData*);
 void retrieved(struct _Explorer* monitor);
 void drive(struct _Explorer* monitor, int x, int y, int heading);
 void turn(struct _Explorer* monitor, int facing);
-void exp_view(_Explorer*, const void*);
+void scan_view(_Explorer*, int, int, int, const void*);
 
 // checker lookup interface
 

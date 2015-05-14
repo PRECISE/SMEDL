@@ -14,6 +14,7 @@ const char *explore_states[2] = {"Move", "Look"};
 
 void call_next_action(_Explorer*);
 void raise_error(char*, const char*, char*, char*);
+void raise_found(_Explorer*); //move these to header
 
 _Explorer* init_Explorer(struct ExplorerData* d) {
   _Explorer* monitor = (_Explorer*)malloc(sizeof(_Explorer));
@@ -118,8 +119,7 @@ void scan_view(_Explorer* monitor, int x, int y, int heading, const void* map) {
   monitor->x = x;
   monitor->y = y;
   monitor->heading = heading;
-  //This raise needs to be immediate, not in queue
-  set_view(monitor, map); 
+  set_view(monitor, map); //This raise needs to be immediate, not in queue
   switch (monitor->state[MAIN]) {
     default:
       raise_error("main", monitor->state_names[MAIN][monitor->state[MAIN]], "view", "DEFAULT");
@@ -127,11 +127,12 @@ void scan_view(_Explorer* monitor, int x, int y, int heading, const void* map) {
   }
   switch (monitor->state[EXPLORE]) {
     case LOOK_EXPLORE:
-      // if(contains_object(x, y)) {
+      if(contains_object(monitor)) {
+        raise_found(monitor);
         monitor->state[EXPLORE] = MOVE_EXPLORE;
-      // } else {
-      //   monitor->state[EXPLORE] = MOVE_EXPLORE;
-      // }
+      } else {
+        monitor->state[EXPLORE] = MOVE_EXPLORE;
+      }
       break;
     default:
       raise_error("explore", monitor->state_names[EXPLORE][monitor->state[EXPLORE]], "view", "DEFAULT");

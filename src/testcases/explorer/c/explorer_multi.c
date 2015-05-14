@@ -282,6 +282,7 @@ void rotate_facing() {
 
 int lawnmower() {
 	get_view();
+	// scan_view(get_checker(data), location[1], location[0], facing, map); //weird instrumentation placement;
 	if(get_targets_in_view() > 0) {
 		return 1;
 	}

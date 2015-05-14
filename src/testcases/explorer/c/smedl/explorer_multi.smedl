@@ -15,10 +15,10 @@ scenarios
     Retrieve -> retrieved() -> Explore
 
   explore:
-    Stop -> scan_view(x, y, heading, map) {explorer_view = set_view(map)} when contains_object(this, map) { raise found() } -> Move
+    Stop -> scan_view(x, y, heading, map) when contains_object(this, map) { raise found() } -> Move
       else -> Move
-    Move -> cleared(map) when !contains_object(this, map) { raise retrieved(); raise free_view() } -> Stop
-      else {raise not_cleared()} -> Stop
+    Move -> cleared(map) when !contains_object(this, map) { raise retrieved(); explorer_view = set_view(map) } -> Stop
+      else {raise not_cleared(); set_view(map)} -> Stop
 
   // Add check that it doesn't go off the map
   // We can delay events...
