@@ -2,6 +2,19 @@
 - Have explorer_mon.h auto-generated
 - Make thread-local variables for storing monitor ID so we can access it from anywhere in the program
 
+- Add destructor for monitor
+- Support labels for internal state variables and external state variables
+
+- Record decisions that we have made!!!!
+    - raising of events with event containing an attribute can be handled two ways: with update of state variable, and with implicit helper function return value
+
+- NEXT!: Make list of all SMEDL design decisions and discuss at next meeting
+
+- Search for source code instrumentation tools (or binary-level tools)
+
+- Build PEDL symbol table and include some consistency checks against the SMEDL symbol table
+- Ensure all manual code edits are generated automatically
+
 Instrumentation example:
 
 int foo() {
