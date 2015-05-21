@@ -4,6 +4,7 @@
 from __future__ import print_function, division, absolute_import, \
     unicode_literals
 from smedl_parser import smedlParser
+from pedl_parser import pedlParser
 from smedl_symboltable import smedlSymbolTable
 from fsm import *
 from grako.ast import AST
@@ -12,32 +13,33 @@ import json
 import collections
 import re
 
-def main(filename, trace=False, whitespace=None, helper=None):
-    with open(filename) as f:
-        text = f.read()
-    parser = smedlParser(
+
+def main(smedlFilename, pedlFilename, helper=None):
+    with open(smedlFilename) as smedlFile:
+        smedlText = smedlFile.read()
+    smedlPar = smedlParser(
         parseinfo=False,
         comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
-    ast = parser.parse(
-        text,
+    smedlAST = smedlPar.parse(
+        smedlText,
         'object',
-        filename=filename,
-        trace=trace,
-        whitespace=whitespace)
-    print('AST:')
-    print(ast)
-    print('\nJSON:')
-    print(json.dumps(ast, indent=2))
-    symbolTable = smedlSymbolTable()
-    parseToSymbolTable('top', ast, symbolTable)
-    allFSMs = generateFSMs(ast, symbolTable)
-    print('\nSymbol Table:')
-    for k in symbolTable:
-        print('%s: %s'%(k,symbolTable[k]))
+        filename=smedlFilename,
+        trace=False,
+        whitespace=None)
+    print('SMEDL AST:')
+    print(smedlAST)
+    print('\nSMEDL JSON:')
+    print(json.dumps(smedlAST, indent=2))
+    smedlST = smedlSymbolTable()
+    parseToSymbolTable('top', smedlAST, smedlST)
+    allFSMs = generateFSMs(smedlAST, smedlST)
+    print('\nSMEDL Symbol Table:')
+    for k in smedlST:
+        print('%s: %s'%(k, smedlST[k]))
     for key, fsm in allFSMs.iteritems():
         print('\nFSM: %s\n' % key)
         print('%s\n'%fsm)
-    outputSource(symbolTable, allFSMs, filename, helper)
+    outputSource(smedlST, allFSMs, smedlFilename, helper)
 
 
 def parseToSymbolTable(label, object, symbolTable):
@@ -62,11 +64,11 @@ def parseToSymbolTable(label, object, symbolTable):
                 if isinstance(v, AST):
                     id = v['step_event']['expression']['atom']
                     if id not in symbolTable:
-                        symbolTable.add(id, {'type': 'trace_state'})              
+                        symbolTable.add(id, {'type': 'trace_state'})
             elif ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not \
                 (v == 'true' or v == 'false' or v == 'null' or v == 'this') and v not in symbolTable:
                 symbolTable.add(v, {'type': label})
-            parseToSymbolTable(k, v, symbolTable)  
+            parseToSymbolTable(k, v, symbolTable)
     if isinstance(object, list):
         for elem in object:
             parseToSymbolTable(label, elem, symbolTable)
@@ -140,6 +142,7 @@ def generateFSMs(ast, symbolTable):
         allFSMs[scenario['scenario_id']] = fsm
     return allFSMs
 
+
 def outputSource(symbolTable, allFSMs, filename, helper):
     # Open file for output (based on input filename)
     out = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
@@ -168,8 +171,8 @@ def outputSource(symbolTable, allFSMs, filename, helper):
     for e in symbolTable.getSymbolsByType('event'):
         if symbolTable[e]['error']:
             errors.append(e.upper())
-    out.write('typedef enum { %s } event;\n' % (", ".join(events))) 
-    out.write('typedef enum { %s } error_type;\n' % (", ".join(errors)))    
+    out.write('typedef enum { %s } event;\n' % (", ".join(events)))
+    out.write('typedef enum { %s } error_type;\n' % (", ".join(errors)))
     out.write(''.join(state_names_arrays))
     out.write('\n')
 
@@ -224,7 +227,7 @@ def outputSource(symbolTable, allFSMs, filename, helper):
             for transition in fsm.getTransitionsByEvent(str(m)):
                 out.write(writeCaseTransition(transition, reference, name_reference, key, m))
             out.write('    default:\n')
-            out.write('      raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n'%(key, name_reference, m))      
+            out.write('      raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n'%(key, name_reference, m))
             out.write('      break;\n')
             out.write('  }\n')
 
@@ -236,25 +239,26 @@ def outputSource(symbolTable, allFSMs, filename, helper):
         out.write(writeRaiseFunction(symbolTable, m, struct))
 
     for s in state_vars:
-        out.write('void set%s_%s(%s *monitor, %s new_%s) {\n'%(struct.lower(), s, struct, 
+        out.write('void set%s_%s(%s *monitor, %s new_%s) {\n'%(struct.lower(), s, struct,
             symbolTable.get(s)['datatype'], s))
         out.write('  monitor->%s = new_%s;\n  return;\n}\n\n'%(s, s))
 
     out.write('void call_next_action(%s *monitor) {\n'%struct)
     out.write('  switch (monitor->action_queue->id) {\n')
     out.write('\n'.join(callCases))
-    out.write('\n  }\n}\n\n')    
+    out.write('\n  }\n}\n\n')
 
     out.write('void exec_actions(%s *monitor) {\n'%struct)
     out.write('  while(monitor->action_queue != NULL) {\n')
     out.write('    call_next_action(monitor);\n')
     out.write('    pop_action(&monitor->action_queue);\n')
-    out.write('  }\n}\n\n')  
+    out.write('  }\n}\n\n')
     out.write("void raise_error(char *scen, const char *state, char *action, char *type) {\n")
     out.write("  printf(\"{\\\"scenario\\\":\\\"%s\\\", \\\"state\\\":\\\"%s\\\", \\\"" + \
         "action\\\":\\\"%s\\\", \\\"type\\\":\\\"%s\\\"}\", scen, state, action, type);")
     out.write("\n}\n\n")
     out.close()
+
 
 def writeCaseTransition(trans, currentState, stateName, scenario, action):
     output = ['    case %s_%s:\n' % (trans.startState.name.upper(), scenario.upper())]
@@ -266,11 +270,12 @@ def writeCaseTransition(trans, currentState, stateName, scenario, action):
             output.append('        %s = ' % currentState + ("%s_%s" % (trans.elseState.name, scenario)).upper() + ';\n')
         else:
             output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
-        output.append('      }\n')   
+        output.append('      }\n')
     else:
         output.append('      %s = ' % currentState + ("%s_%s" % (trans.nextState.name, scenario)).upper() + ';\n')
     output.append('      break;\n')
     return "".join(output)
+
 
 def getEventParams(paramString):
     paramsList = []
@@ -278,6 +283,7 @@ def getEventParams(paramString):
     for p in params:
         paramsList.append([str(s) for s in p.split(' ')])
     return paramsList
+
 
 def writeCallCase(symbolTable, event):
     output = []
@@ -294,6 +300,7 @@ def writeCallCase(symbolTable, event):
         output.append('      %s(%s);'%(event, ", ".join(['monitor', callParams])))
     output.append('      break;')
     return '\n'.join(output)
+
 
 def writeRaiseFunction(symbolTable, event, struct):
     paramString = symbolTable.get(event, 'params')
@@ -315,6 +322,7 @@ def writeRaiseFunction(symbolTable, event, struct):
     output.append('  push_action(&monitor->action_queue, %s, p_head);'%event.upper())
     output.append('}\n\n')
     return "\n".join(output)
+
 
 def findFunctionParams(function, params, ast):
     names = []
@@ -360,7 +368,7 @@ def getParamTypes(function, events):
 
 def formatGuard(object):
     guard = str(guardToString(object))
-    # guard = checkReferences(guard) #TODO--------------------------------------------------------------------------
+    # guard = checkReferences(guard) #TODO--------
     return removeParentheses(guard)
 
 
@@ -448,32 +456,18 @@ def removeParentheses(guard):
     else:
         return guard
 
+
 def checkReferences(guard):
     objects = re.findall(r'\s([A-Za-z_]\w*).\w+\W+', guard)
 
 
 if __name__ == '__main__':
     import argparse
-    import string
-    import sys
 
-    class ListRules(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string):
-            print('Rules:')
-            for r in smedlParser.rule_list():
-                print(r)
-            print()
-            sys.exit(0)
-
-    parser = argparse.ArgumentParser(description="Simple parser for smedl.")
-    parser.add_argument('-l', '--list', action=ListRules, nargs=0,
-                        help="list all rules and exit")
-    parser.add_argument('-t', '--trace', action='store_true',
-                        help="output trace information")
-    parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
-                        help="whitespace specification")
+    parser = argparse.ArgumentParser(description="Code Generator for SMEDL and PEDL.")
     parser.add_argument('-helper', '--helper', help='Header file for helper functions')
-    parser.add_argument('file', metavar="FILE", help="the input file to parse")
+    parser.add_argument('smedl', metavar="SMEDL", help="the SMEDL file to parse")
+    parser.add_argument('pedl', metavar="PEDL", help="the PEDL file to parse")
     args = parser.parse_args()
 
-    main(args.file, trace=args.trace, whitespace=args.whitespace, helper=args.helper)
+    main(args.smedl, args.pedl, helper=args.helper)
