@@ -8,8 +8,6 @@
 - Record decisions that we have made!!!!
     - raising of events with event containing an attribute can be handled two ways: with update of state variable, and with implicit helper function return value
 
-- NEXT!: Make list of all SMEDL design decisions and discuss at next meeting
-
 - Search for source code instrumentation tools (or binary-level tools)
 
 - Build PEDL symbol table and include some consistency checks against the SMEDL symbol table
@@ -22,11 +20,6 @@ int foo() {
     checker_update_here
     return temp;
 }
-
-int temp = bar();
-checker_update_here
-
-bar();
 
 Add all loop transitions to multi.smedl and add extra cases to _mon
 Change scan_view function with contains_object function call
