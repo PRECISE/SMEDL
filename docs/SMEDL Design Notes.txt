@@ -101,8 +101,8 @@ int foo() {
 }
     | |
     | |
-  \    /
-    V
+    \ /
+     V
 int foo() {
     __original_code__
     int temp = bar();
