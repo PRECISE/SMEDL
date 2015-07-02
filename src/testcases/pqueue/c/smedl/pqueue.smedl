@@ -1,0 +1,25 @@
+object PQueue
+identity
+  opaque id;
+state
+  int p1, p2, p3, p4, p5;
+events
+  imported pop(int), push(int);
+scenarios
+  push:
+    Ready -> push(1) { p1++; } -> Ready
+    Ready -> push(2) { p2++; } -> Ready
+    Ready -> push(3) { p3++; } -> Ready
+    Ready -> push(4) { p4++; } -> Ready
+    Ready -> push(5) { p5++; } -> Ready
+  pop:
+    Ready -> pop(1) when p1 > 0 { p1--; } -> Ready
+        else -> Error
+    Ready -> pop(2) when p1 == 0 && p2 > 0 { p2--; } -> Ready
+        else -> Error
+    Ready -> pop(3) when p1 == 0 && p2 == 0 && p3 > 0 { p3--; } -> Ready
+        else -> Error
+    Ready -> pop(4) when p1 == 0 && p2 == 0 && p3 == 0 && p4 > 0 { p4--; } -> Ready
+        else -> Error
+    Ready -> pop(5) when p1 == 0 && p2 == 0 && p3 == 0 && p4 == 0 && p5 > 0 { p5--; } -> Ready
+        else -> Error
