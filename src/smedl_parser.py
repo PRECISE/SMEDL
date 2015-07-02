@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 5, 6, 21, 42, 7, 2)
+__version__ = (2015, 7, 2, 18, 31, 10, 3)
 
 __all__ = [
     'smedlParser',
@@ -25,12 +25,13 @@ __all__ = [
 
 
 class smedlParser(Parser):
-    def __init__(self, whitespace=None, nameguard=True, **kwargs):
+    def __init__(self, whitespace=None, nameguard=None, **kwargs):
         super(smedlParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
             comments_re=None,
             eol_comments_re=None,
+            ignorecase=None,
             **kwargs
         )
 
