@@ -4,3 +4,5 @@ src/.coverage
 *.o
 
 bin/
+
+src/testcases/pqueue/c/pq
