@@ -1,7 +1,5 @@
 (*
  * This grammar defines SMEDL in the Grako-variation of EBNF.
- *
- * Written June 17 2014.
  *)
 
 object
@@ -12,11 +10,11 @@ object
     ['state' state+:{variable_declaration}+]
     'events'
         { 'internal' internal_events+:event_definition_list
-        | 'exported' exported_events+:event_definition_list}*  
+        | 'exported' exported_events+:event_definition_list}*
         'imported' imported_events+:event_definition_list
         { 'imported' imported_events+:event_definition_list
         | 'internal' internal_events+:event_definition_list
-        | 'exported' exported_events+:event_definition_list}* 
+        | 'exported' exported_events+:event_definition_list}*
     'scenarios'
         scenarios+:{scenario_definition}+
     $
@@ -26,7 +24,7 @@ variable_declaration
     =
     type:type var:identifier {',' var:identifier}* ';'
     ;
-    
+
 import_definition
     =
     '#import' import_id:identifier
@@ -44,8 +42,8 @@ scenario_definition
 
 trace_definition
     =
-    trace_step:step_definition {'->' trace_step:step_definition}+
-          ['else' [else_action:action] '->' else_step:step_definition ]
+    start_state:identifier '->' {trace_step:step_definition '->'}+  end_state:identifier
+          ['else' [else_action:action] '->' else_state:identifier]
     ;
 
 step_definition
@@ -73,7 +71,8 @@ action_item
 
 state_update
     =
-      target:target '=' expression:expression
+      target:target operator:('++' | '--')
+    | target:target '=' expression:expression
     ;
 
 raise_stmt
