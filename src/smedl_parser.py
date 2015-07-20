@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 7, 2, 18, 31, 10, 3)
+__version__ = (2015, 7, 20, 18, 50, 59, 0)
 
 __all__ = [
     'smedlParser',
@@ -25,13 +25,10 @@ __all__ = [
 
 
 class smedlParser(Parser):
-    def __init__(self, whitespace=None, nameguard=None, **kwargs):
+    def __init__(self, whitespace=None, nameguard=True, **kwargs):
         super(smedlParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
-            comments_re=None,
-            eol_comments_re=None,
-            ignorecase=None,
             **kwargs
         )
 
@@ -179,26 +176,29 @@ class smedlParser(Parser):
 
     @graken()
     def _trace_definition_(self):
-        self._step_definition_()
-        self.ast['trace_step'] = self.last_node
+        self._identifier_()
+        self.ast['start_state'] = self.last_node
+        self._token('->')
 
         def block1():
-            self._token('->')
             self._step_definition_()
             self.ast['trace_step'] = self.last_node
+            self._token('->')
         self._positive_closure(block1)
 
+        self._identifier_()
+        self.ast['end_state'] = self.last_node
         with self._optional():
             self._token('else')
             with self._optional():
                 self._action_()
                 self.ast['else_action'] = self.last_node
             self._token('->')
-            self._step_definition_()
-            self.ast['else_step'] = self.last_node
+            self._identifier_()
+            self.ast['else_state'] = self.last_node
 
         self.ast._define(
-            ['trace_step', 'else_action', 'else_step'],
+            ['start_state', 'trace_step', 'end_state', 'else_action', 'else_state'],
             []
         )
 
@@ -249,14 +249,17 @@ class smedlParser(Parser):
                 self.ast['state_update'] = self.last_node
             with self._option():
                 self._raise_stmt_()
-                self.ast['raise_'] = self.last_node
+                self.ast['raise_stmt'] = self.last_node
             with self._option():
                 self._instantiation_stmt_()
                 self.ast['instantiation'] = self.last_node
+            with self._option():
+                self._call_stmt_()
+                self.ast['call_stmt'] = self.last_node
             self._error('no available options')
 
         self.ast._define(
-            ['state_update', 'raise', 'instantiation'],
+            ['state_update', 'raise_stmt', 'instantiation', 'call_stmt'],
             []
         )
 
@@ -266,21 +269,25 @@ class smedlParser(Parser):
             with self._option():
                 self._target_()
                 self.ast['target'] = self.last_node
-                self._token('=')
-                self._expression_()
-                self.ast['expression'] = self.last_node
+                with self._group():
+                    with self._choice():
+                        with self._option():
+                            self._token('++')
+                        with self._option():
+                            self._token('--')
+                        self._error('expecting one of: ++ --')
+                self.ast['operator'] = self.last_node
             with self._option():
                 self._target_()
                 self.ast['target'] = self.last_node
-                self._token('(')
-                self._expression_list_()
-                self.ast.setlist('expression_list', self.last_node)
-                self._token(')')
+                self._token('=')
+                self._expression_()
+                self.ast['expression'] = self.last_node
             self._error('no available options')
 
         self.ast._define(
-            ['target', 'expression'],
-            ['expression_list']
+            ['target', 'operator', 'expression'],
+            []
         )
 
     @graken()
@@ -313,6 +320,20 @@ class smedlParser(Parser):
         self.ast._define(
             ['id'],
             ['state_update_list']
+        )
+
+    @graken()
+    def _call_stmt_(self):
+        self._target_()
+        self.ast['target'] = self.last_node
+        self._token('(')
+        self._expression_list_()
+        self.ast.setlist('expression_list', self.last_node)
+        self._token(')')
+
+        self.ast._define(
+            ['target'],
+            ['expression_list']
         )
 
     @graken()
@@ -712,6 +733,9 @@ class smedlSemantics(object):
         return ast
 
     def instantiation_stmt(self, ast):
+        return ast
+
+    def call_stmt(self, ast):
         return ast
 
     def type(self, ast):
