@@ -3,6 +3,7 @@
 #include "actions.h"
 #include "explorer_mon.h"
 
+
 typedef enum { MAIN, EXPLORE } scenario;
 typedef enum { EXPLORE_MAIN, RETRIEVE_MAIN } main_state;
 typedef enum { MOVE_EXPLORE, LOOK_EXPLORE } explore_state;
@@ -55,9 +56,9 @@ void drive(_Explorer* monitor, int x, int y, int heading) {
 
 void raise_drive(_Explorer* monitor, int x, int y, int heading) {
   param *p_head = NULL;
-  push_param(&p_head, &x, NULL, NULL);
-  push_param(&p_head, &y, NULL, NULL);
-  push_param(&p_head, &heading, NULL, NULL);
+  push_param(&p_head, &x, NULL, NULL, NULL);
+  push_param(&p_head, &y, NULL, NULL, NULL);
+  push_param(&p_head, &heading, NULL, NULL, NULL);
   push_action(&monitor->action_queue, DRIVE, p_head);
 }
 
@@ -83,7 +84,7 @@ void turn(_Explorer* monitor, int facing) {
 
 void raise_turn(_Explorer* monitor, int facing) {
   param *p_head = NULL;
-  push_param(&p_head, &facing, NULL, NULL);
+  push_param(&p_head, &facing, NULL, NULL, NULL);
   push_action(&monitor->action_queue, TURN, p_head);
 }
 
@@ -109,8 +110,8 @@ void view(_Explorer* monitor, int x, int y) {
 
 void raise_view(_Explorer* monitor, int x, int y) {
   param *p_head = NULL;
-  push_param(&p_head, &x, NULL, NULL);
-  push_param(&p_head, &y, NULL, NULL);
+  push_param(&p_head, &x, NULL, NULL, NULL);
+  push_param(&p_head, &y, NULL, NULL, NULL);
   push_action(&monitor->action_queue, VIEW, p_head);
 }
 

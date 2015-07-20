@@ -66,14 +66,14 @@ action
 action_item
     =
       state_update:state_update
-    | raise:raise_stmt
+    | raise_stmt:raise_stmt
     | instantiation:instantiation_stmt
+    | call_stmt:call_stmt
     ;
 
 state_update
     =
       target:target '=' expression:expression
-    | target:target '(' expression_list+:expression_list ')'
     ;
 
 raise_stmt
@@ -84,6 +84,11 @@ raise_stmt
 instantiation_stmt
     =
     'new' id:identifier ['(' state_update_list+:state_update_list ')']
+    ;
+
+call_stmt
+    =
+      target:target '(' expression_list+:expression_list ')'
     ;
 
 type

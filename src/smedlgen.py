@@ -90,9 +90,9 @@ def generateFSMs(ast, symbolTable):
                     if isinstance(trace['else_action']['actions'][0], list):
                         for action in trace['else_action']['actions'][0]:
                             # TODO all action types
-                            elseActions.append(str(action['raise']['id']))
+                            elseActions.append(str(action['raise_stmt']['id']))
                     else:
-                        elseActions.append(str(trace['else_action']['actions'][0]['raise']['id']))
+                        elseActions.append(str(trace['else_action']['actions'][0]['raise_stmt']['id']))
                     print(elseActions)
             generated_state = None
             for i in range(1, len(trace['trace_step']) - 1): #second step through second to last
@@ -109,9 +109,9 @@ def generateFSMs(ast, symbolTable):
                         if isinstance(trace['trace_step'][i]['step_action']['actions'][0], list):
                             for action in trace['trace_step'][i]['step_action']['actions'][0]:
                                 # TODO all action types
-                                actions.append(str(action['raise']['id']))
+                                actions.append(str(action['raise_stmt']['id']))
                         else:
-                            actions.append(str(trace['trace_step'][i]['step_action']['actions'][0]['raise']['id']))
+                            actions.append(str(trace['trace_step'][i]['step_action']['actions'][0]['raise_stmt']['id']))
                     # print(actions)
                     # adds parameters to symbol table for referencing in output
                     params = trace['trace_step'][i]['step_event']['expression']['trailer']['params']
@@ -142,7 +142,8 @@ def generateFSMs(ast, symbolTable):
 
 def outputSource(symbolTable, allFSMs, filename, helper):
     # Open file for output (based on input filename)
-    out = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
+    out = open(os.path.splitext(filename)[0] + '_mon_test.c', 'w') #testing .c and .h
+    header = open(os.path.splitext(filename)[0] + '_mon_test.h', 'w') #testing .c and .h
     out.write("#include <stdlib.h>\n")
     out.write("#include <stdio.h>\n")
     out.write("#include \"actions.h\"\n")

@@ -7,10 +7,11 @@ struct Parameter {
   int i;
   char c;
   double d;
+  const void *v;
   param *next;
 };
 
-int push_param(param**, int*, char*, double*);
+int push_param(param**, int*, char*, double*, const void**);
 void pop_param(param**);
 
 typedef struct Action action;

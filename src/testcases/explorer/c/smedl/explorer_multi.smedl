@@ -2,10 +2,11 @@ object Explorer
 identity
   opaque id;
 state
-  int x, y, heading, 
+  int x, y, heading;
   struct explorer_view; 
 events
   imported scan_view(int, int, int, struct), cleared(struct);
+  imported raining(int);
   internal found();
   exported retrieved();
   exported error not_cleared();
@@ -19,7 +20,3 @@ scenarios
       else -> Move
     Move -> cleared(map) when !contains_object(this, map) { raise retrieved(); explorer_view = set_view(map) } -> Stop
       else {raise not_cleared(); set_view(map)} -> Stop
-
-  // Add check that it doesn't go off the map
-  // We can delay events...
-  // Do higher-level state switches need to make other checkers aware of their transition to allow them to change their behavior
