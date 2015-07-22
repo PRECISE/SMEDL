@@ -9,19 +9,24 @@ class smedlSymbolTable(dict):
         super(smedlSymbolTable, self).__init__()
 
     def add(self, symbol, attributes=None):
-        if attributes is None:
+        if not isinstance(symbol, str):
+            raise TypeError
+        elif attributes is None:
             self[symbol] = {}
+        elif not isinstance(attributes, dict):
+            raise TypeError
         else:
             self[symbol] = attributes
 
     def get(self, symbol, attribute=None):
-        try:
-            if attribute is None:
-                return self[symbol]
-            else:
-                return self[symbol][attribute]
-        except:
-            return None
+        if not isinstance(symbol, str):
+            raise TypeError
+        elif attribute is None:
+            return super(smedlSymbolTable, self).get(symbol)
+        elif not isinstance(attribute, str):
+            raise TypeError
+        else:
+            return super(smedlSymbolTable, self).get(symbol).get(attribute)
 
     def getSymbolsByType(self, type):
         out = []

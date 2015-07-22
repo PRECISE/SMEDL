@@ -1,7 +1,6 @@
 from smedl_symboltable import smedlSymbolTable
 import unittest
 
-
 class TestSymbolTable(unittest.TestCase):
 
     def setUp(self):
@@ -30,9 +29,8 @@ class TestSymbolTable(unittest.TestCase):
         self.assertEqual(1, len(two))
         self.assertEqual('a', two['type'])
         self.assertEqual('a', two_attr)
-        # Should symbolTable.get handle KeyError? It currently passes the buck
-        self.assertRaises(KeyError, self.symbolTable.get, 'five')
-        self.assertRaises(KeyError, self.symbolTable.get, 'one', 'datatype')
+        self.assertEqual(None, self.symbolTable.get('five'))
+        self.assertEqual(None, self.symbolTable.get('one','datatype'))
 
     def test_getSymbolsByType(self):
         self.symbolTable.add('one')
