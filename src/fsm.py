@@ -41,7 +41,6 @@ class FSM(object):
         if transition.elseState and transition.elseState in self.states.values():
             transition.elseState.addInTransition(transition)
 
-
     def deleteTransition(self, transition):
         self.transitions.remove(transition)
 
@@ -114,7 +113,7 @@ class Transition(object):
     def str_next(self):
         s = self.startState.name + ' -> ' + self.nextState.name + ' / event: ' + self.event
         if self.guard:
-            s = s + ' / if: ' + self.guard 
+            s = s + ' / if: ' + self.guard
         if self.nextActions:
             s = s + ' / actions: ' + ", ".join(self.nextActions)
         return s
@@ -124,7 +123,7 @@ class Transition(object):
             return ''
         s = self.startState.name + ' -> ' + self.elseState.name + ' / event: ' + self.event
         if self.guard:
-            s = s + ' / if not: ' + self.guard 
+            s = s + ' / if not: ' + self.guard
         if self.elseActions:
             s = s + ' / actions: ' + ", ".join(self.elseActions)
         return s
@@ -137,7 +136,7 @@ class Transition(object):
             s = s + ' {' + ', '.join(self.nextActions) + '}'
         s = s + ' -> ' + self.nextState.name
         if self.elseState:
-            s = s + '\n    else'    
+            s = s + '\n    else'
             if self.elseActions:
                 s = s + ' {' + ', '.join(self.elseActions) + '}'
             s = s + ' -> ' + self.elseState.name
@@ -148,5 +147,3 @@ if __name__ == '__main__':
     import argparse
     import string
     import sys
-
-    # TODO: Add some unit testing
