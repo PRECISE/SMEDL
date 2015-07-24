@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 7, 2, 18, 31, 22, 3)
+__version__ = (2015, 7, 23, 16, 51, 11, 3)
 
 __all__ = [
     'pedlParser',
@@ -25,13 +25,10 @@ __all__ = [
 
 
 class pedlParser(Parser):
-    def __init__(self, whitespace=None, nameguard=None, **kwargs):
+    def __init__(self, whitespace=None, nameguard=True, **kwargs):
         super(pedlParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
-            comments_re=None,
-            eol_comments_re=None,
-            ignorecase=None,
             **kwargs
         )
 
