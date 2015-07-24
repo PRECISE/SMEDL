@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 7, 20, 18, 50, 59, 0)
+__version__ = (2015, 7, 24, 16, 19, 34, 4)
 
 __all__ = [
     'smedlParser',
@@ -182,7 +182,7 @@ class smedlParser(Parser):
 
         def block1():
             self._step_definition_()
-            self.ast['trace_step'] = self.last_node
+            self.ast.setlist('trace_steps', self.last_node)
             self._token('->')
         self._positive_closure(block1)
 
@@ -198,8 +198,8 @@ class smedlParser(Parser):
             self.ast['else_state'] = self.last_node
 
         self.ast._define(
-            ['start_state', 'trace_step', 'end_state', 'else_action', 'else_state'],
-            []
+            ['start_state', 'end_state', 'else_action', 'else_state'],
+            ['trace_steps']
         )
 
     @graken()

@@ -42,7 +42,7 @@ scenario_definition
 
 trace_definition
     =
-    start_state:identifier '->' {trace_step:step_definition '->'}+  end_state:identifier
+    start_state:identifier '->' {trace_steps+:step_definition '->'}+  end_state:identifier
           ['else' [else_action:action] '->' else_state:identifier]
     ;
 
