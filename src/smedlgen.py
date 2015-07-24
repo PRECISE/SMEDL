@@ -14,7 +14,25 @@ import collections
 import re
 
 
-def main(smedlFilename, pedlFilename, helper=None):
+def main(pedlFilename, smedlFilename, helper=None):
+    # Parse the PEDL
+    with open(pedlFilename) as pedlFile:
+        pedlText = pedlFile.read()
+    pedlPar = pedlParser(
+        parseinfo=False,
+        comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
+    pedlAST = pedlPar.parse(
+        pedlText,
+        'object',
+        filename=pedlFilename,
+        trace=False,
+        whitespace=None)
+    print('PEDL AST:')
+    print(pedlAST)
+    print('\nPEDL JSON:')
+    print(json.dumps(pedlAST, indent=2))
+
+    # Parse the SMEDL
     with open(smedlFilename) as smedlFile:
         smedlText = smedlFile.read()
     smedlPar = smedlParser(
@@ -30,6 +48,8 @@ def main(smedlFilename, pedlFilename, helper=None):
     print(smedlAST)
     print('\nSMEDL JSON:')
     print(json.dumps(smedlAST, indent=2))
+
+    # Process the SMEDL AST
     smedlST = smedlSymbolTable()
     parseToSymbolTable('top', smedlAST, smedlST)
     allFSMs = generateFSMs(smedlAST, smedlST)
@@ -39,14 +59,14 @@ def main(smedlFilename, pedlFilename, helper=None):
     for key, fsm in allFSMs.iteritems():
         print('\nFSM: %s\n' % key)
         print('%s\n'%fsm)
-    outputSource(smedlST, allFSMs, smedlFilename, helper)
+    #outputSource(smedlST, allFSMs, smedlFilename, helper)
 
 
 def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
         for k, v in object.iteritems():
             if k == 'object':
-                symbolTable.add("_%s" % v, {'type': 'object'})
+                symbolTable.add(v, {'type': 'object'})
             elif label == 'state' and k == 'var':
                 if isinstance(v, list):
                     for var in v:
@@ -54,17 +74,10 @@ def parseToSymbolTable(label, object, symbolTable):
                 else:
                     symbolTable.add(v, {'type': 'state', 'datatype': object['type']})
             elif '_events' in label and k == 'event_id':
-                symbolTable.add(v, {'type': label, 'error': object['error'], 'params': ''})
-            elif label == 'traces' and k == 'trace_step':
-                for step in v:
-                    id = step['step_event']['expression']['atom']
-                    if id not in symbolTable:
-                        symbolTable.add(id, {'type': 'trace_state'})
-            elif label == 'traces' and k == 'else_step':
-                if isinstance(v, AST):
-                    id = v['step_event']['expression']['atom']
-                    if id not in symbolTable:
-                        symbolTable.add(id, {'type': 'trace_state'})
+                symbolTable.add(v, {'type': label, 'error': object['error'], 'params': object['params']})
+            elif label == 'traces':
+                if '_state' in k and v is not None:
+                    symbolTable.add(v, {'type': 'trace_state'})
             elif ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not \
                 (v == 'true' or v == 'false' or v == 'null' or v == 'this') and v not in symbolTable:
                 symbolTable.add(v, {'type': label})
@@ -76,49 +89,70 @@ def parseToSymbolTable(label, object, symbolTable):
 
 def generateFSMs(ast, symbolTable):
     allFSMs = collections.OrderedDict()
+
+    # Go through each scenario and build an FSM
     for scenario in ast['scenarios'][0]: #[0] handles grako's nested list structure
         fsm = FSM()
+
+        # Go through each trace in the scenario
         for trace in scenario['traces']:
-            elseStep = None
+
+            # Handle the Else bits
+            elseState = None
             elseActions = None
-            if trace['else_step']:
-                elseStep = trace['else_step']['step_event']['expression']['atom']
-                elseStepName = str(trace['else_step']['step_event']['expression']['atom']) #TODO-------------------------
-                if not fsm.stateExists(elseStepName):
-                    fsm.addState(State(elseStepName))
-                elseStep = fsm.getStateByName(elseStepName)
+            if trace['else_state']:
+                elseState = trace['else_state']
+                if not fsm.stateExists(elseState):
+                    fsm.addState(State(elseState))
+                elseState = fsm.getStateByName(elseState)
                 if trace['else_action']:
                     elseActions = []
-                    if isinstance(trace['else_action']['actions'][0], list):
-                        for action in trace['else_action']['actions'][0]:
-                            # TODO all action types
-                            elseActions.append(str(action['raise_stmt']['id']))
-                    else:
-                        elseActions.append(str(trace['else_action']['actions'][0]['raise_stmt']['id']))
-                    print(elseActions)
+                    for action in trace['else_action']['actions']:
+                        if action['state_update']:
+                            elseActions.append('state_update: ' + action['state_update']['target'])
+                        if action['raise_stmt']:
+                            elseActions.append('raise: ' + action['raise_stmt']['id'])
+                        if action['instantiation']:
+                            elseActions.append('instantiation: ' + action['instantiation']['id'])
+                        if action['call_stmt']:
+                            elseActions.append('call: ' + action['call_stmt']['target'])
+
+            # Handle the traces
             generated_state = None
-            for i in range(1, len(trace['trace_step']) - 1): #second step through second to last
-                current = str(trace['trace_step'][i]['step_event']['expression']['atom'])
-                after = str(trace['trace_step'][i+1]['step_event']['expression']['atom'])
-                before = str(trace['trace_step'][i-1]['step_event']['expression']['atom'])
+            for i in range(0, len(trace['trace_steps'])):
+                current = trace['trace_steps'][i]['step_event']['expression']['atom']
+                if i == 0:
+                    before = trace['start_state']
+                else:
+                    before = trace['trace_steps'][i-1]['step_event']['expression']['atom']
+                if i == len(trace['trace_steps']) - 1:
+                    after = trace['end_state']
+                else:
+                    after = trace['trace_steps'][i+1]['step_event']['expression']['atom']
+
                 if generated_state is not None:
                     before = generated_state
                     generated_state = None
+
                 if 'event' in symbolTable.get(current, 'type'):
                     actions = None
-                    if trace['trace_step'][i]['step_action']: #TODO------------------------------------------
+                    if trace['trace_steps'][i]['step_action']:
                         actions = []
-                        if isinstance(trace['trace_step'][i]['step_action']['actions'][0], list):
-                            for action in trace['trace_step'][i]['step_action']['actions'][0]:
-                                # TODO all action types
-                                actions.append(str(action['raise_stmt']['id']))
-                        else:
-                            actions.append(str(trace['trace_step'][i]['step_action']['actions'][0]['raise_stmt']['id']))
-                    # print(actions)
-                    # adds parameters to symbol table for referencing in output
-                    params = trace['trace_step'][i]['step_event']['expression']['trailer']['params']
+                        for action in trace['trace_steps'][i]['step_action']['actions']:
+                            if action['state_update']:
+                                actions.append('state_update: ' + action['state_update']['target'])
+                            if action['raise_stmt']:
+                                actions.append('raise: ' + action['raise_stmt']['id'])
+                            if action['instantiation']:
+                                actions.append('instantiation: ' + action['instantiation']['id'])
+                            if action['call_stmt']:
+                                actions.append('call: ' + action['call_stmt']['target'])
+
+                    # add parameters to symbol table for referencing in output
+                    params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
                     param_names = str(findFunctionParams(current, params, ast))
                     symbolTable.update(current, "params", param_names)
+
                     if not fsm.stateExists(before):
                         fsm.addState(State(before))
                     if symbolTable.get(after, 'type') == 'trace_state':
@@ -130,10 +164,10 @@ def generateFSMs(ast, symbolTable):
                         generated_state = after
                     before_state = fsm.getStateByName(before)
                     after_state = fsm.getStateByName(after)
-                    when = formatGuard(trace['trace_step'][i]['step_event']['when'])
+                    when = formatGuard(trace['trace_steps'][i]['step_event']['when'])
                     if when == 'None':
                         when = None
-                    fsm.addTransition(Transition(before_state, current, after_state, actions, when, elseStep, elseActions))
+                    fsm.addTransition(Transition(before_state, current, after_state, actions, when, elseState, elseActions))
                 else:
                     if i > 0:
                         raise TypeError("Named states only valid at beginning/end of trace. Invalid: %s"%current)
@@ -467,8 +501,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Code Generator for SMEDL and PEDL.")
     parser.add_argument('-helper', '--helper', help='Header file for helper functions')
-    parser.add_argument('smedl', metavar="SMEDL", help="the SMEDL file to parse")
     parser.add_argument('pedl', metavar="PEDL", help="the PEDL file to parse")
+    parser.add_argument('smedl', metavar="SMEDL", help="the SMEDL file to parse")
     args = parser.parse_args()
 
-    main(args.smedl, args.pedl, helper=args.helper)
+    main(args.pedl, args.smedl, helper=args.helper)
