@@ -9,7 +9,7 @@ class smedlSymbolTable(dict):
         super(smedlSymbolTable, self).__init__()
 
     def add(self, symbol, attributes=None):
-        if not isinstance(symbol, str):
+        if not isinstance(symbol, basestring):
             raise TypeError
         elif attributes is None:
             self[symbol] = {}
@@ -19,11 +19,11 @@ class smedlSymbolTable(dict):
             self[symbol] = attributes
 
     def get(self, symbol, attribute=None):
-        if not isinstance(symbol, str):
+        if not isinstance(symbol, basestring):
             raise TypeError
         elif attribute is None:
             return super(smedlSymbolTable, self).get(symbol)
-        elif not isinstance(attribute, str):
+        elif not isinstance(attribute, basestring):
             raise TypeError
         else:
             return super(smedlSymbolTable, self).get(symbol).get(attribute)
@@ -48,6 +48,7 @@ class smedlSymbolTable(dict):
         else:
             self[symbol][attribute] = None
 
+    # This method makes an implicit state, ensuring that its name is unique
     def generate(self, attributes=None):
         symbol = "Gen%d"%smedlSymbolTable.generated
         self.add(symbol, attributes)

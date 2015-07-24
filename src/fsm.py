@@ -22,12 +22,12 @@ class FSM(object):
         self.states.pop(state.name)
 
     def stateExists(self, stateName):
-        if not isinstance(stateName, str):
+        if not isinstance(stateName, basestring):
             raise TypeError("Invalid type for name argument.")
         return stateName in self.states
 
     def getStateByName(self, stateName):
-        if not isinstance(stateName, str):
+        if not isinstance(stateName, basestring):
             raise TypeError("Invalid type for name argument.")
         return self.states[stateName]
 
@@ -45,7 +45,7 @@ class FSM(object):
         self.transitions.remove(transition)
 
     def getTransitionsByEvent(self, event):
-        if not isinstance(event, str):
+        if not isinstance(event, basestring):
             raise TypeError("Invalid type for event argument.")
         transitions = []
         for t in self.transitions:
@@ -64,7 +64,7 @@ class FSM(object):
 class State(object):
 
     def __init__(self, name):
-        if not isinstance(name, str):
+        if not isinstance(name, basestring):
             raise TypeError("Invalid type for name argument.")
         self.name = name
         self.in_trans = []
@@ -95,10 +95,10 @@ class Transition(object):
 
     def __init__(self, startState, event, nextState, nextActions=None, guard=None, elseState=None, elseActions=None):
         if not isinstance(startState, State) or \
-        not isinstance(event, str) or \
+        not isinstance(event, basestring) or \
         not isinstance(nextState, State) or \
         (nextActions is not None and not isinstance(nextActions, list)) or \
-        (guard is not None and not isinstance(guard, str)) or \
+        (guard is not None and not isinstance(guard, basestring)) or \
         (elseState is not None and not isinstance(elseState, State)) or \
         (elseActions is not None and not isinstance(elseActions, list)):
             raise TypeError("Invalid argument type(s).")
