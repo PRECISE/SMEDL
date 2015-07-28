@@ -6,3 +6,5 @@ src/.coverage
 bin/
 
 src/testcases/pqueue/c/pq
+
+*.DS_Store
