@@ -1,4 +1,6 @@
 #include "monitor_map.h"
+#include "actions.h"
+#include <pthread.h>
 
 #define EXPLORER_MONITOR_MAP_SIZE 100 // number of buckets
 #define EXPLORER_MONITOR_IDENTITIES 4
@@ -8,6 +10,7 @@ typedef struct ExplorerData {
   int first_id;
   void* thing_ptr;
   int second_id;
+  void* explorer_view;
   int x;
   int interest_threshold;
   int y;
@@ -17,10 +20,13 @@ typedef struct ExplorerData {
 typedef struct ExplorerMonitor {
   pthread_mutex_t monitor_lock;   
   MonitorIdentity *identities[4];
+  int state[2];
+  void* explorer_view;
   int x;
   int interest_threshold;
   int y;
   int heading;
+  action *action_queue;
 } ExplorerMonitor;
 
 typedef struct ExplorerMonitorRecord {
@@ -42,5 +48,6 @@ int put_explorer_monitor(ExplorerMonitor*); //puts into all maps
 ExplorerMonitorRecord* get_explorer_monitors();
 ExplorerMonitorRecord* get_explorer_monitors_by_identity(int, int, void*);
 ExplorerMonitorRecord* filter_explorer_monitors_by_identity(ExplorerMonitorRecord*, int, void*);
+void raise_error(char*, const char*, char*, char*);
 void free_explorer_monitor();
 void free_explorer_monitor_maps();

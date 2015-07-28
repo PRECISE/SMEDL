@@ -2,15 +2,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-{%- if multithreaded %}{{'\n'}}#include <pthread.h>{% endif %}
-#include "actions.h"
 #include "{{base_file_name}}_mon.h"
 {%- if helper %}{{'\n'}}#include "{{helper}}"{% endif %}
 
 typedef enum { {{identities_names|join(', ')}}} {{obj|lower}}_identity;
 const identity_type {{obj|lower}}_identity_types[{{obj|upper}}_MONITOR_IDENTITIES] = { {{ identities_types|join(', ') }} };
 
-typedef enum { {{ scenario_names }} } {{obj|lower}}_scenario;
+typedef enum { {{ scenario_names|join(', ') }} } {{obj|lower}}_scenario;
 {{state_enums}}
 typedef enum { {{event_enums}} } {{obj|lower}}_event;
 typedef enum { {{error_enums}} } {{obj|lower}}_error;
@@ -23,7 +21,8 @@ const char **{{obj|lower}}_states_names[{{state_names_array|length}}] = { {{stat
 {% for id in identities %}    monitor->identities[{{obj|upper}}_{{id.name|upper}}] = init_monitor_identity({{id.type|upper}}, {% if id.type|upper == "INT" %}&{% endif -%}d->{{id.name}});
 {% endfor -%}
 {% for v in state_vars %}    monitor->{{v.name|lower}} = d->{{v.name|lower}};
-{% endfor %}    put_{{obj|lower}}_monitor(monitor);
+{% endfor %}{{state_inits}}  
+    put_{{obj|lower}}_monitor(monitor);
     return monitor;
 }
 
@@ -107,6 +106,15 @@ int put_{{obj|lower}}_monitor({{obj|title}}Monitor *monitor) {
     return results;
 }
 
+{% for e in event_code -%}
+{{e.event|join('\n')}}
+
+{{e.raise|join('\n')}}
+{% endfor -%}
+
+void raise_error(char *scen, const char *state, char *action, char *type) {
+  printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}", scen, state, action, type);
+}
 
 int main() { //To prevent warnings for test compile (they even happen with -c)
   return 0;

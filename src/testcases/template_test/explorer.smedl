@@ -5,6 +5,7 @@ identity
   thread thr_id;
 state
   int x, y, heading, interest_threshold;
+  pointer explorer_view;
 events
   imported view(int, int), drive(int, int, int), turn(int);
   internal found();
@@ -14,7 +15,7 @@ scenarios
     Explore -> found() -> Retrieve
     Retrieve -> retrieved() -> Explore
   explore:
-    Look -> view(x, y) when contains_object(x, y) { raise found() } -> Move
+    Look -> view(x, y) when contains_object(this) { raise found() } -> Move
       else -> Move
     Move -> turn(facing) when facing != this.heading -> Look
       else -> Move
