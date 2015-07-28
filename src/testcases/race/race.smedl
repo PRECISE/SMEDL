@@ -1,0 +1,22 @@
+object Car
+identity
+  opaque thread_id;
+state
+  int laps, shared total;
+events
+  imported total_increment(), lap_increment();
+scenarios
+  main:
+    Move -> total_increment { total = total + 1 } -> Move
+
+
+
+    Explore -> found() -> Retrieve
+    Retrieve -> retrieved() -> Explore
+  explore:
+    Look -> view(x, y) when contains_object(x, y) { raise found() } -> Move
+      else -> Move
+    Move -> turn(facing) when facing != this.heading -> Look
+      else -> Move
+    Move -> drive(x, y, heading) when x == this.x && y == this.y { raise retrieved() } -> Look
+      else -> Look

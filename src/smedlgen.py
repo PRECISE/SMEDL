@@ -8,10 +8,12 @@ from pedl_parser import pedlParser
 from smedl_symboltable import smedlSymbolTable
 from fsm import *
 from grako.ast import AST
+from jinja2 import Environment, FileSystemLoader
 import os
 import json
 import collections
 import re
+import shutil
 
 
 def main(pedlFilename, smedlFilename, helper=None):
@@ -60,6 +62,7 @@ def main(pedlFilename, smedlFilename, helper=None):
         print('\nFSM: %s\n' % key)
         print('%s\n'%fsm)
     #outputSource(smedlST, allFSMs, smedlFilename, helper)
+    outputToTemplate(smedlST, allFSMs, smedlFilename, helper)
 
 
 def parseToSymbolTable(label, object, symbolTable):
@@ -67,6 +70,12 @@ def parseToSymbolTable(label, object, symbolTable):
         for k, v in object.iteritems():
             if k == 'object':
                 symbolTable.add(v, {'type': 'object'})
+            elif label == 'identity' and k == 'var':
+                if isinstance(v, list):
+                    for var in v:
+                        symbolTable.add(var, {'type': 'identity', 'datatype': object['type']})
+                else:
+                    symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})             
             elif label == 'state' and k == 'var':
                 if isinstance(v, list):
                     for var in v:
@@ -294,6 +303,73 @@ def outputSource(symbolTable, allFSMs, filename, helper):
     out.write("\n}\n\n")
     out.close()
 
+def outputToTemplate(symbolTable, allFSMs, filename, helper):
+    env = Environment(loader=FileSystemLoader('./'), extensions=['jinja2.ext.do'])
+
+    out_h = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
+    template = env.get_template('templates/object_mon.h')
+    obj = symbolTable.getSymbolsByType('object')[0]
+    state_vars = [{'type':symbolTable.get(v)['datatype'], 'name':v} for v in symbolTable.getSymbolsByType('state')]
+    identities = [{'type':symbolTable.get(v)['datatype'], 'name':v} for v in symbolTable.getSymbolsByType('identity')]
+    for id in identities:
+        id['c_type'] = convertTypeForC(id['type'])
+    values = dict()
+    values['identities'] = identities
+    values['obj'] = obj
+    values['num_identities'] = len(identities)
+    values['identities'] = identities
+    values['state_vars'] = state_vars
+    values['state_var_declarations'] = '\n'.join(['  %s %s;'%(v['type'], v['name']) for v in state_vars])
+    values['identity_declarations'] = '\n'.join(['  %s %s;'%(convertTypeForC(v['type']), v['name']) for v in identities])
+    out_h.write(template.render(values))
+
+    out_c = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
+    template = env.get_template('templates/object_mon.c')
+    values['helper'] = helper
+    values['multithreaded'] = True
+    values['base_file_name'] = os.path.splitext(os.path.basename(filename))[0]
+    values['identities_names'] = ['%s_%s'%(obj.upper(), i['name'].upper()) for i in identities]
+    values['identities_types'] = [i['type'].upper() for i in identities]
+
+    values['scenario_names'] = ", ".join(['%s_%s'%(obj, k) for k in allFSMs.keys()]).upper()
+    statesets = collections.OrderedDict()
+    state_enums = []
+    state_names_arrays = []
+    for key, fsm in allFSMs.iteritems():
+        stateset = [("%s_%s_%s" % (obj, key, state)).upper() for state in fsm.states.keys()]
+        statesets[key] = stateset
+        stateset_str = ", ".join(stateset)
+        state_enums.append('typedef enum { ' + stateset_str + ' } %s_%s_state;'%(obj.lower(), key.lower()))
+        state_names = ", ".join(['\"%s\"'%(state) for state in fsm.states.keys()])
+        state_names_arrays.append('const char *%s_%s_states[%d] = {%s};'%(obj.lower(), key.lower(), len(fsm.states.keys()), state_names))
+    values['state_enums'] = '\n'.join(state_enums)
+    values['state_names'] = '\n'.join(state_names_arrays)
+    values['state_names_array'] = ['%s_%s_states'%(obj.lower(), key.lower()) for key in allFSMs.keys()]
+
+    events = ['%s_%s'%(obj.upper(), str(e).upper()) for e in symbolTable.getEvents()]
+    values['event_enums'] = ', '.join(events)
+    errors = ['%s_DEFAULT'%obj.upper()]
+    for e in symbolTable.getSymbolsByType('event'):
+        if symbolTable[e]['error']:
+            errors.append('%s_%s'%(obj.upper, e.upper()))
+    values['error_enums'] = ', '.join(errors)
+
+    values['add_to_map_calls'] = ['add_%s_monitor_to_map(monitor, %s)'%(obj.lower(), i) for i in values['identities_names']]
+
+    out_c.write(template.render(values))
+
+    shutil.copyfile('./templates/actions.h', os.path.dirname(filename) + '/actions.h')
+    shutil.copyfile('./templates/actions.c', os.path.dirname(filename) + '/actions.c')
+    shutil.copyfile('./templates/monitor_map.h', os.path.dirname(filename) + '/monitor_map.h')
+    shutil.copyfile('./templates/monitor_map.c', os.path.dirname(filename) + '/monitor_map.c')
+
+def convertTypeForC(smedlType):
+    return {
+        'int': 'int',
+        'pointer': 'void*',
+        'thread': 'pthread_t',
+        'opaque': 'void*'
+    }[smedlType]
 
 def writeCaseTransition(trans, currentState, stateName, scenario, action):
     output = ['    case %s_%s:\n' % (trans.startState.name.upper(), scenario.upper())]
