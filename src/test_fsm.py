@@ -1,5 +1,6 @@
-from fsm import *
+from fsm import FSM, State, Transition
 import unittest
+
 
 class TestFSM(unittest.TestCase):
 
@@ -7,8 +8,10 @@ class TestFSM(unittest.TestCase):
         self.fsm = FSM()
         self.s1 = State("s1")
         self.s2 = State("s2")
-        self.t1 = Transition(self.s1, "SomeEvent", self.s2, guard="SomeCondition")
-        self.t2 = Transition(self.s2, "SomeOtherEvent", self.s1, guard="SomeOtherCondition")
+        self.t1 = Transition(self.s1, "SomeEvent", self.s2,
+            guard="SomeCondition")
+        self.t2 = Transition(self.s2, "SomeOtherEvent", self.s1,
+            guard="SomeOtherCondition")
 
     def test_addState(self):
         self.assertRaises(TypeError, self.fsm.addState, 1)
@@ -84,11 +87,13 @@ class TestFSM(unittest.TestCase):
         self.assertEqual(2, len(self.fsm.transitions))
         self.assertFalse(self.fsm.getTransitionsByEvent("nothing"))
         self.assertEqual(1, len(self.fsm.getTransitionsByEvent("SomeEvent")))
-        t3 = Transition(self.s2, "SomeEvent", self.s1, guard="SomeOtherCondition")
+        t3 = Transition(self.s2, "SomeEvent", self.s1,
+            guard="SomeOtherCondition")
         self.fsm.addTransition(t3)
         self.assertEqual(3, len(self.fsm.transitions))
         self.assertEqual(2, len(self.fsm.getTransitionsByEvent("SomeEvent")))
-        self.assertEqual(1, len(self.fsm.getTransitionsByEvent("SomeOtherEvent")))
+        self.assertEqual(1,
+            len(self.fsm.getTransitionsByEvent("SomeOtherEvent")))
 
 if __name__ == '__main__':
     unittest.main()

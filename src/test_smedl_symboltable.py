@@ -1,6 +1,7 @@
 from smedl_symboltable import smedlSymbolTable
 import unittest
 
+
 class TestSymbolTable(unittest.TestCase):
 
     def setUp(self):
@@ -9,7 +10,7 @@ class TestSymbolTable(unittest.TestCase):
     def test_add(self):
         self.assertFalse(self.symbolTable.keys())
         self.symbolTable.add('one')
-        attributes = {'type':'a'}
+        attributes = {'type': 'a'}
         self.symbolTable.add('two', attributes.copy())
         attributes['datatype'] = 'b'
         self.symbolTable.add('three', attributes.copy())
@@ -21,7 +22,7 @@ class TestSymbolTable(unittest.TestCase):
 
     def test_get(self):
         self.symbolTable.add('one')
-        self.symbolTable.add('two', {'type':'a'})
+        self.symbolTable.add('two', {'type': 'a'})
         one = self.symbolTable.get('one')
         two = self.symbolTable.get('two')
         two_attr = self.symbolTable.get('two', 'type')
@@ -30,13 +31,13 @@ class TestSymbolTable(unittest.TestCase):
         self.assertEqual('a', two['type'])
         self.assertEqual('a', two_attr)
         self.assertEqual(None, self.symbolTable.get('five'))
-        self.assertEqual(None, self.symbolTable.get('one','datatype'))
+        self.assertEqual(None, self.symbolTable.get('one', 'datatype'))
 
     def test_getSymbolsByType(self):
         self.symbolTable.add('one')
-        self.symbolTable.add('two', {'type':'a'})
-        self.symbolTable.add('three', {'type':'a', 'datatype':'b'})
-        self.symbolTable.add('four', {'type':'b'})
+        self.symbolTable.add('two', {'type': 'a'})
+        self.symbolTable.add('three', {'type': 'a', 'datatype': 'b'})
+        self.symbolTable.add('four', {'type': 'b'})
         type_a = self.symbolTable.getSymbolsByType('a')
         type_b = self.symbolTable.getSymbolsByType('b')
         type_c = self.symbolTable.getSymbolsByType('c')
@@ -59,12 +60,12 @@ class TestSymbolTable(unittest.TestCase):
 
     def test_delete(self):
         self.symbolTable.add('one')
-        self.symbolTable.add('two', {'type':'a'})
+        self.symbolTable.add('two', {'type': 'a'})
         self.assertEqual(2, len(self.symbolTable.keys()))
-        self.symbolTable.delete('two','type')
-        self.assertFalse(self.symbolTable.get('two','type'))
+        self.symbolTable.delete('two', 'type')
+        self.assertFalse(self.symbolTable.get('two', 'type'))
         self.symbolTable.delete('one')
-        self.assertFalse(self.symbolTable.get('two','type'))
+        self.assertFalse(self.symbolTable.get('two', 'type'))
         # Would have expected self(symbol).pop and self[symbol](attribute).pop
         # to remove relative key, not just value
         # self.assertEqual(1, len(self.symbolTable.keys()))
