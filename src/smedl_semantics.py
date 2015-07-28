@@ -10,6 +10,7 @@ keywords = set([
     'this', 'else', 'raise', 'atomic',
     'when'])
 
+
 class SmedlSemantics(object):
 
     def __init__(self, name):
