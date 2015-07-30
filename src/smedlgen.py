@@ -307,7 +307,7 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
     env = Environment(loader=FileSystemLoader('./'), extensions=['jinja2.ext.do'])
 
     out_h = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
-    template = env.get_template('templates/object_mon.h')
+    template_h = env.get_template('templates/object_mon.h')
     obj = symbolTable.getSymbolsByType('object')[0]
     state_vars = [{'type':symbolTable.get(v)['datatype'], 'name':v} for v in symbolTable.getSymbolsByType('state')]
     for s in state_vars:
@@ -324,10 +324,9 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
     values['state_var_declarations'] = '\n'.join(['  %s %s;'%(v['c_type'], v['name']) for v in state_vars])
     values['identity_declarations'] = '\n'.join(['  %s %s;'%(v['c_type'], v['name']) for v in identities])
     values['scenario_names'] = [('%s_%s'%(obj, k)).upper() for k in allFSMs.keys()]
-    out_h.write(template.render(values))
 
     out_c = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
-    template = env.get_template('templates/object_mon.c')
+    template_c = env.get_template('templates/object_mon.c')
     values['helper'] = helper
 
     values['base_file_name'] = os.path.splitext(os.path.basename(filename))[0]
@@ -364,33 +363,69 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
     # Output a method for each event (switch statement to handle FSM transitions)
     methods = symbolTable.getEvents()
     callCases = []
+    values['signatures']= []
     values['event_code'] = list()
     for m in methods:
         eventFunction = list()
         params = symbolTable.get(m, 'params')
         if len(params) > 0:
-            params = obj.title() + "Monitor* monitor, " + params
+            params = obj.title() + "MonitorRecord* monitor_list, " + params
         else:
-            params = obj.title() + "Monitor* monitor"
-        eventFunction.append('void ' + m + '(' + params + ') {')
+            params = obj.title() + "MonitorRecord* monitor_list"
+        signature = 'void %s_%s(%s)' % (obj.lower(), m, params)
+        values['signatures'].append(signature)
+        eventFunction.append(signature + ' {')
+        eventFunction.append('  %sMonitorRecord *current = monitor_list;' % obj.title())
+        eventFunction.append('  while(current != NULL) {')
+        eventFunction.append('    %sMonitor* monitor = current->monitor;' % obj.title())
         for key, fsm in allFSMs.iteritems():
             reference = 'monitor->state[%s_%s]' % (obj.upper(), key.upper())
             name_reference = "%s_states_names[%s_%s][monitor->state[%s_%s]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
-            eventFunction.append('  switch (%s) {' % reference)
+            eventFunction.append('    switch (%s) {' % reference)
             for transition in fsm.getTransitionsByEvent(str(m)):
                 eventFunction.append(writeCaseTransition(obj, transition, reference, name_reference, key, m))
-            eventFunction.append('    default:')
-            eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
-            eventFunction.append('      break;')
-            eventFunction.append('  }')
+            eventFunction.append('      default:')
+            eventFunction.append('        raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
+            eventFunction.append('        break;')
+            eventFunction.append('    }')
+        eventFunction.append('    current = current->next;')
+        eventFunction.append('  }')
         eventFunction.append('}')
 
         raiseFunction = writeRaiseFunction(symbolTable, m, obj)
-        values['event_code'] .append({'event':eventFunction, 'raise':raiseFunction})
+        values['signatures'].append(raiseFunction['signature'])
+        values['event_code'] .append({'event':eventFunction, 'raise':raiseFunction['code']})
         callCases.append(writeCallCase(symbolTable, m))
 
+    # methods = symbolTable.getEvents()
+    # callCases = []
+    # values['event_code'] = list()
+    # for m in methods:
+    #     eventFunction = list()
+    #     params = symbolTable.get(m, 'params')
+    #     if len(params) > 0:
+    #         params = obj.title() + "Monitor* monitor, " + params
+    #     else:
+    #         params = obj.title() + "Monitor* monitor"
+    #     eventFunction.append('void ' + m + '(' + params + ') {')
+    #     for key, fsm in allFSMs.iteritems():
+    #         reference = 'monitor->state[%s_%s]' % (obj.upper(), key.upper())
+    #         name_reference = "%s_states_names[%s_%s][monitor->state[%s_%s]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
+    #         eventFunction.append('  switch (%s) {' % reference)
+    #         for transition in fsm.getTransitionsByEvent(str(m)):
+    #             eventFunction.append(writeCaseTransition(obj, transition, reference, name_reference, key, m))
+    #         eventFunction.append('    default:')
+    #         eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
+    #         eventFunction.append('      break;')
+    #         eventFunction.append('  }')
+    #     eventFunction.append('}')
 
-    out_c.write(template.render(values))
+    #     raiseFunction = writeRaiseFunction(symbolTable, m, obj)
+    #     values['event_code'] .append({'event':eventFunction, 'raise':raiseFunction})
+    #     callCases.append(writeCallCase(symbolTable, m))
+
+    out_h.write(template_h.render(values))
+    out_c.write(template_c.render(values))
 
     shutil.copyfile('./templates/actions.h', os.path.dirname(filename) + '/actions.h')
     shutil.copyfile('./templates/actions.c', os.path.dirname(filename) + '/actions.c')
@@ -406,19 +441,19 @@ def convertTypeForC(smedlType):
     }[smedlType]
 
 def writeCaseTransition(obj, trans, currentState, stateName, scenario, action):
-    output = ['    case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), trans.startState.name.upper())]
+    output = ['      case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), trans.startState.name.upper())]
     if trans.guard:
-        output.append('      if(' + trans.guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
-        output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.nextState.name)).upper() + ';\n')
-        output.append('      } else {\n')
+        output.append('        if(' + trans.guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
+        output.append('          %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.nextState.name)).upper() + ';\n')
+        output.append('        } else {\n')
         if trans.elseState:
-            output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.elseState.name)).upper() + ';\n')
+            output.append('          %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.elseState.name)).upper() + ';\n')
         else:
-            output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
-        output.append('      }\n')
+            output.append('          raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
+        output.append('        }\n')
     else:
-        output.append('      %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.nextState.name)).upper() + ';\n')
-    output.append('      break;\n')
+        output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.nextState.name)).upper() + ';\n')
+    output.append('        break;\n')
     return "".join(output)
 
 
@@ -454,7 +489,8 @@ def writeRaiseFunction(symbolTable, event, obj):
     else:
         paramString = obj.title() + "Monitor* monitor"
     output = []
-    output.append('void raise_%s(%s) {'%(event, paramString))
+    signature = 'void raise_%s_%s(%s)' % (obj.lower(), event, paramString)
+    output.append(signature + ' {')
     output.append('  param *p_head = NULL;')
     if len(paramString) > 0:
         for p in getEventParams(paramString):
@@ -468,7 +504,7 @@ def writeRaiseFunction(symbolTable, event, obj):
                 output.append('  push_param(&p_head, NULL, NULL, NULL, &%s);'%p[1])
     output.append('  push_action(&monitor->action_queue, %s_%s, p_head);' % (obj.upper(), event.upper()))
     output.append('}\n\n')
-    return output
+    return {'code':output, 'signature':signature}
 
 
 def findFunctionParams(function, params, ast):

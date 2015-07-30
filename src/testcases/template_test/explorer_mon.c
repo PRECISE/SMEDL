@@ -118,28 +118,33 @@ ExplorerMonitorRecord* filter_explorer_monitors_by_identity(ExplorerMonitorRecor
     return results;
 }
 
-void drive(ExplorerMonitor* monitor, int x, int y, int heading) {
-  switch (monitor->state[EXPLORER_MAIN]) {
-    default:
-      raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "drive", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[EXPLORER_EXPLORE]) {
-    case EXPLORER_EXPLORE_MOVE:
-      if(x == monitor->x && y == monitor->y) {
-        monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_LOOK;
-      } else {
-        monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_LOOK;
-      }
-      break;
+void explorer_drive(ExplorerMonitorRecord* monitor_list, int x, int y, int heading) {
+  ExplorerMonitorRecord *current = monitor_list;
+  while(current != NULL) {
+    ExplorerMonitor* monitor = current->monitor;
+    switch (monitor->state[EXPLORER_MAIN]) {
+      default:
+        raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "drive", "DEFAULT");
+        break;
+    }
+    switch (monitor->state[EXPLORER_EXPLORE]) {
+      case EXPLORER_EXPLORE_MOVE:
+        if(x == monitor->x && y == monitor->y) {
+          monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_LOOK;
+        } else {
+          monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_LOOK;
+        }
+        break;
 
-    default:
-      raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "drive", "DEFAULT");
-      break;
+      default:
+        raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "drive", "DEFAULT");
+        break;
+    }
+    current = current->next;
   }
 }
 
-void raise_drive(ExplorerMonitor* monitor, int x, int y, int heading) {
+void raise_explorer_drive(ExplorerMonitor* monitor, int x, int y, int heading) {
   param *p_head = NULL;
   push_param(&p_head, &x, NULL, NULL, NULL);
   push_param(&p_head, &y, NULL, NULL, NULL);
@@ -148,56 +153,66 @@ void raise_drive(ExplorerMonitor* monitor, int x, int y, int heading) {
 }
 
 
-void turn(ExplorerMonitor* monitor, int facing) {
-  switch (monitor->state[EXPLORER_MAIN]) {
-    default:
-      raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "turn", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[EXPLORER_EXPLORE]) {
-    case EXPLORER_EXPLORE_MOVE:
-      if(facing != monitor->heading) {
-        monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_LOOK;
-      } else {
-        monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_MOVE;
-      }
-      break;
+void explorer_turn(ExplorerMonitorRecord* monitor_list, int facing) {
+  ExplorerMonitorRecord *current = monitor_list;
+  while(current != NULL) {
+    ExplorerMonitor* monitor = current->monitor;
+    switch (monitor->state[EXPLORER_MAIN]) {
+      default:
+        raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "turn", "DEFAULT");
+        break;
+    }
+    switch (monitor->state[EXPLORER_EXPLORE]) {
+      case EXPLORER_EXPLORE_MOVE:
+        if(facing != monitor->heading) {
+          monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_LOOK;
+        } else {
+          monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_MOVE;
+        }
+        break;
 
-    default:
-      raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "turn", "DEFAULT");
-      break;
+      default:
+        raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "turn", "DEFAULT");
+        break;
+    }
+    current = current->next;
   }
 }
 
-void raise_turn(ExplorerMonitor* monitor, int facing) {
+void raise_explorer_turn(ExplorerMonitor* monitor, int facing) {
   param *p_head = NULL;
   push_param(&p_head, &facing, NULL, NULL, NULL);
   push_action(&monitor->action_queue, EXPLORER_TURN, p_head);
 }
 
 
-void view(ExplorerMonitor* monitor, int x, int y) {
-  switch (monitor->state[EXPLORER_MAIN]) {
-    default:
-      raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "view", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[EXPLORER_EXPLORE]) {
-    case EXPLORER_EXPLORE_LOOK:
-      if(contains_object(monitor)) {
-        monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_MOVE;
-      } else {
-        monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_MOVE;
-      }
-      break;
+void explorer_view(ExplorerMonitorRecord* monitor_list, int x, int y) {
+  ExplorerMonitorRecord *current = monitor_list;
+  while(current != NULL) {
+    ExplorerMonitor* monitor = current->monitor;
+    switch (monitor->state[EXPLORER_MAIN]) {
+      default:
+        raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "view", "DEFAULT");
+        break;
+    }
+    switch (monitor->state[EXPLORER_EXPLORE]) {
+      case EXPLORER_EXPLORE_LOOK:
+        if(contains_object(monitor)) {
+          monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_MOVE;
+        } else {
+          monitor->state[EXPLORER_EXPLORE] = EXPLORER_EXPLORE_MOVE;
+        }
+        break;
 
-    default:
-      raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "view", "DEFAULT");
-      break;
+      default:
+        raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "view", "DEFAULT");
+        break;
+    }
+    current = current->next;
   }
 }
 
-void raise_view(ExplorerMonitor* monitor, int x, int y) {
+void raise_explorer_view(ExplorerMonitor* monitor, int x, int y) {
   param *p_head = NULL;
   push_param(&p_head, &x, NULL, NULL, NULL);
   push_param(&p_head, &y, NULL, NULL, NULL);
@@ -205,47 +220,57 @@ void raise_view(ExplorerMonitor* monitor, int x, int y) {
 }
 
 
-void found(ExplorerMonitor* monitor) {
-  switch (monitor->state[EXPLORER_MAIN]) {
-    case EXPLORER_MAIN_EXPLORE:
-      monitor->state[EXPLORER_MAIN] = EXPLORER_MAIN_RETRIEVE;
-      break;
+void explorer_found(ExplorerMonitorRecord* monitor_list) {
+  ExplorerMonitorRecord *current = monitor_list;
+  while(current != NULL) {
+    ExplorerMonitor* monitor = current->monitor;
+    switch (monitor->state[EXPLORER_MAIN]) {
+      case EXPLORER_MAIN_EXPLORE:
+        monitor->state[EXPLORER_MAIN] = EXPLORER_MAIN_RETRIEVE;
+        break;
 
-    default:
-      raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "found", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[EXPLORER_EXPLORE]) {
-    default:
-      raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "found", "DEFAULT");
-      break;
+      default:
+        raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "found", "DEFAULT");
+        break;
+    }
+    switch (monitor->state[EXPLORER_EXPLORE]) {
+      default:
+        raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "found", "DEFAULT");
+        break;
+    }
+    current = current->next;
   }
 }
 
-void raise_found(ExplorerMonitor* monitor) {
+void raise_explorer_found(ExplorerMonitor* monitor) {
   param *p_head = NULL;
   push_action(&monitor->action_queue, EXPLORER_FOUND, p_head);
 }
 
 
-void retrieved(ExplorerMonitor* monitor) {
-  switch (monitor->state[EXPLORER_MAIN]) {
-    case EXPLORER_MAIN_RETRIEVE:
-      monitor->state[EXPLORER_MAIN] = EXPLORER_MAIN_EXPLORE;
-      break;
+void explorer_retrieved(ExplorerMonitorRecord* monitor_list) {
+  ExplorerMonitorRecord *current = monitor_list;
+  while(current != NULL) {
+    ExplorerMonitor* monitor = current->monitor;
+    switch (monitor->state[EXPLORER_MAIN]) {
+      case EXPLORER_MAIN_RETRIEVE:
+        monitor->state[EXPLORER_MAIN] = EXPLORER_MAIN_EXPLORE;
+        break;
 
-    default:
-      raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "retrieved", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[EXPLORER_EXPLORE]) {
-    default:
-      raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "retrieved", "DEFAULT");
-      break;
+      default:
+        raise_error("explorer_main", explorer_states_names[EXPLORER_MAIN][monitor->state[EXPLORER_MAIN]], "retrieved", "DEFAULT");
+        break;
+    }
+    switch (monitor->state[EXPLORER_EXPLORE]) {
+      default:
+        raise_error("explorer_explore", explorer_states_names[EXPLORER_EXPLORE][monitor->state[EXPLORER_EXPLORE]], "retrieved", "DEFAULT");
+        break;
+    }
+    current = current->next;
   }
 }
 
-void raise_retrieved(ExplorerMonitor* monitor) {
+void raise_explorer_retrieved(ExplorerMonitor* monitor) {
   param *p_head = NULL;
   push_action(&monitor->action_queue, EXPLORER_RETRIEVED, p_head);
 }

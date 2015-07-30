@@ -37,6 +37,7 @@ int put_{{obj|lower}}_monitor({{obj|title}}Monitor*); //puts into all maps
 {{obj|title}}MonitorRecord* get_{{obj|lower}}_monitors();
 {{obj|title}}MonitorRecord* get_{{obj|lower}}_monitors_by_identity(int, int, void*);
 {{obj|title}}MonitorRecord* filter_{{obj|lower}}_monitors_by_identity({{obj|title}}MonitorRecord*, int, void*);
+{{signatures|join(';\n')}};
 void raise_error(char*, const char*, char*, char*);
 void free_{{obj|lower}}_monitor();
 void free_{{obj|lower}}_monitor_maps();
