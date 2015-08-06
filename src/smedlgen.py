@@ -6,7 +6,7 @@ from __future__ import print_function, division, absolute_import, \
 from smedl_parser import smedlParser
 from pedl_parser import pedlParser
 from smedl_symboltable import smedlSymbolTable
-from fsm import *
+from fsm import FSM, State, Transition
 from grako.ast import AST
 from jinja2 import Environment, FileSystemLoader
 import os
@@ -14,6 +14,7 @@ import json
 import collections
 import re
 import shutil
+import string
 
 
 def main(pedlFilename, smedlFilename, helper=None):
@@ -57,11 +58,11 @@ def main(pedlFilename, smedlFilename, helper=None):
     allFSMs = generateFSMs(smedlAST, smedlST)
     print('\nSMEDL Symbol Table:')
     for k in smedlST:
-        print('%s: %s'%(k, smedlST[k]))
+        print('%s: %s' % (k, smedlST[k]))
     for key, fsm in allFSMs.iteritems():
         print('\nFSM: %s\n' % key)
-        print('%s\n'%fsm)
-    #outputSource(smedlST, allFSMs, smedlFilename, helper)
+        print('%s\n' % fsm)
+    # outputSource(smedlST, allFSMs, smedlFilename, helper)
     outputToTemplate(smedlST, allFSMs, smedlFilename, helper)
 
 
@@ -75,7 +76,7 @@ def parseToSymbolTable(label, object, symbolTable):
                     for var in v:
                         symbolTable.add(var, {'type': 'identity', 'datatype': object['type']})
                 else:
-                    symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})             
+                    symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})
             elif label == 'state' and k == 'var':
                 if isinstance(v, list):
                     for var in v:
@@ -89,7 +90,7 @@ def parseToSymbolTable(label, object, symbolTable):
                     symbolTable.add(v, {'type': 'trace_state'})
             elif ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not \
                 (v == 'true' or v == 'false' or v == 'null' or v == 'this') and v not in symbolTable:
-                symbolTable.add(v, {'type': label})
+                    symbolTable.add(v, {'type': label})
             parseToSymbolTable(k, v, symbolTable)
     if isinstance(object, list):
         for elem in object:
@@ -100,7 +101,7 @@ def generateFSMs(ast, symbolTable):
     allFSMs = collections.OrderedDict()
 
     # Go through each scenario and build an FSM
-    for scenario in ast['scenarios'][0]: #[0] handles grako's nested list structure
+    for scenario in ast['scenarios'][0]:  # [0] handles grako's nested list structure
         fsm = FSM()
 
         # Go through each trace in the scenario
@@ -179,140 +180,22 @@ def generateFSMs(ast, symbolTable):
                     fsm.addTransition(Transition(before_state, current, after_state, actions, when, elseState, elseActions))
                 else:
                     if i > 0:
-                        raise TypeError("Named states only valid at beginning/end of trace. Invalid: %s"%current)
+                        raise TypeError("Named states only valid at beginning/end of trace. Invalid: %s" % current)
                     if 'event' not in symbolTable.get(before, 'type') or 'event' not in symbolTable.get(after, 'type'):
-                        raise TypeError("Invalid state -> state transition: %s -> %s"%(before, after))
+                        raise TypeError("Invalid state -> state transition: %s -> %s" % (before, after))
         allFSMs[scenario['scenario_id']] = fsm
     return allFSMs
 
 
-# def outputSource(symbolTable, allFSMs, filename, helper):
-#     # Open file for output (based on input filename)
-#     out = open(os.path.splitext(filename)[0] + '_mon_test.c', 'w') #testing .c and .h
-#     header = open(os.path.splitext(filename)[0] + '_mon_test.h', 'w') #testing .c and .h
-#     out.write("#include <stdlib.h>\n")
-#     out.write("#include <stdio.h>\n")
-#     out.write("#include \"actions.h\"\n")
-#     if helper:
-#         out.write("#include \"%s\"\n"%helper)
-#     out.write("\n")
-
-#     # Output set of states
-#     statesets = collections.OrderedDict()
-#     out.write('typedef enum { %s } scenario;\n' % (", ".join([k.upper() for k in allFSMs.keys()])))
-#     state_enums = []
-#     state_names_arrays = []
-#     for key, fsm in allFSMs.iteritems():
-#         stateset = [("%s_%s" % (state, key)).upper() for state in fsm.states.keys()]
-#         statesets[key] = stateset
-#         stateset_str = ", ".join(stateset)
-#         state_enums.append('typedef enum { ' + stateset_str + ' } %s_state;\n' % key.lower())
-#         state_names = ", ".join(['\"%s\"'%(state) for state in fsm.states.keys()])
-#         state_names_arrays.append('const char *%s_states[%d] = {%s};\n'%(key, len(fsm.states.keys()), state_names))
-#     out.write(''.join(state_enums))
-#     events = [str(e).upper() for e in symbolTable.getEvents()]
-#     errors = ['DEFAULT']
-#     for e in symbolTable.getSymbolsByType('event'):
-#         if symbolTable[e]['error']:
-#             errors.append(e.upper())
-#     out.write('typedef enum { %s } event;\n' % (", ".join(events)))
-#     out.write('typedef enum { %s } error_type;\n' % (", ".join(errors)))
-#     out.write(''.join(state_names_arrays))
-#     out.write('\n')
-
-#     # Output state variables
-#     state_vars = symbolTable.getSymbolsByType('state')
-#     struct = symbolTable.getSymbolsByType('object')[0]
-#     out.write('typedef struct %s{\n' % struct)
-#     if len(state_vars) > 0:
-#         for v in state_vars:
-#             v_attrs = symbolTable.get(v)
-#             out.write('  ' + v_attrs['datatype'] + ' ' + v + ';\n')
-#         # Output initial state
-#     current_states = ", ".join(string.upper(stateset[0]) for key, stateset in statesets.iteritems())
-#     out.write("  int state[%d]; // = { %s };\n" % (len(statesets), current_states))
-#     out.write("  const char **state_names[%d];\n" % (len(statesets)))
-#     out.write("  action *action_queue;\n")
-#     out.write('} %s;\n\n' % struct)
-
-#     # Output catch() declaration
-#     out.write("void call_next_action(%s*);\n"%struct)
-#     out.write("void raise_error(char*, const char*, char*, char*);\n\n")
-
-#     out.write("%s* init%s() {\n"%(struct, struct))
-#     out.write("  %s* monitor = (%s*)malloc(sizeof(%s));\n"%(struct,struct,struct))
-#     scenario_index = 0
-#     init_current = []
-#     init_names = []
-#     for key, fsm in allFSMs.iteritems():
-#         init_current.append("  monitor->state[%d] = %s_%s;\n"%(scenario_index, next(iter(fsm.states)).upper(), key.upper()))
-#         init_names.append("  monitor->state_names[%d] = %s_states;\n"%(scenario_index, key))
-#         scenario_index += 1
-#     out.write(''.join(init_current))
-#     out.write(''.join(init_names))
-
-#     out.write("  return monitor;\n}\n\n")
-
-#     # Output a method for each event (switch statement to handle FSM transitions)
-#     methods = symbolTable.getEvents()
-#     callCases = []
-#     for m in methods:
-#         params = symbolTable.get(m, 'params')
-#         if len(params) > 0:
-#             params = struct + "* monitor, " + params
-#         else:
-#             params = struct + "* monitor"
-#         out.write('void ' + m + '(' + params + ') {\n')
-
-#         for key, fsm in allFSMs.iteritems():
-#             reference = 'monitor->state[%s]' % key.upper()
-#             name_reference = "monitor->state_names[%s][monitor->state[%s]]"%(key.upper(), key.upper())
-#             out.write('  switch (%s) {\n' % reference)
-#             for transition in fsm.getTransitionsByEvent(str(m)):
-#                 out.write(writeCaseTransition(transition, reference, name_reference, key, m))
-#             out.write('    default:\n')
-#             out.write('      raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n'%(key, name_reference, m))
-#             out.write('      break;\n')
-#             out.write('  }\n')
-
-#         #move
-#         callCases.append(writeCallCase(symbolTable, m))
-
-#         out.write('}\n\n')
-
-#         out.write(writeRaiseFunction(symbolTable, m, struct))
-
-#     for s in state_vars:
-#         out.write('void set%s_%s(%s *monitor, %s new_%s) {\n'%(struct.lower(), s, struct,
-#             symbolTable.get(s)['datatype'], s))
-#         out.write('  monitor->%s = new_%s;\n  return;\n}\n\n'%(s, s))
-
-#     out.write('void call_next_action(%s *monitor) {\n'%struct)
-#     out.write('  switch (monitor->action_queue->id) {\n')
-#     out.write('\n'.join(callCases))
-#     out.write('\n  }\n}\n\n')
-
-#     out.write('void exec_actions(%s *monitor) {\n'%struct)
-#     out.write('  while(monitor->action_queue != NULL) {\n')
-#     out.write('    call_next_action(monitor);\n')
-#     out.write('    pop_action(&monitor->action_queue);\n')
-#     out.write('  }\n}\n\n')
-#     out.write("void raise_error(char *scen, const char *state, char *action, char *type) {\n")
-#     out.write("  printf(\"{\\\"scenario\\\":\\\"%s\\\", \\\"state\\\":\\\"%s\\\", \\\"" + \
-#         "action\\\":\\\"%s\\\", \\\"type\\\":\\\"%s\\\"}\", scen, state, action, type);")
-#     out.write("\n}\n\n")
-#     out.close()
-
 def outputToTemplate(symbolTable, allFSMs, filename, helper):
     env = Environment(loader=FileSystemLoader('./'), extensions=['jinja2.ext.do'])
-
     out_h = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
     template_h = env.get_template('templates/object_mon.h')
     obj = symbolTable.getSymbolsByType('object')[0]
-    state_vars = [{'type':symbolTable.get(v)['datatype'], 'name':v} for v in symbolTable.getSymbolsByType('state')]
+    state_vars = [{'type': symbolTable.get(v)['datatype'], 'name': v} for v in symbolTable.getSymbolsByType('state')]
     for s in state_vars:
-        s['c_type'] = convertTypeForC(s['type'])  
-    identities = [{'type':symbolTable.get(v)['datatype'], 'name':v} for v in symbolTable.getSymbolsByType('identity')]
+        s['c_type'] = convertTypeForC(s['type'])
+    identities = [{'type': symbolTable.get(v)['datatype'], 'name': v} for v in symbolTable.getSymbolsByType('identity')]
     for id in identities:
         id['c_type'] = convertTypeForC(id['type'])
     values = dict()
@@ -321,18 +204,18 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
     values['obj'] = obj
     values['identities'] = identities
     values['state_vars'] = state_vars
-    values['state_var_declarations'] = '\n'.join(['  %s %s;'%(v['c_type'], v['name']) for v in state_vars])
-    values['identity_declarations'] = '\n'.join(['  %s %s;'%(v['c_type'], v['name']) for v in identities])
-    values['scenario_names'] = [('%s_%s'%(obj, k)).upper() for k in allFSMs.keys()]
+    values['state_var_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in state_vars])
+    values['identity_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in identities])
+    values['scenario_names'] = [('%s_%s' % (obj, k)).upper() for k in allFSMs.keys()]
 
     out_c = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
     template_c = env.get_template('templates/object_mon.c')
     values['helper'] = helper
 
     values['base_file_name'] = os.path.splitext(os.path.basename(filename))[0]
-    values['identities_names'] = ['%s_%s'%(obj.upper(), i['name'].upper()) for i in identities]
+    values['identities_names'] = ['%s_%s' % (obj.upper(), i['name'].upper()) for i in identities]
     values['identities_types'] = [i['type'].upper() for i in identities]
-  
+
     statesets = collections.OrderedDict()
     state_enums = []
     state_names_arrays = []
@@ -350,15 +233,15 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
     values['state_names_array'] = ['%s_%s_states'%(obj.lower(), key.lower()) for key in allFSMs.keys()]
     values['state_inits'] = '\n'.join(state_inits)
 
-    events = ['%s_%s'%(obj.upper(), str(e).upper()) for e in symbolTable.getEvents()]
+    events = ['%s_%s' % (obj.upper(), str(e).upper()) for e in symbolTable.getEvents()]
     values['event_enums'] = ', '.join(events)
-    errors = ['%s_DEFAULT'%obj.upper()]
+    errors = ['%s_DEFAULT' % obj.upper()]
     for e in symbolTable.getSymbolsByType('event'):
         if symbolTable[e]['error']:
-            errors.append('%s_%s'%(obj.upper, e.upper()))
+            errors.append('%s_%s' % (obj.upper, e.upper()))
     values['error_enums'] = ', '.join(errors)
 
-    values['add_to_map_calls'] = ['add_%s_monitor_to_map(monitor, %s)'%(obj.lower(), i) for i in values['identities_names']]
+    values['add_to_map_calls'] = ['add_%s_monitor_to_map(monitor, %s)' % (obj.lower(), i) for i in values['identities_names']]
 
     # Output a method for each event (switch statement to handle FSM transitions)
     methods = symbolTable.getEvents()
@@ -432,6 +315,7 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
     shutil.copyfile('./templates/monitor_map.h', os.path.dirname(filename) + '/monitor_map.h')
     shutil.copyfile('./templates/monitor_map.c', os.path.dirname(filename) + '/monitor_map.c')
 
+
 def convertTypeForC(smedlType):
     return {
         'int': 'int',
@@ -439,6 +323,7 @@ def convertTypeForC(smedlType):
         'thread': 'pthread_t',
         'opaque': 'void*'
     }[smedlType]
+
 
 def writeCaseTransition(obj, trans, currentState, stateName, scenario, action):
     output = ['      case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), trans.startState.name.upper())]
@@ -467,17 +352,17 @@ def getEventParams(paramString):
 
 def writeCallCase(symbolTable, event):
     output = []
-    output.append('    case %s: ;'%event.upper())
+    output.append('    case %s: ;' % event.upper())
     paramString = str(symbolTable.get(event)['params'])
     if paramString == '':
-        output.append('      %s(monitor);'%event)
+        output.append('      %s(monitor);' % event)
     else:
         params = getEventParams(paramString)
         for p in params:
-            output.append('      %s %s_%s = monitor->action_queue->params->%c;'%(p[0], p[1], event, p[0][0]))
+            output.append('      %s %s_%s = monitor->action_queue->params->%c;' % (p[0], p[1], event, p[0][0]))
             output.append('      pop_param(&monitor->action_queue->params);')
-        callParams = ", ".join('%s_%s'%(p[1], event) for p in params)
-        output.append('      %s(%s);'%(event, ", ".join(['monitor', callParams])))
+        callParams = ", ".join('%s_%s' % (p[1], event) for p in params)
+        output.append('      %s(%s);' % (event, ", ".join(['monitor', callParams])))
     output.append('      break;')
     return '\n'.join(output)
 
@@ -521,7 +406,7 @@ def findFunctionParams(function, params, ast):
         types = getParamTypes(function, ast['exported_events'])
     if types is None and ast['internal_events']:
         types = getParamTypes(function, ast['internal_events'])
-    if types is None: #probably never raised - called only for events in symbolTable
+    if types is None:  # probably never raised - called only for events in symbolTable
         raise ValueError("Unrecognized function, %s, found in scenarios" % function)
     if len(names) != len(types):
         raise ValueError("Invalid number of parameters for %s" % function)
@@ -551,7 +436,7 @@ def getParamTypes(function, events):
 
 def formatGuard(object):
     guard = str(guardToString(object))
-    # guard = checkReferences(guard) #TODO--------
+    # guard = checkReferences(guard) # TODO--------
     return removeParentheses(guard)
 
 
@@ -641,7 +526,7 @@ def removeParentheses(guard):
 
 
 def checkReferences(guard):
-    objects = re.findall(r'\s([A-Za-z_]\w*).\w+\W+', guard)
+    re.findall(r'\s([A-Za-z_]\w*).\w+\W+', guard)
 
 
 if __name__ == '__main__':
