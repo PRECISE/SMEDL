@@ -1,12 +1,9 @@
-# from __future__ import print_function, division, absolute_import, unicode_literals
 from smedl_parser import smedlParser
 from smedl_symboltable import smedlSymbolTable
-# from fsm import *
-# from grako.ast import AST
-# import os
 import json
 import unittest
 import smedlgen
+
 
 class TestSmedlgen(unittest.TestCase):
 
@@ -25,40 +22,40 @@ class TestSmedlgen(unittest.TestCase):
     def test_parseToSymbolTable(self):
         symbolTable = smedlSymbolTable()
         smedlgen.parseToSymbolTable('top', self.ast, symbolTable)
-        self.assertEquals('int', symbolTable['lobound']['datatype'])
-        self.assertEquals('state', symbolTable['upbound']['type'])
-        self.assertEquals('event', symbolTable['updatePos']['type'])
-        self.assertEquals('scenarios', symbolTable['sc1']['type'])
-        self.assertEquals('trace_state', symbolTable['SafeMon']['type'])
-        self.assertEquals('trace_state', symbolTable['Switch']['type'])
+        self.assertEqual('int', symbolTable['lobound']['datatype'])
+        self.assertEqual('state', symbolTable['upbound']['type'])
+        self.assertEqual('event', symbolTable['updatePos']['type'])
+        self.assertEqual('scenarios', symbolTable['sc1']['type'])
+        self.assertEqual('trace_state', symbolTable['SafeMon']['type'])
+        self.assertEqual('trace_state', symbolTable['Switch']['type'])
         # print(symbolTable)
 
     def test_generateFSM(self):
         symbolTable = smedlSymbolTable()
         smedlgen.parseToSymbolTable('top', self.ast, symbolTable)
         fsm = next(iter(smedlgen.generateFSMs(self.ast, symbolTable).values()))
-        print(type(fsm))
-        self.assertEquals(2, len(fsm.states))
-        self.assertEquals(3, len(fsm.transitions))
+        # print(type(fsm))
+        self.assertEqual(2, len(fsm.states))
+        self.assertEqual(3, len(fsm.transitions))
         self.assertTrue(fsm.stateExists('SafeMon'))
         self.assertTrue(fsm.stateExists('Switch'))
-        updatePos = fsm.getTransitionsByAction('updatePos')
-        self.assertEquals(1, len(updatePos))
-        self.assertEquals('SafeMon', updatePos[0].start.name)
-        self.assertEquals('pos == upbound || pos == lobound', updatePos[0].guard)
+        updatePos = fsm.getTransitionsByEvent('updatePos')
+        self.assertEqual(1, len(updatePos))
+        self.assertEqual('SafeMon', updatePos[0].start.name)
+        self.assertEqual('pos == upbound || pos == lobound', updatePos[0].guard)
         changeDir = fsm.getTransitionsByAction('changeDir')
-        self.assertEquals(2, len(changeDir))
-        print(fsm)
+        self.assertEqual(2, len(changeDir))
+        # print(fsm)
 
     def test_findFunctionParams(self):
         trace = self.ast['scenarios'][0][0]['traces'][0]['trace_step'][1]['step_event']['expression']
         params = trace['trailer']['params']
         param_names = str(smedlgen.findFunctionParams(trace['atom'], params, self.ast))
-        self.assertEquals('int pos', param_names)
+        self.assertEqual('int pos', param_names)
         trace = self.ast['scenarios'][0][0]['traces'][1]['trace_step'][1]['step_event']['expression']
         params = trace['trailer']['params']
         param_names = str(smedlgen.findFunctionParams(trace['atom'], params, self.ast))
-        self.assertEquals('', param_names)
+        self.assertEqual('', param_names)
         self.writer.add_t("sc1", "SafeMon -> updatePos() -> SafeMon")
         self.writer.add_t("sc1", "SafeMon -> updatePos(pos, pos2) -> SafeMon")
         self.writer.add_t("sc1", "SafeMon -> changeDir(pos, pos2) -> SafeMon")
@@ -93,26 +90,26 @@ class TestSmedlgen(unittest.TestCase):
         self.make_ast()
         events = self.ast['imported_events'][0]
         types = smedlgen.getParamTypes('updatePos', events)
-        self.assertEquals(1, len(types))
-        self.assertEquals('int', types[0])
+        self.assertEqual(1, len(types))
+        self.assertEqual('int', types[0])
         types = smedlgen.getParamTypes('changeDir', events)
         self.assertTrue(isinstance(types, list))
-        self.assertEquals(0, len(types))
+        self.assertEqual(0, len(types))
         types = smedlgen.getParamTypes('doesntExist', events)
-        self.assertTrue(types == None)
+        self.assertTrue(types is None)
         types = smedlgen.getParamTypes('newOne', events)
-        self.assertTrue(types == None)
+        self.assertTrue(types is None)
         events = self.ast['exported_events'][0]
         types = smedlgen.getParamTypes('updatePos', events)
-        self.assertTrue(types == None)
+        self.assertTrue(types is None)
         types = smedlgen.getParamTypes('changeDir', events)
-        self.assertTrue(types == None)
+        self.assertTrue(types is None)
         types = smedlgen.getParamTypes('newOne', events)
-        self.assertEquals(4, len(types))
-        self.assertEquals('int', types[0])
-        self.assertEquals('int', types[1])
-        self.assertEquals('bool', types[2])
-        self.assertEquals('float', types[3])
+        self.assertEqual(4, len(types))
+        self.assertEqual('int', types[0])
+        self.assertEqual('int', types[1])
+        self.assertEqual('bool', types[2])
+        self.assertEqual('float', types[3])
         # print(json.dumps(events, indent=2))
 
     def test_formatGuard(self):
@@ -124,21 +121,21 @@ class TestSmedlgen(unittest.TestCase):
         self.writer.add_t("sc1", "SafeMon -> changeDir() when !(a < b) && !c || !!!!(d + e) || f < !!!g -> SafeMon")
         self.writer.add_t("sc1", "SafeMon -> changeDir() when !(a < b) && !c || !!!!!(d + e) || f < !!!g -> SafeMon")
         self.make_ast()
-        print(json.dumps(self.ast, indent=2))
+        # print(json.dumps(self.ast, indent=2))
         term = self.ast['scenarios'][0][0]['traces'][3]['trace_step'][1]['step_event']['when']
-        self.assertEquals("+-~~+-~~5", smedlgen.formatGuard(term))
+        self.assertEqual("+-~~+-~~5", smedlgen.formatGuard(term))
         term = self.ast['scenarios'][0][0]['traces'][4]['trace_step'][1]['step_event']['when']
-        self.assertEquals("+arr[5 + fn(6)]", smedlgen.formatGuard(term))
+        self.assertEqual("+arr[5 + fn(6)]", smedlgen.formatGuard(term))
         term = self.ast['scenarios'][0][0]['traces'][5]['trace_step'][1]['step_event']['when']
-        self.assertEquals("obj.thing.thing2[5] == 6", smedlgen.formatGuard(term))
+        self.assertEqual("obj.thing.thing2[5] == 6", smedlgen.formatGuard(term))
         term = self.ast['scenarios'][0][0]['traces'][6]['trace_step'][1]['step_event']['when']
-        self.assertEquals("(obj.thing % 5 == 6 && true) || x + 5 == null", smedlgen.formatGuard(term))
+        self.assertEqual("(obj.thing % 5 == 6 && true) || x + 5 == null", smedlgen.formatGuard(term))
         term = self.ast['scenarios'][0][0]['traces'][7]['trace_step'][1]['step_event']['when']
-        self.assertEquals("(((x == 5 || true || y(x)) && z > 3) || b < c) && d", smedlgen.formatGuard(term))
+        self.assertEqual("(((x == 5 || true || y(x)) && z > 3) || b < c) && d", smedlgen.formatGuard(term))
         term = self.ast['scenarios'][0][0]['traces'][8]['trace_step'][1]['step_event']['when']
-        self.assertEquals("(!(a < b) && !c) || d + e || f < !!!g", smedlgen.formatGuard(term))
+        self.assertEqual("(!(a < b) && !c) || d + e || f < !!!g", smedlgen.formatGuard(term))
         term = self.ast['scenarios'][0][0]['traces'][9]['trace_step'][1]['step_event']['when']
-        self.assertEquals("(!(a < b) && !c) || !(d + e) || f < !!!g", smedlgen.formatGuard(term))
+        self.assertEqual("(!(a < b) && !c) || !(d + e) || f < !!!g", smedlgen.formatGuard(term))
 
     def test_guardToString(self):
         self.writer.add_t("sc1", "SafeMon -> changeDir() when 5 -> SafeMon")
@@ -153,43 +150,44 @@ class TestSmedlgen(unittest.TestCase):
         self.writer.add_t("sc1", "SafeMon -> changeDir() when 4 * (5 + 6) == 7 -> SafeMon")
         self.make_ast()
         term = self.ast['scenarios'][0][0]['traces'][3]['trace_step'][1]['step_event']['when']
-        self.assertEquals("5", smedlgen.guardToString(term))
+        self.assertEqual("5", smedlgen.guardToString(term))
         term = self.ast['scenarios'][0][0]['traces'][4]['trace_step'][1]['step_event']['when']
-        self.assertEquals("+5", smedlgen.guardToString(term))
+        self.assertEqual("+5", smedlgen.guardToString(term))
         term = self.ast['scenarios'][0][0]['traces'][5]['trace_step'][1]['step_event']['when']
-        self.assertEquals("+-~~+-~~5", smedlgen.guardToString(term))
+        self.assertEqual("+-~~+-~~5", smedlgen.guardToString(term))
         term = self.ast['scenarios'][0][0]['traces'][6]['trace_step'][1]['step_event']['when']
-        self.assertEquals("-fn(-5 + 5)", smedlgen.guardToString(term))
+        self.assertEqual("-fn(-5 + 5)", smedlgen.guardToString(term))
         term = self.ast['scenarios'][0][0]['traces'][7]['trace_step'][1]['step_event']['when']
-        self.assertEquals("+arr[5 + fn(6)]", smedlgen.guardToString(term))
+        self.assertEqual("+arr[5 + fn(6)]", smedlgen.guardToString(term))
         term = self.ast['scenarios'][0][0]['traces'][8]['trace_step'][1]['step_event']['when']
-        self.assertEquals("obj.thing.thing2[5] == 6", smedlgen.guardToString(term))
+        self.assertEqual("obj.thing.thing2[5] == 6", smedlgen.guardToString(term))
         term = self.ast['scenarios'][0][0]['traces'][9]['trace_step'][1]['step_event']['when']
-        self.assertEquals("((obj.thing % 5 == 6 && true) || x + 5 == null)", smedlgen.guardToString(term))
+        self.assertEqual("((obj.thing % 5 == 6 && true) || x + 5 == null)", smedlgen.guardToString(term))
         term = self.ast['scenarios'][0][0]['traces'][10]['trace_step'][1]['step_event']['when']
-        self.assertEquals("((((x == 5 || true || y(x)) && z > 3) || b < c) && d)", smedlgen.guardToString(term))
+        self.assertEqual("((((x == 5 || true || y(x)) && z > 3) || b < c) && d)", smedlgen.guardToString(term))
         term = self.ast['scenarios'][0][0]['traces'][11]['trace_step'][1]['step_event']['when']
-        self.assertEquals("fn(helper(2) * 3) == -x(5, 6)", smedlgen.guardToString(term))
+        self.assertEqual("fn(helper(2) * 3) == -x(5, 6)", smedlgen.guardToString(term))
         term = self.ast['scenarios'][0][0]['traces'][12]['trace_step'][1]['step_event']['when']
-        self.assertEquals("4 * (5 + 6) == 7", smedlgen.guardToString(term))
+        self.assertEqual("4 * (5 + 6) == 7", smedlgen.guardToString(term))
         # print(json.dumps(term, indent=2))
 
     def test_termToString(self):
         self.writer.add_t("sc1", "SafeMon -> changeDir() when fn(helper(2) * 3) == -x(5)  -> SafeMon")
         self.make_ast()
         term = self.ast['scenarios'][0][0]['traces'][3]['trace_step'][1]['step_event']['when']['comp'][0]
-        self.assertEquals("fn(helper(2) * 3)", smedlgen.termToString(term))
+        self.assertEqual("fn(helper(2) * 3)", smedlgen.termToString(term))
         term = self.ast['scenarios'][0][0]['traces'][3]['trace_step'][1]['step_event']['when']['comp'][1]
-        self.assertEquals("-x(5)", smedlgen.termToString(term))
+        self.assertEqual("-x(5)", smedlgen.termToString(term))
 
     def test_removeParentheses(self):
-        self.assertEquals("x", smedlgen.removeParentheses("(x)"))
-        self.assertEquals("()(x)", smedlgen.removeParentheses("()(x)"))
-        self.assertEquals("(y) + ((x + 2))", smedlgen.removeParentheses("(((y) + ((x + 2))))"))
+        self.assertEqual("x", smedlgen.removeParentheses("(x)"))
+        self.assertEqual("()(x)", smedlgen.removeParentheses("()(x)"))
+        self.assertEqual("(y) + ((x + 2))", smedlgen.removeParentheses("(((y) + ((x + 2))))"))
 
-    def make_ast(self) :
-        self.ast = smedlParser(parseinfo=False).parse(
-            self.writer.text, 'object', filename="test", trace=False, whitespace=None) 
+    def make_ast(self):
+        self.ast = smedlParser(parseinfo=False).parse(self.writer.text,
+            'object', filename="test", trace=False, whitespace=None)
+
 
 class SmedlWriter(object):
 
@@ -242,25 +240,25 @@ class SmedlWriter(object):
         self.build()
 
     def build(self):
-        self.text = "object %s\n"%self.id
+        self.text = "object %s\n" % self.id
         if(self.identity):
             self.text += "identity\n"
             for i in self.identity:
-                self.text += "\t%s;\n"%i
+                self.text += "\t%s;\n" % i
         if(self.state):
             self.text += "state\n"
             for s in self.state:
-                self.text += "\t%s;\n"%s
+                self.text += "\t%s;\n" % s
         if(self.events):
             self.text += "events\n"
             for e in self.events:
-                self.text += "\t%s;\n"%e
+                self.text += "\t%s;\n" % e
         if(self.scenarios):
             self.text += "scenarios\n"
             for s in self.scenarios.keys():
-                self.text += "\t%s:\n"%s
+                self.text += "\t%s:\n" % s
                 for t in self.scenarios[s]:
-                    self.text +="\t\t%s\n"%t
+                    self.text += "\t\t%s\n" % t
 
 if __name__ == '__main__':
     unittest.main()

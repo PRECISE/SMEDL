@@ -199,7 +199,7 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
     for id in identities:
         id['c_type'] = convertTypeForC(id['type'])
     values = dict()
-    values['multithreaded'] = True #command line arg for this?
+    values['multithreaded'] = True # command line arg for this?
     values['identities'] = identities
     values['obj'] = obj
     values['identities'] = identities
@@ -224,13 +224,13 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
         stateset = [("%s_%s_%s" % (obj, key, state)).upper() for state in fsm.states.keys()]
         statesets[key] = stateset
         stateset_str = ", ".join(stateset)
-        state_enums.append('typedef enum { ' + stateset_str + ' } %s_%s_state;'%(obj.lower(), key.lower()))
+        state_enums.append('typedef enum { ' + stateset_str + ' } %s_%s_state;' % (obj.lower(), key.lower()))
         state_names = ", ".join(['\"%s\"'%(state) for state in fsm.states.keys()])
-        state_names_arrays.append('const char *%s_%s_states[%d] = {%s};'%(obj.lower(), key.lower(), len(fsm.states.keys()), state_names))
-        state_inits.append('    monitor->state[%s_%s] = %s;'%(obj.upper(), key.upper(), stateset[0]))
+        state_names_arrays.append('const char *%s_%s_states[%d] = {%s};' % (obj.lower(), key.lower(), len(fsm.states.keys()), state_names))
+        state_inits.append('    monitor->state[%s_%s] = %s;' % (obj.upper(), key.upper(), stateset[0]))
     values['state_enums'] = '\n'.join(state_enums)
     values['state_names'] = '\n'.join(state_names_arrays)
-    values['state_names_array'] = ['%s_%s_states'%(obj.lower(), key.lower()) for key in allFSMs.keys()]
+    values['state_names_array'] = ['%s_%s_states' % (obj.lower(), key.lower()) for key in allFSMs.keys()]
     values['state_inits'] = '\n'.join(state_inits)
 
     events = ['%s_%s' % (obj.upper(), str(e).upper()) for e in symbolTable.getEvents()]
