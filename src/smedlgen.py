@@ -367,6 +367,8 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
     values['event_code'] = list()
     for m in methods:
         eventFunction = list()
+        probeFunction = list()
+        monitorFunction = list()
         params = symbolTable.get(m, 'params')
         if len(params) > 0:
             params = obj.title() + "MonitorRecord* monitor_list, " + params

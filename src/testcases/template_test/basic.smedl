@@ -1,0 +1,16 @@
+object Basic
+identity
+  pointer data;
+  int num;
+state
+  int x, y, total;
+events
+  imported upX(), upY();
+  internal upTotal(int);
+scenarios
+  main:
+    X -> upX() {raise upTotal(1)} -> Y
+    Y -> upY() {raise upTotal(2)} -> X
+  total:
+    Run -> upTotal(x) when this.total < 10 { total++ } -> Run
+      else -> Stop
