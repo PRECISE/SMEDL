@@ -35,7 +35,7 @@ event_def
         '(' [event_params:state_update_list] ')' '='
         {'update(' update_params:expression_list ')' |
         'call(' call_params:expression_list ')'}
-        ['when' when:expression] [event_action:action]
+        ['when' when:expression_list] [event_action:action]
     ;
 
 action

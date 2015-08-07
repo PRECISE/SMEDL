@@ -15,7 +15,7 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 from grako.parsing import graken, Parser
 
 
-__version__ = (2015, 7, 23, 16, 51, 11, 3)
+__version__ = (2015, 8, 7, 15, 30, 38, 4)
 
 __all__ = [
     'pedlParser',
@@ -141,7 +141,7 @@ class pedlParser(Parser):
         self._closure(block4)
         with self._optional():
             self._token('when')
-            self._expression_()
+            self._expression_list_()
             self.ast['when'] = self.last_node
         with self._optional():
             self._action_()

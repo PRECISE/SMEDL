@@ -33,6 +33,7 @@ Component Breakdown
             -Create can get complicated because the user may declare a struct for parameters, but only after all the values within are set, can the monitor be instantiated. This makes it hard for automatic instrumentation to figure out when the struct has all the required information.
             -Should there also be PEDL for when to turn off or deconstruct monitors? (Yes, when the monitor's ID is destroyed. Also when we reach a terminal state.)
     Event probes
+            - What is the 'false' boolean parameter used for in call() functions
         DONE:
             -Define placement of probes at every update of a variable of interest, or a call or return of a function
             -For call, probe is placed just inside function call
