@@ -10,11 +10,11 @@
 
 ##Getting started
 ---------------
-A [Python virtual environment](https://virtualenv.readthedocs.org/en/latest/) including [Python 3.4.3](https://docs.python.org/3.4/index.html) and all required Python packages has been created to simplify the process of getting started with the tool. 
+A [Python virtual environment](https://virtualenv.readthedocs.org/en/latest/) including [Python 3.4.3](https://docs.python.org/3.4/index.html) and all required Python packages has been created to simplify the process of getting started with the tool.
 
-To start the virtual environment, run the following command from the project's root directory:
+To setup the virtual environment, run the following command from the project's root directory:
 
-    source gramma_env/bin/activate
+    virtualenv --no-site-packages --distribute .env && source .env/bin/activate && pip install -r requirements.txt
 
 NOTE: If you choose to not use the virtual environment, you can simply install the required Python packages using the following command:
 
