@@ -14,7 +14,7 @@ A [Python virtual environment](https://virtualenv.readthedocs.org/en/latest/) in
 
 To setup the virtual environment, run the following command from the project's root directory:
 
-    virtualenv --no-site-packages --distribute .env && source .env/bin/activate && pip install -r requirements.txt
+    pyvenv .env && source .env/bin/activate && pip install -r requirements.txt
 
 NOTE: If you choose to not use the virtual environment, you can simply install the required Python packages using the following command:
 
