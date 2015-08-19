@@ -3,6 +3,8 @@ src/.coverage
 
 *.o
 
+bin/
+
 src/testcases/pqueue/c/pq
 
 *.DS_Store
