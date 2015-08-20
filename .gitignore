@@ -3,6 +3,7 @@ src/.coverage
 
 *.o
 
+.env
 bin/
 
 src/testcases/pqueue/c/pq
