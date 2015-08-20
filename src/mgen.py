@@ -54,7 +54,7 @@ def main(pedlFilename, smedlFilename, helper=None):
 
     # Process the SMEDL AST
     smedlST = smedlSymbolTable()
-    parseToSymbolTable('top', smedlAST, smedlST)
+    buildSymbolTable('top', smedlAST, smedlST)
     allFSMs = generateFSMs(smedlAST, smedlST)
     print('\nSMEDL Symbol Table:')
     for k in smedlST:
@@ -63,8 +63,11 @@ def main(pedlFilename, smedlFilename, helper=None):
         print('\nFSM: %s\n' % key)
         print('%s\n' % fsm)
     # outputSource(smedlST, allFSMs, smedlFilename, helper)
-    outputToTemplate(smedlST, allFSMs, smedlFilename, helper)
+    outputToTemplate(smedlST, allFSMs, smedlFilename, helper, pedlAST)
 
+def buildSymbolTable(label, object, symbolTable):
+    parseToSymbolTable(label, object, symbolTable)
+    getParameterNames(object, symbolTable)
 
 def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
@@ -96,6 +99,16 @@ def parseToSymbolTable(label, object, symbolTable):
         for elem in object:
             parseToSymbolTable(label, elem, symbolTable)
 
+def getParameterNames(ast, symbolTable):
+    for scenario in ast['scenarios'][0]:  # [0] handles grako's nested list structure    
+        for trace in scenario['traces']:
+            for i in range(0, len(trace['trace_steps'])):
+                current = trace['trace_steps'][i]['step_event']['expression']['atom']
+                if 'event' in symbolTable.get(current, 'type'):
+                    params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
+                    # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
+                    paramsDict = findFunctionParams(current, params, ast)
+                    symbolTable.update(current, "params", paramsDict)
 
 def generateFSMs(ast, symbolTable):
     allFSMs = collections.OrderedDict()
@@ -157,12 +170,6 @@ def generateFSMs(ast, symbolTable):
                                 actions.append('instantiation: ' + action['instantiation']['id'])
                             if action['call_stmt']:
                                 actions.append('call: ' + action['call_stmt']['target'])
-
-                    # add parameters to symbol table for referencing in output
-                    params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
-                    param_names = str(findFunctionParams(current, params, ast))
-                    symbolTable.update(current, "params", param_names)
-
                     if not fsm.stateExists(before):
                         fsm.addState(State(before))
                     if symbolTable.get(after, 'type') == 'trace_state':
@@ -187,7 +194,7 @@ def generateFSMs(ast, symbolTable):
     return allFSMs
 
 
-def outputToTemplate(symbolTable, allFSMs, filename, helper):
+def outputToTemplate(symbolTable, allFSMs, filename, helper, pedlAST):
     env = Environment(loader=FileSystemLoader('./'), extensions=['jinja2.ext.do'])
     out_h = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
     template_h = env.get_template('templates/object_mon.h')
@@ -247,67 +254,77 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper):
     methods = symbolTable.getEvents()
     callCases = []
     values['signatures']= []
-    values['event_code'] = list()
+    values['event_code'] = []
+
     for m in methods:
-        eventFunction = list()
-        probeFunction = list()
-        monitorFunction = list()
-        params = symbolTable.get(m, 'params')
-        if len(params) > 0:
-            params = obj.title() + "MonitorRecord* monitor_list, " + params
-        else:
-            params = obj.title() + "MonitorRecord* monitor_list"
-        signature = 'void %s_%s(%s)' % (obj.lower(), m, params)
-        values['signatures'].append(signature)
-        eventFunction.append(signature + ' {')
-        eventFunction.append('  %sMonitorRecord *current = monitor_list;' % obj.title())
-        eventFunction.append('  while(current != NULL) {')
-        eventFunction.append('    %sMonitor* monitor = current->monitor;' % obj.title())
+        eventFunction = []
+        probeFunction = []
+        params = ''
+        identityParams = []
+        pedlEvent = False
+        if 'imported_events' == symbolTable.get(m)['type']:
+            for e in pedlAST['event_defs']:
+                if str(m) == e['event']:
+                    pedlEvent = True
+                    for w in e['when']:
+                        name = w['comp'][0]['atom']
+                        datatype = symbolTable.get(name)['datatype']
+                        c_type = convertTypeForC(datatype)
+                        identityParams.append({'name': name, 'c_type': c_type, 'datatype': datatype})
+                        print('%s pedl params: %s %s'%(m, c_type, name))
+        monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
+            [{'name':p['name'], 'c_type':convertTypeForC(p['type'])} for p in symbolTable.get(m, 'params')]
+        eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
+        values['signatures'].append(eventSignature)
+        eventFunction.append(eventSignature + ' {')
         for key, fsm in allFSMs.iteritems():
             reference = 'monitor->state[%s_%s]' % (obj.upper(), key.upper())
             name_reference = "%s_states_names[%s_%s][monitor->state[%s_%s]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
-            eventFunction.append('    switch (%s) {' % reference)
+            eventFunction.append('  switch (%s) {' % reference)
             for transition in fsm.getTransitionsByEvent(str(m)):
                 eventFunction.append(writeCaseTransition(obj, transition, reference, name_reference, key, m))
-            eventFunction.append('      default:')
-            eventFunction.append('        raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
-            eventFunction.append('        break;')
-            eventFunction.append('    }')
-        eventFunction.append('    current = current->next;')
-        eventFunction.append('  }')
+            eventFunction.append('    default:')
+            eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
+            eventFunction.append('      break;')
+            eventFunction.append('  }')
         eventFunction.append('}')
-
         raiseFunction = writeRaiseFunction(symbolTable, m, obj)
+        if pedlEvent:
+            probeSignature = 'void %s_%s_probe(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]))
+            probeFunction.append(probeSignature  + ' {')
+            if len(identityParams) > 0:
+                # Write function call to hash on the first identity we're searching for
+                identityEnum = '%s_%s' % (obj.upper(), identityParams[0]['name'].upper())
+                identityDatatype = identityParams[0]['datatype'].upper()
+                identityName = identityParams[0]['name'].lower()
+                if identityDatatype == 'INT':
+                    identityName = '&' + identityName
+                probeFunction.append('  %sMonitorRecord* results = get_%s_monitors_by_identity(%s, %s, %s);'  \
+                    % (obj.title(), obj.lower(), identityEnum, identityDatatype, identityName))
+                # Write function calls to further filter the list based on other identities we're searching for
+                for i in range(1, len(identityParams)):
+                    identityEnum = '%s_%s' % (obj.upper(), identityParams[i]['name'].upper())
+                    identityDatatype = identityParams[i]['datatype'].upper()
+                    identityName = identityParams[i]['name'].lower()
+                    if identityDatatype == 'INT':
+                        identityName = '&' + identityName
+                    probeFunction.append('  results = filter_%s_monitors_by_identity(results, %s, %s);' % (obj.lower(), identityEnum, identityName))
+            else:
+                probeFunction.append('  %sMonitorRecord* results = get_%s_monitors();' % (obj.title(), obj.lower()))
+            probeFunction.append('  while(results != NULL) {')
+            probeFunction.append('    %sMonitor* monitor = results->monitor;' % obj.title())
+            probeFunction.append('    %s_%s(%s);' % (obj.lower(), m, ", ".join([p['name'] for p in monitorParams])))
+            probeFunction.append('    results = results->next;')
+            probeFunction.append('  }')
+            probeFunction.append('}')
+            print(probeSignature)
+            values['signatures'].append(probeSignature)
+            values['event_code'] .append({'event':eventFunction, 'probe':probeFunction, 'raise':raiseFunction['code']})
+        else:
+            values['event_code'] .append({'event':eventFunction, 'raise':raiseFunction['code']})           
         values['signatures'].append(raiseFunction['signature'])
-        values['event_code'] .append({'event':eventFunction, 'raise':raiseFunction['code']})
+
         callCases.append(writeCallCase(symbolTable, m))
-
-    # methods = symbolTable.getEvents()
-    # callCases = []
-    # values['event_code'] = list()
-    # for m in methods:
-    #     eventFunction = list()
-    #     params = symbolTable.get(m, 'params')
-    #     if len(params) > 0:
-    #         params = obj.title() + "Monitor* monitor, " + params
-    #     else:
-    #         params = obj.title() + "Monitor* monitor"
-    #     eventFunction.append('void ' + m + '(' + params + ') {')
-    #     for key, fsm in allFSMs.iteritems():
-    #         reference = 'monitor->state[%s_%s]' % (obj.upper(), key.upper())
-    #         name_reference = "%s_states_names[%s_%s][monitor->state[%s_%s]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
-    #         eventFunction.append('  switch (%s) {' % reference)
-    #         for transition in fsm.getTransitionsByEvent(str(m)):
-    #             eventFunction.append(writeCaseTransition(obj, transition, reference, name_reference, key, m))
-    #         eventFunction.append('    default:')
-    #         eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
-    #         eventFunction.append('      break;')
-    #         eventFunction.append('  }')
-    #     eventFunction.append('}')
-
-    #     raiseFunction = writeRaiseFunction(symbolTable, m, obj)
-    #     values['event_code'] .append({'event':eventFunction, 'raise':raiseFunction})
-    #     callCases.append(writeCallCase(symbolTable, m))
 
     out_h.write(template_h.render(values))
     out_c.write(template_c.render(values))
@@ -328,19 +345,19 @@ def convertTypeForC(smedlType):
 
 
 def writeCaseTransition(obj, trans, currentState, stateName, scenario, action):
-    output = ['      case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), trans.startState.name.upper())]
+    output = ['    case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), trans.startState.name.upper())]
     if trans.guard:
-        output.append('        if(' + trans.guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
-        output.append('          %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.nextState.name)).upper() + ';\n')
-        output.append('        } else {\n')
-        if trans.elseState:
-            output.append('          %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.elseState.name)).upper() + ';\n')
-        else:
-            output.append('          raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
-        output.append('        }\n')
-    else:
+        output.append('      if(' + trans.guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
         output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.nextState.name)).upper() + ';\n')
-    output.append('        break;\n')
+        output.append('      } else {\n')
+        if trans.elseState:
+            output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.elseState.name)).upper() + ';\n')
+        else:
+            output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
+        output.append('      }\n')
+    else:
+        output.append('      %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.nextState.name)).upper() + ';\n')
+    output.append('      break;\n')
     return "".join(output)
 
 
@@ -355,7 +372,8 @@ def getEventParams(paramString):
 def writeCallCase(symbolTable, event):
     output = []
     output.append('    case %s: ;' % event.upper())
-    paramString = str(symbolTable.get(event)['params'])
+    # paramString = str(symbolTable.get(event)['params'])
+    paramString = ','.join(['%s %s'%(p['type'], p['name']) for p in symbolTable.get(event, 'params')])
     if paramString == '':
         output.append('      %s(monitor);' % event)
     else:
@@ -370,7 +388,8 @@ def writeCallCase(symbolTable, event):
 
 
 def writeRaiseFunction(symbolTable, event, obj):
-    paramString = symbolTable.get(event, 'params')
+    # paramString = symbolTable.get(event, 'params')
+    paramString = ','.join(['%s %s'%(p['type'], p['name']) for p in symbolTable.get(event, 'params')])
     if len(paramString) > 0:
         paramString = obj.title() + "Monitor* monitor, " + paramString
     else:
@@ -412,7 +431,8 @@ def findFunctionParams(function, params, ast):
         raise ValueError("Unrecognized function, %s, found in scenarios" % function)
     if len(names) != len(types):
         raise ValueError("Invalid number of parameters for %s" % function)
-    return (", ".join(["%s %s" % (types[i], names[i]) for i in range(len(names))]))
+    return [{'type':types[i], 'name':names[i]} for i in range(len(names))]
+    # return (", ".join(["%s %s" % (types[i], names[i]) for i in range(len(names))]))
 
 
 def getParamTypes(function, events):

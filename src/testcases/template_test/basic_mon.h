@@ -42,11 +42,13 @@ int put_basic_monitor(BasicMonitor*); //puts into all maps
 BasicMonitorRecord* get_basic_monitors();
 BasicMonitorRecord* get_basic_monitors_by_identity(int, int, void*);
 BasicMonitorRecord* filter_basic_monitors_by_identity(BasicMonitorRecord*, int, void*);
-void basic_upY(BasicMonitorRecord* monitor_list);
+void basic_upY(BasicMonitor* monitor);
+void basic_upY_probe(void* data, int num);
 void raise_basic_upY(BasicMonitor* monitor);
-void basic_upX(BasicMonitorRecord* monitor_list);
+void basic_upX(BasicMonitor* monitor);
+void basic_upX_probe(void* data, int num);
 void raise_basic_upX(BasicMonitor* monitor);
-void basic_upTotal(BasicMonitorRecord* monitor_list, int x);
+void basic_upTotal(BasicMonitor* monitor, int x);
 void raise_basic_upTotal(BasicMonitor* monitor, int x);
 void raise_error(char*, const char*, char*, char*);
 void free_basic_monitor();
