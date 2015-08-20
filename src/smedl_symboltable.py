@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
 class smedlSymbolTable(dict):
 
     generated = 0
@@ -9,7 +10,7 @@ class smedlSymbolTable(dict):
         super(smedlSymbolTable, self).__init__()
 
     def add(self, symbol, attributes=None):
-        if not isinstance(symbol, basestring):
+        if not isinstance(symbol, str):
             raise TypeError
         elif attributes is None:
             self[symbol] = {}
@@ -19,25 +20,26 @@ class smedlSymbolTable(dict):
             self[symbol] = attributes
 
     def get(self, symbol, attribute=None):
-        if not isinstance(symbol, basestring):
+        if not isinstance(symbol, str):
             raise TypeError
         elif attribute is None:
             return super(smedlSymbolTable, self).get(symbol)
-        elif not isinstance(attribute, basestring):
+        elif not isinstance(attribute, str):
             raise TypeError
         else:
             return super(smedlSymbolTable, self).get(symbol).get(attribute)
 
     def getSymbolsByType(self, type):
         out = []
-        for s in self.keys():
-            if 'type' in self[s] and self[s]['type'] == type :
+        for s in list(self.keys()):
+            if 'type' in self[s] and self[s]['type'] == type:
                 out.append(s)
         return out
 
     def getEvents(self):
         return self.getSymbolsByType('imported_events') + \
-        self.getSymbolsByType('internal_events') + self.getSymbolsByType('exported_events')
+            self.getSymbolsByType('internal_events') + \
+            self.getSymbolsByType('exported_events')
 
     def update(self, symbol, attribute, value):
         self[symbol][attribute] = value
@@ -50,9 +52,7 @@ class smedlSymbolTable(dict):
 
     # This method makes an implicit state, ensuring that its name is unique
     def generate(self, attributes=None):
-        symbol = "Gen%d"%smedlSymbolTable.generated
+        symbol = "Gen%d" % smedlSymbolTable.generated
         self.add(symbol, attributes)
         smedlSymbolTable.generated = smedlSymbolTable.generated + 1
         return symbol
-
-

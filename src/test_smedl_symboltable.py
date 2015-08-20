@@ -8,16 +8,16 @@ class TestSymbolTable(unittest.TestCase):
         self.symbolTable = smedlSymbolTable()
 
     def test_add(self):
-        self.assertFalse(self.symbolTable.keys())
+        self.assertFalse(list(self.symbolTable.keys()))
         self.symbolTable.add('one')
         attributes = {'type': 'a'}
         self.symbolTable.add('two', attributes.copy())
         attributes['datatype'] = 'b'
         self.symbolTable.add('three', attributes.copy())
-        self.assertEqual(3, len(self.symbolTable.keys()))
-        self.assertFalse(self.symbolTable['one'].keys())
-        self.assertEqual(1, len(self.symbolTable['two'].keys()))
-        self.assertEqual(2, len(self.symbolTable['three'].keys()))
+        self.assertEqual(3, len(list(self.symbolTable.keys())))
+        self.assertFalse(list(self.symbolTable['one'].keys()))
+        self.assertEqual(1, len(list(self.symbolTable['two'].keys())))
+        self.assertEqual(2, len(list(self.symbolTable['three'].keys())))
         self.assertEqual('a', self.symbolTable['three']['type'])
 
     def test_get(self):
@@ -61,7 +61,7 @@ class TestSymbolTable(unittest.TestCase):
     def test_delete(self):
         self.symbolTable.add('one')
         self.symbolTable.add('two', {'type': 'a'})
-        self.assertEqual(2, len(self.symbolTable.keys()))
+        self.assertEqual(2, len(list(self.symbolTable.keys())))
         self.symbolTable.delete('two', 'type')
         self.assertFalse(self.symbolTable.get('two', 'type'))
         self.symbolTable.delete('one')

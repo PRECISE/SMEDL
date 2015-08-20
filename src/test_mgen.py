@@ -33,7 +33,7 @@ class TestSmedlgen(unittest.TestCase):
     def test_generateFSM(self):
         symbolTable = smedlSymbolTable()
         smedlgen.parseToSymbolTable('top', self.ast, symbolTable)
-        fsm = next(iter(smedlgen.generateFSMs(self.ast, symbolTable).values()))
+        fsm = next(iter(list(smedlgen.generateFSMs(self.ast, symbolTable).values())))
         # print(type(fsm))
         self.assertEqual(2, len(fsm.states))
         self.assertEqual(3, len(fsm.transitions))
@@ -255,7 +255,7 @@ class SmedlWriter(object):
                 self.text += "\t%s;\n" % e
         if(self.scenarios):
             self.text += "scenarios\n"
-            for s in self.scenarios.keys():
+            for s in list(self.scenarios.keys()):
                 self.text += "\t%s:\n" % s
                 for t in self.scenarios[s]:
                     self.text += "\t\t%s\n" % t

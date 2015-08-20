@@ -3,6 +3,7 @@
 
 import collections
 
+
 class FSM(object):
 
     def __init__(self):
@@ -22,30 +23,32 @@ class FSM(object):
         self.states.pop(state.name)
 
     def stateExists(self, stateName):
-        if not isinstance(stateName, basestring):
+        if not isinstance(stateName, str):
             raise TypeError("Invalid type for name argument.")
         return stateName in self.states
 
     def getStateByName(self, stateName):
-        if not isinstance(stateName, basestring):
+        if not isinstance(stateName, str):
             raise TypeError("Invalid type for name argument.")
         return self.states[stateName]
 
     def addTransition(self, transition):
         if not isinstance(transition, Transition):
             raise TypeError("Invalid type for transition argument.")
-        if transition.startState in self.states.values() and transition.nextState in self.states.values():
+        if transition.startState in list(self.states.values()) and \
+                transition.nextState in list(self.states.values()):
             self.transitions.append(transition)
             transition.startState.addOutTransition(transition)
             transition.nextState.addInTransition(transition)
-        if transition.elseState and transition.elseState in self.states.values():
+        if transition.elseState and \
+                transition.elseState in list(self.states.values()):
             transition.elseState.addInTransition(transition)
 
     def deleteTransition(self, transition):
         self.transitions.remove(transition)
 
     def getTransitionsByEvent(self, event):
-        if not isinstance(event, basestring):
+        if not isinstance(event, str):
             raise TypeError("Invalid type for event argument.")
         transitions = []
         for t in self.transitions:
@@ -55,7 +58,7 @@ class FSM(object):
 
     def __str__(self):
         out = "States:\n\n"
-        out += '\n\n'.join(str(s) for s in self.states.values())
+        out += '\n\n'.join(str(s) for s in list(self.states.values()))
         out += "\n\nTransitions:\n"
         out += '\n'.join(("  " + str(t)) for t in self.transitions)
         return out
@@ -64,7 +67,7 @@ class FSM(object):
 class State(object):
 
     def __init__(self, name):
-        if not isinstance(name, basestring):
+        if not isinstance(name, str):
             raise TypeError("Invalid type for name argument.")
         self.name = name
         self.in_trans = []
@@ -93,15 +96,16 @@ class State(object):
 
 class Transition(object):
 
-    def __init__(self, startState, event, nextState, nextActions=None, guard=None, elseState=None, elseActions=None):
+    def __init__(self, startState, event, nextState, nextActions=None,
+            guard=None, elseState=None, elseActions=None):
         if not isinstance(startState, State) or \
-        not isinstance(event, basestring) or \
-        not isinstance(nextState, State) or \
-        (nextActions is not None and not isinstance(nextActions, list)) or \
-        (guard is not None and not isinstance(guard, basestring)) or \
-        (elseState is not None and not isinstance(elseState, State)) or \
-        (elseActions is not None and not isinstance(elseActions, list)):
-            raise TypeError("Invalid argument type(s).")
+            not isinstance(event, str) or \
+            not isinstance(nextState, State) or \
+            (nextActions is not None and not isinstance(nextActions, list)) or \
+            (guard is not None and not isinstance(guard, str)) or \
+            (elseState is not None and not isinstance(elseState, State)) or \
+            (elseActions is not None and not isinstance(elseActions, list)):
+                raise TypeError("Invalid argument type(s).")
         self.startState = startState
         self.event = event
         self.nextState = nextState
@@ -111,7 +115,8 @@ class Transition(object):
         self.elseActions = elseActions
 
     def str_next(self):
-        s = self.startState.name + ' -> ' + self.nextState.name + ' / event: ' + self.event
+        s = self.startState.name + ' -> ' + self.nextState.name + \
+            ' / event: ' + self.event
         if self.guard:
             s = s + ' / if: ' + self.guard
         if self.nextActions:
@@ -121,7 +126,8 @@ class Transition(object):
     def str_else(self):
         if not self.elseState:
             return ''
-        s = self.startState.name + ' -> ' + self.elseState.name + ' / event: ' + self.event
+        s = self.startState.name + ' -> ' + self.elseState.name + \
+            ' / event: ' + self.event
         if self.guard:
             s = s + ' / if not: ' + self.guard
         if self.elseActions:
@@ -141,9 +147,3 @@ class Transition(object):
                 s = s + ' {' + ', '.join(self.elseActions) + '}'
             s = s + ' -> ' + self.elseState.name
         return s
-
-
-if __name__ == '__main__':
-    import argparse
-    import string
-    import sys

@@ -20,17 +20,17 @@ class TestFSM(unittest.TestCase):
         self.assertRaises(TypeError, self.fsm.addState, "state")
         self.fsm.addState(self.s1)
         self.fsm.addState(self.s2)
-        self.assertEqual(2, len(self.fsm.states.keys()))
+        self.assertEqual(2, len(list(self.fsm.states.keys())))
         s1 = self.fsm.states['s1']
         self.assertTrue(isinstance(s1, State))
 
     def test_deleteState(self):
         self.fsm.addState(self.s1)
         self.fsm.addState(self.s2)
-        self.assertEqual(2, len(self.fsm.states.keys()))
+        self.assertEqual(2, len(list(self.fsm.states.keys())))
         self.fsm.deleteState(self.s2)
         self.assertRaises(KeyError, self.fsm.deleteState, self.s2)
-        self.assertEqual(1, len(self.fsm.states.keys()))
+        self.assertEqual(1, len(list(self.fsm.states.keys())))
         self.assertTrue(isinstance(self.fsm.states['s1'], State))
         self.assertRaises(KeyError, self.fsm.getStateByName, 's2')
 
