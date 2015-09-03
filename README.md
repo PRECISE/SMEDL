@@ -23,9 +23,9 @@ NOTE: If you choose to not use the virtual environment, you can simply install t
 
 ##Generating the monitor
 ----------------------
-The 'mgen' script is the primary interface for generating software monitors from SMEDL and PEDL definitions. This script can be run with the following command:
+The 'mgen' script is the primary interface for generating software monitors from SMEDL and PEDL definitions. This script can be run with the following command (from the src/ directory):
 
-    python src/mgen.py PEDL_FILE SMEDL_FILE
+    python mgen.py PEDL_FILE SMEDL_FILE
 
 This script will generate C source code representing a runtime monitor as specified by the PEDL and SMEDL definitions, along with necessary monitor management infrastructure.
 
