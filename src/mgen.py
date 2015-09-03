@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, division, absolute_import, \
-    unicode_literals
+
 from smedl_parser import smedlParser
 from pedl_parser import pedlParser
 from smedl_symboltable import smedlSymbolTable
@@ -59,7 +58,7 @@ def main(pedlFilename, smedlFilename, helper=None):
     print('\nSMEDL Symbol Table:')
     for k in smedlST:
         print('%s: %s' % (k, smedlST[k]))
-    for key, fsm in allFSMs.iteritems():
+    for key, fsm in list(allFSMs.items()):
         print('\nFSM: %s\n' % key)
         print('%s\n' % fsm)
     # outputSource(smedlST, allFSMs, smedlFilename, helper)
@@ -71,7 +70,7 @@ def buildSymbolTable(label, object, symbolTable):
 
 def parseToSymbolTable(label, object, symbolTable):
     if isinstance(object, AST):
-        for k, v in object.iteritems():
+        for k, v in list(object.items()):
             if k == 'object':
                 symbolTable.add(v, {'type': 'object'})
             elif label == 'identity' and k == 'var':
@@ -100,7 +99,7 @@ def parseToSymbolTable(label, object, symbolTable):
             parseToSymbolTable(label, elem, symbolTable)
 
 def getParameterNames(ast, symbolTable):
-    for scenario in ast['scenarios'][0]:  # [0] handles grako's nested list structure    
+    for scenario in ast['scenarios'][0]:  # [0] handles grako's nested list structure
         for trace in scenario['traces']:
             for i in range(0, len(trace['trace_steps'])):
                 current = trace['trace_steps'][i]['step_event']['expression']['atom']
@@ -213,7 +212,7 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper, pedlAST):
     values['state_vars'] = state_vars
     values['state_var_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in state_vars])
     values['identity_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in identities])
-    values['scenario_names'] = [('%s_%s' % (obj, k)).upper() for k in allFSMs.keys()]
+    values['scenario_names'] = [('%s_%s' % (obj, k)).upper() for k in list(allFSMs.keys())]
 
     out_c = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
     template_c = env.get_template('templates/object_mon.c')
@@ -227,17 +226,17 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper, pedlAST):
     state_enums = []
     state_names_arrays = []
     state_inits = []
-    for key, fsm in allFSMs.iteritems():
-        stateset = [("%s_%s_%s" % (obj, key, state)).upper() for state in fsm.states.keys()]
+    for key, fsm in list(allFSMs.items()):
+        stateset = [("%s_%s_%s" % (obj, key, state)).upper() for state in list(fsm.states.keys())]
         statesets[key] = stateset
         stateset_str = ", ".join(stateset)
         state_enums.append('typedef enum { ' + stateset_str + ' } %s_%s_state;' % (obj.lower(), key.lower()))
-        state_names = ", ".join(['\"%s\"'%(state) for state in fsm.states.keys()])
-        state_names_arrays.append('const char *%s_%s_states[%d] = {%s};' % (obj.lower(), key.lower(), len(fsm.states.keys()), state_names))
+        state_names = ", ".join(['\"%s\"'%(state) for state in list(fsm.states.keys())])
+        state_names_arrays.append('const char *%s_%s_states[%d] = {%s};' % (obj.lower(), key.lower(), len(list(fsm.states.keys())), state_names))
         state_inits.append('    monitor->state[%s_%s] = %s;' % (obj.upper(), key.upper(), stateset[0]))
     values['state_enums'] = '\n'.join(state_enums)
     values['state_names'] = '\n'.join(state_names_arrays)
-    values['state_names_array'] = ['%s_%s_states' % (obj.lower(), key.lower()) for key in allFSMs.keys()]
+    values['state_names_array'] = ['%s_%s_states' % (obj.lower(), key.lower()) for key in list(allFSMs.keys())]
     values['state_inits'] = '\n'.join(state_inits)
 
     events = ['%s_%s' % (obj.upper(), str(e).upper()) for e in symbolTable.getEvents()]
@@ -277,7 +276,7 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper, pedlAST):
         eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
         values['signatures'].append(eventSignature)
         eventFunction.append(eventSignature + ' {')
-        for key, fsm in allFSMs.iteritems():
+        for key, fsm in list(allFSMs.iteritems()):
             reference = 'monitor->state[%s_%s]' % (obj.upper(), key.upper())
             name_reference = "%s_states_names[%s_%s][monitor->state[%s_%s]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
             eventFunction.append('  switch (%s) {' % reference)
@@ -321,7 +320,7 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper, pedlAST):
             values['signatures'].append(probeSignature)
             values['event_code'] .append({'event':eventFunction, 'probe':probeFunction, 'raise':raiseFunction['code']})
         else:
-            values['event_code'] .append({'event':eventFunction, 'raise':raiseFunction['code']})           
+            values['event_code'] .append({'event':eventFunction, 'raise':raiseFunction['code']})
         values['signatures'].append(raiseFunction['signature'])
 
         callCases.append(writeCallCase(symbolTable, m))
@@ -464,7 +463,7 @@ def formatGuard(object):
 
 def guardToString(object):
     if isinstance(object, AST):
-        for k, v in object.iteritems():
+        for k, v in list(object.items()):
             if k == 'or_ex':
                 ored = [guardToString(val) for val in v]
                 return "(" + " || ".join(ored) + ")"
@@ -524,7 +523,7 @@ def termToString(term):
         term_text = "%s%s" % (unary, atom)
         trailer_ast = term.get('trailer')
         if isinstance(trailer_ast, AST):
-            for k, v in term.iteritems():
+            for k, v in list(term.items()):
                 term_text = "%s%s" % (term_text, guardToString(v) or "")
         return term_text
     else:
