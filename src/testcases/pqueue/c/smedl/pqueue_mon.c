@@ -20,10 +20,10 @@ PqueueMonitor* init_pqueue_monitor( PqueueData *d ) {
     PqueueMonitor* monitor = (PqueueMonitor*)malloc(sizeof(PqueueMonitor));
     pthread_mutex_init(&monitor->monitor_lock, NULL);
     monitor->identities[PQUEUE_ID] = init_monitor_identity(OPAQUE, d->id);
-    monitor->p3 = d->p3;
     monitor->p5 = d->p5;
-    monitor->p2 = d->p2;
     monitor->p1 = d->p1;
+    monitor->p2 = d->p2;
+    monitor->p3 = d->p3;
     monitor->p4 = d->p4;
     monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
     monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;  
@@ -111,61 +111,65 @@ PqueueMonitorRecord* filter_pqueue_monitors_by_identity(PqueueMonitorRecord* bef
     return results;
 }
 
-void pqueue_pop(PqueueMonitorRecord* monitor_list, int 5) {
-  PqueueMonitorRecord *current = monitor_list;
-  while(current != NULL) {
-    PqueueMonitor* monitor = current->monitor;
-    switch (monitor->state[PQUEUE_PUSH]) {
-      default:
-        raise_error("pqueue_push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "pop", "DEFAULT");
-        break;
-    }
-    switch (monitor->state[PQUEUE_POP]) {
-      case PQUEUE_POP_READY:
-        if(p1 > 0) {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-        } else {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-        }
-        break;
+void pqueue_pop(PqueueMonitor* monitor, int 5) {
+  switch (monitor->state[PQUEUE_PUSH]) {
+    default:
+      raise_error("pqueue_push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "pop", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[PQUEUE_POP]) {
+    case PQUEUE_POP_READY:
+      if(p1 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
 
-      case PQUEUE_POP_READY:
-        if(p1 == 0 && p2 > 0) {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-        } else {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-        }
-        break;
+    case PQUEUE_POP_READY:
+      if(p1 == 0 && p2 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
 
-      case PQUEUE_POP_READY:
-        if(p1 == 0 && p2 == 0 && p3 > 0) {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-        } else {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-        }
-        break;
+    case PQUEUE_POP_READY:
+      if(p1 == 0 && p2 == 0 && p3 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
 
-      case PQUEUE_POP_READY:
-        if(p1 == 0 && p2 == 0 && p3 == 0 && p4 > 0) {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-        } else {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-        }
-        break;
+    case PQUEUE_POP_READY:
+      if(p1 == 0 && p2 == 0 && p3 == 0 && p4 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
 
-      case PQUEUE_POP_READY:
-        if(p1 == 0 && p2 == 0 && p3 == 0 && p4 == 0 && p5 > 0) {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-        } else {
-          monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-        }
-        break;
+    case PQUEUE_POP_READY:
+      if(p1 == 0 && p2 == 0 && p3 == 0 && p4 == 0 && p5 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
 
-      default:
-        raise_error("pqueue_pop", pqueue_states_names[PQUEUE_POP][monitor->state[PQUEUE_POP]], "pop", "DEFAULT");
-        break;
-    }
-    current = current->next;
+    default:
+      raise_error("pqueue_pop", pqueue_states_names[PQUEUE_POP][monitor->state[PQUEUE_POP]], "pop", "DEFAULT");
+      break;
+  }
+}
+
+void pqueue_pop_probe(void* id) {
+  PqueueMonitorRecord* results = get_pqueue_monitors_by_identity(PQUEUE_ID, OPAQUE, id);
+  while(results != NULL) {
+    PqueueMonitor* monitor = results->monitor;
+    pqueue_pop(monitor, 5);
+    results = results->next;
   }
 }
 
@@ -176,41 +180,45 @@ void raise_pqueue_pop(PqueueMonitor* monitor, int 5) {
 }
 
 
-void pqueue_push(PqueueMonitorRecord* monitor_list, int 5) {
-  PqueueMonitorRecord *current = monitor_list;
-  while(current != NULL) {
-    PqueueMonitor* monitor = current->monitor;
-    switch (monitor->state[PQUEUE_PUSH]) {
-      case PQUEUE_PUSH_READY:
-        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
-        break;
+void pqueue_push(PqueueMonitor* monitor, int 5) {
+  switch (monitor->state[PQUEUE_PUSH]) {
+    case PQUEUE_PUSH_READY:
+      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      break;
 
-      case PQUEUE_PUSH_READY:
-        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
-        break;
+    case PQUEUE_PUSH_READY:
+      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      break;
 
-      case PQUEUE_PUSH_READY:
-        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
-        break;
+    case PQUEUE_PUSH_READY:
+      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      break;
 
-      case PQUEUE_PUSH_READY:
-        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
-        break;
+    case PQUEUE_PUSH_READY:
+      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      break;
 
-      case PQUEUE_PUSH_READY:
-        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
-        break;
+    case PQUEUE_PUSH_READY:
+      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      break;
 
-      default:
-        raise_error("pqueue_push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "push", "DEFAULT");
-        break;
-    }
-    switch (monitor->state[PQUEUE_POP]) {
-      default:
-        raise_error("pqueue_pop", pqueue_states_names[PQUEUE_POP][monitor->state[PQUEUE_POP]], "push", "DEFAULT");
-        break;
-    }
-    current = current->next;
+    default:
+      raise_error("pqueue_push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "push", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[PQUEUE_POP]) {
+    default:
+      raise_error("pqueue_pop", pqueue_states_names[PQUEUE_POP][monitor->state[PQUEUE_POP]], "push", "DEFAULT");
+      break;
+  }
+}
+
+void pqueue_push_probe(void* id) {
+  PqueueMonitorRecord* results = get_pqueue_monitors_by_identity(PQUEUE_ID, OPAQUE, id);
+  while(results != NULL) {
+    PqueueMonitor* monitor = results->monitor;
+    pqueue_push(monitor, 5);
+    results = results->next;
   }
 }
 
@@ -228,185 +236,4 @@ void raise_error(char *scen, const char *state, char *action, char *type) {
 int main() { //To prevent warnings for test compile (they even happen with -c)
   return 0;
 }
-
-// TODO add back original smedlgen stuff:
-
-// void drive(_Explorer* monitor, int x, int y, int heading) {
-//   monitor->x = x;
-//   monitor->y = y;
-//   monitor->heading = heading;
-//   // switch (monitor->state[MAIN]) {
-//   //   default:
-//   //     raise_error("main", explorer_states_names[MAIN][monitor->state[MAIN]], "drive", "DEFAULT");
-//   //     break;
-//   // }
-//   // switch (monitor->state[EXPLORE]) {
-//   //   case MOVE_EXPLORE:
-//   //     if(x == monitor->x && y == monitor->y) {
-//   //       monitor->state[EXPLORE] = LOOK_EXPLORE;
-//   //     } else {
-//   //       monitor->state[EXPLORE] = LOOK_EXPLORE;
-//   //     }
-//   //     break;
-//   //   default:
-//   //     raise_error("explore", explorer_states_names[EXPLORE][monitor->state[EXPLORE]], "drive", "DEFAULT");
-//   //     break;
-//   // }
-// }
-
-// void raise_drive(_Explorer* monitor, int x, int y, int heading) {
-//   param *p_head = NULL;
-//   push_param(&p_head, &x, NULL, NULL, NULL);
-//   push_param(&p_head, &y, NULL, NULL, NULL);
-//   push_param(&p_head, &heading, NULL, NULL, NULL);
-//   push_action(&monitor->action_queue, DRIVE, p_head);
-// }
-
-// void turn(_Explorer* monitor, int facing) {
-//   monitor->heading = facing;
-//   // switch (monitor->state[MAIN]) {
-//   //   default:
-//   //     raise_error("main", explorer_states_names[MAIN][monitor->state[MAIN]], "turn", "DEFAULT");
-//   //     break;
-//   // }
-//   // switch (monitor->state[EXPLORE]) {
-//   //   case MOVE_EXPLORE:
-//   //     if(facing != monitor->heading) {
-//   //       monitor->state[EXPLORE] = LOOK_EXPLORE;
-//   //     } else {
-//   //       monitor->state[EXPLORE] = MOVE_EXPLORE;
-//   //     }
-//   //     break;
-//   //   default:
-//   //     raise_error("explore", explorer_states_names[EXPLORE][monitor->state[EXPLORE]], "turn", "DEFAULT");
-//   //     break;
-//   // }
-// }
-
-// void raise_turn(_Explorer* monitor, int facing) {
-//   param *p_head = NULL;
-//   push_param(&p_head, &facing, NULL, NULL, NULL);
-//   push_action(&monitor->action_queue, TURN, p_head);
-// }
-
-// void scan_view(_Explorer* monitor, int x, int y, int heading, const void* map) { //changed params from smedl
-//   monitor->x = x;
-//   monitor->y = y;
-//   monitor->heading = heading;
-//   set_view(monitor, map); //This raise needs to be immediate, not in queue
-//   switch (monitor->state[MAIN]) {
-//     default:
-//       raise_error("main", explorer_states_names[MAIN][monitor->state[MAIN]], "view", "DEFAULT");
-//       break;
-//   }
-//   switch (monitor->state[EXPLORE]) {
-//     case LOOK_EXPLORE:
-//       if(contains_object(monitor)) {
-//         raise_found(monitor);
-//         monitor->state[EXPLORE] = MOVE_EXPLORE;
-//       } else {
-//         monitor->state[EXPLORE] = MOVE_EXPLORE;
-//       }
-//       break;
-//     default:
-//       raise_error("explore", explorer_states_names[EXPLORE][monitor->state[EXPLORE]], "view", "DEFAULT");
-//       break;
-//   }
-// }
-
-// void raise_scan_view(_Explorer* monitor, int x, int y, int heading, const void* map) {
-//   param *p_head = NULL;
-//   push_param(&p_head, &x, NULL, NULL, NULL);
-//   push_param(&p_head, &y, NULL, NULL, NULL);
-//   push_action(&monitor->action_queue, SCAN_VIEW, p_head);
-// }
-
-// void found(_Explorer* monitor) {
-//   switch (monitor->state[MAIN]) {
-//     case EXPLORE_MAIN:
-//       monitor->state[MAIN] = RETRIEVE_MAIN;
-//       break;
-//     default:
-//       raise_error("main", explorer_states_names[MAIN][monitor->state[MAIN]], "found", "DEFAULT");
-//       break;
-//   }
-//   switch (monitor->state[EXPLORE]) {
-//     default:
-//       raise_error("explore", explorer_states_names[EXPLORE][monitor->state[EXPLORE]], "found", "DEFAULT");
-//       break;
-//   }
-// }
-
-// void raise_found(_Explorer* monitor) {
-//   param *p_head = NULL;
-//   push_action(&monitor->action_queue, FOUND, p_head);
-// }
-
-// void retrieved(_Explorer* monitor) {
-//   switch (monitor->state[MAIN]) {
-//     case RETRIEVE_MAIN:
-//       monitor->state[MAIN] = EXPLORE_MAIN;
-//       break;
-//     default:
-//       raise_error("main", explorer_states_names[MAIN][monitor->state[MAIN]], "retrieved", "DEFAULT");
-//       break;
-//   }
-//   switch (monitor->state[EXPLORE]) {
-//     default:
-//       raise_error("explore", explorer_states_names[EXPLORE][monitor->state[EXPLORE]], "retrieved", "DEFAULT");
-//       break;
-//   }
-// }
-
-// void raise_retrieved(_Explorer* monitor) {
-//   param *p_head = NULL;
-//   push_action(&monitor->action_queue, RETRIEVED, p_head);
-// }
-
-// void call_next_action(_Explorer *monitor) {
-//   switch (monitor->action_queue->id) {
-//     case DRIVE: ;
-//       int x_drive = monitor->action_queue->params->i;
-//       pop_param(&monitor->action_queue->params);
-//       int y_drive = monitor->action_queue->params->i;
-//       pop_param(&monitor->action_queue->params);
-//       int heading_drive = monitor->action_queue->params->i;
-//       pop_param(&monitor->action_queue->params);
-//       drive(monitor, x_drive, y_drive, heading_drive);
-//       break;
-//     case TURN: ;
-//       int facing_turn = monitor->action_queue->params->i;
-//       pop_param(&monitor->action_queue->params);
-//       turn(monitor, facing_turn);
-//       break;
-//     case SCAN_VIEW: ;
-//       int x_view = monitor->action_queue->params->i;
-//       pop_param(&monitor->action_queue->params);
-//       int y_view = monitor->action_queue->params->i;
-//       pop_param(&monitor->action_queue->params);
-//       int heading_view = monitor->action_queue->params->i;
-//       pop_param(&monitor->action_queue->params);
-//       const void *map_view = monitor->action_queue->params->v;
-//       pop_param(&monitor->action_queue->params);
-//       scan_view(monitor, x_view, y_view, heading_view, map_view);
-//       break;
-//     case FOUND: ;
-//       found(monitor);
-//       break;
-//     case RETRIEVED: ;
-//       retrieved(monitor);
-//       break;
-//   }
-// }
-
-// void exec_actions(_Explorer *monitor) {
-//   while(monitor->action_queue != NULL) {
-//     call_next_action(monitor);
-//     pop_action(&monitor->action_queue);
-//   }
-// }
-
-// void raise_error(char *scen, const char *state, char *action, char *type) {
-//   printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}", scen, state, action, type);
-// }
 

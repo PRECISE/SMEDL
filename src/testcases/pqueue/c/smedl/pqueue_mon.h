@@ -7,10 +7,10 @@
 
 typedef struct PqueueData {  
   void* id;
-  int p3;
   int p5;
-  int p2;
   int p1;
+  int p2;
+  int p3;
   int p4;
 } PqueueData;
 
@@ -18,10 +18,10 @@ typedef struct PqueueMonitor {
   pthread_mutex_t monitor_lock;   
   MonitorIdentity *identities[1];
   int state[2];
-  int p3;
   int p5;
-  int p2;
   int p1;
+  int p2;
+  int p3;
   int p4;
   action *action_queue;
 } PqueueMonitor;
@@ -45,9 +45,11 @@ int put_pqueue_monitor(PqueueMonitor*); //puts into all maps
 PqueueMonitorRecord* get_pqueue_monitors();
 PqueueMonitorRecord* get_pqueue_monitors_by_identity(int, int, void*);
 PqueueMonitorRecord* filter_pqueue_monitors_by_identity(PqueueMonitorRecord*, int, void*);
-void pqueue_pop(PqueueMonitorRecord* monitor_list, int 5);
+void pqueue_pop(PqueueMonitor* monitor, int 5);
+void pqueue_pop_probe(void* id);
 void raise_pqueue_pop(PqueueMonitor* monitor, int 5);
-void pqueue_push(PqueueMonitorRecord* monitor_list, int 5);
+void pqueue_push(PqueueMonitor* monitor, int 5);
+void pqueue_push_probe(void* id);
 void raise_pqueue_push(PqueueMonitor* monitor, int 5);
 void raise_error(char*, const char*, char*, char*);
 void free_pqueue_monitor();
