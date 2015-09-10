@@ -11,11 +11,13 @@
 # the file is generated.
 
 
+from __future__ import print_function, division, absolute_import, unicode_literals
 
 from grako.parsing import graken, Parser
+from grako.util import re, RE_FLAGS
 
 
-__version__ = (2015, 7, 24, 16, 19, 34, 4)
+__version__ = (2015, 9, 10, 17, 48, 21, 3)
 
 __all__ = [
     'smedlParser',
@@ -25,10 +27,12 @@ __all__ = [
 
 
 class smedlParser(Parser):
-    def __init__(self, whitespace=None, nameguard=True, **kwargs):
+    def __init__(self, whitespace=None, nameguard=None, **kwargs):
         super(smedlParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
+            eol_comments_re=None,
+            ignorecase=None,
             **kwargs
         )
 

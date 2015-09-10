@@ -11,11 +11,13 @@
 # the file is generated.
 
 
+from __future__ import print_function, division, absolute_import, unicode_literals
 
 from grako.parsing import graken, Parser
+from grako.util import re, RE_FLAGS
 
 
-__version__ = (2015, 8, 7, 15, 30, 38, 4)
+__version__ = (2015, 9, 10, 17, 48, 10, 3)
 
 __all__ = [
     'pedlParser',
@@ -25,10 +27,12 @@ __all__ = [
 
 
 class pedlParser(Parser):
-    def __init__(self, whitespace=None, nameguard=True, **kwargs):
+    def __init__(self, whitespace=None, nameguard=None, **kwargs):
         super(pedlParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
+            eol_comments_re=None,
+            ignorecase=None,
             **kwargs
         )
 
@@ -141,7 +145,7 @@ class pedlParser(Parser):
         self._closure(block4)
         with self._optional():
             self._token('when')
-            self._expression_list_()
+            self._expression_()
             self.ast['when'] = self.last_node
         with self._optional():
             self._action_()
