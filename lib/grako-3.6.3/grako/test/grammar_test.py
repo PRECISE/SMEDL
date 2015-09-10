@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division, print_function,
 
 import unittest
 
-from grako.exceptions import FailedSemantics, FailedLeftRecursion
+from grako.exceptions import FailedSemantics, FailedParse
 from grako.grammars import ModelContext
 from grako.parser import GrakoGrammarGenerator
 from grako.tool import genmodel
@@ -439,10 +439,12 @@ class GrammarTests(unittest.TestCase):
                 ?/[0-9]+/?
                 ;
         '''
+        model = genmodel("test", grammar)
+        model.parse("1*2+3*5")
         try:
-            genmodel("test", grammar, left_recursion=False)
+            model.parse("1*2+3*5", left_recursion=False)
             self.fail('expected left recursion failure')
-        except FailedLeftRecursion:
+        except FailedParse:
             pass
 
     def test_nested_left_recursion(self):
@@ -698,6 +700,26 @@ class GrammarTests(unittest.TestCase):
         model = genmodel("test", grammar)
         ast = model.parse("abb", nameguard=False)
         self.assertEquals(['a', 'b', 'b'], ast)
+
+    def test_whitespace_directive(self):
+        grammar = '''
+            @@whitespace :: /[\t ]+/
+
+            test = "test" $;
+        '''
+        model = genmodel("test", grammar)
+        code = codegen(model)
+        compile(code, 'test.py', 'exec')
+
+    def test_eol_comments_re_directive(self):
+        grammar = '''
+            @@eol_comments :: /#.*?$/
+
+            test = "test" $;
+        '''
+        model = genmodel("test", grammar)
+        code = codegen(model)
+        compile(code, 'test.py', 'exec')
 
 
 def suite():

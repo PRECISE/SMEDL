@@ -465,8 +465,6 @@ class ParseContext(object):
             list(reversed(self._rule_stack[:])),
             name
         )
-        if not self.left_recursion and name in self._rule_stack:
-            raise exception
 
         # Alessandro Warth et al say that we can deal with
         # direct and indirect left-recursion by seeding the
@@ -478,12 +476,13 @@ class ParseContext(object):
             self._memoization_cache[key] = exception
 
     def _left_recursion_check(self, name, key, memo):
-        if isinstance(memo, FailedLeftRecursion):
+        if isinstance(memo, FailedLeftRecursion) and self.left_recursion:
             # At this point we know we've already seen this rule
             # at this position. Either we've got a potential
             # result from a previous pass that we can return, or
             # we make a note of the rule so that we can take
             # action as we unwind the rule stack.
+
             if key in self._recursive_results:
                 memo = self._recursive_results[key]
             else:

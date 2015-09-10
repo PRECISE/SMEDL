@@ -475,7 +475,7 @@ Both patterns may also be specified within a grammar using the ``@@comments`` an
 ``@@eol_comments`` directives::
 
         @@comments :: /\(\*.*?\*\)/
-        @@eol_comments_re :: /#.*?$/
+        @@eol_comments :: /#.*?$/
 
 
 Semantic Actions
@@ -714,6 +714,8 @@ The following must be mentioned as contributors of thoughts, ideas, code, *and f
 .. _`Warth et al`: http://www.vpri.org/pdf/tr2007002_packrat.pdf
 .. _`Kathryn Long`: https://bitbucket.org/starkat
 .. _starkat: https://bitbucket.org/starkat
+.. _nehz: https://bitbucket.org/nehz/grako
+.. _jimon: https://bitbucket.org/jimon/
 
 Changes
 =======
@@ -722,6 +724,24 @@ Changes
 
 .. _`Semantic Versioning`: http://semver.org/
 
+
+3.6.3
+-----
+
+* 56_ Using @@whitespace generated invalid python programs
+
+* The ``@@whitespace`` directive was not working for regular expressions (nehz_).
+
+.. _56: https://bitbucket.org/apalala/grako/issues/56/
+
+3.6.2
+-----
+
+* BUG: Left recursion in the grammar was checked for in the wrong place when disabled.
+
+* Added basic support for output of an AST_ in YAML_ format.
+
+.. _YAML: https://en.wikipedia.org/wiki/YAML
 
 3.6.1
 -----

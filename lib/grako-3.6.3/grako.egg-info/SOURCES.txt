@@ -42,6 +42,7 @@ grako/rendering.py
 grako/semantics.py
 grako/tool.py
 grako/util.py
+grako/yaml.py
 grako.egg-info/PKG-INFO
 grako.egg-info/SOURCES.txt
 grako.egg-info/dependency_links.txt
