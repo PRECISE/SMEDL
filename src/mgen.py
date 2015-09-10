@@ -265,8 +265,8 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper, pedlAST):
             for e in pedlAST['event_defs']:
                 if str(m) == e['event']:
                     pedlEvent = True
-                    for w in e['when']:
-                        name = w['comp'][0]['atom']
+                    if e['when']:
+                        name = e['when']['comp'][0]['atom']
                         datatype = symbolTable.get(name)['datatype']
                         c_type = convertTypeForC(datatype)
                         identityParams.append({'name': name, 'c_type': c_type, 'datatype': datatype})
@@ -276,7 +276,7 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper, pedlAST):
         eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
         values['signatures'].append(eventSignature)
         eventFunction.append(eventSignature + ' {')
-        for key, fsm in list(allFSMs.iteritems()):
+        for key, fsm in allFSMs.items():
             reference = 'monitor->state[%s_%s]' % (obj.upper(), key.upper())
             name_reference = "%s_states_names[%s_%s][monitor->state[%s_%s]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
             eventFunction.append('  switch (%s) {' % reference)
