@@ -14,11 +14,11 @@ A [Python virtual environment](https://virtualenv.readthedocs.org/en/latest/) in
 
 To setup the virtual environment, run the following command from the project's root directory:
 
-    pyvenv .env && source .env/bin/activate && pip install -r requirements.txt
+    `pyvenv .env && source .env/bin/activate && pip install -r requirements.txt`
 
 NOTE: If you choose to not use the virtual environment, you can simply install the required Python packages using the following command:
 
-    pip install -r requirements.txt
+    `pip install -r requirements.txt`
 
 
 ## Generating the monitor
@@ -39,7 +39,7 @@ At the moment, instrumentation of the target program must be performed manually.
 ------------------------------
 Before executing the instrumented version of the target program, the generated runtime monitor must be compiled along with the target program using the following command:
 
-	gcc -o {{base_file_name}}_mon -std=c99 actions.c monitor_map.c {{base_file_name}}_mon.c
+	`gcc -o {{base_file_name}}_mon -std=c99 actions.c monitor_map.c {{base_file_name}}_mon.c`
 
     // TODO: Update this to use a generated Makefile
     // New command would simply be: make
