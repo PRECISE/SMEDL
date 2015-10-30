@@ -4,13 +4,13 @@
 #include <stdlib.h>
 #include "pqueue_mon.h"
 
-typedef enum { PQUEUE_ID} pqueue_identity;
+typedef enum { PQUEUE_ID } pqueue_identity;
 const identity_type pqueue_identity_types[PQUEUE_MONITOR_IDENTITIES] = { OPAQUE };
 
-typedef enum { PQUEUE_PUSH, PQUEUE_POP } pqueue_scenario;
+typedef enum { PQUEUE_PUSH_SCENARIO, PQUEUE_POP_SCENARIO } pqueue_scenario;
 typedef enum { PQUEUE_PUSH_READY } pqueue_push_state;
 typedef enum { PQUEUE_POP_ERROR, PQUEUE_POP_READY } pqueue_pop_state;
-typedef enum { PQUEUE_POP, PQUEUE_PUSH } pqueue_event;
+typedef enum { PQUEUE_PUSH, PQUEUE_POP } pqueue_event;
 typedef enum { PQUEUE_DEFAULT } pqueue_error;
 const char *pqueue_push_states[1] = {"Ready"};
 const char *pqueue_pop_states[2] = {"Error", "Ready"};
@@ -20,13 +20,13 @@ PqueueMonitor* init_pqueue_monitor( PqueueData *d ) {
     PqueueMonitor* monitor = (PqueueMonitor*)malloc(sizeof(PqueueMonitor));
     pthread_mutex_init(&monitor->monitor_lock, NULL);
     monitor->identities[PQUEUE_ID] = init_monitor_identity(OPAQUE, d->id);
+    monitor->p4 = d->p4;
+    monitor->p3 = d->p3;
     monitor->p5 = d->p5;
     monitor->p1 = d->p1;
     monitor->p2 = d->p2;
-    monitor->p3 = d->p3;
-    monitor->p4 = d->p4;
     monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
-    monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;  
+    monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
     put_pqueue_monitor(monitor);
     return monitor;
 }
@@ -44,7 +44,7 @@ int init_pqueue_monitor_maps() {
 
 int add_pqueue_monitor_to_map(PqueueMonitor *monitor, int identity) {
     PqueueMonitorMap* map = pqueue_monitor_maps[identity];
-    int bucket = hash_monitor_identity(monitor->identities[identity]->type, 
+    int bucket = hash_monitor_identity(monitor->identities[identity]->type,
         monitor->identities[identity]->value, PQUEUE_MONITOR_MAP_SIZE);
     PqueueMonitorRecord* record = (PqueueMonitorRecord*)malloc(sizeof(PqueueMonitorRecord));
     if(monitor == NULL || record == NULL) {
@@ -57,7 +57,7 @@ int add_pqueue_monitor_to_map(PqueueMonitor *monitor, int identity) {
     record->next = map->list[bucket];
     map->list[bucket] = record;
     pthread_mutex_unlock(&pqueue_monitor_maps_lock);
-    return 1; 
+    return 1;
 }
 
 int put_pqueue_monitor(PqueueMonitor *monitor) {
@@ -70,14 +70,14 @@ PqueueMonitorRecord* get_pqueue_monitors() {
     for(int i = 0; i < PQUEUE_MONITOR_MAP_SIZE; i++) {
         PqueueMonitorRecord* current = map->list[i];
         while(current != NULL) {
-            PqueueMonitorRecord* record = (PqueueMonitorRecord*)malloc(sizeof(PqueueMonitorRecord)); 
+            PqueueMonitorRecord* record = (PqueueMonitorRecord*)malloc(sizeof(PqueueMonitorRecord));
             record->monitor = current->monitor;
             record->next = results;
-            results = record;  
-            current = current->next;        
-        }   
+            results = record;
+            current = current->next;
+        }
     }
-    return results; 
+    return results;
 }
 
 PqueueMonitorRecord* get_pqueue_monitors_by_identity(int identity, int type, void *value) {
@@ -87,10 +87,10 @@ PqueueMonitorRecord* get_pqueue_monitors_by_identity(int identity, int type, voi
     PqueueMonitorRecord* current = map->list[bucket];
     while(current != NULL) {
         if(compare_monitor_identity(value, current->monitor->identities[identity])) {
-            PqueueMonitorRecord* record = (PqueueMonitorRecord*)malloc(sizeof(PqueueMonitorRecord)); 
+            PqueueMonitorRecord* record = (PqueueMonitorRecord*)malloc(sizeof(PqueueMonitorRecord));
             record->monitor = current->monitor;
             record->next = results;
-            results = record;       
+            results = record;
         }
         current = current->next;
     }
@@ -101,105 +101,56 @@ PqueueMonitorRecord* filter_pqueue_monitors_by_identity(PqueueMonitorRecord* bef
     PqueueMonitorRecord* results = NULL;
     while(before != NULL) {
         if(compare_monitor_identity(value, before->monitor->identities[identity])) {
-            PqueueMonitorRecord* record = (PqueueMonitorRecord*)malloc(sizeof(PqueueMonitorRecord)); 
+            PqueueMonitorRecord* record = (PqueueMonitorRecord*)malloc(sizeof(PqueueMonitorRecord));
             record->monitor = before->monitor;
             record->next = results;
-            results = record;               
+            results = record;
         }
         before = before->next;
     }
     return results;
 }
 
-void pqueue_pop(PqueueMonitor* monitor, int 5) {
-  switch (monitor->state[PQUEUE_PUSH]) {
-    default:
-      raise_error("pqueue_push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "pop", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[PQUEUE_POP]) {
-    case PQUEUE_POP_READY:
-      if(p1 > 0) {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-      } else {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-      }
-      break;
-
-    case PQUEUE_POP_READY:
-      if(p1 == 0 && p2 > 0) {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-      } else {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-      }
-      break;
-
-    case PQUEUE_POP_READY:
-      if(p1 == 0 && p2 == 0 && p3 > 0) {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-      } else {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-      }
-      break;
-
-    case PQUEUE_POP_READY:
-      if(p1 == 0 && p2 == 0 && p3 == 0 && p4 > 0) {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-      } else {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-      }
-      break;
-
-    case PQUEUE_POP_READY:
-      if(p1 == 0 && p2 == 0 && p3 == 0 && p4 == 0 && p5 > 0) {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
-      } else {
-        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
-      }
-      break;
-
-    default:
-      raise_error("pqueue_pop", pqueue_states_names[PQUEUE_POP][monitor->state[PQUEUE_POP]], "pop", "DEFAULT");
-      break;
-  }
-}
-
-void pqueue_pop_probe(void* id) {
-  PqueueMonitorRecord* results = get_pqueue_monitors_by_identity(PQUEUE_ID, OPAQUE, id);
-  while(results != NULL) {
-    PqueueMonitor* monitor = results->monitor;
-    pqueue_pop(monitor, 5);
-    results = results->next;
-  }
-}
-
-void raise_pqueue_pop(PqueueMonitor* monitor, int 5) {
-  param *p_head = NULL;
-  push_param(&p_head, &5, NULL, NULL, NULL);
-  push_action(&monitor->action_queue, PQUEUE_POP, p_head);
-}
-
-
-void pqueue_push(PqueueMonitor* monitor, int 5) {
+void pqueue_push(PqueueMonitor* monitor, int x) {
   switch (monitor->state[PQUEUE_PUSH]) {
     case PQUEUE_PUSH_READY:
-      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      if(x == 1) {
+        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      } else {
+        raise_error("push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "push", "DEFAULT");
+      }
       break;
 
     case PQUEUE_PUSH_READY:
-      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      if(x == 2) {
+        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      } else {
+        raise_error("push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "push", "DEFAULT");
+      }
       break;
 
     case PQUEUE_PUSH_READY:
-      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      if(x == 3) {
+        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      } else {
+        raise_error("push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "push", "DEFAULT");
+      }
       break;
 
     case PQUEUE_PUSH_READY:
-      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      if(x == 4) {
+        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      } else {
+        raise_error("push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "push", "DEFAULT");
+      }
       break;
 
     case PQUEUE_PUSH_READY:
-      monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      if(x == 5) {
+        monitor->state[PQUEUE_PUSH] = PQUEUE_PUSH_READY;
+      } else {
+        raise_error("push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "push", "DEFAULT");
+      }
       break;
 
     default:
@@ -217,15 +168,84 @@ void pqueue_push_probe(void* id) {
   PqueueMonitorRecord* results = get_pqueue_monitors_by_identity(PQUEUE_ID, OPAQUE, id);
   while(results != NULL) {
     PqueueMonitor* monitor = results->monitor;
-    pqueue_push(monitor, 5);
+    pqueue_push(monitor, x);
     results = results->next;
   }
 }
 
-void raise_pqueue_push(PqueueMonitor* monitor, int 5) {
+void raise_pqueue_push(PqueueMonitor* monitor, int x) {
   param *p_head = NULL;
-  push_param(&p_head, &5, NULL, NULL, NULL);
+  push_param(&p_head, &x, NULL, NULL, NULL);
   push_action(&monitor->action_queue, PQUEUE_PUSH, p_head);
+}
+
+
+void pqueue_pop(PqueueMonitor* monitor, int x) {
+  switch (monitor->state[PQUEUE_PUSH]) {
+    default:
+      raise_error("pqueue_push", pqueue_states_names[PQUEUE_PUSH][monitor->state[PQUEUE_PUSH]], "pop", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[PQUEUE_POP]) {
+    case PQUEUE_POP_READY:
+      if(x == 1 && monitor->p1 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
+
+    case PQUEUE_POP_READY:
+      if(x == 2 && monitor->p1 == 0 && monitor->p2 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
+
+    case PQUEUE_POP_READY:
+      if(x == 3 && monitor->p1 == 0 && monitor->p2 == 0 && monitor->p3 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
+
+    case PQUEUE_POP_READY:
+      if(x == 4 && monitor->p1 == 0 && monitor->p2 == 0 && monitor->p3 == 0 && monitor->p4 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
+
+    case PQUEUE_POP_READY:
+      if(x == 5 && monitor->p1 == 0 && monitor->p2 == 0 && monitor->p3 == 0 && monitor->p4 == 0 && monitor->p5 > 0) {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_READY;
+      } else {
+        monitor->state[PQUEUE_POP] = PQUEUE_POP_ERROR;
+      }
+      break;
+
+    default:
+      raise_error("pqueue_pop", pqueue_states_names[PQUEUE_POP][monitor->state[PQUEUE_POP]], "pop", "DEFAULT");
+      break;
+  }
+}
+
+void pqueue_pop_probe(void* id) {
+  PqueueMonitorRecord* results = get_pqueue_monitors_by_identity(PQUEUE_ID, OPAQUE, id);
+  while(results != NULL) {
+    PqueueMonitor* monitor = results->monitor;
+    pqueue_pop(monitor, x);
+    results = results->next;
+  }
+}
+
+void raise_pqueue_pop(PqueueMonitor* monitor, int x) {
+  param *p_head = NULL;
+  push_param(&p_head, &x, NULL, NULL, NULL);
+  push_action(&monitor->action_queue, PQUEUE_POP, p_head);
 }
 
 
