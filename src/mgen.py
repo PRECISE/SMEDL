@@ -180,7 +180,7 @@ def generateFSMs(ast, symbolTable):
                         generated_state = after
                     before_state = fsm.getStateByName(before)
                     after_state = fsm.getStateByName(after)
-                    when = formatGuard(trace['trace_steps'][i]['step_event']['when'])
+                    when = formatGuard(trace['trace_steps'][i]['step_event']['when'], symbolTable)
                     if when == 'None':
                         when = None
                     fsm.addTransition(Transition(before_state, current, after_state, actions, when, elseState, elseActions))
@@ -212,7 +212,7 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper, pedlAST):
     values['state_vars'] = state_vars
     values['state_var_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in state_vars])
     values['identity_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in identities])
-    values['scenario_names'] = [('%s_%s' % (obj, k)).upper() for k in list(allFSMs.keys())]
+    values['scenario_names'] = [('%s_%s_SCENARIO' % (obj, k)).upper() for k in list(allFSMs.keys())]
 
     out_c = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
     template_c = env.get_template('templates/object_mon.c')
@@ -280,8 +280,9 @@ def outputToTemplate(symbolTable, allFSMs, filename, helper, pedlAST):
             reference = 'monitor->state[%s_%s]' % (obj.upper(), key.upper())
             name_reference = "%s_states_names[%s_%s][monitor->state[%s_%s]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
             eventFunction.append('  switch (%s) {' % reference)
-            for transition in fsm.getTransitionsByEvent(str(m)):
-                eventFunction.append(writeCaseTransition(obj, transition, reference, name_reference, key, m))
+            # TODO: Detect when transitions for an event have the same start state...their guards and actions should be merged
+            for start_state, transitions in fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m))).items():
+                eventFunction.append(writeCaseTransition(obj, transitions, reference, name_reference, key, m))
             eventFunction.append('    default:')
             eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
             eventFunction.append('      break;')
@@ -343,15 +344,25 @@ def convertTypeForC(smedlType):
     }[smedlType]
 
 
-def writeCaseTransition(obj, trans, currentState, stateName, scenario, action):
-    output = ['    case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), trans.startState.name.upper())]
-    if trans.guard:
-        output.append('      if(' + trans.guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
-        output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.nextState.name)).upper() + ';\n')
-        output.append('      } else {\n')
-        if trans.elseState:
-            output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, trans.elseState.name)).upper() + ';\n')
+def writeCaseTransition(obj, transitions, currentState, stateName, scenario, action):
+    output = ['    case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), transitions[0].startState.name.upper())]
+    sorted(transitions, key = lambda trans: trans.guard is not None)
+    for i in range(len(transitions)):
+        if i == 0 && transitions[i].guard:
+            output.append('      if(' + transitions[i].guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
+            output.append('        %s;\n' % action)
+            output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
+            output.append('      }\n')
+        else if transitions[i].guard:
+            output.append('      else if(' + transitions[i].guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
+            output.append('        %s;\n' % action)
+            output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
+            output.append('      }\n')
+        if transitions[i].elseState && ((i+1 < len(transitions) && transitions[i+1].guard is None) || i+1 == len(transitions)):
+            output.append('      else {\n')
+            output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
         else:
+            output.append('      else {\n')
             output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
         output.append('      }\n')
     else:
@@ -455,8 +466,9 @@ def getParamTypes(function, events):
         return None
 
 
-def formatGuard(object):
+def formatGuard(object, symbolTable):
     guard = str(guardToString(object))
+    guard = addThisDotToStateVariables(guard, symbolTable)
     # guard = checkReferences(guard) # TODO--------
     return removeParentheses(guard)
 
@@ -503,6 +515,15 @@ def guardToString(object):
                 return termToString(object)
     elif object is None:
         return ""
+
+#TODO - Write test for this!
+def addThisDotToStateVariables(string, symbolTable):
+    for sv in symbolTable.getSymbolsByType('state'):
+        indices = [t.start() for t in re.finditer(sv, string)]
+        for index in indices:
+            if string[index-5:index] != 'this.':  # Prevent duplicated 'this.'
+                string = string[:index] + 'this.' + string[index:]
+    return string
 
 
 def arithToString(terms, operators):

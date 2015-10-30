@@ -11,26 +11,31 @@ class FSM(object):
         self.currentState = None
         self.transitions = []
 
+
     def addState(self, state):
         if not isinstance(state, State):
             raise TypeError("Invalid type for state argument.")
         self.states[state.name] = state
         return self.states[state.name]
 
+
     def deleteState(self, state):
         if not isinstance(state, State):
             raise TypeError("Invalid type for state argument.")
         self.states.pop(state.name)
+
 
     def stateExists(self, stateName):
         if not isinstance(stateName, str):
             raise TypeError("Invalid type for name argument.")
         return stateName in self.states
 
+
     def getStateByName(self, stateName):
         if not isinstance(stateName, str):
             raise TypeError("Invalid type for name argument.")
         return self.states[stateName]
+
 
     def addTransition(self, transition):
         if not isinstance(transition, Transition):
@@ -44,8 +49,10 @@ class FSM(object):
                 transition.elseState in list(self.states.values()):
             transition.elseState.addInTransition(transition)
 
+
     def deleteTransition(self, transition):
         self.transitions.remove(transition)
+
 
     def getTransitionsByEvent(self, event):
         if not isinstance(event, str):
@@ -55,6 +62,18 @@ class FSM(object):
             if t.event == event:
                 transitions.append(t)
         return transitions
+
+
+    def groupTransitionsByStartState(self, transition_list):
+        if not isinstance(transition_list, list):
+            raise TypeError("Invalid type for transition_list argument.")
+        transition_dict = {}
+        for t in transition_list:
+            if transition_dict[t.startState] is None:
+                transition_dict[t.startState] = []
+            transition_dict[t.startState].append(t)
+        return transition_dict
+
 
     def __str__(self):
         out = "States:\n\n"
@@ -73,11 +92,14 @@ class State(object):
         self.in_trans = []
         self.out_trans = []
 
+
     def addInTransition(self, transition):
         self.in_trans.append(transition)
 
+
     def addOutTransition(self, transition):
         self.out_trans.append(transition)
+
 
     def __str__(self):
         s = "State: " + self.name + "\nIn Transitions:\n"
@@ -114,6 +136,7 @@ class Transition(object):
         self.elseState = elseState
         self.elseActions = elseActions
 
+
     def str_next(self):
         s = self.startState.name + ' -> ' + self.nextState.name + \
             ' / event: ' + self.event
@@ -122,6 +145,7 @@ class Transition(object):
         if self.nextActions:
             s = s + ' / actions: ' + ", ".join(self.nextActions)
         return s
+
 
     def str_else(self):
         if not self.elseState:
@@ -133,6 +157,7 @@ class Transition(object):
         if self.elseActions:
             s = s + ' / actions: ' + ", ".join(self.elseActions)
         return s
+
 
     def __str__(self):
         s = self.startState.name + ' -> ' + self.event

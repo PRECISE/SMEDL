@@ -137,6 +137,47 @@ class TestSmedlgen(unittest.TestCase):
         term = self.ast['scenarios'][0][0]['traces'][9]['trace_step'][1]['step_event']['when']
         self.assertEqual("(!(a < b) && !c) || !(d + e) || f < !!!g", smedlgen.formatGuard(term))
 
+    def test_addThisDotToStateVariables(self): #TODO
+        smedlFilename = "testcases/pqueue/c/smedl/pqueue.smedl"
+        with open(smedlFilename) as smedlFile:
+            smedlText = smedlFile.read()
+        smedlPar = smedlParser(
+            parseinfo=False,
+            comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
+        ast = smedlPar.parse(
+            smedlText,
+            'object',
+            filename=smedlFilename,
+            trace=False,
+            whitespace=None)
+        symbolTable = smedlSymbolTable()
+        smedlgen.parseToSymbolTable('top', ast, symbolTable)
+
+
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when ((+-~~+-~~5)) -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when +arr[5 + fn(6)] -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when obj.thing.thing2[5] == 6 -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when obj.thing % 5 == 6 && true || x + 5 == null -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when ((x == 5 || true || y(x)) && z > 3 || b < c) && d -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when !(a < b) && !c || !!!!(d + e) || f < !!!g -> SafeMon")
+        self.writer.add_t("sc1", "SafeMon -> changeDir() when !(a < b) && !c || !!!!!(d + e) || f < !!!g -> SafeMon")
+        self.make_ast()
+        # print(json.dumps(self.ast, indent=2))
+        term = self.ast['scenarios'][0][0]['traces'][3]['trace_step'][1]['step_event']['when']
+        self.assertEqual("+-~~+-~~5", smedlgen.formatGuard(term))
+        term = self.ast['scenarios'][0][0]['traces'][4]['trace_step'][1]['step_event']['when']
+        self.assertEqual("+arr[5 + fn(6)]", smedlgen.formatGuard(term))
+        term = self.ast['scenarios'][0][0]['traces'][5]['trace_step'][1]['step_event']['when']
+        self.assertEqual("obj.thing.thing2[5] == 6", smedlgen.formatGuard(term))
+        term = self.ast['scenarios'][0][0]['traces'][6]['trace_step'][1]['step_event']['when']
+        self.assertEqual("(obj.thing % 5 == 6 && true) || x + 5 == null", smedlgen.formatGuard(term))
+        term = self.ast['scenarios'][0][0]['traces'][7]['trace_step'][1]['step_event']['when']
+        self.assertEqual("(((x == 5 || true || y(x)) && z > 3) || b < c) && d", smedlgen.formatGuard(term))
+        term = self.ast['scenarios'][0][0]['traces'][8]['trace_step'][1]['step_event']['when']
+        self.assertEqual("(!(a < b) && !c) || d + e || f < !!!g", smedlgen.formatGuard(term))
+        term = self.ast['scenarios'][0][0]['traces'][9]['trace_step'][1]['step_event']['when']
+        self.assertEqual("(!(a < b) && !c) || !(d + e) || f < !!!g", smedlgen.formatGuard(term))
+
     def test_guardToString(self):
         self.writer.add_t("sc1", "SafeMon -> changeDir() when 5 -> SafeMon")
         self.writer.add_t("sc1", "SafeMon -> changeDir() when +5 -> SafeMon")
