@@ -1,0 +1,16 @@
+- Autogenerate header file based on PEDL constructor
+- Think of State machine checks to detect when guards are not mutually exclusive
+
+
+Check monitoring competition problems and see if we can handle them
+- Look up Conference on Runtime Verification competition
+- Have Oleg ask the organizers for the competition details
+
+Add more items to the issues list from the aggregated notes.
+
+Write script to automate makefile generation and automate compilation
+Write script to extract more debug info from pyelftools
+
+Illinois MOP tool for runtime verification
+
+Determine exactly what the imported and exported events mean...
