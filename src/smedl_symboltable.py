@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 
-class smedlSymbolTable(dict):
+class SmedlSymbolTable(dict):
 
     generated = 0
 
     def __init__(self):
-        super(smedlSymbolTable, self).__init__()
+        super(SmedlSymbolTable, self).__init__()
 
     def add(self, symbol, attributes=None):
         if not isinstance(symbol, str):
@@ -23,11 +23,11 @@ class smedlSymbolTable(dict):
         if not isinstance(symbol, str):
             raise TypeError
         elif attribute is None:
-            return super(smedlSymbolTable, self).get(symbol)
+            return super(SmedlSymbolTable, self).get(symbol)
         elif not isinstance(attribute, str):
             raise TypeError
         else:
-            return super(smedlSymbolTable, self).get(symbol).get(attribute)
+            return super(SmedlSymbolTable, self).get(symbol).get(attribute)
 
     def getSymbolsByType(self, type):
         out = []
@@ -51,8 +51,8 @@ class smedlSymbolTable(dict):
             self[symbol][attribute] = None
 
     # This method makes an implicit state, ensuring that its name is unique
-    def generate(self, attributes=None):
-        symbol = "Gen%d" % smedlSymbolTable.generated
+    def generateSymbol(self, attributes=None):
+        symbol = "Gen%d" % SmedlSymbolTable.generated
         self.add(symbol, attributes)
-        smedlSymbolTable.generated = smedlSymbolTable.generated + 1
+        SmedlSymbolTable.generated += 1
         return symbol
