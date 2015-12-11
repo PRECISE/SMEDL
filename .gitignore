@@ -1,11 +1,11 @@
 *.pyc
 src/.coverage
-
 *.o
-
 .env
 bin/
-
 src/testcases/pqueue/c/pq
-
 *.DS_Store
+lib/python3.5/
+pip-selfcheck.json
+man/
+pyvenv.cfg
