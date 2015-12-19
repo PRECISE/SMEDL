@@ -1,8 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import collections
+#-------------------------------------------------------------------------------
+# fsm.py
+#
+# Peter Gebhard (pgeb@seas.upenn.edu)
+#
+# A basic Finite State Machine class
+#-------------------------------------------------------------------------------
 
+import collections
 
 class FSM(object):
 
@@ -69,7 +76,7 @@ class FSM(object):
             raise TypeError("Invalid type for transition_list argument.")
         transition_dict = {}
         for t in transition_list:
-            if transition_dict[t.startState] is None:
+            if t.startState not in transition_dict:
                 transition_dict[t.startState] = []
             transition_dict[t.startState].append(t)
         return transition_dict
