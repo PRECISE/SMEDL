@@ -24,9 +24,9 @@ Component Breakdown
             (e.g. MeanderData using keyword 'create' in the PEDL)
             -Defines initialization of internal state variable through mapping from parameter struct variables. This is specifically for monitor variables tied to the code, as opposed to internal SMEDL variables set within the monitor)
         TODO:
+            -Automated insertion of monitor initialization in code (We have only done this manually). It needs to be done at the point where all the values are set within the struct. Hard to tell when that is, unless there's an init or validate function for that struct
             -Support initialization helper functions (e.g. memory management for non-primitive state variables)
             -Autogenerate header file based on PEDL constructor
-            -Automated insertion of monitor initialization in code (We have only done this manually)
             -Do type-checking of ID values in PEDL constructor to generate appropriate type in generated code.
         QUESTIONS:
             -Should there be other keywords besides 'create' to specify placement of monitor instantiation?
@@ -35,7 +35,7 @@ Component Breakdown
     Event probes
             - What is the 'false' boolean parameter used for in call() functions
         DONE:
-            -Define placement of probes at every update of a variable of interest, or a call or return of a function
+            -Define placement of probes at every update of a variable of interest, or a call or return of a function. These categories seem to cover event of interest such as system calls and inter-process communication.
             -For call, probe is placed just inside function call
             -For return, temp var is set to return value, probe function is called with temp var, then temp var returned
         TODO:
@@ -43,7 +43,7 @@ Component Breakdown
             -Automated probe placement
         QUESTIONS:
             -Extend event definitions based on other occurrences of system calls and inter-process communication? (Don't have to do anything special)
-            -Use of 'when' conditions. Ways to reduce probe placement with conditions in static analysis phase? Conditions only used in SMEDL to determine transitions at probe. Conditions based on call stack, scope or value of variables, etc.
+            -Use of 'when' conditions to reduce probe placement with conditions in static analysis phase. Conditions are only used in SMEDL to determine transitions at probe. Conditions based on call stack, scope or value of variables, etc could be used to reduce the number of places to add a probe.
 -SMEDL:
     State transitions
         DONE:
@@ -66,20 +66,26 @@ Component Breakdown
             -Add boolean as state variable type
             -Add labels to grammar for internal state variables and external state variables
             -Support import of checker libraries (for helper functions)
+            -Think of State machine checks to detect when guards are not mutually exclusive
         QUESTIONS:
             -Add access to library of recovery mechanisms, to extend actions taken when an error is raised, beyond just printing an error message to stdout?
             -Triggering multiple events (for same or different monitors) at the same point in code - is this a problem? If it leads to consecutive probes, does order matter? Should this be prevented? (Multiple events should be allowed, we should do testing to see if this can cause issues)
             -Native timer/timeout events - traces that check time elapsed during occurrences of events can be done using a helper function extension that sets an internal smedl variable based on system time. But would it be good though to standardize this as a built-in SMEDL feature? (Add timing syntax, use system timeout events - callbacks) (Low priority until DARPA project)
+            -Cross-validate import/export events
+            -Raise queue (don't add raise to symbolTable, but check that it references int or exp event)
+
 -Code generation:
     In C:
         DONE:
             -Currently using probes as direct function calls that evaluate SMEDL in the process' main thread. These events are evaluated immediately, in-line with no buffer.
             -Print SMEDL errors to stderr
             -Monitors are added to a global linked list accessible by pointer to parameter struct (e.g. MeanderData) from multiple threads. It's only locked when adding checkers to the linked list. The user must be sure the key (parameter struct) is in scope wherever the monitor is needed. In the case study, the parameter struct is thread local. If multiple threads need to use the checker, the user must pass the key to threads that need it.
+            -A map for each identity is created, and when a monitor is created, it is added to each map. PEDL events define conditions for which monitors should be called for a given event based on their identities. The event probe uses the map for the first identity checked to create a list of monitors matching that identity. If more than one identity needs to be checked. That list is further filtered based on those identities. That seems to be more efficient than creating lists from all maps and then making of list of monitors that are part of all lists (espcially if the user used the identity that filters the list the most as the first identity checked)
             -Helper function calls in 'when' conditions and actions: {x = helper() ; raise y(x)} or {raise y(helper())}
             Should there be a keyword similar to 'raise' for calling helper functions? Can these helpers be a vehicle for checking system-level events such as system calls using other APIs?
             -Helpers take in parameters by default as void*, and the function itself casts the data as needed
             -Internal variables may be structs using the keyword 'struct' and stored in monitor as void* in C
+            -Right now generation assumes that for object <ObjectName>, the monitor will be named <ObjectName>Monitor and that the parameters from the code will be contained in struct <ObjectName>Data with matching variable names and types within
         TODO:
             -Generate function prototypes as separate [object]_mon.h file instead of just on top of [object]_mon.c
             -Generate from multiple SMEDL object files, making FSM transitions on some similar and some different events
@@ -132,3 +138,15 @@ There is also a related (but more general) question about what variables can be 
 
 
 Make SMEDL for priority queue, send() receive(), use helper libraries? Fixed number of priorities (5 different priorities with counters of received messages at each of those priorities)
+
+
+TODO
+----
+
+Add more items to the GitLab issues list from these notes.
+Write script to automate makefile generation and automate compilation
+Write script to extract more debug info from pyelftools
+
+Illinois MOP tool for runtime verification
+
+Determine exactly what the imported and exported events mean...
