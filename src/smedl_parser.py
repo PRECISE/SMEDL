@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS
 
 
-__version__ = (2015, 9, 10, 17, 48, 21, 3)
+__version__ = (2016, 1, 13, 22, 12, 46, 2)
 
 __all__ = [
     'smedlParser',
@@ -27,12 +27,21 @@ __all__ = [
 
 
 class smedlParser(Parser):
-    def __init__(self, whitespace=None, nameguard=None, **kwargs):
+    def __init__(self,
+                 whitespace=None,
+                 nameguard=None,
+                 comments_re=None,
+                 eol_comments_re=None,
+                 ignorecase=None,
+                 left_recursion=True,
+                 **kwargs):
         super(smedlParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
-            eol_comments_re=None,
-            ignorecase=None,
+            comments_re=comments_re,
+            eol_comments_re=eol_comments_re,
+            ignorecase=ignorecase,
+            left_recursion=left_recursion,
             **kwargs
         )
 
@@ -442,10 +451,6 @@ class smedlParser(Parser):
                     with self._group():
                         with self._choice():
                             with self._option():
-                                self._token('>')
-                            with self._option():
-                                self._token('<')
-                            with self._option():
                                 self._token('>=')
                             with self._option():
                                 self._token('<=')
@@ -453,6 +458,10 @@ class smedlParser(Parser):
                                 self._token('==')
                             with self._option():
                                 self._token('!=')
+                            with self._option():
+                                self._token('>')
+                            with self._option():
+                                self._token('<')
                             self._error('expecting one of: != < <= == > >=')
                     self.ast['operator'] = self.last_node
                     self._arith_expr_()

@@ -200,7 +200,7 @@ class MonitorGenerator(object):
                             if not fsm.stateExists(after):
                                 fsm.addState(State(after))
                         else:
-                            after = self._symbolTable.generate({'type': 'trace_state'})
+                            after = self._symbolTable.generateSymbol({'type': 'trace_state'})
                             fsm.addState(State(after))
                             generated_state = after
                         before_state = fsm.getStateByName(before)

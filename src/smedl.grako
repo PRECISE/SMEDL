@@ -131,7 +131,7 @@ sub_expr
 
 comp_expr
     =
-      comp:arith_expr {operator:('>' | '<' | '>=' | '<=' | '==' | '!=') comp:arith_expr}+
+      comp:arith_expr {operator:('>=' | '<=' | '==' | '!=' | '>' | '<') comp:arith_expr}+
     | '(' @:comp_expr ')'
     | @:arith_expr
     ;
