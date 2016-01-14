@@ -1,0 +1,15 @@
+object SimpleParserMon
+   events
+    new SimpleParserMon(id) =
+    create ParserData {id = this; currentTime = 0;}
+
+SimpleParserMon(id).getTime(time) = 
+    update(main().time) {time = main().time;}
+SimpleParserMon(id).getLat(lat) = 
+    update(main().latitude) {lat = main().latitude;}
+SimpleParserMon(id).getLon(lon) =
+    update(main().longtitude) {lon = main().longitude;}
+SimpleParserMon(id).getDist(dist)=
+    update(main().total_dist) {dist = main().total_dist;}
+SimpleParserMon(id).getSpeed(speed)=
+    update(main().speed) {dist = main().speed;}
