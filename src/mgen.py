@@ -363,6 +363,7 @@ class MonitorGenerator(object):
     def _convertTypeForC(self, smedlType):
         return {
             'int': 'int',
+            'float': 'float',
             'pointer': 'void*',
             'thread': 'pthread_t',
             'opaque': 'void*'
