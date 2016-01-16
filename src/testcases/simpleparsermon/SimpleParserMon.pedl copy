@@ -3,9 +3,9 @@ object SimpleParserMon
     new SimpleParserMon(id) =
     create ParserData {id = this; currentTime = 0;}
 
-SimpleParserMon(id).getTime(time) = 
+SimpleParserMon(id).getTime(time) =
     update(main().time) {time = main().time;}
-SimpleParserMon(id).getLat(lat) = 
+SimpleParserMon(id).getLat(lat) =
     update(main().latitude) {lat = main().latitude;}
 SimpleParserMon(id).getLon(lon) =
     update(main().longtitude) {lon = main().longitude;}
