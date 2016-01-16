@@ -1,4 +1,4 @@
-object WebServer
+object WebServerMon
     identity
         opaque id;
     state

@@ -1,4 +1,4 @@
-object Min1
+object Conditional
     state
         int bar;
     events

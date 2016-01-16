@@ -1,4 +1,4 @@
-object Min1
+object EvtAtt
     events
         imported foo(int);
     scenarios

@@ -1,4 +1,4 @@
-object Min1
+object State
     state
         int bar;
     events

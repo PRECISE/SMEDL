@@ -1,4 +1,4 @@
-object Min1
+object ElseNoAction
     state
         int bar;
     events

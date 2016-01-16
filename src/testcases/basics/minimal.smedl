@@ -1,4 +1,4 @@
-object Min
+object Minimal
     events
         imported foo;
     scenarios

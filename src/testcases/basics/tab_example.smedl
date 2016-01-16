@@ -1,4 +1,4 @@
-object Tab
+object TabMon
     identity
         opaque id;
         opaque test;
