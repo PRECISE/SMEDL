@@ -315,7 +315,8 @@ class MonitorGenerator(object):
             eventFunction.append('}')
             raiseFunction = self._writeRaiseFunction(m, obj)
             if pedlEvent:
-                probeSignature = 'void %s_%s_probe(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]))
+                probeParams = [p for p in monitorParams if p['name'] != 'monitor']
+                probeSignature = 'void %s_%s_probe(%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]))
                 probeFunction.append(probeSignature  + ' {')
                 if len(identityParams) > 0:
                     # Write function call to hash on the first identity we're searching for
