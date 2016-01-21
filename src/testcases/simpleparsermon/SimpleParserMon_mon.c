@@ -11,7 +11,7 @@ typedef enum { SIMPLEPARSERMON_POINT_COUNTS_SCENARIO, SIMPLEPARSERMON_GETDISTANC
 typedef enum { SIMPLEPARSERMON_POINT_COUNTS_ERROR, SIMPLEPARSERMON_POINT_COUNTS_READY, SIMPLEPARSERMON_POINT_COUNTS_GEN0, SIMPLEPARSERMON_POINT_COUNTS_GEN1 } simpleparsermon_point_counts_state;
 typedef enum { SIMPLEPARSERMON_GETDISTANCE_ERROR, SIMPLEPARSERMON_GETDISTANCE_READY } simpleparsermon_getdistance_state;
 typedef enum { SIMPLEPARSERMON_GETSPEED_ERROR, SIMPLEPARSERMON_GETSPEED_READY } simpleparsermon_getspeed_state;
-typedef enum { SIMPLEPARSERMON_GETSPEED, SIMPLEPARSERMON_GETLAT, SIMPLEPARSERMON_GETDIST, SIMPLEPARSERMON_GETTIME, SIMPLEPARSERMON_GETLON } simpleparsermon_event;
+typedef enum { SIMPLEPARSERMON_GETSPEED, SIMPLEPARSERMON_GETTIME, SIMPLEPARSERMON_GETLON, SIMPLEPARSERMON_GETLAT, SIMPLEPARSERMON_GETDIST } simpleparsermon_event;
 typedef enum { SIMPLEPARSERMON_DEFAULT } simpleparsermon_error;
 const char *simpleparsermon_point_counts_states[4] = {"Error", "Ready", "Gen0", "Gen1"};
 const char *simpleparsermon_getdistance_states[2] = {"Error", "Ready"};
@@ -29,6 +29,201 @@ SimpleparsermonMonitor* init_simpleparsermon_monitor( SimpleparsermonData *d ) {
     put_simpleparsermon_monitor(monitor);
     return monitor;
 }
+
+
+/*
+ * Monitor Event Handlers
+ */
+
+void simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed) {
+  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
+    default:
+      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getSpeed", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
+    default:
+      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getSpeed", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
+    case SIMPLEPARSERMON_GETSPEED_READY:
+      monitor->state[SIMPLEPARSERMON_GETSPEED] = SIMPLEPARSERMON_GETSPEED_READY;
+      break;
+
+    default:
+      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getSpeed", "DEFAULT");
+      break;
+  }
+}
+
+void simpleparsermon_getSpeed_probe(float speed) {
+  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
+  while(results != NULL) {
+    SimpleparsermonMonitor* monitor = results->monitor;
+    simpleparsermon_getSpeed(monitor, speed);
+    results = results->next;
+  }
+}
+
+void raise_simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed) {
+  param *p_head = NULL;
+  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETSPEED, p_head);
+}
+
+
+void simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int time) {
+  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
+    case SIMPLEPARSERMON_POINT_COUNTS_READY:
+      monitor->state[SIMPLEPARSERMON_POINT_COUNTS] = SIMPLEPARSERMON_POINT_COUNTS_GEN0;
+      break;
+
+    default:
+      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getTime", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
+    default:
+      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getTime", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
+    default:
+      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getTime", "DEFAULT");
+      break;
+  }
+}
+
+void simpleparsermon_getTime_probe(int time) {
+  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
+  while(results != NULL) {
+    SimpleparsermonMonitor* monitor = results->monitor;
+    simpleparsermon_getTime(monitor, time);
+    results = results->next;
+  }
+}
+
+void raise_simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int time) {
+  param *p_head = NULL;
+  push_param(&p_head, &time, NULL, NULL, NULL);
+  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETTIME, p_head);
+}
+
+
+void simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon) {
+  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
+    case SIMPLEPARSERMON_POINT_COUNTS_GEN1:
+      monitor->state[SIMPLEPARSERMON_POINT_COUNTS] = SIMPLEPARSERMON_POINT_COUNTS_READY;
+      break;
+
+    default:
+      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getLon", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
+    default:
+      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getLon", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
+    default:
+      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getLon", "DEFAULT");
+      break;
+  }
+}
+
+void simpleparsermon_getLon_probe(float lon) {
+  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
+  while(results != NULL) {
+    SimpleparsermonMonitor* monitor = results->monitor;
+    simpleparsermon_getLon(monitor, lon);
+    results = results->next;
+  }
+}
+
+void raise_simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon) {
+  param *p_head = NULL;
+  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETLON, p_head);
+}
+
+
+void simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat) {
+  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
+    case SIMPLEPARSERMON_POINT_COUNTS_GEN0:
+      monitor->state[SIMPLEPARSERMON_POINT_COUNTS] = SIMPLEPARSERMON_POINT_COUNTS_GEN1;
+      break;
+
+    default:
+      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getLat", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
+    default:
+      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getLat", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
+    default:
+      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getLat", "DEFAULT");
+      break;
+  }
+}
+
+void simpleparsermon_getLat_probe(float lat) {
+  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
+  while(results != NULL) {
+    SimpleparsermonMonitor* monitor = results->monitor;
+    simpleparsermon_getLat(monitor, lat);
+    results = results->next;
+  }
+}
+
+void raise_simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat) {
+  param *p_head = NULL;
+  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETLAT, p_head);
+}
+
+
+void simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist) {
+  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
+    default:
+      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getDist", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
+    case SIMPLEPARSERMON_GETDISTANCE_READY:
+      monitor->state[SIMPLEPARSERMON_GETDISTANCE] = SIMPLEPARSERMON_GETDISTANCE_READY;
+      break;
+
+    default:
+      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getDist", "DEFAULT");
+      break;
+  }
+  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
+    default:
+      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getDist", "DEFAULT");
+      break;
+  }
+}
+
+void simpleparsermon_getDist_probe(float dist) {
+  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
+  while(results != NULL) {
+    SimpleparsermonMonitor* monitor = results->monitor;
+    simpleparsermon_getDist(monitor, dist);
+    results = results->next;
+  }
+}
+
+void raise_simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist) {
+  param *p_head = NULL;
+  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETDIST, p_head);
+}
+
+
+/*
+ * Monitor Utility Functions
+ */
 
 int init_simpleparsermon_monitor_maps() {
     if (pthread_mutex_init(&simpleparsermon_monitor_maps_lock, NULL) != 0) {
@@ -110,197 +305,6 @@ SimpleparsermonMonitorRecord* filter_simpleparsermon_monitors_by_identity(Simple
     return results;
 }
 
-void simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed) {
-  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
-    default:
-      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getSpeed", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
-    default:
-      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getSpeed", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
-    case SIMPLEPARSERMON_GETSPEED_READY:
-      monitor->state[SIMPLEPARSERMON_GETSPEED] = SIMPLEPARSERMON_GETSPEED_READY;
-      break;
-
-    default:
-      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getSpeed", "DEFAULT");
-      break;
-  }
-}
-
-void simpleparsermon_getSpeed_probe() {
-  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
-  while(results != NULL) {
-    SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getSpeed(monitor, speed);
-    results = results->next;
-  }
-}
-
-void raise_simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed) {
-  param *p_head = NULL;
-  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETSPEED, p_head);
-}
-
-
-void simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat) {
-  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
-    case SIMPLEPARSERMON_POINT_COUNTS_GEN0:
-      monitor->state[SIMPLEPARSERMON_POINT_COUNTS] = SIMPLEPARSERMON_POINT_COUNTS_GEN1;
-      break;
-
-    default:
-      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getLat", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
-    default:
-      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getLat", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
-    default:
-      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getLat", "DEFAULT");
-      break;
-  }
-}
-
-void simpleparsermon_getLat_probe() {
-  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
-  while(results != NULL) {
-    SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getLat(monitor, lat);
-    results = results->next;
-  }
-}
-
-void raise_simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat) {
-  param *p_head = NULL;
-  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETLAT, p_head);
-}
-
-
-void simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist) {
-  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
-    default:
-      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getDist", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
-    case SIMPLEPARSERMON_GETDISTANCE_READY:
-      monitor->state[SIMPLEPARSERMON_GETDISTANCE] = SIMPLEPARSERMON_GETDISTANCE_READY;
-      break;
-
-    default:
-      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getDist", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
-    default:
-      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getDist", "DEFAULT");
-      break;
-  }
-}
-
-void simpleparsermon_getDist_probe() {
-  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
-  while(results != NULL) {
-    SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getDist(monitor, dist);
-    results = results->next;
-  }
-}
-
-void raise_simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist) {
-  param *p_head = NULL;
-  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETDIST, p_head);
-}
-
-
-void simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int time) {
-  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
-    case SIMPLEPARSERMON_POINT_COUNTS_READY:
-      monitor->state[SIMPLEPARSERMON_POINT_COUNTS] = SIMPLEPARSERMON_POINT_COUNTS_GEN0;
-      break;
-
-    default:
-      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getTime", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
-    default:
-      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getTime", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
-    default:
-      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getTime", "DEFAULT");
-      break;
-  }
-}
-
-void simpleparsermon_getTime_probe() {
-  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
-  while(results != NULL) {
-    SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getTime(monitor, time);
-    results = results->next;
-  }
-}
-
-void raise_simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int time) {
-  param *p_head = NULL;
-  push_param(&p_head, &time, NULL, NULL, NULL);
-  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETTIME, p_head);
-}
-
-
-void simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon) {
-  switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS]) {
-    case SIMPLEPARSERMON_POINT_COUNTS_GEN1:
-      monitor->state[SIMPLEPARSERMON_POINT_COUNTS] = SIMPLEPARSERMON_POINT_COUNTS_READY;
-      break;
-
-    default:
-      raise_error("simpleparsermon_point_counts", simpleparsermon_states_names[SIMPLEPARSERMON_POINT_COUNTS][monitor->state[SIMPLEPARSERMON_POINT_COUNTS]], "getLon", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE]) {
-    default:
-      raise_error("simpleparsermon_getDistance", simpleparsermon_states_names[SIMPLEPARSERMON_GETDISTANCE][monitor->state[SIMPLEPARSERMON_GETDISTANCE]], "getLon", "DEFAULT");
-      break;
-  }
-  switch (monitor->state[SIMPLEPARSERMON_GETSPEED]) {
-    default:
-      raise_error("simpleparsermon_getSpeed", simpleparsermon_states_names[SIMPLEPARSERMON_GETSPEED][monitor->state[SIMPLEPARSERMON_GETSPEED]], "getLon", "DEFAULT");
-      break;
-  }
-}
-
-void simpleparsermon_getLon_probe() {
-  SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
-  while(results != NULL) {
-    SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getLon(monitor, lon);
-    results = results->next;
-  }
-}
-
-void raise_simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon) {
-  param *p_head = NULL;
-  push_action(&monitor->action_queue, SIMPLEPARSERMON_GETLON, p_head);
-}
-
-
 void raise_error(char *scen, const char *state, char *action, char *type) {
   printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}", scen, state, action, type);
 }
-
-int main() { //To prevent warnings for test compile (they even happen with -c)
-  return 0;
-}
-
