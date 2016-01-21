@@ -26,6 +26,22 @@ const char **{{obj|lower}}_states_names[{{state_names_array|length}}] = { {{stat
     return monitor;
 }
 
+
+/*
+ * Monitor Event Handlers
+ */
+
+{% for e in event_code -%}
+{{e.event|join('\n')}}
+{% if e.probe %}{{'\n'}}{{e.probe|join('\n')}}{{'\n'}}{% endif %}
+{{e.raise|join('\n')}}
+{% endfor -%}
+
+
+/*
+ * Monitor Utility Functions
+ */
+
 int init_{{obj|lower}}_monitor_maps() {
     if (pthread_mutex_init(&{{obj|lower}}_monitor_maps_lock, NULL) != 0) {
         printf("\n{{obj|title}} Monitor map mutex init failed\n");
@@ -106,18 +122,6 @@ int put_{{obj|lower}}_monitor({{obj|title}}Monitor *monitor) {
     return results;
 }
 
-{% for e in event_code -%}
-{{e.event|join('\n')}}
-{% if e.probe %}{{'\n'}}{{e.probe|join('\n')}}{{'\n'}}{% endif %}
-{{e.raise|join('\n')}}
-{% endfor -%}
-
 void raise_error(char *scen, const char *state, char *action, char *type) {
   printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}", scen, state, action, type);
 }
-
-int main() { //To prevent warnings for test compile (they even happen with -c)
-  return 0;
-}
-
-
