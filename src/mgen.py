@@ -23,9 +23,10 @@ from pathlib import Path
 
 class MonitorGenerator(object):
 
-    def __init__(self):
+    def __init__(self, structs=False, debug=False):
         self._symbolTable = None
-        self.displayOutput = True
+        self._printStructs = structs
+        self._debug = debug
 
 
     def generate(self, pedlsmedlName, helper=None):
@@ -44,7 +45,7 @@ class MonitorGenerator(object):
                 filename=pedlPath,
                 trace=False,
                 whitespace=None)
-            if self.displayOutput:
+            if self._printStructs:
                 print('PEDL AST:')
                 print(pedlAST)
                 print('\nPEDL JSON:')
@@ -65,7 +66,7 @@ class MonitorGenerator(object):
                 filename=smedlPath,
                 trace=False,
                 whitespace=None)
-            if self.displayOutput:
+            if self._printStructs:
                 print('SMEDL AST:')
                 print(smedlAST)
                 print('\nSMEDL JSON:')
@@ -79,7 +80,7 @@ class MonitorGenerator(object):
         self._getParameterNames(smedlAST)
         allFSMs = self._generateFSMs(smedlAST)
 
-        if self.displayOutput:
+        if self._printStructs:
             print('\nSMEDL Symbol Table:')
             for k in self._symbolTable:
                 print('%s: %s' % (k, self._symbolTable[k]))
@@ -314,6 +315,8 @@ class MonitorGenerator(object):
                 eventFunction.append('  }')
             eventFunction.append('}')
             raiseFunction = self._writeRaiseFunction(m, obj)
+
+            # Build event
             if pedlEvent:
                 probeParams = [p for p in monitorParams if p['name'] != 'monitor']
                 probeSignature = 'void %s_%s_probe(%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]))
@@ -343,11 +346,11 @@ class MonitorGenerator(object):
                 probeFunction.append('    results = results->next;')
                 probeFunction.append('  }')
                 probeFunction.append('}')
-                print(probeSignature)
+                #DEBUG  print(probeSignature)
                 values['signatures'].append(probeSignature)
-                values['event_code'] .append({'event':eventFunction, 'probe':probeFunction, 'raise':raiseFunction['code']})
+                values['event_code'].append({'event':eventFunction, 'probe':probeFunction, 'raise':raiseFunction['code']})
             else:
-                values['event_code'] .append({'event':eventFunction, 'raise':raiseFunction['code']})
+                values['event_code'].append({'event':eventFunction, 'raise':raiseFunction['code']})
             values['signatures'].append(raiseFunction['signature'])
 
             callCases.append(self._writeCallCase(m))
@@ -603,9 +606,11 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(description="Code Generator for SMEDL and PEDL.")
-    parser.add_argument('-helper', '--helper', help='Header file for helper functions')
+    parser.add_argument('--helper', help='Include header file for helper functions')
+    parser.add_argument('-s', '--structs', help='Print internal data structures', action='store_true')
+    parser.add_argument('-d', '--debug', help='Show debug output', action='store_true')
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="the name of the PEDL and SMEDL files to parse")
     args = parser.parse_args()
 
-    mgen = MonitorGenerator()
+    mgen = MonitorGenerator(structs=args.structs, debug=args.debug)
     mgen.generate(args.pedlsmedl, helper=args.helper)

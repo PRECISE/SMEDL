@@ -35,18 +35,18 @@ SimpleparsermonMonitor* init_simpleparsermon_monitor(SimpleparsermonData*);
 /*
  * Monitor Event Handlers
  */
+void simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat);
+void simpleparsermon_getLat_probe(float lat);
+void raise_simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat);
+void simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon);
+void simpleparsermon_getLon_probe(float lon);
+void raise_simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon);
 void simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed);
 void simpleparsermon_getSpeed_probe(float speed);
 void raise_simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed);
 void simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int time);
 void simpleparsermon_getTime_probe(int time);
 void raise_simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int time);
-void simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon);
-void simpleparsermon_getLon_probe(float lon);
-void raise_simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon);
-void simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat);
-void simpleparsermon_getLat_probe(float lat);
-void raise_simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat);
 void simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist);
 void simpleparsermon_getDist_probe(float dist);
 void raise_simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist);
