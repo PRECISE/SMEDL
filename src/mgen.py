@@ -308,7 +308,7 @@ class MonitorGenerator(object):
                 eventFunction.append('  switch (%s) {' % reference)
                 # TODO: Detect when transitions for an event have the same start state...their guards and actions should be merged
                 for start_state, transitions in fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m))).items():
-                    eventFunction.append(self._writeCaseTransition(obj, transitions, reference, name_reference, key, m))
+                    eventFunction.append(self._writeCaseTransition(obj, transitions, reference, name_reference, key))
                 eventFunction.append('    default:')
                 eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
                 eventFunction.append('      break;')
@@ -374,25 +374,48 @@ class MonitorGenerator(object):
         }[smedlType]
 
 
-    def _writeCaseTransition(self, obj, transitions, currentState, stateName, scenario, action):
+    def _writeCaseTransition(self, obj, transitions, currentState, stateName, scenario):
         output = ['    case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), transitions[0].startState.name.upper())]
+
+        if self._debug:
+            print("\n*** Write Case Transition ***")
+            print("Object: %s" % obj)
+            for t in transitions:
+                print("Transition: %s" % t)
+            print("Current State: ", currentState)
+            print("State Name: ", stateName)
+            print("Scenario: ", scenario)
+            print("\n")
+
         sorted(transitions, key = lambda trans: trans.guard is not None)
         for i in range(len(transitions)):
-            if len(transitions) == 1:
-                output.append('      %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
-                break
             if i == 0 and transitions[i].guard:
                 output.append('      if(' + transitions[i].guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
-                output.append('        %s;\n' % action)
+                if transitions[i].nextActions is not None:
+                    for action in transitions[i].nextActions:
+                        output.append('        %s;\n' % action)
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 output.append('      }\n')
+            elif len(transitions) == 1:
+                if transitions[i].nextActions is not None:
+                    for action in transitions[i].nextActions:
+                        output.append('        %s;\n' % action)
+                output.append('      %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
+                break
             elif transitions[i].guard:
                 output.append('      else if(' + transitions[i].guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
-                output.append('        %s;\n' % action)
+                if transitions[i].nextActions is not None:
+                    for action in transitions[i].nextActions:
+                        output.append('        %s;\n' % action)
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 output.append('      }\n')
+
+            # Handle Else (an Else state is defined, or reaching an Else denotes an error condition)
             if transitions[i].elseState and ((i+1 < len(transitions) and transitions[i+1].guard is None) or i+1 == len(transitions)):
                 output.append('      else {\n')
+                if transitions[i].elseActions is not None:
+                    for action in transitions[i].elseActions:
+                        output.append('        %s;\n' % action)
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
                 output.append('      }\n')
             else:
