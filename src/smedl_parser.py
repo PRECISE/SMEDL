@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS
 
 
-__version__ = (2016, 1, 13, 22, 12, 46, 2)
+__version__ = (2016, 1, 26, 19, 54, 59, 1)
 
 __all__ = [
     'smedlParser',
@@ -294,6 +294,7 @@ class smedlParser(Parser):
                 self._target_()
                 self.ast['target'] = self.last_node
                 self._token('=')
+                self.ast['operator'] = self.last_node
                 self._expression_()
                 self.ast['expression'] = self.last_node
             self._error('no available options')

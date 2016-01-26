@@ -72,7 +72,7 @@ action_item
 state_update
     =
       target:target operator:('++' | '--')
-    | target:target '=' expression:expression
+    | target:target operator:'=' expression:expression
     ;
 
 raise_stmt
