@@ -41,7 +41,7 @@ class StateUpdateAction(Action):
         out += "Target: " + self.target + "\n"
         out += "Operator: " + self.operator + "\n"
         if self.expression:
-            out += "Expression: " + self.expression + "\n"
+            out += "Expression: " + str(self.expression) + "\n"
         out += "\n"
         return out
 

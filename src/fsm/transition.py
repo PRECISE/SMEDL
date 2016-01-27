@@ -38,7 +38,7 @@ class Transition(object):
         if self.guard:
             s = s + ' / if: ' + self.guard
         if self.nextActions:
-            s = s + ' / actions: ' + ", ".join(self.nextActions)
+            s = s + ' / actions: ' + ", ".join(str(action) for action in self.nextActions)
         return s
 
 
@@ -50,7 +50,7 @@ class Transition(object):
         if self.guard:
             s = s + ' / if not: ' + self.guard
         if self.elseActions:
-            s = s + ' / actions: ' + ", ".join(self.elseActions)
+            s = s + ' / actions: ' + ", ".join(str(action) for action in self.elseActions)
         return s
 
 
@@ -59,11 +59,11 @@ class Transition(object):
         if self.guard:
             s = s + ' when ' + self.guard
         if self.nextActions:
-            s = s + ' {' + ', '.join(self.nextActions) + '}'
+            s = s + ' {' + ', '.join(str(action) for action in self.nextActions) + '}'
         s = s + ' -> ' + self.nextState.name
         if self.elseState:
             s = s + '\n    else'
             if self.elseActions:
-                s = s + ' {' + ', '.join(self.elseActions) + '}'
+                s = s + ' {' + ', '.join(str(action) for action in self.elseActions) + '}'
             s = s + ' -> ' + self.elseState.name
         return s
