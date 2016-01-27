@@ -17,6 +17,8 @@ class FSM(object):
 
     def __init__(self):
         self.states = collections.OrderedDict()
+        self.startState = None
+        self.endState = None
         self.currentState = None
         self.transitions = []
 
