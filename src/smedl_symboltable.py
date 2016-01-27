@@ -10,7 +10,9 @@
 #
 #-------------------------------------------------------------------------------
 
-class SmedlSymbolTable(dict):
+from collections import OrderedDict
+
+class SmedlSymbolTable(OrderedDict):
 
     generated = 0
 
