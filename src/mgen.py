@@ -215,6 +215,11 @@ class MonitorGenerator(object):
                             raise TypeError("Named states only valid at beginning/end of trace. Invalid: %s" % current)
                         if 'event' not in self._symbolTable.get(before, 'type') or 'event' not in self._symbolTable.get(after, 'type'):
                             raise TypeError("Invalid state -> state transition: %s -> %s" % (before, after))
+
+                # Set the start state
+                if fsm.startState is None:
+                    fsm.startState = fsm.getStateByName(trace['start_state'])
+
             allFSMs[scenario['scenario_id']] = fsm
         return allFSMs
 
@@ -253,14 +258,19 @@ class MonitorGenerator(object):
         state_names_arrays = []
         state_inits = []
         for key, fsm in list(allFSMs.items()):
-            stateset = [("%s_%s_%s" % (obj, key, state)).upper() for state in list(fsm.states.keys())]
+            stateset = []
+            for state in list(fsm.states.keys()):
+                st = ("%s_%s_%s" % (obj, key, state)).upper()
+                if fsm.getStateByName(state) == fsm.startState:
+                    startstate = st
+                stateset.append(st)
             sorted(stateset)
             statesets[key] = stateset
             stateset_str = ", ".join(stateset)
             state_enums.append('typedef enum { ' + stateset_str + ' } %s_%s_state;' % (obj.lower(), key.lower()))
             state_names = ", ".join(['\"%s\"'%(state) for state in list(fsm.states.keys())])
             state_names_arrays.append('const char *%s_%s_states[%d] = {%s};' % (obj.lower(), key.lower(), len(list(fsm.states.keys())), state_names))
-            state_inits.append('    monitor->state[%s_%s_SCENARIO] = %s;' % (obj.upper(), key.upper(), stateset[0]))
+            state_inits.append('    monitor->state[%s_%s_SCENARIO] = %s;' % (obj.upper(), key.upper(), startstate))
         values['state_enums'] = '\n'.join(state_enums)
         values['state_names'] = '\n'.join(state_names_arrays)
         values['state_names_array'] = ['%s_%s_states' % (obj.lower(), key.lower()) for key in list(allFSMs.keys())]
