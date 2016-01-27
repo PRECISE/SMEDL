@@ -87,7 +87,7 @@ instantiation_stmt
 
 call_stmt
     =
-      target:target '(' expression_list+:expression_list ')'
+      target:target '(' expr_list+:expression_list ')'
     ;
 
 type

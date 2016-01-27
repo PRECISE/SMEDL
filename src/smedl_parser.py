@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS
 
 
-__version__ = (2016, 1, 26, 19, 54, 59, 1)
+__version__ = (2016, 1, 27, 3, 13, 34, 2)
 
 __all__ = [
     'smedlParser',
@@ -342,12 +342,12 @@ class smedlParser(Parser):
         self.ast['target'] = self.last_node
         self._token('(')
         self._expression_list_()
-        self.ast.setlist('expression_list', self.last_node)
+        self.ast.setlist('expr_list', self.last_node)
         self._token(')')
 
         self.ast._define(
             ['target'],
-            ['expression_list']
+            ['expr_list']
         )
 
     @graken()
