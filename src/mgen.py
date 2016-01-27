@@ -10,7 +10,7 @@
 from smedl_parser import smedlParser
 from pedl_parser import pedlParser
 from smedl_symboltable import SmedlSymbolTable
-from fsm import FSM, State, Transition
+from fsm import *
 from grako.ast import AST
 from jinja2 import Environment, FileSystemLoader
 import os
@@ -80,6 +80,7 @@ class MonitorGenerator(object):
         self._getParameterNames(smedlAST)
         allFSMs = self._generateFSMs(smedlAST)
 
+        # Output the internal symbol table and FSMs
         if self._printStructs:
             print('\nSMEDL Symbol Table:')
             for k in self._symbolTable:
@@ -88,7 +89,6 @@ class MonitorGenerator(object):
                 print('\nFSM: %s\n' % key)
                 print('%s\n' % fsm)
 
-        # outputSource(smedlST, allFSMs, smedlFilename, helper)
         self._outputToTemplate(allFSMs, pedlsmedlName, helper, pedlAST)
 
 
@@ -157,13 +157,13 @@ class MonitorGenerator(object):
                         elseActions = []
                         for action in trace['else_action']['actions']:
                             if action['state_update']:
-                                elseActions.append('state_update: ' + action['state_update']['target'])
+                                elseActions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
                             if action['raise_stmt']:
-                                elseActions.append('raise: ' + action['raise_stmt']['id'])
+                                elseActions.append(RaiseAction(action['raise_stmt']['id'], action['raise_stmt']['expr_list']))
                             if action['instantiation']:
-                                elseActions.append('instantiation: ' + action['instantiation']['id'])
+                                elseActions.append(InstantiationAction(action['instantiation']['id'], action['instantiation']['state_update_list']))
                             if action['call_stmt']:
-                                elseActions.append('call: ' + action['call_stmt']['target'])
+                                elseActions.append(CallAction(action['call_stmt']['target'], action['call_stmt']['expr_list']))
 
                 # Handle the traces
                 generated_state = None
@@ -188,13 +188,13 @@ class MonitorGenerator(object):
                             actions = []
                             for action in trace['trace_steps'][i]['step_action']['actions']:
                                 if action['state_update']:
-                                    actions.append('state_update: ' + action['state_update']['target'])
+                                    actions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
                                 if action['raise_stmt']:
-                                    actions.append('raise: ' + action['raise_stmt']['id'])
+                                    actions.append(RaiseAction(action['raise_stmt']['id'], action['raise_stmt']['expr_list']))
                                 if action['instantiation']:
-                                    actions.append('instantiation: ' + action['instantiation']['id'])
+                                    actions.append(InstantiationAction(action['instantiation']['id'], action['instantiation']['state_update_list']))
                                 if action['call_stmt']:
-                                    actions.append('call: ' + action['call_stmt']['target'])
+                                    actions.append(CallAction(action['call_stmt']['target'], action['call_stmt']['expr_list']))
                         if not fsm.stateExists(before):
                             fsm.addState(State(before))
                         if self._symbolTable.get(after, 'type') == 'trace_state':
@@ -206,7 +206,7 @@ class MonitorGenerator(object):
                             generated_state = after
                         before_state = fsm.getStateByName(before)
                         after_state = fsm.getStateByName(after)
-                        when = self._formatGuard(trace['trace_steps'][i]['step_event']['when'])
+                        when = self._formatExpression(trace['trace_steps'][i]['step_event']['when'])
                         if when == 'None':
                             when = None
                         fsm.addTransition(Transition(before_state, current, after_state, actions, when, elseState, elseActions))
@@ -254,23 +254,24 @@ class MonitorGenerator(object):
         state_inits = []
         for key, fsm in list(allFSMs.items()):
             stateset = [("%s_%s_%s" % (obj, key, state)).upper() for state in list(fsm.states.keys())]
+            sorted(stateset)
             statesets[key] = stateset
             stateset_str = ", ".join(stateset)
             state_enums.append('typedef enum { ' + stateset_str + ' } %s_%s_state;' % (obj.lower(), key.lower()))
             state_names = ", ".join(['\"%s\"'%(state) for state in list(fsm.states.keys())])
             state_names_arrays.append('const char *%s_%s_states[%d] = {%s};' % (obj.lower(), key.lower(), len(list(fsm.states.keys())), state_names))
-            state_inits.append('    monitor->state[%s_%s] = %s;' % (obj.upper(), key.upper(), stateset[0]))
+            state_inits.append('    monitor->state[%s_%s_SCENARIO] = %s;' % (obj.upper(), key.upper(), stateset[0]))
         values['state_enums'] = '\n'.join(state_enums)
         values['state_names'] = '\n'.join(state_names_arrays)
         values['state_names_array'] = ['%s_%s_states' % (obj.lower(), key.lower()) for key in list(allFSMs.keys())]
         values['state_inits'] = '\n'.join(state_inits)
 
-        events = ['%s_%s' % (obj.upper(), str(e).upper()) for e in self._symbolTable.getEvents()]
+        events = ['%s_%s_EVENT' % (obj.upper(), str(e).upper()) for e in self._symbolTable.getEvents()]
         values['event_enums'] = ', '.join(events)
         errors = ['%s_DEFAULT' % obj.upper()]
         for e in self._symbolTable.getSymbolsByType('event'):
             if self._symbolTable[e]['error']:
-                errors.append('%s_%s' % (obj.upper, e.upper()))
+                errors.append('%s_%s_EVENT' % (obj.upper, e.upper()))
         values['error_enums'] = ', '.join(errors)
 
         values['add_to_map_calls'] = ['add_%s_monitor_to_map(monitor, %s)' % (obj.lower(), i) for i in values['identities_names']]
@@ -303,8 +304,8 @@ class MonitorGenerator(object):
             values['signatures'].append(eventSignature)
             eventFunction.append(eventSignature + ' {')
             for key, fsm in allFSMs.items():
-                reference = 'monitor->state[%s_%s]' % (obj.upper(), key.upper())
-                name_reference = "%s_states_names[%s_%s][monitor->state[%s_%s]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
+                reference = 'monitor->state[%s_%s_SCENARIO]' % (obj.upper(), key.upper())
+                name_reference = "%s_states_names[%s_%s_SCENARIO][monitor->state[%s_%s_SCENARIO]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
                 eventFunction.append('  switch (%s) {' % reference)
                 # TODO: Detect when transitions for an event have the same start state...their guards and actions should be merged
                 for start_state, transitions in fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m))).items():
@@ -316,7 +317,7 @@ class MonitorGenerator(object):
             eventFunction.append('}')
             raiseFunction = self._writeRaiseFunction(m, obj)
 
-            # Build event
+            # Build the event handler function
             if pedlEvent:
                 probeParams = [p for p in monitorParams if p['name'] != 'monitor']
                 probeSignature = 'void %s_%s_probe(%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]))
@@ -355,15 +356,18 @@ class MonitorGenerator(object):
 
             callCases.append(self._writeCallCase(m))
 
+        # Render the monitor template and write it to disk
         out_h.write(template_h.render(values))
         out_c.write(template_c.render(values))
 
+        # Copy pre-written static helper files to the output path
         shutil.copyfile('./templates/actions.h', os.path.dirname(filename) + '/actions.h')
         shutil.copyfile('./templates/actions.c', os.path.dirname(filename) + '/actions.c')
         shutil.copyfile('./templates/monitor_map.h', os.path.dirname(filename) + '/monitor_map.h')
         shutil.copyfile('./templates/monitor_map.c', os.path.dirname(filename) + '/monitor_map.c')
 
 
+    # Translate a SMEDL type to a C type
     def _convertTypeForC(self, smedlType):
         return {
             'int': 'int',
@@ -374,6 +378,7 @@ class MonitorGenerator(object):
         }[smedlType]
 
 
+    # Write out the switch statement case for a SMEDL trace transition
     def _writeCaseTransition(self, obj, transitions, currentState, stateName, scenario):
         output = ['    case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), transitions[0].startState.name.upper())]
 
@@ -387,35 +392,35 @@ class MonitorGenerator(object):
             print("Scenario: ", scenario)
             print("\n")
 
-        sorted(transitions, key = lambda trans: trans.guard is not None)
+        sorted(transitions, key = lambda trans: trans.guard)
         for i in range(len(transitions)):
             if i == 0 and transitions[i].guard:
-                output.append('      if(' + transitions[i].guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
-                if transitions[i].nextActions is not None:
+                output.append('      if(' + transitions[i].guard.replace('this.', 'monitor->') + ') {\n')
+                if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s;\n' % action)
+                        output.append('        %s;\n' % self._writeAction(action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 output.append('      }\n')
             elif len(transitions) == 1:
-                if transitions[i].nextActions is not None:
+                if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s;\n' % action)
+                        output.append('        %s;\n' % self._writeAction(action))
                 output.append('      %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 break
             elif transitions[i].guard:
-                output.append('      else if(' + transitions[i].guard.replace('this.', 'monitor->').replace('this', 'monitor') + ') {\n')
-                if transitions[i].nextActions is not None:
+                output.append('      else if(' + transitions[i].guard.replace('this.', 'monitor->') + ') {\n')
+                if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s;\n' % action)
+                        output.append('        %s;\n' % self._writeAction(action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 output.append('      }\n')
 
             # Handle Else (an Else state is defined, or reaching an Else denotes an error condition)
             if transitions[i].elseState and ((i+1 < len(transitions) and transitions[i+1].guard is None) or i+1 == len(transitions)):
                 output.append('      else {\n')
-                if transitions[i].elseActions is not None:
+                if transitions[i].elseActions:
                     for action in transitions[i].elseActions:
-                        output.append('        %s;\n' % action)
+                        output.append('        %s;\n' % self._writeAction(action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
                 output.append('      }\n')
             else:
@@ -424,6 +429,37 @@ class MonitorGenerator(object):
                 output.append('      }\n')
         output.append('      break;\n')
         return "".join(output)
+
+
+    def _writeAction(self, action):
+        if action.type == ActionType.StateUpdate:
+            out = "monitor->" + action.target + ' ' + action.operator
+            if action.expression:
+                out += ' ' + self._formatExpression(action.expression)
+            return out
+        elif action.type == ActionType.Raise:
+            #TODO!!!
+            return ""
+        elif action.type == ActionType.Instantiation:
+            #TODO!!!
+            return ""
+        elif action.type == ActionType.Call:
+            #TODO!!!
+            return ""
+        output = []
+        output.append('    case %s: ;' % event.upper())
+        paramString = ','.join(['%s %s'%(p['type'], p['name']) for p in self._symbolTable.get(event, 'params')])
+        if paramString == '':
+            output.append('      %s(monitor);' % event)
+        else:
+            params = self._getEventParams(paramString)
+            for p in params:
+                output.append('      %s %s_%s = monitor->action_queue->params->%c;' % (p[0], p[1], event, p[0][0]))
+                output.append('      pop_param(&monitor->action_queue->params);')
+            callParams = ", ".join('%s_%s' % (p[1], event) for p in params)
+            output.append('      %s(%s);' % (event, ", ".join(['monitor', callParams])))
+        output.append('      break;')
+        return '\n'.join(output)
 
 
     def _getEventParams(self, paramString):
@@ -437,7 +473,6 @@ class MonitorGenerator(object):
     def _writeCallCase(self, event):
         output = []
         output.append('    case %s: ;' % event.upper())
-        # paramString = str(symbolTable.get(event)['params'])
         paramString = ','.join(['%s %s'%(p['type'], p['name']) for p in self._symbolTable.get(event, 'params')])
         if paramString == '':
             output.append('      %s(monitor);' % event)
@@ -453,7 +488,6 @@ class MonitorGenerator(object):
 
 
     def _writeRaiseFunction(self, event, obj):
-        # paramString = symbolTable.get(event, 'params')
         paramString = ','.join(['%s %s'%(p['type'], p['name']) for p in self._symbolTable.get(event, 'params')])
         if len(paramString) > 0:
             paramString = obj.title() + "Monitor* monitor, " + paramString
@@ -473,7 +507,7 @@ class MonitorGenerator(object):
                     output.append('  push_param(&p_head, NULL, NULL, &%s, NULL);'%p[1])
                 elif p[0] == 'pointer':
                     output.append('  push_param(&p_head, NULL, NULL, NULL, &%s);'%p[1])
-        output.append('  push_action(&monitor->action_queue, %s_%s, p_head);' % (obj.upper(), event.upper()))
+        output.append('  push_action(&monitor->action_queue, %s_%s_EVENT, p_head);' % (obj.upper(), event.upper()))
         output.append('}\n\n')
         return {'code':output, 'signature':signature}
 
@@ -521,24 +555,24 @@ class MonitorGenerator(object):
             return None
 
 
-    def _formatGuard(self, guard):
-        guardStr = self._guardToString(guard)
-        guardStr = self._addThisDotToStateVariables(guardStr)
-        # guard = checkReferences(guard) # TODO--------
-        return self._removeParentheses(guardStr)
+    def _formatExpression(self, expr):
+        exprStr = self._expressionToString(expr)
+        exprStr = self._addThisDotToStateVariables(exprStr)
+        # expr = checkReferences(expr) # TODO--------
+        return self._removeParentheses(exprStr)
 
 
-    def _guardToString(self, object):
+    def _expressionToString(self, object):
         if isinstance(object, AST):
             for k, v in list(object.items()):
                 if k == 'or_ex':
-                    ored = [self._guardToString(val) for val in v]
+                    ored = [self._expressionToString(val) for val in v]
                     return "(" + " || ".join(ored) + ")"
                 elif k == 'and_ex':
-                    anded = [self._guardToString(val) for val in v]
+                    anded = [self._expressionToString(val) for val in v]
                     return "(" + " && ".join(anded) + ")"
                 elif k == 'not_ex':
-                    return "!(%s)" % self._guardToString(v)
+                    return "!(%s)" % self._expressionToString(v)
                 elif k == 'comp':
                     comps = []
                     for val in v:
@@ -551,16 +585,16 @@ class MonitorGenerator(object):
                             comps.append(self._termToString(val))
                     return (" %s " % object['operator']).join(comps)
                 elif k == 'index':
-                    return "[%s]" % self._guardToString(v)
+                    return "[%s]" % self._expressionToString(v)
                 elif k == 'params':
                     if isinstance(v, list):
-                        return "(%s)" % (", ".join([self._guardToString(val) for val in v]))
+                        return "(%s)" % (", ".join([self._expressionToString(val) for val in v]))
                     else:
-                        return "(%s)" % self._guardToString(v)
+                        return "(%s)" % self._expressionToString(v)
                 elif k == 'dot':
                     trailer = ""
                     if object['trailer']:
-                        trailer = self._guardToString(object['trailer'])
+                        trailer = self._expressionToString(object['trailer'])
                     return ".%s%s" % (v, trailer)
                 elif k == 'arith':
                     operators = object.get('operator')
@@ -591,7 +625,7 @@ class MonitorGenerator(object):
     def _termToString(self, term):
         if isinstance(term, AST):
             if(term.get('arith')):
-                return "(" + self._guardToString(term) + ")"
+                return "(" + self._expressionToString(term) + ")"
             unary = term.get('unary') or ""
             if isinstance(unary, list):
                 unary = "".join(unary)
@@ -599,7 +633,7 @@ class MonitorGenerator(object):
             term_text = "%s%s" % (unary, atom)
             if isinstance(term.get('trailer'), AST):
                 for k, v in list(term.items()):
-                    term_text = "%s%s" % (term_text, self._guardToString(v) or "")
+                    term_text = "%s%s" % (term_text, self._expressionToString(v) or "")
             return term_text
         else:
             return ""
