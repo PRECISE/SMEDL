@@ -7,7 +7,7 @@
 # Peter Gebhard (pgeb@seas.upenn.edu)
 #-------------------------------------------------------------------------------
 
-from parsers import *
+from parser import *
 from fsm import *
 from grako.ast import AST
 from jinja2 import Environment, FileSystemLoader
