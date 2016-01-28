@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #-------------------------------------------------------------------------------
+# 
 # smedl_symboltable.py
 #
 # Peter Gebhard (pgeb@seas.upenn.edu)

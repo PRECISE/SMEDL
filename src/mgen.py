@@ -7,9 +7,7 @@
 # Peter Gebhard (pgeb@seas.upenn.edu)
 #-------------------------------------------------------------------------------
 
-from smedl_parser import smedlParser
-from pedl_parser import pedlParser
-from smedl_symboltable import SmedlSymbolTable
+from parsers import *
 from fsm import *
 from grako.ast import AST
 from jinja2 import Environment, FileSystemLoader
