@@ -3,14 +3,14 @@ object TabMon
         opaque id;
         opaque test;
     state
-        URL currentUrl, test;
+        URL currentUrl, testUrl;
         Renderer rengine;
     events
-        imported store(Tab, Cookie), render(Renderer, URL);
+        imported store(Tab, Cookie), render(Renderer, URL), displayUrl(Tab, URL);
         exported error cookieIntegrityAlarm;
     scenarios
         CookieIntegrity:
         Tab -> store(this, cookie) when isSubdomain(cookie.domain, currentUrl.getHost()) -> Tab
             else { raise cookieIntegrityAlarm } -> Tab
         PageRendering:
-        Tab -> Kernel.displayURL(this, url) -> render(rengine, url) {currentUrl=url} -> Tab
+        Tab -> displayUrl(this, url) -> render(rengine, url) { currentUrl = url } -> Tab

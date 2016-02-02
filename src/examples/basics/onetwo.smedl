@@ -3,5 +3,5 @@ object OneTwoMon
         imported foo;
     scenarios
         sc1:
-           OneTwo -> foo -> Min -> foo -> TwoOne
+           OneTwo -> foo -> foo -> TwoOne
 
