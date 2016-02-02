@@ -36,7 +36,6 @@ class StateUpdateAction(Action):
         self.operator = operator
         self.expression = expression
 
-
     def __str__(self):
         out = "ActionType: State Update; Target: " + self.target + "; Operator: " + self.operator
         if self.expression:
@@ -52,7 +51,6 @@ class RaiseAction(Action):
         self.event = event
         self.params = params
 
-
     def __str__(self):
         out = "ActionType: Raise; Event raised: " + self.event + "; Event parameters : "
         out += ', '.join(t for t in self.params)
@@ -67,7 +65,6 @@ class InstantiationAction(Action):
         self.object = object
         self.params = params
 
-
     def __str__(self):
         out = "ActionType: Instantiation; Object instantiated: " + self.object + "; Object instantiation parameters : "
         out += ', '.join(t for t in self.params)
@@ -81,8 +78,6 @@ class CallAction(Action):
         self.type = ActionType.Call
         self.target = target
         self.params = AstToPython.expr_list(params)
-        print("Call: " + str(self.target) + "   " + str(self.params))
-
 
     def __str__(self):
         out = "ActionType: Call; Call target: " + self.target + "; Call parameters : "
