@@ -3,6 +3,7 @@ bin/
 lib/
 man/
 .settings/
+.env/
 
 # Ignored files
 *.DS_Store
