@@ -137,6 +137,19 @@ class MonitorGenerator(object):
                             # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
                             paramsList = self._findFunctionParams(current, params, ast)
                             self._symbolTable.update(current, "params", paramsList)
+                if trace['else_actions'] is not None:
+                    for i in range(0, len(trace['else_actions']['actions'])):
+                        if trace['else_actions']['actions'][i]['raise_stmt'] is not None:
+                            current = trace['else_actions']['actions'][i]['raise_stmt']['id']
+                            if 'event' in self._symbolTable.get(current, 'type'):
+                                # Handle events with no parameters defined:
+                                if trace['else_actions']['actions'][i]['raise_stmt']['expr_list'] is None:
+                                    self._symbolTable.update(current, "params", [])
+                                else:
+                                    params = trace['else_actions']['actions'][i]['raise_stmt']['expr_list']
+                                    # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
+                                    paramsList = self._findFunctionParams(current, params, ast)
+                                    self._symbolTable.update(current, "params", paramsList)
 
 
     def _generateFSMs(self, ast):
