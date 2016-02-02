@@ -523,7 +523,7 @@ class MonitorGenerator(object):
 
 
     def _writeRaiseFunction(self, event, obj):
-        paramString = ','.join(['%s %s'%(p['type'], p['name']) for p in self._symbolTable.get(event, 'params')])
+        paramString = ', '.join(['%s %s'%(p['type'], p['name']) for p in self._symbolTable.get(event, 'params')])
         if len(paramString) > 0:
             paramString = obj.title() + "Monitor* monitor, " + paramString
         else:
