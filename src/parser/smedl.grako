@@ -43,12 +43,12 @@ scenario_definition
 trace_definition
     =
     start_state:identifier '->' {trace_steps+:step_definition '->'}+  end_state:identifier
-          ['else' [else_action:action] '->' else_state:identifier]
+          ['else' [else_actions:actions] '->' else_state:identifier]
     ;
 
 step_definition
     =
-      step_event:event_instance [step_action:action]
+      step_event:event_instance [step_actions:actions]
     ;
 
 event_instance
@@ -56,9 +56,9 @@ event_instance
     expression:expression ['when' when:expression]
     ;
 
-action
+actions
     =
-    '{' actions+:nonempty_action_item_list '}'
+    '{' actions+:action_item_list '}'
     ;
 
 action_item
@@ -200,7 +200,7 @@ state_update_list
     | ()
     ;
 
-nonempty_action_item_list
+action_item_list
     =
       @:action_item {';' @:action_item}*
     ;

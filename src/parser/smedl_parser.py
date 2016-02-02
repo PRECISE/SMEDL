@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS
 
 
-__version__ = (2016, 1, 27, 3, 13, 34, 2)
+__version__ = (2016, 2, 2, 15, 47, 26, 1)
 
 __all__ = [
     'smedlParser',
@@ -204,14 +204,14 @@ class smedlParser(Parser):
         with self._optional():
             self._token('else')
             with self._optional():
-                self._action_()
-                self.ast['else_action'] = self.last_node
+                self._actions_()
+                self.ast['else_actions'] = self.last_node
             self._token('->')
             self._identifier_()
             self.ast['else_state'] = self.last_node
 
         self.ast._define(
-            ['start_state', 'end_state', 'else_action', 'else_state'],
+            ['start_state', 'end_state', 'else_actions', 'else_state'],
             ['trace_steps']
         )
 
@@ -220,11 +220,11 @@ class smedlParser(Parser):
         self._event_instance_()
         self.ast['step_event'] = self.last_node
         with self._optional():
-            self._action_()
-            self.ast['step_action'] = self.last_node
+            self._actions_()
+            self.ast['step_actions'] = self.last_node
 
         self.ast._define(
-            ['step_event', 'step_action'],
+            ['step_event', 'step_actions'],
             []
         )
 
@@ -243,9 +243,9 @@ class smedlParser(Parser):
         )
 
     @graken()
-    def _action_(self):
+    def _actions_(self):
         self._token('{')
-        self._nonempty_action_item_list_()
+        self._action_item_list_()
         self.ast.setlist('actions', self.last_node)
         self._token('}')
 
@@ -698,7 +698,7 @@ class smedlParser(Parser):
             self._error('no available options')
 
     @graken()
-    def _nonempty_action_item_list_(self):
+    def _action_item_list_(self):
         self._action_item_()
         self.ast['@'] = self.last_node
 
@@ -734,7 +734,7 @@ class smedlSemantics(object):
     def event_instance(self, ast):
         return ast
 
-    def action(self, ast):
+    def actions(self, ast):
         return ast
 
     def action_item(self, ast):
@@ -806,7 +806,7 @@ class smedlSemantics(object):
     def state_update_list(self, ast):
         return ast
 
-    def nonempty_action_item_list(self, ast):
+    def action_item_list(self, ast):
         return ast
 
 
