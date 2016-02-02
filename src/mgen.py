@@ -70,6 +70,8 @@ class MonitorGenerator(object):
                 print('\nSMEDL JSON:')
                 print(json.dumps(smedlAST, indent=2))
         else:
+            if '.smedl' in pedlsmedlName or '.pedl' in pedlsmedlName:
+                raise ValueError('Did you accidentally include .smedl or .pedl in the input filename? Try again without including the extension.')
             raise ValueError('No matching SMEDL file found.')
 
         # Process the SMEDL AST
@@ -230,14 +232,18 @@ class MonitorGenerator(object):
         state_vars = [{'type': self._symbolTable.get(v)['datatype'], 'name': v} for v in self._symbolTable.getSymbolsByType('state')]
         for s in state_vars:
             s['c_type'] = self._convertTypeForC(s['type'])
-        identities = [{'type': self._symbolTable.get(v)['datatype'], 'name': v} for v in self._symbolTable.getSymbolsByType('identity')]
+
+        # If there are no identities defined, make a default one:
+        if len(self._symbolTable.getSymbolsByType('identity')) == 0:
+            identities = [{'type': 'opaque', 'name': 'id'}]
+        else:
+            identities = [{'type': self._symbolTable.get(v)['datatype'], 'name': v} for v in self._symbolTable.getSymbolsByType('identity')]
         for id in identities:
             id['c_type'] = self._convertTypeForC(id['type'])
         values = dict()
         values['multithreaded'] = True # command line arg for this?
         values['identities'] = identities
         values['obj'] = obj
-        values['identities'] = identities
         values['state_vars'] = state_vars
         values['state_var_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in state_vars])
         values['identity_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in identities])
@@ -267,7 +273,7 @@ class MonitorGenerator(object):
             stateset_str = ", ".join(stateset)
             state_enums.append('typedef enum { ' + stateset_str + ' } %s_%s_state;' % (obj.lower(), key.lower()))
             state_names = ", ".join(['\"%s\"'%(state) for state in list(fsm.states.keys())])
-            state_names_arrays.append('const char *%s_%s_states[%d] = {%s};' % (obj.lower(), key.lower(), len(list(fsm.states.keys())), state_names))
+            state_names_arrays.append('const char *%s_%s_states[%d] = { %s };' % (obj.lower(), key.lower(), len(list(fsm.states.keys())), state_names))
             state_inits.append('    monitor->state[%s_%s_SCENARIO] = %s;' % (obj.upper(), key.upper(), startstate))
         values['state_enums'] = '\n'.join(state_enums)
         values['state_names'] = '\n'.join(state_names_arrays)
@@ -377,13 +383,17 @@ class MonitorGenerator(object):
 
     # Translate a SMEDL type to a C type
     def _convertTypeForC(self, smedlType):
-        return {
+        typeMap =  {
             'int': 'int',
             'float': 'float',
             'pointer': 'void*',
             'thread': 'pthread_t',
             'opaque': 'void*'
-        }[smedlType]
+        }
+        if smedlType in typeMap:
+            return typeMap[smedlType]
+        else:
+            return smedlType
 
 
     # Write out the switch statement case for a SMEDL trace transition
@@ -433,7 +443,7 @@ class MonitorGenerator(object):
                 output.append('      }\n')
             else:
                 output.append('      else {\n')
-                output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, action))
+                output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, currentState))
                 output.append('      }\n')
         output.append('      break;\n')
         return "".join(output)
@@ -564,54 +574,11 @@ class MonitorGenerator(object):
 
 
     def _formatExpression(self, expr):
-        exprStr = self._expressionToString(expr)
+        exprStr = AstToPython.expr(expr)
         exprStr = self._addThisDotToStateVariables(exprStr)
         # expr = checkReferences(expr) # TODO--------
         return self._removeParentheses(exprStr)
 
-
-    def _expressionToString(self, object):
-        if isinstance(object, AST):
-            for k, v in list(object.items()):
-                if k == 'or_ex':
-                    ored = [self._expressionToString(val) for val in v]
-                    return "(" + " || ".join(ored) + ")"
-                elif k == 'and_ex':
-                    anded = [self._expressionToString(val) for val in v]
-                    return "(" + " && ".join(anded) + ")"
-                elif k == 'not_ex':
-                    return "!(%s)" % self._expressionToString(v)
-                elif k == 'comp':
-                    comps = []
-                    for val in v:
-                        arith = val.get('arith')
-                        if arith:
-                            operators = val.get('operator')
-                            result = self._arithToString(arith, operators)
-                            comps.append(" ".join(result))
-                        else:
-                            comps.append(self._termToString(val))
-                    return (" %s " % object['operator']).join(comps)
-                elif k == 'index':
-                    return "[%s]" % self._expressionToString(v)
-                elif k == 'params':
-                    if isinstance(v, list):
-                        return "(%s)" % (", ".join([self._expressionToString(val) for val in v]))
-                    else:
-                        return "(%s)" % self._expressionToString(v)
-                elif k == 'dot':
-                    trailer = ""
-                    if object['trailer']:
-                        trailer = self._expressionToString(object['trailer'])
-                    return ".%s%s" % (v, trailer)
-                elif k == 'arith':
-                    operators = object.get('operator')
-                    result = self._arithToString(v, operators)
-                    return " ".join(result)
-                else:
-                    return self._termToString(object)
-        elif object is None:
-            return ""
 
     #TODO - Write test for this!
     def _addThisDotToStateVariables(self, string):
@@ -621,30 +588,6 @@ class MonitorGenerator(object):
                 if string[index-5:index] != 'this.':  # Prevent duplicated 'this.'
                     string = string[:index] + 'this.' + string[index:]
         return string
-
-
-    def _arithToString(self, terms, operators):
-        result = [None]*(len(terms)+len(operators))
-        result[::2] = [self._termToString(term) for term in terms]
-        result[1::2] = operators
-        return result
-
-
-    def _termToString(self, term):
-        if isinstance(term, AST):
-            if(term.get('arith')):
-                return "(" + self._expressionToString(term) + ")"
-            unary = term.get('unary') or ""
-            if isinstance(unary, list):
-                unary = "".join(unary)
-            atom = term.get('atom') or ""
-            term_text = "%s%s" % (unary, atom)
-            if isinstance(term.get('trailer'), AST):
-                for k, v in list(term.items()):
-                    term_text = "%s%s" % (term_text, self._expressionToString(v) or "")
-            return term_text
-        else:
-            return ""
 
 
     def _removeParentheses(self, guard):
