@@ -132,11 +132,11 @@ class MonitorGenerator(object):
                         # Handle events with no parameters defined:
                         if trace['trace_steps'][i]['step_event']['expression']['trailer'] is None:
                             self._symbolTable.update(current, "params", [])
-                            return
-                        params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
-                        # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
-                        paramsList = self._findFunctionParams(current, params, ast)
-                        self._symbolTable.update(current, "params", paramsList)
+                        else:
+                            params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
+                            # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
+                            paramsList = self._findFunctionParams(current, params, ast)
+                            self._symbolTable.update(current, "params", paramsList)
 
 
     def _generateFSMs(self, ast):
@@ -157,9 +157,9 @@ class MonitorGenerator(object):
                     if not fsm.stateExists(elseState):
                         fsm.addState(State(elseState))
                     elseState = fsm.getStateByName(elseState)
-                    if trace['else_action']:
+                    if trace['else_actions']:
                         elseActions = []
-                        for action in trace['else_action']['actions']:
+                        for action in trace['else_actions']['actions']:
                             if action['state_update']:
                                 elseActions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
                             if action['raise_stmt']:
@@ -188,9 +188,9 @@ class MonitorGenerator(object):
 
                     if 'event' in self._symbolTable.get(current, 'type'):
                         actions = None
-                        if trace['trace_steps'][i]['step_action']:
+                        if trace['trace_steps'][i]['step_actions']:
                             actions = []
-                            for action in trace['trace_steps'][i]['step_action']['actions']:
+                            for action in trace['trace_steps'][i]['step_actions']['actions']:
                                 if action['state_update']:
                                     actions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
                                 if action['raise_stmt']:
@@ -218,7 +218,7 @@ class MonitorGenerator(object):
                         if i > 0:
                             raise TypeError("Named states only valid at beginning/end of trace. Invalid: %s" % current)
                         if 'event' not in self._symbolTable.get(before, 'type') or 'event' not in self._symbolTable.get(after, 'type'):
-                            raise TypeError("Invalid state -> state transition: %s -> %s" % (before, after))
+                            raise TypeError("Invalid state to state transition: %s -> %s" % (before, after))
 
                 # Set the start state
                 if fsm.startState is None:
@@ -317,7 +317,7 @@ class MonitorGenerator(object):
                             identityParams.append({'name': name, 'c_type': c_type, 'datatype': datatype})
                             print('%s pedl params: %s %s'%(m, c_type, name))
             monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
-                [{'name':p['name'], 'c_type':self._convertTypeForC(p['type'])} for p in self._symbolTable.get(m, 'params')]
+                [{'name': p['name'], 'c_type': self._convertTypeForC(p['type'])} for p in self._symbolTable.get(m, 'params')]
             eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
             values['signatures'].append(eventSignature)
             eventFunction.append(eventSignature + ' {')
