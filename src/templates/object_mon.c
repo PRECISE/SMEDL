@@ -2,8 +2,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "{{base_file_name}}_mon.h"
-{%- if helper %}{{ '\n' }}#include "{{helper}}"{% endif %}
+#include "{{ base_file_name }}_mon.h"
+{%- if helper %}{{ '\n' }}#include "{{ helper }}"{% endif %}
 
 typedef enum { {{ identities_names|join(', ') }} } {{ obj|lower }}_identity;
 const identity_type {{ obj|lower }}_identity_types[{{ obj|upper }}_MONITOR_IDENTITIES] = { {{ identities_types|join(', ') }} };
