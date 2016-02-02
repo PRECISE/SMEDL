@@ -2,11 +2,14 @@
 bin/
 lib/
 man/
+.settings/
 
 # Ignored files
 *.DS_Store
 *.pyc
 *.o
+.project
+.pydevproject
 src/.coverage
 src/testcases/pqueue/c/pq
 pip-selfcheck.json
