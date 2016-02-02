@@ -167,7 +167,6 @@ trailer
 
 target
     =
-    (* To be improved *)
     identifier
     ;
 
