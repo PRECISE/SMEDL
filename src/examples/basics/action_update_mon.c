@@ -9,7 +9,7 @@ const identity_type actup_identity_types[ACTUP_MONITOR_IDENTITIES] = {  };
 
 typedef enum { ACTUP_SC1_SCENARIO } actup_scenario;
 typedef enum { ACTUP_SC1_MIN1 } actup_sc1_state;
-typedef enum { ACTUP_FOO } actup_event;
+typedef enum { ACTUP_FOO_EVENT } actup_event;
 typedef enum { ACTUP_DEFAULT } actup_error;
 const char *actup_sc1_states[1] = {"Min1"};
 const char **actup_states_names[1] = { actup_sc1_states };
@@ -18,10 +18,44 @@ ActupMonitor* init_actup_monitor( ActupData *d ) {
     ActupMonitor* monitor = (ActupMonitor*)malloc(sizeof(ActupMonitor));
     pthread_mutex_init(&monitor->monitor_lock, NULL);
     monitor->bar = d->bar;
-    monitor->state[ACTUP_SC1] = ACTUP_SC1_MIN1;
+    monitor->state[ACTUP_SC1_SCENARIO] = ACTUP_SC1_MIN1;
     put_actup_monitor(monitor);
     return monitor;
 }
+
+
+/*
+ * Monitor Event Handlers
+ */
+
+void actup_foo(ActupMonitor* monitor, int x) {
+  switch (monitor->state[ACTUP_SC1_SCENARIO]) {
+    case ACTUP_SC1_MIN1:
+      if(monitor->bar == 1) {
+        monitor->bar = x;
+        monitor->state[ACTUP_SC1_SCENARIO] = ACTUP_SC1_MIN1;
+      }
+      else {
+        raise_error("sc1", actup_states_names[ACTUP_SC1_SCENARIO][monitor->state[ACTUP_SC1_SCENARIO]], "ActionType: State Update; Target: bar; Operator: =; Expression: AST({'trailer': None, 'unary': None, 'atom': 'x'})", "DEFAULT");
+      }
+      break;
+
+    default:
+      raise_error("actup_sc1", actup_states_names[ACTUP_SC1_SCENARIO][monitor->state[ACTUP_SC1_SCENARIO]], "foo", "DEFAULT");
+      break;
+  }
+}
+
+void raise_actup_foo(ActupMonitor* monitor, int x) {
+  param *p_head = NULL;
+  push_param(&p_head, &x, NULL, NULL, NULL);
+  push_action(&monitor->action_queue, ACTUP_FOO_EVENT, p_head);
+}
+
+
+/*
+ * Monitor Utility Functions
+ */
 
 int init_actup_monitor_maps() {
     if (pthread_mutex_init(&actup_monitor_maps_lock, NULL) != 0) {
@@ -103,30 +137,6 @@ ActupMonitorRecord* filter_actup_monitors_by_identity(ActupMonitorRecord* before
     return results;
 }
 
-void actup_foo(ActupMonitor* monitor, int x) {
-  switch (monitor->state[ACTUP_SC1]) {
-    case ACTUP_SC1_MIN1:
-      monitor->state[ACTUP_SC1] = ACTUP_SC1_MIN1;
-      break;
-
-    default:
-      raise_error("actup_sc1", actup_states_names[ACTUP_SC1][monitor->state[ACTUP_SC1]], "foo", "DEFAULT");
-      break;
-  }
-}
-
-void raise_actup_foo(ActupMonitor* monitor, int x) {
-  param *p_head = NULL;
-  push_param(&p_head, &x, NULL, NULL, NULL);
-  push_action(&monitor->action_queue, ACTUP_FOO, p_head);
-}
-
-
 void raise_error(char *scen, const char *state, char *action, char *type) {
   printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}", scen, state, action, type);
 }
-
-int main() { //To prevent warnings for test compile (they even happen with -c)
-  return 0;
-}
-

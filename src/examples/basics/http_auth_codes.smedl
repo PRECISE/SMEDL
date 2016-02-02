@@ -8,5 +8,5 @@ object WebServerMon
         imported request(URL), response(HTTPStatusCode);
     scenarios
         Authentication:
-        WebServer -> request(url) when authRequired(url) -> response(HTTPStatusCode.401)-> WebServer
-            else { response(HTTPStatusCode.403) } -> WebServer
+        WebServer -> request(url) when authRequired(url) -> response(code) when code == 401 -> WebServer
+            else { response(403) } -> WebServer
