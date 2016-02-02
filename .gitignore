@@ -5,7 +5,7 @@ src/.coverage
 bin/
 src/testcases/pqueue/c/pq
 *.DS_Store
-lib/
+lib/*
 pip-selfcheck.json
 man/
 pyvenv.cfg
