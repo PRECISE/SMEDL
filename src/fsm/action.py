@@ -11,6 +11,7 @@
 
 import collections
 from enum import Enum
+from parser.astToPython import AstToPython
 
 class Action(object):
 
@@ -37,12 +38,9 @@ class StateUpdateAction(Action):
 
 
     def __str__(self):
-        out = "ActionType: State Update\n"
-        out += "Target: " + self.target + "\n"
-        out += "Operator: " + self.operator + "\n"
+        out = "ActionType: State Update; Target: " + self.target + "; Operator: " + self.operator
         if self.expression:
-            out += "Expression: " + str(self.expression) + "\n"
-        out += "\n"
+            out += "; Expression: " + str(self.expression)
         return out
 
 
@@ -56,11 +54,8 @@ class RaiseAction(Action):
 
 
     def __str__(self):
-        out = "ActionType: Raise\n"
-        out += "Event raised: " + self.event + "\n"
-        out += "Event parameters : "
+        out = "ActionType: Raise; Event raised: " + self.event + "; Event parameters : "
         out += ', '.join(t for t in self.params)
-        out += "\n\n"
         return out
 
 
@@ -74,11 +69,8 @@ class InstantiationAction(Action):
 
 
     def __str__(self):
-        out = "ActionType: Instantiation\n"
-        out += "Object instantiated: " + self.object + "\n"
-        out += "Object instantiation parameters : "
+        out = "ActionType: Instantiation; Object instantiated: " + self.object + "; Object instantiation parameters : "
         out += ', '.join(t for t in self.params)
-        out += "\n\n"
         return out
 
 
@@ -88,13 +80,11 @@ class CallAction(Action):
         super(CallAction, self).__init__()
         self.type = ActionType.Call
         self.target = target
-        self.params = params
+        self.params = AstToPython.expr_list(params)
+        print("Call: " + str(self.target) + "   " + str(self.params))
 
 
     def __str__(self):
-        out = "ActionType: Call\n"
-        out += "Call target: " + self.target + "\n"
-        out += "Call parameters : "
+        out = "ActionType: Call; Call target: " + self.target + "; Call parameters : "
         out += ', '.join(t for t in self.params)
-        out += "\n\n"
         return out
