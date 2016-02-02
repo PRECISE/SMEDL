@@ -1,11 +1,13 @@
-*.pyc
-src/.coverage
-*.o
-.env
+# Ignored directories
 bin/
-src/testcases/pqueue/c/pq
-*.DS_Store
-lib/*
-pip-selfcheck.json
+lib/
 man/
+
+# Ignored files
+*.DS_Store
+*.pyc
+*.o
+src/.coverage
+src/testcases/pqueue/c/pq
+pip-selfcheck.json
 pyvenv.cfg
