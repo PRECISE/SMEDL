@@ -83,15 +83,15 @@ To generate a SMEDL parser using the grammar:
 To parse a SMEDL file using the generated parser:
 
       python parser/smedl_parser.py example.smedl object
-    ( python     PARSER              INPUT_FILE   START_RULE )
+    ( python      PARSER             INPUT_FILE   START_RULE )
 
 (Use '-t' command-line option to enable debug tracing)
 
 
 ## Updating from the repository
 ----------------------------
-The canonical repository for this project is located at
-[SMEDL](https://gitlab.precise.seas.upenn.edu/pgebhard/smedl).
+The canonical repository for this project is located on the
+[PRECISE GitLab](https://gitlab.precise.seas.upenn.edu/pgebhard/smedl).
 
 At the moment, this is an internal repository, so please contact
 [Peter Gebhard](pgeb@seas.upenn.edu) for access.
