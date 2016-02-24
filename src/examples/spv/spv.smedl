@@ -1,0 +1,13 @@
+object SPV
+    state
+        int last_time;
+    events
+        imported parse_record(int, float, float, int);
+        exported timestep_error(int, int);
+    scenarios
+        parse_record:
+           Start -> parse_record(time,lat,lon,ret) when time > last_time { last_time = time } -> Start
+                                                   else { raise timestep_error(time, last_time) } -> Start
+        after_end:
+           Start -> parse_record(time,lat,lon,ret) when ret == -1 -> End
+           End -> parse_record(time,lat,lon,ret) -> Error

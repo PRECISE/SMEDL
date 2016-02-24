@@ -553,6 +553,8 @@ class MonitorGenerator(object):
         if isinstance(params, AST):
             names.append(str(params['atom']))
         elif isinstance(params, list):
+            if isinstance(params[0], list):
+                params = params[0] # Unpack from extra list wrapping
             for elem in params:
                 if isinstance(elem, AST):
                     names.append(str(elem['atom']))
@@ -563,6 +565,14 @@ class MonitorGenerator(object):
             types = self._getParamTypes(function, ast['internal_events'])
         if types is None:  # probably never raised - called only for events in symbolTable
             raise ValueError("Unrecognized function, %s, found in scenarios" % function)
+
+        if self._debug:
+            print ("*** Finding function parameters ***")
+            print("Function name: ", function)
+            print("Function params: ", params)
+            print("Param names: ", names)
+            print("Param types: ", types)
+
         if len(names) != len(types):
             raise ValueError("Invalid number of parameters for %s" % function)
         return [{'type':types[i], 'name':names[i]} for i in range(len(names))]
