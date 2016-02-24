@@ -10,7 +10,7 @@
 
 ## Getting started
 ---------------
-A [Python virtual environment](https://virtualenv.readthedocs.org/en/latest/)
+A [Python virtual environment](https://docs.python.org/3/library/venv.html)
 including [Python 3](https://docs.python.org/3/) and all required Python
 packages has been defined to simplify the process of getting started with the
 tool.
