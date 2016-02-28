@@ -123,5 +123,5 @@ int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
 }
 
 void raise_error(char *scen, const char *state, char *action, char *type) {
-  printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}", scen, state, action, type);
+  printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
 }
