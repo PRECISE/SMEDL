@@ -1,0 +1,20 @@
+// monitor is associated with the variable through which access is performed.  
+// Updates to the variable reinitialize the monitor
+
+object OVFMon
+
+  identity
+    opaque buffer;
+
+  state
+    int size;
+
+  events
+    imported reinit(int), write(int);
+
+  scenarios
+    bufaccess:
+      Init -> reinit(new_siz) { size = new_siz } -> Ready 
+      Ready -> reinit(new_siz) { size = new_siz } -> Ready
+      Ready -> write(wsiz) when wsiz <= size -> Ready
+//             else Error
