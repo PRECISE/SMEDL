@@ -1,5 +1,6 @@
 #include "monitor_map.h"
 #include "actions.h"
+#include <stdio.h> // For the log file
 {%- if multithreaded %}{{ '\n' }}#include <pthread.h>{% endif %}
 
 #define {{ obj|upper }}_MONITOR_MAP_SIZE 100 // number of buckets
@@ -16,6 +17,7 @@ typedef struct {{ obj|title }}Monitor {
   int state[{{ scenario_names|length }}];
 {{ state_var_declarations }}
   action *action_queue;
+  FILE *logFile;
 } {{ obj|title }}Monitor;
 
 typedef struct {{ obj|title }}MonitorRecord {
@@ -31,6 +33,7 @@ typedef struct {{ obj|title }}MonitorMap {
 pthread_mutex_t {{ obj|lower }}_monitor_maps_lock;
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor({{ obj|title }}Data*);
+void destroy_monitor({{ obj|title }}Monitor*);
 
 /*
  * Monitor Event Handlers

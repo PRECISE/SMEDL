@@ -473,28 +473,36 @@ class MonitorGenerator(object):
                 out += ' ' + self._formatExpression(action.expression)
             return out
         elif action.type == ActionType.Raise:
-            #TODO!!!
-            return ""
+            return "fprintf(monitor->logFile, \"" + str(action) + "\n\");"
         elif action.type == ActionType.Instantiation:
-            #TODO!!!
-            return ""
+            return "fprintf(monitor->logFile, \"" + str(action) + "\n\");"
         elif action.type == ActionType.Call:
-            #TODO!!!
-            return ""
-        output = []
-        output.append('    case %s: ;' % event.upper())
-        paramString = ','.join(['%s %s'%(p['type'], p['name']) for p in self._symbolTable.get(event, 'params')])
-        if paramString == '':
-            output.append('      %s(monitor);' % event)
-        else:
-            params = self._getEventParams(paramString)
-            for p in params:
-                output.append('      %s %s_%s = monitor->action_queue->params->%c;' % (p[0], p[1], event, p[0][0]))
-                output.append('      pop_param(&monitor->action_queue->params);')
-            callParams = ", ".join('%s_%s' % (p[1], event) for p in params)
-            output.append('      %s(%s);' % (event, ", ".join(['monitor', callParams])))
-        output.append('      break;')
-        return '\n'.join(output)
+            out = action.target + '('
+            paramCount = len(action.params)
+            c = 0
+            for param in action.params:
+                out += param
+                c += 1
+                if c != paramCount:
+                    out += ','
+            out += ');'
+            return out
+
+# ALTERNATIVE ACTION QUEUE CODE
+#         output = []
+#         output.append('    case %s: ;' % event.upper())
+#         paramString = ','.join(['%s %s'%(p['type'], p['name']) for p in self._symbolTable.get(event, 'params')])
+#         if paramString == '':
+#             output.append('      %s(monitor);' % event)
+#         else:
+#             params = self._getEventParams(paramString)
+#             for p in params:
+#                 output.append('      %s %s_%s = monitor->action_queue->params->%c;' % (p[0], p[1], event, p[0][0]))
+#                 output.append('      pop_param(&monitor->action_queue->params);')
+#             callParams = ", ".join('%s_%s' % (p[1], event) for p in params)
+#             output.append('      %s(%s);' % (event, ", ".join(['monitor', callParams])))
+#         output.append('      break;')
+#         return '\n'.join(output)
 
 
     def _getEventParams(self, paramString):
