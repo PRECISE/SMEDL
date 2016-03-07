@@ -5,11 +5,12 @@ state
     int currentTime;
 events
     imported getTime(int), getLat(float), getLon(float), getDist(float), getSpeed(float);
+    exported time_error(int);
 
 scenarios
     point_counts: //Input requirements 2,3,4 and Intent 1
-        Ready -> getTime(time) when time >= currentTime {currentTime = time} -> getLat(lat) when lat >= -90 && lat <= 90 -> getLon(lon) when lon >= -180 && lon <= 180 -> Ready
-              else -> Error
+        Ready -> getTime(ttime) when ttime >= currentTime {currentTime = ttime} -> getLat(lat) when lat >= -90 && lat <= 90 -> getLon(lon) when lon >= -180 && lon <= 180 -> Ready
+              else { raise time_error(currentTime) } -> Error
    getDistance:
         Ready -> getDist(dist) when dist >=0 -> Ready //intent 2
              else -> Error

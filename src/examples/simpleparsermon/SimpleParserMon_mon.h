@@ -1,5 +1,6 @@
 #include "monitor_map.h"
 #include "actions.h"
+#include <stdio.h> // For the log file
 #include <pthread.h>
 
 #define SIMPLEPARSERMON_MONITOR_MAP_SIZE 100 // number of buckets
@@ -16,6 +17,7 @@ typedef struct SimpleparsermonMonitor {
   int state[3];
   int currentTime;
   action *action_queue;
+  FILE *logFile;
 } SimpleparsermonMonitor;
 
 typedef struct SimpleparsermonMonitorRecord {
@@ -31,13 +33,14 @@ SimpleparsermonMonitorMap* simpleparsermon_monitor_maps[SIMPLEPARSERMON_MONITOR_
 pthread_mutex_t simpleparsermon_monitor_maps_lock;
 
 SimpleparsermonMonitor* init_simpleparsermon_monitor(SimpleparsermonData*);
+void destroy_monitor(SimpleparsermonMonitor*);
 
 /*
  * Monitor Event Handlers
  */
-void simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int time);
-void simpleparsermon_getTime_probe(int time);
-void raise_simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int time);
+void simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int ttime);
+void simpleparsermon_getTime_probe(int ttime);
+void raise_simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int ttime);
 void simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat);
 void simpleparsermon_getLat_probe(float lat);
 void raise_simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat);
@@ -50,6 +53,8 @@ void raise_simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist);
 void simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed);
 void simpleparsermon_getSpeed_probe(float speed);
 void raise_simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed);
+void simpleparsermon_time_error(SimpleparsermonMonitor* monitor, int currentTime);
+void raise_simpleparsermon_time_error(SimpleparsermonMonitor* monitor, int currentTime);
 
 /*
  * Monitor Utility Functions
