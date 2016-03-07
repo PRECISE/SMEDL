@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "{{ base_file_name }}_mon.h"
 {%- if helper %}{{ '\n' }}#include "{{ helper }}"{% endif %}
 
@@ -22,13 +23,14 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
 {% endfor -%}
 {% for v in state_vars %}    monitor->{{ v.name }} = d->{{ v.name }};
 {% endfor %}{{state_inits}}
-    monitor->logFile = fopen("{{ obj|title }}Monitor.log", 'w');
+    monitor->logFile = fopen("{{ obj|title }}Monitor.log", "w");
     put_{{ obj|lower }}_monitor(monitor);
     return monitor;
 }
 
-void destroy_monitor({{ obj|title }}Monitor* monitor) {
+void free_monitor({{ obj|title }}Monitor* monitor) {
     fclose(monitor->logFile);
+    free(monitor);
 }
 
 /*
@@ -55,6 +57,10 @@ int init_{{ obj|lower }}_monitor_maps() {
         {{ obj|lower }}_monitor_maps[i] = ({{ obj|title }}MonitorMap*)malloc(sizeof({{ obj|title }}MonitorMap));
     }
     return 1;
+}
+
+void free_{{ obj|lower }}_monitor_maps() {
+    // TODO
 }
 
 int add_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor *monitor, int identity) {

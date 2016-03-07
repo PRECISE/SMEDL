@@ -25,6 +25,7 @@ class MonitorGenerator(object):
         self._symbolTable = None
         self._printStructs = structs
         self._debug = debug
+        self._implicitErrors = False
 
 
     def generate(self, pedlsmedlName, helper=None):
@@ -137,13 +138,26 @@ class MonitorGenerator(object):
                             # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
                             paramsList = self._findFunctionParams(current, params, ast)
                             self._symbolTable.update(current, "params", paramsList)
+                    if trace['trace_steps'][i]['step_actions'] is not None:
+                        for i in range(0, len(trace['trace_steps'][i]['step_actions']['actions'])):
+                            if trace['trace_steps'][i]['step_actions']['actions'][i]['raise_stmt'] is not None:
+                                current = trace['trace_steps'][i]['step_actions']['actions'][i]['raise_stmt']['id']
+                                if 'event' in self._symbolTable.get(current, 'type'):
+                                    # Handle events with no parameters defined:
+                                    if trace['trace_steps'][i]['step_actions']['actions'][i]['raise_stmt']['expr_list'][0] is None:
+                                        self._symbolTable.update(current, "params", [])
+                                    else:
+                                        params = trace['trace_steps'][i]['step_actions']['actions'][i]['raise_stmt']['expr_list']
+                                        # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
+                                        paramsList = self._findFunctionParams(current, params, ast)
+                                        self._symbolTable.update(current, "params", paramsList)
                 if trace['else_actions'] is not None:
                     for i in range(0, len(trace['else_actions']['actions'])):
                         if trace['else_actions']['actions'][i]['raise_stmt'] is not None:
                             current = trace['else_actions']['actions'][i]['raise_stmt']['id']
                             if 'event' in self._symbolTable.get(current, 'type'):
                                 # Handle events with no parameters defined:
-                                if trace['else_actions']['actions'][i]['raise_stmt']['expr_list'] is None:
+                                if trace['else_actions']['actions'][i]['raise_stmt']['expr_list'][0] is None:
                                     self._symbolTable.update(current, "params", [])
                                 else:
                                     params = trace['else_actions']['actions'][i]['raise_stmt']['expr_list']
@@ -335,15 +349,21 @@ class MonitorGenerator(object):
             values['signatures'].append(eventSignature)
             eventFunction.append(eventSignature + ' {')
             for key, fsm in allFSMs.items():
+                trans_group = fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m)))
+
+                # Jump to next FSM if this one contains no transitions for the current event
+                if len(trans_group) == 0:
+                    continue
+
                 reference = 'monitor->state[%s_%s_SCENARIO]' % (obj.upper(), key.upper())
                 name_reference = "%s_states_names[%s_%s_SCENARIO][monitor->state[%s_%s_SCENARIO]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
                 eventFunction.append('  switch (%s) {' % reference)
-                # TODO: Detect when transitions for an event have the same start state...their guards and actions should be merged
-                for start_state, transitions in fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m))).items():
+                for start_state, transitions in trans_group.items():
                     eventFunction.append(self._writeCaseTransition(obj, transitions, reference, name_reference, key))
-                eventFunction.append('    default:')
-                eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
-                eventFunction.append('      break;')
+                if self._implicitErrors:
+                    eventFunction.append('    default:')
+                    eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
+                    eventFunction.append('      break;')
                 eventFunction.append('  }')
             eventFunction.append('}')
             raiseFunction = self._writeRaiseFunction(m, obj)
@@ -383,6 +403,7 @@ class MonitorGenerator(object):
                 values['event_code'].append({'event':eventFunction, 'probe':probeFunction, 'raise':raiseFunction['code']})
             else:
                 values['event_code'].append({'event':eventFunction, 'raise':raiseFunction['code']})
+
             values['signatures'].append(raiseFunction['signature'])
 
             callCases.append(self._writeCallCase(m))
@@ -433,20 +454,20 @@ class MonitorGenerator(object):
                 output.append('      if(' + transitions[i].guard.replace('this.', 'monitor->') + ') {\n')
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s;\n' % self._writeAction(action))
+                        output.append('        %s\n' % self._writeAction(action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 output.append('      }\n')
             elif len(transitions) == 1:
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s;\n' % self._writeAction(action))
+                        output.append('        %s\n' % self._writeAction(action))
                 output.append('      %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 break
             elif transitions[i].guard:
                 output.append('      else if(' + transitions[i].guard.replace('this.', 'monitor->') + ') {\n')
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s;\n' % self._writeAction(action))
+                        output.append('        %s\n' % self._writeAction(action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 output.append('      }\n')
 
@@ -455,10 +476,10 @@ class MonitorGenerator(object):
                 output.append('      else {\n')
                 if transitions[i].elseActions:
                     for action in transitions[i].elseActions:
-                        output.append('        %s;\n' % self._writeAction(action))
+                        output.append('        %s\n' % self._writeAction(action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
                 output.append('      }\n')
-            else:
+            elif self._implicitErrors:
                 output.append('      else {\n')
                 output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, currentState))
                 output.append('      }\n')
@@ -471,11 +492,12 @@ class MonitorGenerator(object):
             out = "monitor->" + action.target + ' ' + action.operator
             if action.expression:
                 out += ' ' + self._formatExpression(action.expression)
+            out += ';'
             return out
         elif action.type == ActionType.Raise:
-            return "fprintf(monitor->logFile, \"" + str(action) + "\n\");"
+            return "{ time_t action_time = time(NULL); fprintf(monitor->logFile, \"%s    %s\\n\", ctime(&action_time), \"" + str(action) + "\"); }"
         elif action.type == ActionType.Instantiation:
-            return "fprintf(monitor->logFile, \"" + str(action) + "\n\");"
+            return "{ time_t action_time = time(NULL); fprintf(monitor->logFile, \"%s    %s\\n\", ctime(&action_time), \"" + str(action) + "\"); }"
         elif action.type == ActionType.Call:
             out = action.target + '('
             paramCount = len(action.params)
@@ -609,6 +631,8 @@ class MonitorGenerator(object):
 
 
     def _formatExpression(self, expr):
+        if expr is None:
+            expr = ""
         exprStr = AstToPython.expr(expr)
         exprStr = self._addThisDotToStateVariables(exprStr)
         # expr = checkReferences(expr) # TODO--------

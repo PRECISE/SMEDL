@@ -49,7 +49,7 @@ class RaiseAction(Action):
         super(RaiseAction, self).__init__()
         self.type = ActionType.Raise
         self.event = event
-        self.params = params
+        self.params = AstToPython.expr_list(params)
 
     def __str__(self):
         out = "ActionType: Raise; Event raised: " + self.event + "; Event parameters : "
@@ -63,7 +63,7 @@ class InstantiationAction(Action):
         super(InstantiationAction, self).__init__()
         self.type = ActionType.Instantiation
         self.object = object
-        self.params = params
+        self.params = AstToPython.expr_list(params)
 
     def __str__(self):
         out = "ActionType: Instantiation; Object instantiated: " + self.object + "; Object instantiation parameters : "

@@ -43,7 +43,7 @@ class AstToPython(object):
                     return " ".join(result)
                 else:
                     return cls.term(object)
-        elif object is None:
+        elif object is "":
             return ""
 
 
@@ -75,4 +75,10 @@ class AstToPython(object):
 
     @classmethod
     def expr_list(cls, inputlist):
-        return [ cls.expr(el) for el in inputlist ]
+        if inputlist[0] is not None:
+            inputlist = inputlist[0]
+        out = []
+        for el in inputlist:
+            if cls.expr(el) is not None:
+                out.append(cls.expr(el))
+        return out

@@ -33,7 +33,7 @@ typedef struct {{ obj|title }}MonitorMap {
 pthread_mutex_t {{ obj|lower }}_monitor_maps_lock;
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor({{ obj|title }}Data*);
-void destroy_monitor({{ obj|title }}Monitor*);
+void free_monitor({{ obj|title }}Monitor*);
 
 /*
  * Monitor Event Handlers
@@ -47,8 +47,7 @@ void destroy_monitor({{ obj|title }}Monitor*);
 {{ obj|title }}MonitorRecord* get_{{ obj|lower }}_monitors_by_identity(int, int, void*);
 {{ obj|title }}MonitorRecord* filter_{{ obj|lower }}_monitors_by_identity({{ obj|title }}MonitorRecord*, int, void*);
 int init_{{ obj|lower }}_monitor_maps();
+void free_{{ obj|lower }}_monitor_maps();
 int add_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor*, int);
 int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
-void free_{{ obj|lower }}_monitor();
-void free_{{ obj|lower }}_monitor_maps();
