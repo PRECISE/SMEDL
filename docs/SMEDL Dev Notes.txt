@@ -73,6 +73,7 @@ Component Breakdown
             -Native timer/timeout events - traces that check time elapsed during occurrences of events can be done using a helper function extension that sets an internal smedl variable based on system time. But would it be good though to standardize this as a built-in SMEDL feature? (Add timing syntax, use system timeout events - callbacks) (Low priority until DARPA project)
             -Cross-validate import/export events
             -Raise queue (don't add raise to symbolTable, but check that it references int or exp event)
+            - Detect when transitions for an event have the same start state...their guards and actions should be merged?
 
 -Code generation:
     In C:
