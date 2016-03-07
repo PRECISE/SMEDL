@@ -15,3 +15,4 @@ src/.coverage
 src/testcases/pqueue/c/pq
 pip-selfcheck.json
 pyvenv.cfg
+*.log
