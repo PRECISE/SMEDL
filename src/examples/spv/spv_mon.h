@@ -38,11 +38,9 @@ void free_monitor(SpvMonitor*);
 /*
  * Monitor Event Handlers
  */
-void spv_parse_record(SpvMonitor* monitor, int ttime, float lat, float lon, int ret);
-void raise_spv_parse_record(SpvMonitor* monitor, int ttime, float lat, float lon, int ret);
-void spv_timestep_error(SpvMonitor* monitor, int ttime, int last_time);
-void raise_spv_timestep_error(SpvMonitor* monitor, int ttime, int last_time);
-void spv_after_end_error(SpvMonitor* monitor);
+void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat, float mon_var_lon, int mon_var_ret);
+void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat, float mon_var_lon, int mon_var_ret);
+void raise_spv_timestep_error(SpvMonitor* monitor, int mon_var_ttime, int mon_var_last_time);
 void raise_spv_after_end_error(SpvMonitor* monitor);
 
 /*

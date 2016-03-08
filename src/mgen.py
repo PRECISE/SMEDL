@@ -135,7 +135,6 @@ class MonitorGenerator(object):
                             self._symbolTable.update(current, "params", [])
                         else:
                             params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
-                            # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
                             paramsList = self._findFunctionParams(current, params, ast)
                             self._symbolTable.update(current, "params", paramsList)
                     if trace['trace_steps'][i]['step_actions'] is not None:
@@ -148,7 +147,6 @@ class MonitorGenerator(object):
                                         self._symbolTable.update(current, "params", [])
                                     else:
                                         params = trace['trace_steps'][i]['step_actions']['actions'][i]['raise_stmt']['expr_list']
-                                        # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
                                         paramsList = self._findFunctionParams(current, params, ast)
                                         self._symbolTable.update(current, "params", paramsList)
                 if trace['else_actions'] is not None:
@@ -342,30 +340,34 @@ class MonitorGenerator(object):
                             datatype = self._symbolTable.get(name)['datatype']
                             c_type = self._convertTypeForC(datatype)
                             identityParams.append({'name': name, 'c_type': c_type, 'datatype': datatype})
-                            print('%s pedl params: %s %s'%(m, c_type, name))
+                            #print('%s pedl params: %s %s'%(m, c_type, name))
+
             monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                 [{'name': p['name'], 'c_type': self._convertTypeForC(p['type'])} for p in self._symbolTable.get(m, 'params')]
-            eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
-            values['signatures'].append(eventSignature)
-            eventFunction.append(eventSignature + ' {')
-            for key, fsm in allFSMs.items():
-                trans_group = fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m)))
 
-                # Jump to next FSM if this one contains no transitions for the current event
-                if len(trans_group) == 0:
-                    continue
+            if 'exported_events' != self._symbolTable.get(m)['type']:
+                eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
+                values['signatures'].append(eventSignature)
+                eventFunction.append(eventSignature + ' {')
+                for key, fsm in allFSMs.items():
+                    trans_group = fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m)))
 
-                reference = 'monitor->state[%s_%s_SCENARIO]' % (obj.upper(), key.upper())
-                name_reference = "%s_states_names[%s_%s_SCENARIO][monitor->state[%s_%s_SCENARIO]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
-                eventFunction.append('  switch (%s) {' % reference)
-                for start_state, transitions in trans_group.items():
-                    eventFunction.append(self._writeCaseTransition(obj, transitions, reference, name_reference, key))
-                if self._implicitErrors:
-                    eventFunction.append('    default:')
-                    eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
-                    eventFunction.append('      break;')
-                eventFunction.append('  }')
-            eventFunction.append('}')
+                    # Jump to next FSM if this one contains no transitions for the current event
+                    if len(trans_group) == 0:
+                        continue
+
+                    reference = 'monitor->state[%s_%s_SCENARIO]' % (obj.upper(), key.upper())
+                    name_reference = "%s_states_names[%s_%s_SCENARIO][monitor->state[%s_%s_SCENARIO]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
+                    eventFunction.append('  switch (%s) {' % reference)
+                    for start_state, transitions in trans_group.items():
+                        eventFunction.append(self._writeCaseTransition(obj, transitions, reference, name_reference, key))
+                    if self._implicitErrors:
+                        eventFunction.append('    default:')
+                        eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");'%(obj.lower(), key, name_reference, m))
+                        eventFunction.append('      break;')
+                    eventFunction.append('  }')
+                eventFunction.append('}')
+
             raiseFunction = self._writeRaiseFunction(m, obj)
 
             # Build the event handler function
@@ -400,9 +402,9 @@ class MonitorGenerator(object):
                 probeFunction.append('}')
                 #DEBUG  print(probeSignature)
                 values['signatures'].append(probeSignature)
-                values['event_code'].append({'event':eventFunction, 'probe':probeFunction, 'raise':raiseFunction['code']})
+                values['event_code'].append(self._updateVarNames({'event':eventFunction, 'probe':probeFunction, 'raise':raiseFunction['code']}, m))
             else:
-                values['event_code'].append({'event':eventFunction, 'raise':raiseFunction['code']})
+                values['event_code'].append(self._updateVarNames({'event':eventFunction, 'raise':raiseFunction['code']}, m))
 
             values['signatures'].append(raiseFunction['signature'])
 
@@ -433,6 +435,18 @@ class MonitorGenerator(object):
         else:
             return smedlType
 
+
+    def _updateVarNames(self, funcs, method):
+        out = {}
+        for name, func in funcs.items():
+            tmp = func
+            for p in self._symbolTable.get(method, 'params'):
+                out_s = []
+                for s in tmp:
+                    out_s.append(re.sub(r'\b' + p['true_name'] + r'\b', p['name'], s))
+                tmp = out_s
+            out[name] = tmp
+        return out
 
     # Write out the switch statement case for a SMEDL trace transition
     def _writeCaseTransition(self, obj, transitions, currentState, stateName, scenario):
@@ -605,8 +619,7 @@ class MonitorGenerator(object):
 
         if len(names) != len(types):
             raise ValueError("Invalid number of parameters for %s" % function)
-        return [{'type':types[i], 'name':names[i]} for i in range(len(names))]
-        # return (", ".join(["%s %s" % (types[i], names[i]) for i in range(len(names))]))
+        return [{'type':types[i], 'true_name':names[i], 'name':'mon_var_'+names[i]} for i in range(len(names))]
 
 
     def _getParamTypes(self, function, events):

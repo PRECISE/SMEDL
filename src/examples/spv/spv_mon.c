@@ -38,15 +38,15 @@ void free_monitor(SpvMonitor* monitor) {
  * Monitor Event Handlers
  */
 
-void spv_parse_record(SpvMonitor* monitor, int ttime, float lat, float lon, int ret) {
+void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat, float mon_var_lon, int mon_var_ret) {
   switch (monitor->state[SPV_PARSE_RECORD_SCENARIO]) {
     case SPV_PARSE_RECORD_START:
-      if(ttime > monitor->last_time) {
-        monitor->last_time = ttime;
+      if(mon_var_ttime > monitor->last_time) {
+        monitor->last_time = mon_var_ttime;
         monitor->state[SPV_PARSE_RECORD_SCENARIO] = SPV_PARSE_RECORD_START;
       }
       else {
-        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: timestep_error; Event parameters : ttime, last_time"); }
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: timestep_error; Event parameters : mon_var_ttime, last_time"); }
         monitor->state[SPV_PARSE_RECORD_SCENARIO] = SPV_PARSE_RECORD_START;
       }
       break;
@@ -54,7 +54,7 @@ void spv_parse_record(SpvMonitor* monitor, int ttime, float lat, float lon, int 
   }
   switch (monitor->state[SPV_AFTER_END_SCENARIO]) {
     case SPV_AFTER_END_START:
-      if(ret == -1) {
+      if(mon_var_ret == -1) {
         monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
       }
       else {
@@ -70,27 +70,25 @@ void spv_parse_record(SpvMonitor* monitor, int ttime, float lat, float lon, int 
   }
 }
 
-void raise_spv_parse_record(SpvMonitor* monitor, int ttime, float lat, float lon, int ret) {
+void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat, float mon_var_lon, int mon_var_ret) {
   param *p_head = NULL;
-  push_param(&p_head, &ttime, NULL, NULL, NULL);
-  push_param(&p_head, &ret, NULL, NULL, NULL);
+  push_param(&p_head, &mon_var_ttime, NULL, NULL, NULL);
+  push_param(&p_head, &mon_var_ret, NULL, NULL, NULL);
   push_action(&monitor->action_queue, SPV_PARSE_RECORD_EVENT, p_head);
 }
 
 
-void spv_timestep_error(SpvMonitor* monitor, int ttime, int last_time) {
-}
 
-void raise_spv_timestep_error(SpvMonitor* monitor, int ttime, int last_time) {
+
+void raise_spv_timestep_error(SpvMonitor* monitor, int mon_var_ttime, int mon_var_last_time) {
   param *p_head = NULL;
-  push_param(&p_head, &ttime, NULL, NULL, NULL);
-  push_param(&p_head, &last_time, NULL, NULL, NULL);
+  push_param(&p_head, &mon_var_ttime, NULL, NULL, NULL);
+  push_param(&p_head, &mon_var_last_time, NULL, NULL, NULL);
   push_action(&monitor->action_queue, SPV_TIMESTEP_ERROR_EVENT, p_head);
 }
 
 
-void spv_after_end_error(SpvMonitor* monitor) {
-}
+
 
 void raise_spv_after_end_error(SpvMonitor* monitor) {
   param *p_head = NULL;
