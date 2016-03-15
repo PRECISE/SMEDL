@@ -75,7 +75,13 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['peppercorn'],
+    install_requires=[
+        'grako>=3.6.6',
+        'Jinja2>=2.8',
+        'MarkupSafe>=0.23',
+        'mccabe>=0.3.1',
+        'nose>=1.3.7'
+    ],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
@@ -90,7 +96,7 @@ setup(
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data={
-        'smedl': ['templates'],
+        'smedl': ['templates/*'],
     },
 
     # Although 'package_data' is the preferred approach, in some case you may
@@ -102,9 +108,9 @@ setup(
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow
     # pip to create the appropriate form of executable for the target platform.
-    entry_points={
-        'console_scripts': [
-            'sample=sample:main',
-        ],
-    },
+#     entry_points={
+#         'console_scripts': [
+#             'sample=sample:main',
+#         ],
+#     },
 )
