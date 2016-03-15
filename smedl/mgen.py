@@ -689,6 +689,7 @@ if __name__ == '__main__':
     parser.add_argument('--helper', help='Include header file for helper functions')
     parser.add_argument('-s', '--structs', help='Print internal data structures', action='store_true')
     parser.add_argument('-d', '--debug', help='Show debug output', action='store_true')
+    # TODO: Add version flag
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="the name of the PEDL and SMEDL files to parse")
     args = parser.parse_args()
 
