@@ -415,10 +415,10 @@ class MonitorGenerator(object):
         out_c.write(template_c.render(values))
 
         # Copy pre-written static helper files to the output path
-        shutil.copyfile('./templates/actions.h', os.path.dirname(filename) + '/actions.h')
-        shutil.copyfile('./templates/actions.c', os.path.dirname(filename) + '/actions.c')
-        shutil.copyfile('./templates/monitor_map.h', os.path.dirname(filename) + '/monitor_map.h')
-        shutil.copyfile('./templates/monitor_map.c', os.path.dirname(filename) + '/monitor_map.c')
+        shutil.copyfile('templates/actions.h', os.path.dirname(filename) + '/actions.h')
+        shutil.copyfile('templates/actions.c', os.path.dirname(filename) + '/actions.c')
+        shutil.copyfile('templates/monitor_map.h', os.path.dirname(filename) + '/monitor_map.h')
+        shutil.copyfile('templates/monitor_map.c', os.path.dirname(filename) + '/monitor_map.c')
 
 
     # Translate a SMEDL type to a C type
