@@ -23,7 +23,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.1.0',
+    version='1.0.0.dev1',
 
     description='A tool for generating software monitors from SMEDL and PEDL definitions',
     long_description=long_description,
@@ -87,10 +87,10 @@ setup(
     # dependencies). You can install these using the following syntax,
     # for example:
     # $ pip install -e .[dev,test]
-    extras_require={
-        'dev': ['check-manifest'],
-        'test': ['coverage'],
-    },
+#     extras_require={
+#         'dev': ['check-manifest'],
+#         'test': ['coverage'],
+#     },
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
@@ -108,9 +108,9 @@ setup(
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow
     # pip to create the appropriate form of executable for the target platform.
-#     entry_points={
-#         'console_scripts': [
-#             'sample=sample:main',
-#         ],
-#     },
+    entry_points={
+        'console_scripts': [
+            'mgen=smedl:mgen',
+        ],
+    },
 )
