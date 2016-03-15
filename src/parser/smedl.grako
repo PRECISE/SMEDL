@@ -32,7 +32,7 @@ import_definition
 
 event_definition
     =
-    error:['error'] event_id:identifier ['(' params:parameter_list ')']
+    error:['error'] event_id:identifier ['(' params:parameter_list ')'] ['=' definition:expression]
     ;
 
 scenario_definition
