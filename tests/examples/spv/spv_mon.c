@@ -53,6 +53,11 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat,
 
   }
   switch (monitor->state[SPV_AFTER_END_SCENARIO]) {
+    case SPV_AFTER_END_END:
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: after_end_error; Event parameters : "); }
+      monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
+      break;
+
     case SPV_AFTER_END_START:
       if(mon_var_ret == -1) {
         monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
@@ -60,11 +65,6 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat,
       else {
         monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_START;
       }
-      break;
-
-    case SPV_AFTER_END_END:
-        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: after_end_error; Event parameters : "); }
-      monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
       break;
 
   }

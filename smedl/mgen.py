@@ -10,7 +10,7 @@
 from parser import *
 from fsm import *
 from grako.ast import AST
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, PackageLoader
 import os
 import json
 import collections
@@ -254,9 +254,6 @@ class MonitorGenerator(object):
 
 
     def _outputToTemplate(self, allFSMs, filename, helper, pedlAST):
-        env = Environment(loader=FileSystemLoader('./'), extensions=['jinja2.ext.do'])
-        out_h = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
-        template_h = env.get_template('templates/object_mon.h')
         obj = self._symbolTable.getSymbolsByType('object')[0]
         state_vars = [{'type': self._symbolTable.get(v)['datatype'], 'name': v} for v in self._symbolTable.getSymbolsByType('state')]
         for s in state_vars:
@@ -269,6 +266,7 @@ class MonitorGenerator(object):
             identities = [{'type': self._symbolTable.get(v)['datatype'], 'name': v} for v in self._symbolTable.getSymbolsByType('identity')]
         for id in identities:
             id['c_type'] = self._convertTypeForC(id['type'])
+
         values = dict()
         values['multithreaded'] = True # command line arg for this?
         values['identities'] = identities
@@ -277,11 +275,7 @@ class MonitorGenerator(object):
         values['state_var_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in state_vars])
         values['identity_declarations'] = '\n'.join(['  %s %s;' % (v['c_type'], v['name']) for v in identities])
         values['scenario_names'] = [('%s_%s_SCENARIO' % (obj, k)).upper() for k in list(allFSMs.keys())]
-
-        out_c = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
-        template_c = env.get_template('templates/object_mon.c')
         values['helper'] = helper
-
         values['base_file_name'] = os.path.splitext(os.path.basename(filename))[0]
         values['identities_names'] = ['%s_%s' % (obj.upper(), i['name'].upper()) for i in identities]
         values['identities_types'] = [i['type'].upper() for i in identities]
@@ -400,7 +394,6 @@ class MonitorGenerator(object):
                 probeFunction.append('    results = results->next;')
                 probeFunction.append('  }')
                 probeFunction.append('}')
-                #DEBUG  print(probeSignature)
                 values['signatures'].append(probeSignature)
                 values['event_code'].append(self._updateVarNames({'event':eventFunction, 'probe':probeFunction, 'raise':raiseFunction['code']}, m))
             else:
@@ -410,15 +403,34 @@ class MonitorGenerator(object):
 
             callCases.append(self._writeCallCase(m))
 
-        # Render the monitor template and write it to disk
-        out_h.write(template_h.render(values))
-        out_c.write(template_c.render(values))
+        # Render the monitor templates and write to disk
+        env = Environment(loader=PackageLoader('mgen'))
+
+        out_h = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
+        out_h.write(env.get_template('object_mon.h').render(values))
+        out_h.close()
+
+        out_c = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
+        out_c.write(env.get_template('object_mon.c').render(values))
+        out_c.close()
 
         # Copy pre-written static helper files to the output path
-        shutil.copyfile('templates/actions.h', os.path.dirname(filename) + '/actions.h')
-        shutil.copyfile('templates/actions.c', os.path.dirname(filename) + '/actions.c')
-        shutil.copyfile('templates/monitor_map.h', os.path.dirname(filename) + '/monitor_map.h')
-        shutil.copyfile('templates/monitor_map.c', os.path.dirname(filename) + '/monitor_map.c')
+        a_h = open(os.path.dirname(filename) + '/actions.h', 'w')
+        a_h.write(env.get_template('actions.h').render())
+        a_h.close()
+
+        a_c = open(os.path.dirname(filename) + '/actions.c', 'w')
+        a_c.write(env.get_template('actions.c').render())
+        a_c.close()
+
+        m_h = open(os.path.dirname(filename) + '/monitor_map.h', 'w')
+        m_h.write(env.get_template('monitor_map.h').render())
+        m_h.close()
+
+        m_c = open(os.path.dirname(filename) + '/monitor_map.c', 'w')
+        m_c.write(env.get_template('monitor_map.c').render())
+        m_c.close()
+
 
 
     # Translate a SMEDL type to a C type

@@ -43,7 +43,7 @@ int compare_monitor_identity(void *value, MonitorIdentity *other) {
         case THREAD:
             if(*(pthread_t*)value == *(pthread_t*)other->value) {
                 value_match = 1;
-            }           
+            }
         default:
             break;
     }
@@ -65,10 +65,5 @@ int hash_monitor_identity(identity_type type, void *value, int map_size) {
         default:
             break;
     }
-    return bucket; 
+    return bucket;
 }
-
-
-  
-
-
