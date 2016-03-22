@@ -1,11 +1,11 @@
-from smedl_symboltable import smedlSymbolTable
+from smedl.parser.smedl_symboltable import SmedlSymbolTable
 import unittest
 
 
 class TestSymbolTable(unittest.TestCase):
 
     def setUp(self):
-        self.symbolTable = smedlSymbolTable()
+        self.symbolTable = SmedlSymbolTable()
 
     def test_add(self):
         self.assertFalse(list(self.symbolTable.keys()))

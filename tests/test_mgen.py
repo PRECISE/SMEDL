@@ -1,8 +1,8 @@
-from smedl_parser import smedlParser
-from smedl_symboltable import smedlSymbolTable
+from smedl.parser.smedl_parser import smedlParser
+from smedl.parser.smedl_symboltable import SmedlSymbolTable
 import json
 import unittest
-import smedlgen
+import smedl.mgen as smedlgen
 
 
 class TestSmedlgen(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestSmedlgen(unittest.TestCase):
         # print(self.ast)
 
     def test_parseToSymbolTable(self):
-        symbolTable = smedlSymbolTable()
+        symbolTable = SmedlSymbolTable()
         smedlgen.parseToSymbolTable('top', self.ast, symbolTable)
         self.assertEqual('int', symbolTable['lobound']['datatype'])
         self.assertEqual('state', symbolTable['upbound']['type'])
@@ -31,7 +31,7 @@ class TestSmedlgen(unittest.TestCase):
         # print(symbolTable)
 
     def test_generateFSM(self):
-        symbolTable = smedlSymbolTable()
+        symbolTable = SmedlSymbolTable()
         smedlgen.parseToSymbolTable('top', self.ast, symbolTable)
         fsm = next(iter(list(smedlgen.generateFSMs(self.ast, symbolTable).values())))
         # print(type(fsm))
@@ -138,7 +138,7 @@ class TestSmedlgen(unittest.TestCase):
         self.assertEqual("(!(a < b) && !c) || !(d + e) || f < !!!g", smedlgen.formatGuard(term))
 
     def test_addThisDotToStateVariables(self): #TODO
-        smedlFilename = "testcases/pqueue/c/smedl/pqueue.smedl"
+        smedlFilename = "examples/pqueue/c/smedl/pqueue.smedl"
         with open(smedlFilename) as smedlFile:
             smedlText = smedlFile.read()
         smedlPar = smedlParser(
@@ -150,7 +150,7 @@ class TestSmedlgen(unittest.TestCase):
             filename=smedlFilename,
             trace=False,
             whitespace=None)
-        symbolTable = smedlSymbolTable()
+        symbolTable = SmedlSymbolTable()
         smedlgen.parseToSymbolTable('top', ast, symbolTable)
 
 
