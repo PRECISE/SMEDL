@@ -15,15 +15,24 @@ including [Python 3](https://docs.python.org/3/) and all required Python
 packages has been defined to simplify the process of getting started with the
 tool.
 
-To setup the virtual environment, run the following command from the project's
-root directory:
+If you want to use a virtual environment (recommended), set it up by running
+the following command from the project's root directory:
+```sh
+pyvenv .env && source .env/bin/activate
+```
 
-`pyvenv .env && source .env/bin/activate && pip install -r requirements.txt`
+To install all of the required dependencies from PyPi and install the monitor
+generator `mgen` as an executable on your path, run the following command in
+the root of the repository:
+```sh
+pip install .
+```
 
-NOTE: If you choose to not use the virtual environment, you can simply install
-the required Python packages using the following command:
-
-`pip install -r requirements.txt`
+To update the installation of `mgen` without updating its dependencies, run
+```sh
+pip uninstall smedl
+pip install .
+```
 
 
 ## Generating the monitor
