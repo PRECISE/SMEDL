@@ -1,4 +1,4 @@
-from fsm import FSM, State, Transition
+from smedl.fsm import FSM, State, Transition
 import unittest
 
 

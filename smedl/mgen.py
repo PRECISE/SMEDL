@@ -7,8 +7,8 @@
 # Peter Gebhard (pgeb@seas.upenn.edu)
 #-------------------------------------------------------------------------------
 
-from parser import *
-from fsm import *
+from smedl.parser import *
+from smedl.fsm import *
 from grako.ast import AST
 from jinja2 import Environment, PackageLoader
 import os
@@ -404,7 +404,7 @@ class MonitorGenerator(object):
             callCases.append(self._writeCallCase(m))
 
         # Render the monitor templates and write to disk
-        env = Environment(loader=PackageLoader('mgen'))
+        env = Environment(loader=PackageLoader('smedl'))
 
         out_h = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
         out_h.write(env.get_template('object_mon.h').render(values))
@@ -694,9 +694,9 @@ class MonitorGenerator(object):
         re.findall(r'\s([A-Za-z_]\w*).\w+\W+', guard)
 
 
-if __name__ == '__main__':
-    import argparse
+import argparse
 
+def main():
     parser = argparse.ArgumentParser(description="Code Generator for SMEDL and PEDL.")
     parser.add_argument('--helper', help='Include header file for helper functions')
     parser.add_argument('-s', '--structs', help='Print internal data structures', action='store_true')
