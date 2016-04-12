@@ -58,7 +58,7 @@ event_instance
 
 actions
     =
-    '{' actions+:action_item_list '}'
+    '{' actions:action_item_list '}'
     ;
 
 action_item

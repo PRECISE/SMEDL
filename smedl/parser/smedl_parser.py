@@ -14,16 +14,18 @@
 from __future__ import print_function, division, absolute_import, unicode_literals
 
 from grako.parsing import graken, Parser
-from grako.util import re, RE_FLAGS
+from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 2, 2, 15, 47, 26, 1)
+__version__ = (2016, 4, 12, 20, 39, 38, 1)
 
 __all__ = [
     'smedlParser',
     'smedlSemantics',
     'main'
 ]
+
+KEYWORDS = set([])
 
 
 class smedlParser(Parser):
@@ -34,6 +36,7 @@ class smedlParser(Parser):
                  eol_comments_re=None,
                  ignorecase=None,
                  left_recursion=True,
+                 keywords=KEYWORDS,
                  **kwargs):
         super(smedlParser, self).__init__(
             whitespace=whitespace,
@@ -42,6 +45,7 @@ class smedlParser(Parser):
             eol_comments_re=eol_comments_re,
             ignorecase=ignorecase,
             left_recursion=left_recursion,
+            keywords=keywords,
             **kwargs
         )
 
@@ -51,26 +55,24 @@ class smedlParser(Parser):
         def block1():
             self._import_definition_()
         self._closure(block1)
-        self.ast.setlist('imports', self.last_node)
+        self.add_last_node_to_name('imports')
         self._token('object')
         self._identifier_()
-        self.ast['object'] = self.last_node
+        self.name_last_node('object')
         with self._optional():
             self._token('identity')
 
             def block4():
                 self._variable_declaration_()
             self._positive_closure(block4)
-
-            self.ast.setlist('identity', self.last_node)
+            self.add_last_node_to_name('identity')
         with self._optional():
             self._token('state')
 
             def block6():
                 self._variable_declaration_()
             self._positive_closure(block6)
-
-            self.ast.setlist('state', self.last_node)
+            self.add_last_node_to_name('state')
         self._token('events')
 
         def block7():
@@ -78,31 +80,31 @@ class smedlParser(Parser):
                 with self._option():
                     self._token('internal')
                     self._event_definition_list_()
-                    self.ast.setlist('internal_events', self.last_node)
+                    self.add_last_node_to_name('internal_events')
                 with self._option():
                     self._token('exported')
                     self._event_definition_list_()
-                    self.ast.setlist('exported_events', self.last_node)
+                    self.add_last_node_to_name('exported_events')
                 self._error('no available options')
         self._closure(block7)
         self._token('imported')
         self._event_definition_list_()
-        self.ast.setlist('imported_events', self.last_node)
+        self.add_last_node_to_name('imported_events')
 
         def block12():
             with self._choice():
                 with self._option():
                     self._token('imported')
                     self._event_definition_list_()
-                    self.ast.setlist('imported_events', self.last_node)
+                    self.add_last_node_to_name('imported_events')
                 with self._option():
                     self._token('internal')
                     self._event_definition_list_()
-                    self.ast.setlist('internal_events', self.last_node)
+                    self.add_last_node_to_name('internal_events')
                 with self._option():
                     self._token('exported')
                     self._event_definition_list_()
-                    self.ast.setlist('exported_events', self.last_node)
+                    self.add_last_node_to_name('exported_events')
                 self._error('no available options')
         self._closure(block12)
         self._token('scenarios')
@@ -110,8 +112,7 @@ class smedlParser(Parser):
         def block18():
             self._scenario_definition_()
         self._positive_closure(block18)
-
-        self.ast.setlist('scenarios', self.last_node)
+        self.add_last_node_to_name('scenarios')
         self._check_eof()
 
         self.ast._define(
@@ -122,14 +123,14 @@ class smedlParser(Parser):
     @graken()
     def _variable_declaration_(self):
         self._type_()
-        self.ast['type'] = self.last_node
+        self.name_last_node('type')
         self._identifier_()
-        self.ast['var'] = self.last_node
+        self.name_last_node('var')
 
         def block2():
             self._token(',')
             self._identifier_()
-            self.ast['var'] = self.last_node
+            self.name_last_node('var')
         self._closure(block2)
         self._token(';')
 
@@ -142,7 +143,7 @@ class smedlParser(Parser):
     def _import_definition_(self):
         self._token('#import')
         self._identifier_()
-        self.ast['import_id'] = self.last_node
+        self.name_last_node('import_id')
 
         self.ast._define(
             ['import_id'],
@@ -153,17 +154,21 @@ class smedlParser(Parser):
     def _event_definition_(self):
         with self._optional():
             self._token('error')
-        self.ast['error'] = self.last_node
+        self.name_last_node('error')
         self._identifier_()
-        self.ast['event_id'] = self.last_node
+        self.name_last_node('event_id')
         with self._optional():
             self._token('(')
             self._parameter_list_()
-            self.ast['params'] = self.last_node
+            self.name_last_node('params')
             self._token(')')
+        with self._optional():
+            self._token('=')
+            self._expression_()
+            self.name_last_node('definition')
 
         self.ast._define(
-            ['error', 'event_id', 'params'],
+            ['error', 'event_id', 'params', 'definition'],
             []
         )
 
@@ -171,16 +176,15 @@ class smedlParser(Parser):
     def _scenario_definition_(self):
         with self._optional():
             self._token('atomic')
-        self.ast['atomic'] = self.last_node
+        self.name_last_node('atomic')
         self._identifier_()
-        self.ast['scenario_id'] = self.last_node
+        self.name_last_node('scenario_id')
         self._token(':')
 
         def block3():
             self._trace_definition_()
         self._positive_closure(block3)
-
-        self.ast['traces'] = self.last_node
+        self.name_last_node('traces')
 
         self.ast._define(
             ['atomic', 'scenario_id', 'traces'],
@@ -190,25 +194,24 @@ class smedlParser(Parser):
     @graken()
     def _trace_definition_(self):
         self._identifier_()
-        self.ast['start_state'] = self.last_node
+        self.name_last_node('start_state')
         self._token('->')
 
         def block1():
             self._step_definition_()
-            self.ast.setlist('trace_steps', self.last_node)
+            self.add_last_node_to_name('trace_steps')
             self._token('->')
         self._positive_closure(block1)
-
         self._identifier_()
-        self.ast['end_state'] = self.last_node
+        self.name_last_node('end_state')
         with self._optional():
             self._token('else')
             with self._optional():
                 self._actions_()
-                self.ast['else_actions'] = self.last_node
+                self.name_last_node('else_actions')
             self._token('->')
             self._identifier_()
-            self.ast['else_state'] = self.last_node
+            self.name_last_node('else_state')
 
         self.ast._define(
             ['start_state', 'end_state', 'else_actions', 'else_state'],
@@ -218,10 +221,10 @@ class smedlParser(Parser):
     @graken()
     def _step_definition_(self):
         self._event_instance_()
-        self.ast['step_event'] = self.last_node
+        self.name_last_node('step_event')
         with self._optional():
             self._actions_()
-            self.ast['step_actions'] = self.last_node
+            self.name_last_node('step_actions')
 
         self.ast._define(
             ['step_event', 'step_actions'],
@@ -231,11 +234,11 @@ class smedlParser(Parser):
     @graken()
     def _event_instance_(self):
         self._expression_()
-        self.ast['expression'] = self.last_node
+        self.name_last_node('expression')
         with self._optional():
             self._token('when')
             self._expression_()
-            self.ast['when'] = self.last_node
+            self.name_last_node('when')
 
         self.ast._define(
             ['expression', 'when'],
@@ -246,12 +249,12 @@ class smedlParser(Parser):
     def _actions_(self):
         self._token('{')
         self._action_item_list_()
-        self.ast.setlist('actions', self.last_node)
+        self.name_last_node('actions')
         self._token('}')
 
         self.ast._define(
-            [],
-            ['actions']
+            ['actions'],
+            []
         )
 
     @graken()
@@ -259,16 +262,16 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._state_update_()
-                self.ast['state_update'] = self.last_node
+                self.name_last_node('state_update')
             with self._option():
                 self._raise_stmt_()
-                self.ast['raise_stmt'] = self.last_node
+                self.name_last_node('raise_stmt')
             with self._option():
                 self._instantiation_stmt_()
-                self.ast['instantiation'] = self.last_node
+                self.name_last_node('instantiation')
             with self._option():
                 self._call_stmt_()
-                self.ast['call_stmt'] = self.last_node
+                self.name_last_node('call_stmt')
             self._error('no available options')
 
         self.ast._define(
@@ -281,7 +284,7 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._target_()
-                self.ast['target'] = self.last_node
+                self.name_last_node('target')
                 with self._group():
                     with self._choice():
                         with self._option():
@@ -289,14 +292,14 @@ class smedlParser(Parser):
                         with self._option():
                             self._token('--')
                         self._error('expecting one of: ++ --')
-                self.ast['operator'] = self.last_node
+                self.name_last_node('operator')
             with self._option():
                 self._target_()
-                self.ast['target'] = self.last_node
+                self.name_last_node('target')
                 self._token('=')
-                self.ast['operator'] = self.last_node
+                self.name_last_node('operator')
                 self._expression_()
-                self.ast['expression'] = self.last_node
+                self.name_last_node('expression')
             self._error('no available options')
 
         self.ast._define(
@@ -308,11 +311,11 @@ class smedlParser(Parser):
     def _raise_stmt_(self):
         self._token('raise')
         self._identifier_()
-        self.ast['id'] = self.last_node
+        self.name_last_node('id')
         with self._optional():
             self._token('(')
             self._expression_list_()
-            self.ast.setlist('expr_list', self.last_node)
+            self.add_last_node_to_name('expr_list')
             self._token(')')
 
         self.ast._define(
@@ -324,11 +327,11 @@ class smedlParser(Parser):
     def _instantiation_stmt_(self):
         self._token('new')
         self._identifier_()
-        self.ast['id'] = self.last_node
+        self.name_last_node('id')
         with self._optional():
             self._token('(')
             self._state_update_list_()
-            self.ast.setlist('state_update_list', self.last_node)
+            self.add_last_node_to_name('state_update_list')
             self._token(')')
 
         self.ast._define(
@@ -339,10 +342,10 @@ class smedlParser(Parser):
     @graken()
     def _call_stmt_(self):
         self._target_()
-        self.ast['target'] = self.last_node
+        self.name_last_node('target')
         self._token('(')
         self._expression_list_()
-        self.ast.setlist('expr_list', self.last_node)
+        self.add_last_node_to_name('expr_list')
         self._token(')')
 
         self.ast._define(
@@ -371,16 +374,16 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._and_expr_()
-                self.ast['or_ex'] = self.last_node
+                self.name_last_node('or_ex')
 
                 def block1():
                     self._token('||')
                     self._and_expr_()
-                    self.ast['or_ex'] = self.last_node
+                    self.name_last_node('or_ex')
                 self._positive_closure(block1)
             with self._option():
                 self._and_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -393,16 +396,16 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._sub_expr_()
-                self.ast['and_ex'] = self.last_node
+                self.name_last_node('and_ex')
 
                 def block1():
                     self._token('&&')
                     self._sub_expr_()
-                    self.ast['and_ex'] = self.last_node
+                    self.name_last_node('and_ex')
                 self._positive_closure(block1)
             with self._option():
                 self._sub_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -420,7 +423,7 @@ class smedlParser(Parser):
                 self._closure(block0)
                 self._token('!(')
                 self._expression_()
-                self.ast['not_ex'] = self.last_node
+                self.name_last_node('not_ex')
                 self._token(')')
             with self._option():
 
@@ -429,11 +432,11 @@ class smedlParser(Parser):
                 self._closure(block2)
                 self._token('(')
                 self._expression_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
                 self._token(')')
             with self._option():
                 self._comp_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -446,7 +449,7 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._arith_expr_()
-                self.ast['comp'] = self.last_node
+                self.name_last_node('comp')
 
                 def block1():
                     with self._group():
@@ -464,18 +467,18 @@ class smedlParser(Parser):
                             with self._option():
                                 self._token('<')
                             self._error('expecting one of: != < <= == > >=')
-                    self.ast['operator'] = self.last_node
+                    self.name_last_node('operator')
                     self._arith_expr_()
-                    self.ast['comp'] = self.last_node
+                    self.name_last_node('comp')
                 self._positive_closure(block1)
             with self._option():
                 self._token('(')
                 self._comp_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
                 self._token(')')
             with self._option():
                 self._arith_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -488,7 +491,7 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._term_()
-                self.ast['arith'] = self.last_node
+                self.name_last_node('arith')
 
                 def block1():
                     with self._group():
@@ -504,13 +507,13 @@ class smedlParser(Parser):
                             with self._option():
                                 self._token('%')
                             self._error('expecting one of: % * + - /')
-                    self.ast['operator'] = self.last_node
+                    self.name_last_node('operator')
                     self._term_()
-                    self.ast['arith'] = self.last_node
+                    self.name_last_node('arith')
                 self._positive_closure(block1)
             with self._option():
                 self._term_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -535,14 +538,14 @@ class smedlParser(Parser):
                             with self._option():
                                 self._token('!')
                             self._error('expecting one of: ! + - ~')
-                    self.ast['unary'] = self.last_node
+                    self.name_last_node('unary')
                 self._closure(block0)
                 self._atom_()
-                self.ast['atom'] = self.last_node
+                self.name_last_node('atom')
 
                 def block4():
                     self._trailer_()
-                    self.ast['trailer'] = self.last_node
+                    self.name_last_node('trailer')
                 self._closure(block4)
             with self._option():
 
@@ -556,11 +559,11 @@ class smedlParser(Parser):
                             with self._option():
                                 self._token('~')
                             self._error('expecting one of: + - ~')
-                    self.ast['unary'] = self.last_node
+                    self.name_last_node('unary')
                 self._closure(block6)
                 self._token('(')
                 self._arith_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
                 self._token(')')
             self._error('no available options')
 
@@ -593,22 +596,22 @@ class smedlParser(Parser):
                 self._token('[')
                 with self._optional():
                     self._expression_()
-                    self.ast['index'] = self.last_node
+                    self.name_last_node('index')
                 self._token(']')
             with self._option():
                 self._token('(')
                 with self._optional():
                     self._expression_list_()
-                    self.ast['params'] = self.last_node
+                    self.name_last_node('params')
                 self._token(')')
             with self._option():
                 self._token('.')
                 self._identifier_()
-                self.ast['dot'] = self.last_node
+                self.name_last_node('dot')
 
                 def block3():
                     self._trailer_()
-                    self.ast['trailer'] = self.last_node
+                    self.name_last_node('trailer')
                 self._closure(block3)
             self._error('expecting one of: ( [')
 
@@ -626,12 +629,12 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._type_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
 
                 def block1():
                     self._token(',')
                     self._type_()
-                    self.ast['@'] = self.last_node
+                    self.name_last_node('@')
                 self._closure(block1)
             with self._option():
                 pass
@@ -642,12 +645,12 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._expression_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
 
                 def block1():
                     self._token(',')
                     self._expression_()
-                    self.ast['@'] = self.last_node
+                    self.name_last_node('@')
                 self._closure(block1)
             with self._option():
                 pass
@@ -656,12 +659,12 @@ class smedlParser(Parser):
     @graken()
     def _event_definition_list_(self):
         self._event_definition_()
-        self.ast['@'] = self.last_node
+        self.name_last_node('@')
 
         def block1():
             self._token(',')
             self._event_definition_()
-            self.ast['@'] = self.last_node
+            self.name_last_node('@')
         self._closure(block1)
         self._token(';')
 
@@ -670,12 +673,12 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._identifier_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
 
                 def block1():
                     self._token(',')
                     self._identifier_()
-                    self.ast['@'] = self.last_node
+                    self.name_last_node('@')
                 self._closure(block1)
             with self._option():
                 pass
@@ -686,12 +689,12 @@ class smedlParser(Parser):
         with self._choice():
             with self._option():
                 self._state_update_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
 
                 def block1():
                     self._token(',')
                     self._state_update_()
-                    self.ast['@'] = self.last_node
+                    self.name_last_node('@')
                 self._closure(block1)
             with self._option():
                 pass
@@ -700,12 +703,12 @@ class smedlParser(Parser):
     @graken()
     def _action_item_list_(self):
         self._action_item_()
-        self.ast['@'] = self.last_node
+        self.name_last_node('@')
 
         def block1():
             self._token(';')
             self._action_item_()
-            self.ast['@'] = self.last_node
+            self.name_last_node('@')
         self._closure(block1)
 
 
@@ -810,8 +813,18 @@ class smedlSemantics(object):
         return ast
 
 
-def main(filename, startrule, trace=False, whitespace=None, nameguard=None):
-    import json
+def main(
+        filename,
+        startrule,
+        trace=False,
+        whitespace=None,
+        nameguard=None,
+        comments_re=None,
+        eol_comments_re=None,
+        ignorecase=None,
+        left_recursion=True,
+        **kwargs):
+
     with open(filename) as f:
         text = f.read()
     parser = smedlParser(parseinfo=False)
@@ -821,46 +834,17 @@ def main(filename, startrule, trace=False, whitespace=None, nameguard=None):
         filename=filename,
         trace=trace,
         whitespace=whitespace,
-        nameguard=nameguard)
+        nameguard=nameguard,
+        ignorecase=ignorecase,
+        **kwargs)
+    return ast
+
+if __name__ == '__main__':
+    import json
+    ast = generic_main(main, smedlParser, name='smedl')
     print('AST:')
     print(ast)
     print()
     print('JSON:')
     print(json.dumps(ast, indent=2))
     print()
-
-if __name__ == '__main__':
-    import argparse
-    import string
-    import sys
-
-    class ListRules(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string):
-            print('Rules:')
-            for r in smedlParser.rule_list():
-                print(r)
-            print()
-            sys.exit(0)
-
-    parser = argparse.ArgumentParser(description="Simple parser for smedl.")
-    parser.add_argument('-l', '--list', action=ListRules, nargs=0,
-                        help="list all rules and exit")
-    parser.add_argument('-n', '--no-nameguard', action='store_true',
-                        dest='no_nameguard',
-                        help="disable the 'nameguard' feature")
-    parser.add_argument('-t', '--trace', action='store_true',
-                        help="output trace information")
-    parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
-                        help="whitespace specification")
-    parser.add_argument('file', metavar="FILE", help="the input file to parse")
-    parser.add_argument('startrule', metavar="STARTRULE",
-                        help="the start rule for parsing")
-    args = parser.parse_args()
-
-    main(
-        args.file,
-        args.startrule,
-        trace=args.trace,
-        whitespace=args.whitespace,
-        nameguard=not args.no_nameguard
-    )

@@ -138,30 +138,39 @@ class MonitorGenerator(object):
                             paramsList = self._findFunctionParams(current, params, ast)
                             self._symbolTable.update(current, "params", paramsList)
                     if trace['trace_steps'][i]['step_actions'] is not None:
-                        for i in range(0, len(trace['trace_steps'][i]['step_actions']['actions'])):
-                            if trace['trace_steps'][i]['step_actions']['actions'][i]['raise_stmt'] is not None:
-                                current = trace['trace_steps'][i]['step_actions']['actions'][i]['raise_stmt']['id']
-                                if 'event' in self._symbolTable.get(current, 'type'):
+                        for j in range(0, len(trace['trace_steps'][i]['step_actions']['actions'])):
+                            # Handle raise statement
+                            step_actions_islist = isinstance(trace['trace_steps'][i]['step_actions']['actions'], list)
+                            if (step_actions_islist and trace['trace_steps'][i]['step_actions']['actions'][j]['raise_stmt'] is not None) or (not step_actions_islist and trace['trace_steps'][i]['step_actions']['actions']['raise_stmt'] is not None):
+                                if step_actions_islist:
+                                    current = trace['trace_steps'][i]['step_actions']['actions'][j]['raise_stmt']
+                                else:
+                                    current = trace['trace_steps'][i]['step_actions']['actions']['raise_stmt']
+                                if 'event' in self._symbolTable.get(current['id'], 'type'):
                                     # Handle events with no parameters defined:
-                                    if trace['trace_steps'][i]['step_actions']['actions'][i]['raise_stmt']['expr_list'][0] is None:
-                                        self._symbolTable.update(current, "params", [])
+                                    if current['expr_list'][0] is None:
+                                        self._symbolTable.update(current['id'], "params", [])
                                     else:
-                                        params = trace['trace_steps'][i]['step_actions']['actions'][i]['raise_stmt']['expr_list']
-                                        paramsList = self._findFunctionParams(current, params, ast)
-                                        self._symbolTable.update(current, "params", paramsList)
+                                        params = current['expr_list']
+                                        paramsList = self._findFunctionParams(current['id'], params, ast)
+                                        self._symbolTable.update(current['id'], "params", paramsList)
                 if trace['else_actions'] is not None:
                     for i in range(0, len(trace['else_actions']['actions'])):
-                        if trace['else_actions']['actions'][i]['raise_stmt'] is not None:
-                            current = trace['else_actions']['actions'][i]['raise_stmt']['id']
-                            if 'event' in self._symbolTable.get(current, 'type'):
+                        # Handle raise statement
+                        else_actions_islist = isinstance(trace['else_actions']['actions'], list)
+                        if (else_actions_islist and trace['else_actions']['actions'][i]['raise_stmt'] is not None) or (not else_actions_islist and trace['else_actions']['actions']['raise_stmt'] is not None):
+                            if else_actions_islist:
+                                current = trace['else_actions']['actions'][i]['raise_stmt']
+                            else:
+                                current = trace['else_actions']['actions']['raise_stmt']
+                            if 'event' in self._symbolTable.get(current['id'], 'type'):
                                 # Handle events with no parameters defined:
-                                if trace['else_actions']['actions'][i]['raise_stmt']['expr_list'][0] is None:
-                                    self._symbolTable.update(current, "params", [])
+                                if current['expr_list'][0] is None:
+                                    self._symbolTable.update(current['id'], "params", [])
                                 else:
-                                    params = trace['else_actions']['actions'][i]['raise_stmt']['expr_list']
-                                    # param_names = ','.join(['%s %s'%(p['type'], p['name']) for p in findFunctionParams(current, params, ast)])
-                                    paramsList = self._findFunctionParams(current, params, ast)
-                                    self._symbolTable.update(current, "params", paramsList)
+                                    params = current['expr_list']
+                                    paramsList = self._findFunctionParams(current['id'], params, ast)
+                                    self._symbolTable.update(current['id'], "params", paramsList)
 
 
     def _generateFSMs(self, ast):
@@ -184,7 +193,10 @@ class MonitorGenerator(object):
                     elseState = fsm.getStateByName(elseState)
                     if trace['else_actions']:
                         elseActions = []
-                        for action in trace['else_actions']['actions']:
+                        astActions = trace['else_actions']['actions']
+                        if not isinstance(astActions,list):
+                            astActions = [astActions]
+                        for action in astActions:
                             if action['state_update']:
                                 elseActions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
                             if action['raise_stmt']:
@@ -215,7 +227,10 @@ class MonitorGenerator(object):
                         actions = None
                         if trace['trace_steps'][i]['step_actions']:
                             actions = []
-                            for action in trace['trace_steps'][i]['step_actions']['actions']:
+                            astActions = trace['trace_steps'][i]['step_actions']['actions']
+                            if not isinstance(astActions,list):
+                                astActions = [astActions]
+                            for action in astActions:
                                 if action['state_update']:
                                     actions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
                                 if action['raise_stmt']:
