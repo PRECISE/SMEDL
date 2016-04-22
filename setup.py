@@ -61,7 +61,7 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords='software-monitoring',
+    keywords='runtime-verification',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
@@ -76,7 +76,7 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'grako>=3.6.6',
+        'grako>=3.8.1',
         'Jinja2>=2.8',
         'MarkupSafe>=0.23',
         'mccabe>=0.3.1',
