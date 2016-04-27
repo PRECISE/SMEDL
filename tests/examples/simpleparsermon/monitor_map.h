@@ -13,5 +13,3 @@ int compare_monitor_identity(void*, MonitorIdentity*);
 int hash_monitor_identity(identity_type, void*, int);
 
 #endif
-
-
