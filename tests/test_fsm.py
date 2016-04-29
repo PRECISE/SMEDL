@@ -1,4 +1,6 @@
-from fsm import FSM, State, Transition
+from utils import setup_syspath; setup_syspath()
+
+from smedl.fsm import FSM, State, Transition
 import unittest
 
 
@@ -66,7 +68,7 @@ class TestFSM(unittest.TestCase):
         self.assertEqual(2, len(self.fsm.transitions))
 
     def test_deleteTransition(self):
-        self.assertRaises(ValueError, self.fsm.deleteTransition, "garbage")
+        self.assertRaises(TypeError, self.fsm.deleteTransition, "garbage")
         self.fsm.addState(self.s1)
         self.fsm.addState(self.s2)
         self.fsm.addTransition(self.t1)

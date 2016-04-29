@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 #-------------------------------------------------------------------------------
-# 
+#
 # smedl_symboltable.py
 #
 # Peter Gebhard (pgeb@seas.upenn.edu)
@@ -24,13 +24,13 @@ class SmedlSymbolTable(OrderedDict):
     def add(self, symbol, attributes=None):
         if not isinstance(symbol, str):
             raise TypeError('Symbol must be a string')
-        elif not isinstance(attributes, dict):
+        elif attributes is not None and not isinstance(attributes, dict):
             raise TypeError('Attributes must be a dictionary')
         elif symbol in self.keys():
             if self[symbol] == attributes:
                 return
             else:
-                raise ValueError('Symbol %s already exists. Use the update() method instead.' % symbol)
+                raise ValueError('Symbol %s already exists in the table. Use the update() method instead.' % symbol)
         elif attributes is None:
             self[symbol] = {}
         else:

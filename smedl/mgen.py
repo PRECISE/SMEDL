@@ -7,8 +7,8 @@
 # Peter Gebhard (pgeb@seas.upenn.edu)
 #-------------------------------------------------------------------------------
 
-from parser import *
-from fsm import *
+from .parser import *
+from .fsm import *
 from grako.ast import AST
 from jinja2 import Environment, PackageLoader
 import os
@@ -22,23 +22,24 @@ from pathlib import Path
 class MonitorGenerator(object):
 
     def __init__(self, structs=False, debug=False):
-        self._symbolTable = None
+        self._symbolTable = SmedlSymbolTable()
         self._printStructs = structs
         self._debug = debug
         self._implicitErrors = False
+        self.pedlAST = None
+        self.smedlAST = None
 
 
     def generate(self, pedlsmedlName, helper=None):
         # Parse the PEDL, if it exists
         pedlPath = Path(pedlsmedlName + '.pedl')
-        pedlAST = None
         if pedlPath.exists():
             with pedlPath.open() as pedlFile:
                 pedlText = pedlFile.read()
             pedlPar = pedlParser(
                 parseinfo=False,
                 comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
-            pedlAST = pedlPar.parse(
+            self.pedlAST = pedlPar.parse(
                 pedlText,
                 'object',
                 filename=pedlPath,
@@ -46,20 +47,19 @@ class MonitorGenerator(object):
                 whitespace=None)
             if self._printStructs:
                 print('PEDL AST:')
-                print(pedlAST)
+                print(self.pedlAST)
                 print('\nPEDL JSON:')
-                print(json.dumps(pedlAST, indent=2))
+                print(json.dumps(self.pedlAST, indent=2))
 
         # Parse the SMEDL, if it exists
         smedlPath = Path(pedlsmedlName + '.smedl')
-        smedlAST = None
         if smedlPath.exists():
             with smedlPath.open() as smedlFile:
                 smedlText = smedlFile.read()
             smedlPar = smedlParser(
                 parseinfo=False,
                 comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
-            smedlAST = smedlPar.parse(
+            self.smedlAST = smedlPar.parse(
                 smedlText,
                 'object',
                 filename=smedlPath,
@@ -67,9 +67,9 @@ class MonitorGenerator(object):
                 whitespace=None)
             if self._printStructs:
                 print('SMEDL AST:')
-                print(smedlAST)
+                print(self.smedlAST)
                 print('\nSMEDL JSON:')
-                print(json.dumps(smedlAST, indent=2))
+                print(json.dumps(self.smedlAST, indent=2))
         else:
             if '.smedl' in pedlsmedlName or '.pedl' in pedlsmedlName:
                 raise ValueError('Did you accidentally include .smedl or .pedl in the input filename? Try again without including the extension.')
@@ -77,9 +77,9 @@ class MonitorGenerator(object):
 
         # Process the SMEDL AST
         self._symbolTable = SmedlSymbolTable()
-        self._parseToSymbolTable('top', smedlAST)
-        self._getParameterNames(smedlAST)
-        allFSMs = self._generateFSMs(smedlAST)
+        self._parseToSymbolTable('top', self.smedlAST)
+        self._getParameterNames(self.smedlAST)
+        allFSMs = self._generateFSMs(self.smedlAST)
 
         # Output the internal symbol table and FSMs
         if self._printStructs:
@@ -90,7 +90,7 @@ class MonitorGenerator(object):
                 print('\nFSM: %s\n' % key)
                 print('%s\n' % fsm)
 
-        self._outputToTemplate(allFSMs, pedlsmedlName, helper, pedlAST)
+        self._outputToTemplate(allFSMs, pedlsmedlName, helper, self.pedlAST)
 
 
     def _parseToSymbolTable(self, label, object):
@@ -419,7 +419,7 @@ class MonitorGenerator(object):
             callCases.append(self._writeCallCase(m))
 
         # Render the monitor templates and write to disk
-        env = Environment(loader=PackageLoader('mgen'))
+        env = Environment(loader=PackageLoader('smedl'))
 
         out_h = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
         out_h.write(env.get_template('object_mon.h').render(values))
@@ -679,7 +679,6 @@ class MonitorGenerator(object):
         return self._removeParentheses(exprStr)
 
 
-    #TODO - Write test for this!
     def _addThisDotToStateVariables(self, string):
         for sv in self._symbolTable.getSymbolsByType('state'):
             indices = [t.start() for t in re.finditer(sv, string)]
