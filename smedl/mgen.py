@@ -708,9 +708,9 @@ class MonitorGenerator(object):
         re.findall(r'\s([A-Za-z_]\w*).\w+\W+', guard)
 
 
-if __name__ == '__main__':
-    import argparse
+import argparse
 
+def main():
     parser = argparse.ArgumentParser(description="Code Generator for SMEDL and PEDL.")
     parser.add_argument('--helper', help='Include header file for helper functions')
     parser.add_argument('-s', '--structs', help='Print internal data structures', action='store_true')
@@ -721,3 +721,6 @@ if __name__ == '__main__':
 
     mgen = MonitorGenerator(structs=args.structs, debug=args.debug)
     mgen.generate(args.pedlsmedl, helper=args.helper)
+
+if __name__ == '__main__':
+    main()

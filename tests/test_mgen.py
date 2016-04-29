@@ -1,12 +1,9 @@
 from utils import setup_syspath; setup_syspath()
-
 from smedl.parser.smedl_parser import smedlParser
 from smedl.parser.smedl_symboltable import SmedlSymbolTable
 from smedl.mgen import MonitorGenerator
-
 import json
 import unittest
-
 
 class TestMGen(unittest.TestCase):
 
@@ -153,6 +150,7 @@ class TestMGen(unittest.TestCase):
             trace=False,
             whitespace=None)
         self.monitor._parseToSymbolTable('top', ast)
+        # TODO: Finish this test
 
     def test_removeParentheses(self):
         self.assertEqual("x", self.monitor._removeParentheses("(x)"))

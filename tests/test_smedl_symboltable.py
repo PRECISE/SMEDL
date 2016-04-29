@@ -1,8 +1,6 @@
 from utils import setup_syspath; setup_syspath()
-
 from smedl.parser.smedl_symboltable import SmedlSymbolTable
 import unittest
-
 
 class TestSymbolTable(unittest.TestCase):
 
