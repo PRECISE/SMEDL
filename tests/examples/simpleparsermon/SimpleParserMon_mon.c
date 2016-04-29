@@ -32,24 +32,24 @@ SimpleparsermonMonitor* init_simpleparsermon_monitor( SimpleparsermonData *d ) {
     return monitor;
 }
 
-void destroy_monitor(SimpleparsermonMonitor* monitor) {
+void free_monitor(SimpleparsermonMonitor* monitor) {
     fclose(monitor->logFile);
+    free(monitor);
 }
 
 /*
  * Monitor Event Handlers
  */
 
-void simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int ttime) {
+void simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int mon_var_ttime) {
   switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO]) {
     case SIMPLEPARSERMON_POINT_COUNTS_READY:
-      if(ttime >= monitor->currentTime) {
-        monitor->currentTime = ttime;
+      if(mon_var_ttime >= monitor->currentTime) {
+        monitor->currentTime = mon_var_ttime;
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_GEN0;
       }
       else {
-        time_t res = time(NULL);
-        fprintf(monitor->logFile, "%s    %s\n", ctime(&res), "ActionType: Raise; Event raised: time_error; Event parameters : currentTime");
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: time_error; Event parameters : "); }
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_ERROR;
       }
       break;
@@ -57,31 +57,30 @@ void simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int ttime) {
   }
 }
 
-void simpleparsermon_getTime_probe(int ttime) {
+void simpleparsermon_getTime_probe(int mon_var_ttime) {
   SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
   while(results != NULL) {
     SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getTime(monitor, ttime);
+    simpleparsermon_getTime(monitor, mon_var_ttime);
     results = results->next;
   }
 }
 
-void raise_simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int ttime) {
+void raise_simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int mon_var_ttime) {
   param *p_head = NULL;
-  push_param(&p_head, &ttime, NULL, NULL, NULL);
+  push_param(&p_head, &mon_var_ttime, NULL, NULL, NULL);
   push_action(&monitor->action_queue, SIMPLEPARSERMON_GETTIME_EVENT, p_head);
 }
 
 
-void simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat) {
+void simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float mon_var_lat) {
   switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO]) {
     case SIMPLEPARSERMON_POINT_COUNTS_GEN0:
-      if(lat >= -90 && lat <= 90) {
+      if(mon_var_lat >= -90 && mon_var_lat <= 90) {
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_GEN1;
       }
       else {
-        time_t res = time(NULL);
-        fprintf(monitor->logFile, "%s    %s\n", ctime(&res), "ActionType: Raise; Event raised: time_error; Event parameters : currentTime");
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: time_error; Event parameters : "); }
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_ERROR;
       }
       break;
@@ -89,30 +88,29 @@ void simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat) {
   }
 }
 
-void simpleparsermon_getLat_probe(float lat) {
+void simpleparsermon_getLat_probe(float mon_var_lat) {
   SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
   while(results != NULL) {
     SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getLat(monitor, lat);
+    simpleparsermon_getLat(monitor, mon_var_lat);
     results = results->next;
   }
 }
 
-void raise_simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float lat) {
+void raise_simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float mon_var_lat) {
   param *p_head = NULL;
   push_action(&monitor->action_queue, SIMPLEPARSERMON_GETLAT_EVENT, p_head);
 }
 
 
-void simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon) {
+void simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float mon_var_lon) {
   switch (monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO]) {
     case SIMPLEPARSERMON_POINT_COUNTS_GEN1:
-      if(lon >= -180 && lon <= 180) {
+      if(mon_var_lon >= -180 && mon_var_lon <= 180) {
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_READY;
       }
       else {
-        time_t res = time(NULL);
-        fprintf(monitor->logFile, "%s    %s\n", ctime(&res), "ActionType: Raise; Event raised: time_error; Event parameters : currentTime");
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: time_error; Event parameters : "); }
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_ERROR;
       }
       break;
@@ -120,25 +118,25 @@ void simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon) {
   }
 }
 
-void simpleparsermon_getLon_probe(float lon) {
+void simpleparsermon_getLon_probe(float mon_var_lon) {
   SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
   while(results != NULL) {
     SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getLon(monitor, lon);
+    simpleparsermon_getLon(monitor, mon_var_lon);
     results = results->next;
   }
 }
 
-void raise_simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float lon) {
+void raise_simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float mon_var_lon) {
   param *p_head = NULL;
   push_action(&monitor->action_queue, SIMPLEPARSERMON_GETLON_EVENT, p_head);
 }
 
 
-void simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist) {
+void simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float mon_var_dist) {
   switch (monitor->state[SIMPLEPARSERMON_GETDISTANCE_SCENARIO]) {
     case SIMPLEPARSERMON_GETDISTANCE_READY:
-      if(dist >= 0) {
+      if(mon_var_dist >= 0) {
         monitor->state[SIMPLEPARSERMON_GETDISTANCE_SCENARIO] = SIMPLEPARSERMON_GETDISTANCE_READY;
       }
       else {
@@ -149,25 +147,25 @@ void simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist) {
   }
 }
 
-void simpleparsermon_getDist_probe(float dist) {
+void simpleparsermon_getDist_probe(float mon_var_dist) {
   SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
   while(results != NULL) {
     SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getDist(monitor, dist);
+    simpleparsermon_getDist(monitor, mon_var_dist);
     results = results->next;
   }
 }
 
-void raise_simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float dist) {
+void raise_simpleparsermon_getDist(SimpleparsermonMonitor* monitor, float mon_var_dist) {
   param *p_head = NULL;
   push_action(&monitor->action_queue, SIMPLEPARSERMON_GETDIST_EVENT, p_head);
 }
 
 
-void simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed) {
+void simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float mon_var_speed) {
   switch (monitor->state[SIMPLEPARSERMON_GETSPEED_SCENARIO]) {
     case SIMPLEPARSERMON_GETSPEED_READY:
-      if(speed <= 6) {
+      if(mon_var_speed <= 6) {
         monitor->state[SIMPLEPARSERMON_GETSPEED_SCENARIO] = SIMPLEPARSERMON_GETSPEED_READY;
       }
       else {
@@ -178,27 +176,26 @@ void simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed) {
   }
 }
 
-void simpleparsermon_getSpeed_probe(float speed) {
+void simpleparsermon_getSpeed_probe(float mon_var_speed) {
   SimpleparsermonMonitorRecord* results = get_simpleparsermon_monitors();
   while(results != NULL) {
     SimpleparsermonMonitor* monitor = results->monitor;
-    simpleparsermon_getSpeed(monitor, speed);
+    simpleparsermon_getSpeed(monitor, mon_var_speed);
     results = results->next;
   }
 }
 
-void raise_simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float speed) {
+void raise_simpleparsermon_getSpeed(SimpleparsermonMonitor* monitor, float mon_var_speed) {
   param *p_head = NULL;
   push_action(&monitor->action_queue, SIMPLEPARSERMON_GETSPEED_EVENT, p_head);
 }
 
 
-void simpleparsermon_time_error(SimpleparsermonMonitor* monitor, int currentTime) {
-}
 
-void raise_simpleparsermon_time_error(SimpleparsermonMonitor* monitor, int currentTime) {
+
+void raise_simpleparsermon_time_error(SimpleparsermonMonitor* monitor, int mon_var_currentTime) {
   param *p_head = NULL;
-  push_param(&p_head, &currentTime, NULL, NULL, NULL);
+  push_param(&p_head, &mon_var_currentTime, NULL, NULL, NULL);
   push_action(&monitor->action_queue, SIMPLEPARSERMON_TIME_ERROR_EVENT, p_head);
 }
 
@@ -216,6 +213,10 @@ int init_simpleparsermon_monitor_maps() {
         simpleparsermon_monitor_maps[i] = (SimpleparsermonMonitorMap*)malloc(sizeof(SimpleparsermonMonitorMap));
     }
     return 1;
+}
+
+void free_simpleparsermon_monitor_maps() {
+    // TODO
 }
 
 int add_simpleparsermon_monitor_to_map(SimpleparsermonMonitor *monitor, int identity) {
