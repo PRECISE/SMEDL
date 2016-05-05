@@ -2,7 +2,7 @@ object Explorer
 identity
   opaque id;
 state
-  int mon_x, mon_y, heading, interest_threshold;
+  int x, y, heading, interest_threshold;
 events
   imported view(int, int), drive(int, int, int), turn(int);
   internal found();
@@ -16,8 +16,8 @@ scenarios
       else -> Move
     Move -> turn(facing) when facing != this.heading -> Look
       else -> Move
-    Move -> drive(x, y, heading) when x == mon_x && y == mon_y { raise retrieved() } -> Look
-      else {mon_x = x; mon_y = y} -> Look
+    Move -> drive(x, y, heading) when x == this.x && y == this.y { raise retrieved() } -> Look
+      else -> Look
 
   // Add check that it doesn't go off the map
   // We can delay events...

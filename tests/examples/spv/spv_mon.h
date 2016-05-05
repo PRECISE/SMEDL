@@ -14,7 +14,7 @@ typedef struct SpvData {
 typedef struct SpvMonitor {
   pthread_mutex_t monitor_lock;
   MonitorIdentity *identities[1];
-  int state[2];
+  int state[3];
   int last_time;
   action *action_queue;
   FILE *logFile;
@@ -40,6 +40,8 @@ void free_monitor(SpvMonitor*);
  */
 void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat, float mon_var_lon, int mon_var_ret);
 void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat, float mon_var_lon, int mon_var_ret);
+void spv_test(SpvMonitor* monitor);
+void raise_spv_test(SpvMonitor* monitor);
 void raise_spv_timestep_error(SpvMonitor* monitor, int mon_var_ttime, int mon_var_last_time);
 void raise_spv_after_end_error(SpvMonitor* monitor);
 
