@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "actions.h"
 #include "explorer_mon.h"
-
+#include "helper.h"
 
 typedef enum { MAIN, EXPLORE } scenario;
 typedef enum { EXPLORE_MAIN, RETRIEVE_MAIN } main_state;
@@ -12,6 +12,7 @@ typedef enum { DEFAULT } error_type;
 const char *main_states[2] = {"Explore", "Retrieve"};
 const char *explore_states[2] = {"Move", "Look"};
 
+/*
 typedef struct _Explorer{
   int interest_threshold;
   int y;
@@ -21,12 +22,18 @@ typedef struct _Explorer{
   const char **state_names[2];
   action *action_queue;
 } _Explorer;
+*/
 
 void call_next_action(_Explorer*);
 void raise_error(char*, const char*, char*, char*);
 
-_Explorer* init_Explorer(int interest_threshold, int y, int x, int heading) {
+_Explorer* init_Explorer(ExplorerData* data) {
   _Explorer* monitor = (_Explorer*)malloc(sizeof(_Explorer));
+  //is it good to keep ExplorerData as id?
+  monitor->id = data;
+  monitor->y = data->y;
+  monitor->x = data->x;
+  monitor->heading = data->heading;
   monitor->state[0] = EXPLORE_MAIN;
   monitor->state[1] = MOVE_EXPLORE;
   monitor->state_names[0] = main_states;
@@ -96,7 +103,7 @@ void view(_Explorer* monitor, int x, int y) {
   }
   switch (monitor->state[EXPLORE]) {
     case LOOK_EXPLORE:
-      if(contains_object(x, y)) {
+      if(contains_object(monitor)) {
         monitor->state[EXPLORE] = MOVE_EXPLORE;
       } else {
         monitor->state[EXPLORE] = MOVE_EXPLORE;
@@ -222,31 +229,35 @@ void raise_error(char *scen, const char *state, char *action, char *type) {
 
 // Checker Storage Functions
 
+/*
 typedef struct CheckerRecord {
   _Explorer* checker;
   struct CheckerRecord* next;
 } CheckerRecord;
+*/
 
 CheckerRecord* checkStore;
 
-void initCheckerStorage() {
+void init_checker_storage() {
   checkStore = NULL;
 }
 
-void addChecker( _Explorer* c) {
+void add_checker( _Explorer* c) {
   CheckerRecord* tmp = checkStore;
   checkStore = (CheckerRecord*)malloc(sizeof(CheckerRecord));
   checkStore->checker = c;
   checkStore->next = tmp;
+
 }
 
-_Explorer* getChecker( _Explorer* key ) {
+_Explorer* get_checker( ExplorerData* key ) {
   CheckerRecord* iter = checkStore;
   while (iter != NULL) {
-    if (iter->checker == key)
+    if (iter->checker->id == key)
        break;
     iter = iter->next;
   }
+
   return iter->checker;
 }
 

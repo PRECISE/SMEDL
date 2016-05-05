@@ -17,7 +17,6 @@ __thread int location[2];
 __thread Direction scan_direction;
 __thread Direction facing;
 __thread struct ExplorerData *data;
-__thread struct ExplorerMonitor *mon;
 
 int target_route[9] = {6, 7, 8, 5, 4, 3, 0, 1, 2};
 
@@ -138,7 +137,7 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
-	explorer_drive_probe(mon, location[1] + y_delta, location[0] + x_delta, facing);
+	//drive(get_checker(data), location[1] + y_delta, location[0] + x_delta, facing);
     location[0] += y_delta;
 	location[1] += x_delta;
 	if(map[location[0]][location[1]] > 0) {
@@ -277,7 +276,7 @@ void rotate_facing() {
 		}
 		facing = (facing + 1) % 4;
 		get_view();
-		explorer_turn(mon, facing);
+		//turn(get_checker(data), facing);
 	}
 
 }
@@ -311,8 +310,7 @@ void print_view() {
 
 void *run(void* input) {
 	explorer_id = ((ExplorerInput*)input)->id;
-	data = (ExplorerData*)malloc(sizeof(ExplorerData));
-
+	//data = (ExplorerData*)malloc(sizeof(ExplorerData));
 	if(make_map(input) == 1) {
 		printf("Invalid non-int args\n");
 		pthread_exit(NULL);
@@ -321,13 +319,12 @@ void *run(void* input) {
 	facing = right;
 	pthread_mutex_lock(&print_lock);
 	pthread_mutex_unlock(&print_lock);
-	data->y = location[0];
-	data->x = location[1];
-	data->heading = facing;
-        data->id = explorer_id;
-	pthread_mutex_lock(&checker_lock);
-        mon = init_explorer_monitor(data);
-	pthread_mutex_unlock(&checker_lock);
+	//data->y = location[0];
+	//data->x = location[1];
+	//data->heading = facing;
+	//pthread_mutex_lock(&checker_lock);
+	//add_checker(init_Explorer(data));
+	//pthread_mutex_unlock(&checker_lock);
 
 	print_map();
 	int move_count = 0;
@@ -337,7 +334,7 @@ void *run(void* input) {
 	}
 	lawnmower();
 	print_map();
-	free(data);
+	//free(data);
 	pthread_exit(NULL);
 }
 
@@ -353,9 +350,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     //init_checker_storage();
-       //
-       init_explorer_monitor_maps();
-       //
 	printf("{\"Data\":[\n");
 	int explorer_count = (argc - 1) / 202;
 	for(int i = 0; i < explorer_count; i++) {
@@ -380,6 +374,7 @@ int main(int argc, char *argv[]) {
 void print_map() {
 	pthread_mutex_lock(&print_lock);
 	printf("{\"ExplorerID\":%d, \"Map\":\n\"", explorer_id);
+//printf("done\n");
 	for(int i = 0; i < 10; i++) {
 		for(int j = 0; j < 20; j++) {
 			if(location[0] == i && location[1] == j) {
@@ -391,6 +386,6 @@ void print_map() {
 		printf("\n");
         
 	}
-	printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->y, mon->x, mon->heading);
+	//printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", get_checker(data)->y, get_checker(data)->x, get_checker(data)->heading);
 	pthread_mutex_unlock(&print_lock);
 }

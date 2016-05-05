@@ -3,14 +3,18 @@ object SPV
         int last_time;
     events
         imported parse_record(int, float, float, int);
+        internal test();
         exported timestep_error(int, int);
         exported after_end_error();
+
     scenarios
         parse_record:
-           Start -> parse_record(ttime,lat,lon,ret) when ttime > last_time { last_time = ttime } -> Start
+           Start -> parse_record(ttime,lat,lon,ret) when ttime > last_time { raise test();last_time = ttime } -> Start
                                                    else { raise timestep_error(ttime, last_time) } -> Start
         after_end:
-           Start -> parse_record(ttime,lat,lon,ret) when ret == -1 -> End
+           Start -> parse_record(ttime,lat,lon,ret) when ret == -1 {raise test()} -> End
                                                    else -> Start
            End -> parse_record(ttime,lat,lon,ret) { raise after_end_error() } -> End
 
+        test_se:
+           Start -> test() -> Start

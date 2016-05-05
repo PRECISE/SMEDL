@@ -8,14 +8,16 @@
 typedef enum { SPV_ID } spv_identity;
 const identity_type spv_identity_types[SPV_MONITOR_IDENTITIES] = { OPAQUE };
 
-typedef enum { SPV_PARSE_RECORD_SCENARIO, SPV_AFTER_END_SCENARIO } spv_scenario;
+typedef enum { SPV_PARSE_RECORD_SCENARIO, SPV_AFTER_END_SCENARIO, SPV_TEST_SE_SCENARIO } spv_scenario;
 typedef enum { SPV_PARSE_RECORD_START } spv_parse_record_state;
 typedef enum { SPV_AFTER_END_START, SPV_AFTER_END_END } spv_after_end_state;
-typedef enum { SPV_PARSE_RECORD_EVENT, SPV_TIMESTEP_ERROR_EVENT, SPV_AFTER_END_ERROR_EVENT } spv_event;
+typedef enum { SPV_TEST_SE_START } spv_test_se_state;
+typedef enum { SPV_PARSE_RECORD_EVENT, SPV_TEST_EVENT, SPV_TIMESTEP_ERROR_EVENT, SPV_AFTER_END_ERROR_EVENT } spv_event;
 typedef enum { SPV_DEFAULT } spv_error;
 const char *spv_parse_record_states[1] = { "Start" };
 const char *spv_after_end_states[2] = { "Start", "End" };
-const char **spv_states_names[2] = { spv_parse_record_states, spv_after_end_states };
+const char *spv_test_se_states[1] = { "Start" };
+const char **spv_states_names[3] = { spv_parse_record_states, spv_after_end_states, spv_test_se_states };
 
 SpvMonitor* init_spv_monitor( SpvData *d ) {
     SpvMonitor* monitor = (SpvMonitor*)malloc(sizeof(SpvMonitor));
@@ -24,6 +26,7 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     monitor->last_time = d->last_time;
     monitor->state[SPV_PARSE_RECORD_SCENARIO] = SPV_PARSE_RECORD_START;
     monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_START;
+    monitor->state[SPV_TEST_SE_SCENARIO] = SPV_TEST_SE_START;
     monitor->logFile = fopen("SpvMonitor.log", "w");
     put_spv_monitor(monitor);
     return monitor;
@@ -42,6 +45,7 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat,
   switch (monitor->state[SPV_PARSE_RECORD_SCENARIO]) {
     case SPV_PARSE_RECORD_START:
       if(mon_var_ttime > monitor->last_time) {
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: test; Event parameters : "); }
         monitor->last_time = mon_var_ttime;
         monitor->state[SPV_PARSE_RECORD_SCENARIO] = SPV_PARSE_RECORD_START;
       }
@@ -60,6 +64,7 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_var_lat,
 
     case SPV_AFTER_END_START:
       if(mon_var_ret == -1) {
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: test; Event parameters : "); }
         monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
       }
       else {
@@ -75,6 +80,21 @@ void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, float mon_va
   push_param(&p_head, &mon_var_ttime, NULL, NULL, NULL);
   push_param(&p_head, &mon_var_ret, NULL, NULL, NULL);
   push_action(&monitor->action_queue, SPV_PARSE_RECORD_EVENT, p_head);
+}
+
+
+void spv_test(SpvMonitor* monitor) {
+  switch (monitor->state[SPV_TEST_SE_SCENARIO]) {
+    case SPV_TEST_SE_START:
+      monitor->state[SPV_TEST_SE_SCENARIO] = SPV_TEST_SE_START;
+      break;
+
+  }
+}
+
+void raise_spv_test(SpvMonitor* monitor) {
+  param *p_head = NULL;
+  push_action(&monitor->action_queue, SPV_TEST_EVENT, p_head);
 }
 
 

@@ -19,6 +19,7 @@ typedef struct _Explorer{
   int heading;
   void *explorer_view;
   int state[2]; // = { EXPLORE_MAIN, MOVE_EXPLORE };
+  const char **state_names[2];
   action *action_queue;
 } _Explorer;
 
@@ -37,7 +38,7 @@ CheckerRecord* checkStore;
 void init_checker_storage();
 void free_checker_storage();
 void add_checker(_Explorer*);
-_Explorer* get_checker(const ExplorerData*);
+_Explorer* get_checker(ExplorerData*);
 
 // Checker event interface
 
