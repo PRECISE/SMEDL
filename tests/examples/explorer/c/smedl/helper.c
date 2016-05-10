@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "explorer_mon.h"
 
-int *get_coordinates(ExplorerMonitor *monitor) {
+/*int *get_coordinates(ExplorerMonitor *monitor) {
     int *coords = (int*)malloc(sizeof(int) * 2);
     if(monitor->heading == 0) { //up
         coords[0] = monitor->y - 2;
@@ -17,9 +17,9 @@ int *get_coordinates(ExplorerMonitor *monitor) {
         coords[1] = monitor->x + 1;
     }
     return coords;
-}
+}*/
 
-void set_view(ExplorerMonitor *monitor, const void *map) {
+/*void set_view(ExplorerMonitor *monitor, const void *map) {
     monitor->explorer_view = (int***)malloc(sizeof(int**)*3);
     for(int i = 0; i < 3; i++) {
         ((int***)monitor->explorer_view)[i] = (int**)malloc(sizeof(int*)*3);
@@ -30,12 +30,12 @@ void set_view(ExplorerMonitor *monitor, const void *map) {
             ((int***)monitor->explorer_view)[i][j] = &((int**)map)[coords[0] + i][coords[1] + j];
         }
     }
-}
+}*/
 
-int contains_object(ExplorerMonitor *monitor) {
+int contains_object(void * pointer) {
     for(int i = 0; i < 3; i++) {
         for(int j = 0; j < 3; j++) {
-            if(((int***)monitor->explorer_view)[i][j]  > 0) {
+            if(((int**)pointer)[i][j]  > 0) {
                 return 1;
             }
         }
@@ -43,9 +43,9 @@ int contains_object(ExplorerMonitor *monitor) {
     return 0;
 }
 
-void free_view(ExplorerMonitor *monitor) {
+/*void free_view(ExplorerMonitor *monitor) {
     for(int i = 0; i < 3; i++) {
         free(((int***)monitor->explorer_view)[i]);
     }
     free(monitor->explorer_view);
-}
+}*/

@@ -2,22 +2,24 @@ object Explorer
 identity
   opaque id;
 state
-  int mon_x, mon_y, heading, interest_threshold;
+  int mon_x, mon_y, mon_heading, interest_threshold,move_count;
 events
-  imported view(int, int), drive(int, int, int), turn(int);
+  imported view(pointer), drive(int, int, int), turn(int),count();
   internal found();
-  exported retrieved();
+  exported retrieved(int);
 scenarios
   main:
     Explore -> found() -> Retrieve
-    Retrieve -> retrieved() -> Explore
+    Retrieve -> retrieved(cnt) -> Explore
   explore:
-    Look -> view(x, y) when contains_object(x, y) { raise found() } -> Move
+    Look -> view(view_pointer) when contains_object(view_pointer) { raise found() } -> Move
       else -> Move
-    Move -> turn(facing) when facing != this.heading -> Look
+    Move -> turn(facing) when facing != mon_heading {mon_heading = facing } -> Look
       else -> Move
-    Move -> drive(x, y, heading) when x == mon_x && y == mon_y { raise retrieved() } -> Look
+    Move -> drive(x, y, heading) when x == mon_x && y == mon_y { raise retrieved(move_count); move_count = 0 } -> Look
       else {mon_x = x; mon_y = y} -> Look
+  count:
+    Start -> count(){move_count = move_count + 1} -> Start
 
   // Add check that it doesn't go off the map
   // We can delay events...

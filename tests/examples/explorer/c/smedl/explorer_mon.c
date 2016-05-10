@@ -4,18 +4,21 @@
 #include <stdlib.h>
 #include <time.h>
 #include "explorer_mon.h"
+#include "helper.h"
 
 typedef enum { EXPLORER_ID } explorer_identity;
 const identity_type explorer_identity_types[EXPLORER_MONITOR_IDENTITIES] = { OPAQUE };
 
-typedef enum { EXPLORER_MAIN_SCENARIO, EXPLORER_EXPLORE_SCENARIO } explorer_scenario;
+typedef enum { EXPLORER_MAIN_SCENARIO, EXPLORER_EXPLORE_SCENARIO, EXPLORER_COUNT_SCENARIO } explorer_scenario;
 typedef enum { EXPLORER_MAIN_EXPLORE, EXPLORER_MAIN_RETRIEVE } explorer_main_state;
 typedef enum { EXPLORER_EXPLORE_MOVE, EXPLORER_EXPLORE_LOOK } explorer_explore_state;
-typedef enum { EXPLORER_VIEW_EVENT, EXPLORER_DRIVE_EVENT, EXPLORER_TURN_EVENT, EXPLORER_FOUND_EVENT, EXPLORER_RETRIEVED_EVENT } explorer_event;
+typedef enum { EXPLORER_COUNT_START } explorer_count_state;
+typedef enum { EXPLORER_VIEW_EVENT, EXPLORER_DRIVE_EVENT, EXPLORER_TURN_EVENT, EXPLORER_COUNT_EVENT, EXPLORER_FOUND_EVENT, EXPLORER_RETRIEVED_EVENT } explorer_event;
 typedef enum { EXPLORER_DEFAULT } explorer_error;
 const char *explorer_main_states[2] = { "Explore", "Retrieve" };
 const char *explorer_explore_states[2] = { "Move", "Look" };
-const char **explorer_states_names[2] = { explorer_main_states, explorer_explore_states };
+const char *explorer_count_states[1] = { "Start" };
+const char **explorer_states_names[3] = { explorer_main_states, explorer_explore_states, explorer_count_states };
 
 ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     ExplorerMonitor* monitor = (ExplorerMonitor*)malloc(sizeof(ExplorerMonitor));
@@ -23,10 +26,12 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->identities[EXPLORER_ID] = init_monitor_identity(OPAQUE, d->id);
     monitor->mon_x = d->mon_x;
     monitor->mon_y = d->mon_y;
-    monitor->heading = d->heading;
+    monitor->mon_heading = d->mon_heading;
     monitor->interest_threshold = d->interest_threshold;
+    monitor->move_count = d->move_count;
     monitor->state[EXPLORER_MAIN_SCENARIO] = EXPLORER_MAIN_EXPLORE;
     monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
+    monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
     put_explorer_monitor(monitor);
     return monitor;
@@ -41,10 +46,10 @@ void free_monitor(ExplorerMonitor* monitor) {
  * Monitor Event Handlers
  */
 
-void explorer_view(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y) {
+void explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_LOOK:
-      if(contains_object(mon_var_x, mon_var_y)) {
+      if(contains_object(mon_var_view_pointer)) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: found; Event parameters : "); }
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_MOVE;
       }
@@ -56,10 +61,9 @@ void explorer_view(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y) {
   }
 }
 
-void raise_explorer_view(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y) {
+void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
   param *p_head = NULL;
-  push_param(&p_head, &mon_var_x, NULL, NULL, NULL);
-  push_param(&p_head, &mon_var_y, NULL, NULL, NULL);
+  push_param(&p_head, NULL, NULL, NULL, &mon_var_view_pointer);
   push_action(&monitor->action_queue, EXPLORER_VIEW_EVENT, p_head);
 }
 
@@ -69,6 +73,7 @@ void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int 
     case EXPLORER_EXPLORE_MOVE:
       if(mon_var_x == monitor->mon_x && mon_var_y == monitor->mon_y) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: retrieved; Event parameters : "); }
+        monitor->move_count = 0;
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
       }
       else {
@@ -81,7 +86,7 @@ void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int 
   }
 }
 
-void explorer_drive_probe(void* id, void* idint mon_var_x, int mon_var_y, int mon_var_heading) {
+void explorer_drive_probe(void* id, int mon_var_x, int mon_var_y, int mon_var_heading) {
   ExplorerMonitorRecord* results = get_explorer_monitors_by_identity(EXPLORER_ID, OPAQUE, id);
   results = filter_explorer_monitors_by_identity(results, EXPLORER_ID, id);
   while(results != NULL) {
@@ -103,7 +108,8 @@ void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y
 void explorer_turn(ExplorerMonitor* monitor, int mon_var_facing) {
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_MOVE:
-      if(mon_var_facing != monitor->heading) {
+      if(mon_var_facing != monitor->mon_heading) {
+        monitor->mon_heading = mon_var_facing;
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
       }
       else {
@@ -118,6 +124,22 @@ void raise_explorer_turn(ExplorerMonitor* monitor, int mon_var_facing) {
   param *p_head = NULL;
   push_param(&p_head, &mon_var_facing, NULL, NULL, NULL);
   push_action(&monitor->action_queue, EXPLORER_TURN_EVENT, p_head);
+}
+
+
+void explorer_count(ExplorerMonitor* monitor) {
+  switch (monitor->state[EXPLORER_COUNT_SCENARIO]) {
+    case EXPLORER_COUNT_START:
+        monitor->move_count = monitor->move_count + 1;
+      monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
+      break;
+
+  }
+}
+
+void raise_explorer_count(ExplorerMonitor* monitor) {
+  param *p_head = NULL;
+  push_action(&monitor->action_queue, EXPLORER_COUNT_EVENT, p_head);
 }
 
 
@@ -138,8 +160,9 @@ void raise_explorer_found(ExplorerMonitor* monitor) {
 
 
 
-void raise_explorer_retrieved(ExplorerMonitor* monitor) {
+void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) {
   param *p_head = NULL;
+  push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
   push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
 }
 

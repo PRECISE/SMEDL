@@ -99,6 +99,7 @@ void set_rotated_view(int **temp_view) {
 			multiview[i][j] = temp_view[i][j];
 		}
 	}
+       raise_explorer_view(mon,multiview);
 	free_temp_view(temp_view);
 	return;
 }
@@ -138,7 +139,7 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
-	explorer_drive_probe(mon, location[1] + y_delta, location[0] + x_delta, facing);
+	explorer_drive(mon, location[1] + y_delta, location[0] + x_delta, facing);
     location[0] += y_delta;
 	location[1] += x_delta;
 	if(map[location[0]][location[1]] > 0) {
@@ -321,23 +322,24 @@ void *run(void* input) {
 	facing = right;
 	pthread_mutex_lock(&print_lock);
 	pthread_mutex_unlock(&print_lock);
-	data->y = location[0];
-	data->x = location[1];
-	data->heading = facing;
-        data->id = explorer_id;
+	data->mon_y = location[0];
+	data->mon_x = location[1];
+	data->mon_heading = facing;
+       //data->id = explorer_id;
 	pthread_mutex_lock(&checker_lock);
         mon = init_explorer_monitor(data);
 	pthread_mutex_unlock(&checker_lock);
 
 	print_map();
 	int move_count = 0;
-	while(move_count < 200 && count_targets() > 0) {
+	while(move_count < 125 && count_targets() > 0) {
 		lawnmower();
 		move_count++;
+		explorer_count(move_count);
 	}
 	lawnmower();
 	print_map();
-	free(data);
+	//free(data);
 	pthread_exit(NULL);
 }
 
@@ -352,7 +354,6 @@ int main(int argc, char *argv[]) {
         printf("{\"Status\":\"Failed - Mutex init failed %i\n\"}]}", argc);
         return 1;
     }
-    //init_checker_storage();
        //
        init_explorer_monitor_maps();
        //
@@ -371,7 +372,7 @@ int main(int argc, char *argv[]) {
     	thread_head = thread_head->next;
   	}
        timer = clock() - timer;
-       printf ("It took me %d clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
+       printf ("It took me %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
 
   	printf("{\"Status\":\"Success\"}]}\n");
 	return 0;
@@ -391,6 +392,6 @@ void print_map() {
 		printf("\n");
         
 	}
-	printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->y, mon->x, mon->heading);
+	//printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->mon_y, mon->mon_x, mon->heading);
 	pthread_mutex_unlock(&print_lock);
 }

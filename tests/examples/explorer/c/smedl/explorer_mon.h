@@ -10,18 +10,20 @@ typedef struct ExplorerData {
   void* id;
   int mon_x;
   int mon_y;
-  int heading;
+  int mon_heading;
   int interest_threshold;
+  int move_count;
 } ExplorerData;
 
 typedef struct ExplorerMonitor {
   pthread_mutex_t monitor_lock;
   MonitorIdentity *identities[1];
-  int state[2];
+  int state[3];
   int mon_x;
   int mon_y;
-  int heading;
+  int mon_heading;
   int interest_threshold;
+  int move_count;
   action *action_queue;
   FILE *logFile;
 } ExplorerMonitor;
@@ -44,16 +46,18 @@ void free_monitor(ExplorerMonitor*);
 /*
  * Monitor Event Handlers
  */
-void explorer_view(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y);
-void raise_explorer_view(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y);
+void explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer);
+void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer);
 void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading);
-void explorer_drive_probe(void* id, void* idint mon_var_x, int mon_var_y, int mon_var_heading);
+void explorer_drive_probe(void* id, int mon_var_x, int mon_var_y, int mon_var_heading);
 void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading);
 void explorer_turn(ExplorerMonitor* monitor, int mon_var_facing);
 void raise_explorer_turn(ExplorerMonitor* monitor, int mon_var_facing);
+void explorer_count(ExplorerMonitor* monitor);
+void raise_explorer_count(ExplorerMonitor* monitor);
 void explorer_found(ExplorerMonitor* monitor);
 void raise_explorer_found(ExplorerMonitor* monitor);
-void raise_explorer_retrieved(ExplorerMonitor* monitor);
+void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count);
 
 /*
  * Monitor Utility Functions
