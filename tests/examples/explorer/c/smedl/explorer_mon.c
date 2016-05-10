@@ -46,7 +46,7 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
 }
 
 void free_monitor(ExplorerMonitor* monitor) {
-    zsock_destroy(monitor->publisher);
+    zsock_destroy(&monitor->publisher);
     fclose(monitor->logFile);
     free(monitor);
 }

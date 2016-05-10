@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include "explorer_mon.h"
 #include "explorer_multi.h"
-#include <time.h> 
+#include <time.h>
 
 
 typedef enum { up, left, down, right } Direction;
@@ -335,7 +335,7 @@ void *run(void* input) {
 	while(move_count < 125 && count_targets() > 0) {
 		lawnmower();
 		move_count++;
-		explorer_count(move_count);
+		explorer_count(mon);
 	}
 	lawnmower();
 	print_map();
@@ -361,13 +361,13 @@ int main(int argc, char *argv[]) {
 	int explorer_count = (argc - 1) / 202;
 	for(int i = 0; i < explorer_count; i++) {
 		add_input(i, argv);
-	}	
+	}
 	while(input_head != NULL) {
 		add_thread();
 		pthread_create(&thread_head->id, NULL, &run, input_head);
 		input_head = input_head->next;
 	}
-  	while(thread_head != NULL) { 	
+  	while(thread_head != NULL) {
     	pthread_join(thread_head->id, NULL);
     	thread_head = thread_head->next;
   	}
@@ -390,7 +390,7 @@ void print_map() {
 		}
 		if(i == 9) printf("\",");
 		printf("\n");
-        
+
 	}
 	//printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->mon_y, mon->mon_x, mon->heading);
 	pthread_mutex_unlock(&print_lock);

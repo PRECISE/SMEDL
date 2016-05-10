@@ -65,11 +65,14 @@ void start_monitor(Explorer_statMonitor* monitor) {
     assert (rc == 0);
     zloop_reader_set_tolerant (loop, input);
     zloop_start (loop);
+    // Looping continues until interrupted
+    zloop_destroy (&loop);
+    assert (loop == NULL);
 }
 
 void free_monitor(Explorer_statMonitor* monitor) {
-    zsock_destroy(monitor->publisher);
-    zsock_destroy(monitor->subscriber);
+    zsock_destroy(&monitor->publisher);
+    zsock_destroy(&monitor->subscriber);
     fclose(monitor->logFile);
     free(monitor);
 }
@@ -81,8 +84,8 @@ void free_monitor(Explorer_statMonitor* monitor) {
 void explorer_stat_retrieved(Explorer_StatMonitor* monitor, int mon_var_move_count) {
   switch (monitor->state[EXPLORER_STAT_STAT_SCENARIO]) {
     case EXPLORER_STAT_STAT_START:
-        monitor->sum = this.sum + 1;
-        monitor->sum_count = this.sum_count + mon_var_move_count;
+        monitor->sum = monitor->sum + 1;
+        monitor->sum_count = monitor->sum_count + mon_var_move_count;
       monitor->state[EXPLORER_STAT_STAT_SCENARIO] = EXPLORER_STAT_STAT_START;
       break;
 
