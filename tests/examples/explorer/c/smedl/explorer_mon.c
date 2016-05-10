@@ -1,10 +1,12 @@
-//Compile: gcc -o explorer_mon -std=c99 actions.c monitor_map.c explorer_mon.c
+//Compile: gcc -o explorer_mon -L/usr/local/lib -lczmq -I/usr/local/include -std=c99 actions.c monitor_map.c explorer_mon.c
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include "explorer_mon.h"
 #include "helper.h"
+#include "czmq.h"
+
 
 typedef enum { EXPLORER_ID } explorer_identity;
 const identity_type explorer_identity_types[EXPLORER_MONITOR_IDENTITIES] = { OPAQUE };
@@ -33,11 +35,18 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
     monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
+
+    monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
+    assert (monitor->publisher);
+    assert (zsock_resolve (monitor->publisher) != monitor->publisher);
+    assert (streq (zsock_type_str (monitor->publisher), "PUB"));
+
     put_explorer_monitor(monitor);
     return monitor;
 }
 
 void free_monitor(ExplorerMonitor* monitor) {
+    zsock_destroy(monitor->publisher);
     fclose(monitor->logFile);
     free(monitor);
 }
@@ -164,6 +173,12 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
   param *p_head = NULL;
   push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
   push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
+
+  // Export event to external monitors
+  char str[60];
+  //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
+  sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
+  zstr_send (monitor->publisher, str);
 }
 
 
@@ -256,5 +271,5 @@ ExplorerMonitorRecord* filter_explorer_monitors_by_identity(ExplorerMonitorRecor
 }
 
 void raise_error(char *scen, const char *state, char *action, char *type) {
-  printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
+    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
 }

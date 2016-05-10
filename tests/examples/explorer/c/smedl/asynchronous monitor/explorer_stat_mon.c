@@ -1,9 +1,10 @@
-//Compile: gcc -o explorer_stat_mon -std=c99 actions.c monitor_map.c explorer_stat_mon.c
+//Compile: gcc -o explorer_stat_mon -L/usr/local/lib -lczmq -I/usr/local/include -std=c99 actions.c monitor_map.c explorer_stat_mon.c
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include "explorer_stat_mon.h"
+#include "czmq.h"
 
 typedef enum { EXPLORER_STAT_ID } explorer_stat_identity;
 const identity_type explorer_stat_identity_types[EXPLORER_STAT_MONITOR_IDENTITIES] = { OPAQUE };
@@ -24,11 +25,51 @@ Explorer_statMonitor* init_explorer_stat_monitor( Explorer_statData *d ) {
     monitor->targetNum = d->targetNum;
     monitor->state[EXPLORER_STAT_STAT_SCENARIO] = EXPLORER_STAT_STAT_START;
     monitor->logFile = fopen("Explorer_statMonitor.log", "w");
+
+    monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
+    assert (monitor->publisher);
+    assert (zsock_resolve (monitor->publisher) != monitor->publisher);
+    assert (streq (zsock_type_str (monitor->publisher), "PUB"));
+
+    monitor->subscriber = zsock_new_sub (">tcp://localhost:5560");
+    assert (monitor->subscriber);
+    assert (zsock_resolve (monitor->subscriber) != monitor->subscriber);
+    assert (streq (zsock_type_str (monitor->subscriber), "SUB"));
+
     put_explorer_stat_monitor(monitor);
     return monitor;
 }
 
+static int
+event_filter (zloop_t *loop, zsock_t *reader, void *arg)
+{
+    zmsg_t *msg = zmsg_recv (reader);
+    assert (msg);
+    char *msg_str = zmsg_popstr (msg);
+    printf ("INCOMING_MSG: %s\n", msg_str);
+
+    // TODO: Do filtering here, with Monitor address as one of the arguments so we can call the event handlers
+
+    free (msg_str);
+    zmsg_destroy (&msg);
+    return 0;
+}
+
+
+void start_monitor(Explorer_statMonitor* monitor) {
+    zloop_t *loop = zloop_new ();
+    assert (loop);
+    zloop_set_verbose (loop, verbose);
+
+    int rc = zloop_reader (loop, monitor->subscriber, event_filter, NULL);
+    assert (rc == 0);
+    zloop_reader_set_tolerant (loop, input);
+    zloop_start (loop);
+}
+
 void free_monitor(Explorer_statMonitor* monitor) {
+    zsock_destroy(monitor->publisher);
+    zsock_destroy(monitor->subscriber);
     fclose(monitor->logFile);
     free(monitor);
 }
@@ -78,6 +119,12 @@ void raise_explorer_stat_op(Explorer_StatMonitor* monitor, int mon_var_None) {
   param *p_head = NULL;
   push_param(&p_head, &mon_var_None, NULL, NULL, NULL);
   push_action(&monitor->action_queue, EXPLORER_STAT_OP_EVENT, p_head);
+
+  // Export event to external monitors
+  char str[60];
+  //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
+  sprintf(str, "/explorer/1/op  %d", mon_var_None);
+  zstr_send (monitor->publisher, str);
 }
 
 

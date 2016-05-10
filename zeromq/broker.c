@@ -1,6 +1,5 @@
 //  Simple message queuing broker
-//  Same as request-reply broker but using shared queue proxy
-//  See: http://zguide.zeromq.org/page:all#ZeroMQ-s-Built-In-Proxy-Function
+//  See: http://api.zeromq.org/CZMQ3-0:zproxy
 //  Compile (OS X): gcc broker.c -L/usr/local/lib -lczmq -I/usr/local/include -o broker
 
 #include "czmq.h"

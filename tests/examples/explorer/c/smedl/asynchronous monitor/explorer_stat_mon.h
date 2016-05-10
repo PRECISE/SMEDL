@@ -2,6 +2,7 @@
 #include "actions.h"
 #include <stdio.h> // For the log file
 #include <pthread.h>
+#include "czmq.h"
 
 #define EXPLORER_STAT_MONITOR_MAP_SIZE 100 // number of buckets
 #define EXPLORER_STAT_MONITOR_IDENTITIES 1
@@ -22,6 +23,8 @@ typedef struct Explorer_statMonitor {
   int targetNum;
   action *action_queue;
   FILE *logFile;
+  zsock_t *publisher;
+  zsock_t *subscriber;
 } Explorer_statMonitor;
 
 typedef struct Explorer_statMonitorRecord {
