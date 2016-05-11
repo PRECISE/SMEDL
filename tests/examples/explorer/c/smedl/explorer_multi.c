@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include "explorer_mon.h"
 #include "explorer_multi.h"
-#include <time.h>
+#include <time.h> 
 
 
 typedef enum { up, left, down, right } Direction;
@@ -99,7 +99,7 @@ void set_rotated_view(int **temp_view) {
 			multiview[i][j] = temp_view[i][j];
 		}
 	}
-       raise_explorer_view(mon,multiview);
+       //raise_explorer_view(mon,multiview);
 	free_temp_view(temp_view);
 	return;
 }
@@ -139,7 +139,7 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
-	explorer_drive(mon, location[1] + y_delta, location[0] + x_delta, facing);
+	//explorer_drive(mon, location[1] + y_delta, location[0] + x_delta, facing);
     location[0] += y_delta;
 	location[1] += x_delta;
 	if(map[location[0]][location[1]] > 0) {
@@ -278,7 +278,7 @@ void rotate_facing() {
 		}
 		facing = (facing + 1) % 4;
 		get_view();
-		explorer_turn(mon, facing);
+		//explorer_turn(mon, facing);
 	}
 
 }
@@ -335,11 +335,11 @@ void *run(void* input) {
 	while(move_count < 125 && count_targets() > 0) {
 		lawnmower();
 		move_count++;
-		explorer_count(mon);
+		//explorer_count(mon);
 	}
 	lawnmower();
 	print_map();
-	//free(data);
+	free(data);
 	pthread_exit(NULL);
 }
 
@@ -361,13 +361,13 @@ int main(int argc, char *argv[]) {
 	int explorer_count = (argc - 1) / 202;
 	for(int i = 0; i < explorer_count; i++) {
 		add_input(i, argv);
-	}
+	}	
 	while(input_head != NULL) {
 		add_thread();
 		pthread_create(&thread_head->id, NULL, &run, input_head);
 		input_head = input_head->next;
 	}
-  	while(thread_head != NULL) {
+  	while(thread_head != NULL) { 	
     	pthread_join(thread_head->id, NULL);
     	thread_head = thread_head->next;
   	}
@@ -390,7 +390,7 @@ void print_map() {
 		}
 		if(i == 9) printf("\",");
 		printf("\n");
-
+        
 	}
 	//printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->mon_y, mon->mon_x, mon->heading);
 	pthread_mutex_unlock(&print_lock);

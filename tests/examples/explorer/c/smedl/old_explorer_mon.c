@@ -36,18 +36,12 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
 
-    monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
-    printf("zsock_new_pub\n");
-    assert (monitor->publisher);
-    printf("assert1\n");
-    assert (zsock_resolve (monitor->publisher) != monitor->publisher);
-    printf("assert2\n");
-    assert (streq (zsock_type_str (monitor->publisher), "PUB"));
-    printf("assert3\n");
+    //monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
+    //assert (monitor->publisher);
+    //assert (zsock_resolve (monitor->publisher) != monitor->publisher);
+    //assert (streq (zsock_type_str (monitor->publisher), "PUB"));
 
     put_explorer_monitor(monitor);
-    printf("assert4\n");
-
     return monitor;
 }
 
@@ -208,7 +202,6 @@ void free_explorer_monitor_maps() {
 }
 
 int add_explorer_monitor_to_map(ExplorerMonitor *monitor, int identity) {
-    printf("assert3.5");
     ExplorerMonitorMap* map = explorer_monitor_maps[identity];
     int bucket = hash_monitor_identity(monitor->identities[identity]->type,
         monitor->identities[identity]->value, EXPLORER_MONITOR_MAP_SIZE);
