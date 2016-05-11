@@ -1,4 +1,4 @@
-//Compile: gcc -o explorer_mon -L/usr/local/lib -lczmq -I/usr/local/include -std=c99 actions.c monitor_map.c explorer_mon.c
+//Compile: gcc -o explorer_mon -L/usr/local/lib -lczmq -I/usr/local/include -std=c99 actions.c monitor_map.c explorer_mon.c helper.c explorer_multi.c
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,20 +62,21 @@ void free_monitor(ExplorerMonitor* monitor) {
  */
 
 void explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
-  printf("view");
+  printf("view\n");
   if(mon_var_view_pointer != NULL){
-     printf("not null");
+     printf("not null\n");
   }
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_LOOK:
       if(contains_object(mon_var_view_pointer)) {
+        printf("look - move1 - start\n");
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: found; Event parameters : "); }
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_MOVE;
-        printf("look - move1");
+        printf("look - move1\n");
       }
       else {
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_MOVE;
-        printf("look - move2");
+        printf("look - move2\n");
 
       }
       break;

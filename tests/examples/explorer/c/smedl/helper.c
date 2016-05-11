@@ -32,10 +32,10 @@
     }
 }*/
 
-int contains_object(void * pointer) {
+int contains_object(int** map) {
     for(int i = 0; i < 3; i++) {
         for(int j = 0; j < 3; j++) {
-            if(((int**)pointer)[i][j]  > 0) {
+            if(&map[i][j] > 0) {
                 return 1;
             }
         }
