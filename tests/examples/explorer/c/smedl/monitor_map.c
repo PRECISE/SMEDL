@@ -7,17 +7,18 @@ MonitorIdentity* init_monitor_identity(identity_type type, void *value) {
     MonitorIdentity* identity = (MonitorIdentity*)malloc(sizeof(MonitorIdentity));
     identity->type = type;
     switch (type) {
-        case INT:;
+        case INT:
+        case OPAQUE:
             int *i = (int*)malloc(sizeof(int));
             *i = *(int*)value;
             identity->value = i;
             break;
-        case POINTER:;
+        case POINTER:
             uintptr_t *p = (uintptr_t*)malloc(sizeof(uintptr_t));
             *p = (uintptr_t)value;
             identity->value = p;
             break;
-        case THREAD:;
+        case THREAD:
             pthread_t *t = (pthread_t*)malloc(sizeof(pthread_t));
             *t = *(pthread_t*)value;
             identity->value = t;
@@ -31,6 +32,7 @@ int compare_monitor_identity(void *value, MonitorIdentity *other) {
     int value_match = 0;
     switch (other->type) {
         case INT:
+        case OPAQUE:
             if(*(int*)value == *(int*)other->value) {
                 value_match = 1;
             }
@@ -54,6 +56,7 @@ int hash_monitor_identity(identity_type type, void *value, int map_size) {
     int bucket;
     switch (type) {
         case INT:
+        case OPAQUE:
             bucket = *(int*)value % map_size;
             break;
         case POINTER:
