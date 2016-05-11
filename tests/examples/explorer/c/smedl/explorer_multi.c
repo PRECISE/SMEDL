@@ -100,7 +100,6 @@ void set_rotated_view(int **temp_view) {
 		}
 	}
     explorer_view(mon,multiview);
-    printf("after view\n");
 	free_temp_view(temp_view);
 	return;
 }
