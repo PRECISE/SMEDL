@@ -62,14 +62,21 @@ void free_monitor(ExplorerMonitor* monitor) {
  */
 
 void explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
+  printf("view");
+  if(mon_var_view_pointer != NULL){
+     printf("not null");
+  }
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_LOOK:
       if(contains_object(mon_var_view_pointer)) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: found; Event parameters : "); }
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_MOVE;
+        printf("look - move1");
       }
       else {
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_MOVE;
+        printf("look - move2");
+
       }
       break;
 
@@ -84,14 +91,18 @@ void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
 
 
 void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading) {
+  printf("drive");
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_MOVE:
       if(mon_var_x == monitor->mon_x && mon_var_y == monitor->mon_y) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: retrieved; Event parameters : "); }
+        printf("retrieved called");
+        raise_explorer_retrieved(monitor,monitor->move_count);
         monitor->move_count = 0;
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
       }
       else {
+        printf("move1");
         monitor->mon_x = mon_var_x;
         monitor->mon_y = mon_var_y;
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
@@ -184,6 +195,7 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
   char str[60];
   //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
   sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
+  printf(str);
   zstr_send (monitor->publisher, str);
 }
 

@@ -99,7 +99,8 @@ void set_rotated_view(int **temp_view) {
 			multiview[i][j] = temp_view[i][j];
 		}
 	}
-       //raise_explorer_view(mon,multiview);
+       printf("before view");
+       explorer_view(mon,multiview);
 	free_temp_view(temp_view);
 	return;
 }
@@ -130,6 +131,7 @@ void get_view() {
 			}
 		}
 	}
+       printf("get_view");
 	set_rotated_view(temp_view);
 	return;
 }
@@ -139,7 +141,7 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
-	//explorer_drive(mon, location[1] + y_delta, location[0] + x_delta, facing);
+	explorer_drive(mon, location[1] + y_delta, location[0] + x_delta, facing);
     location[0] += y_delta;
 	location[1] += x_delta;
 	if(map[location[0]][location[1]] > 0) {
@@ -278,7 +280,7 @@ void rotate_facing() {
 		}
 		facing = (facing + 1) % 4;
 		get_view();
-		//explorer_turn(mon, facing);
+		explorer_turn(mon, facing);
 	}
 
 }
@@ -331,11 +333,15 @@ void *run(void* input) {
 	pthread_mutex_unlock(&checker_lock);
 
 	print_map();
+	pthread_mutex_lock(&print_lock);
+       printf("after map");
+	pthread_mutex_unlock(&print_lock);
+
 	int move_count = 0;
-	while(move_count < 125 && count_targets() > 0) {
+	while(move_count < 200 && count_targets() > 0) {
 		lawnmower();
 		move_count++;
-		//explorer_count(mon);
+		explorer_count(mon);
 	}
 	lawnmower();
 	print_map();
@@ -379,6 +385,7 @@ int main(int argc, char *argv[]) {
 }
 
 void print_map() {
+
 	pthread_mutex_lock(&print_lock);
 	printf("{\"ExplorerID\":%d, \"Map\":\n\"", explorer_id);
 	for(int i = 0; i < 10; i++) {
@@ -389,9 +396,12 @@ void print_map() {
 			if(j < 19) printf(" ");
 		}
 		if(i == 9) printf("\",");
-		printf("\n");
+		printf("\n");       
+              printf("return:%d",i);
+
         
 	}
 	//printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->mon_y, mon->mon_x, mon->heading);
+
 	pthread_mutex_unlock(&print_lock);
 }
