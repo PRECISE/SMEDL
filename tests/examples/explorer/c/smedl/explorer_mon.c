@@ -204,7 +204,7 @@ void free_explorer_monitor_maps() {
 int add_explorer_monitor_to_map(ExplorerMonitor *monitor, int identity) {
 
     ExplorerMonitorMap* map = explorer_monitor_maps[identity];
-    //printf("abc");
+    printf("abc");
     int bucket = hash_monitor_identity(monitor->identities[identity]->type,
         monitor->identities[identity]->value, EXPLORER_MONITOR_MAP_SIZE);
 
