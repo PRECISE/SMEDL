@@ -99,7 +99,7 @@ void set_rotated_view(int **temp_view) {
 			multiview[i][j] = temp_view[i][j];
 		}
 	}
-    explorer_view(mon,multiview);
+        explorer_view(mon,multiview);
 	free_temp_view(temp_view);
 	return;
 }
@@ -325,10 +325,10 @@ void *run(void* input) {
 	data->mon_y = location[0];
 	data->mon_x = location[1];
 	data->mon_heading = facing;
-    data->id = explorer_id;
+       data->id = &explorer_id;
 
 	pthread_mutex_lock(&checker_lock);
-    mon = init_explorer_monitor(data);
+       mon = init_explorer_monitor(data);
 	pthread_mutex_unlock(&checker_lock);
 	print_map();
 

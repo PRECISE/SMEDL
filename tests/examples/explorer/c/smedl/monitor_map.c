@@ -5,26 +5,29 @@
 
 MonitorIdentity* init_monitor_identity(identity_type type, void *value) {
     MonitorIdentity* identity = (MonitorIdentity*)malloc(sizeof(MonitorIdentity));
+            int *i = (int*)malloc(sizeof(int));
+            uintptr_t *p = (uintptr_t*)malloc(sizeof(uintptr_t));
+            pthread_t *t = (pthread_t*)malloc(sizeof(pthread_t));
+
     identity->type = type;
     switch (type) {
         case INT:
         case OPAQUE:
-            int *i = (int*)malloc(sizeof(int));
             *i = *(int*)value;
             identity->value = i;
             break;
         case POINTER:
-            uintptr_t *p = (uintptr_t*)malloc(sizeof(uintptr_t));
             *p = (uintptr_t)value;
             identity->value = p;
             break;
         case THREAD:
-            pthread_t *t = (pthread_t*)malloc(sizeof(pthread_t));
             *t = *(pthread_t*)value;
             identity->value = t;
+            break;
         default:
             break;
     }
+
     return identity;
 }
 
@@ -46,6 +49,7 @@ int compare_monitor_identity(void *value, MonitorIdentity *other) {
             if(*(pthread_t*)value == *(pthread_t*)other->value) {
                 value_match = 1;
             }
+            break;
         default:
             break;
     }
