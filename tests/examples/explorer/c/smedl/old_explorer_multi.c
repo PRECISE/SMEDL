@@ -326,12 +326,13 @@ void *run(void* input) {
 	data->mon_x = location[1];
 	data->mon_heading = facing;
        //data->id = explorer_id;
-
 	pthread_mutex_lock(&checker_lock);
         mon = init_explorer_monitor(data);
 	pthread_mutex_unlock(&checker_lock);
+
 	print_map();
 	pthread_mutex_lock(&print_lock);
+
 	pthread_mutex_unlock(&print_lock);
 
 	int move_count = 0;
@@ -343,7 +344,7 @@ void *run(void* input) {
 	lawnmower();
 	print_map();
 	free(data);
-       free_monitor(mon);
+        free_monitor(mon);
 	pthread_exit(NULL);
 }
 
