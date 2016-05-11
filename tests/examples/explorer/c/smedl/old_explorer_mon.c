@@ -36,17 +36,14 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
 
-    //monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
-    //assert (monitor->publisher);
-    //assert (zsock_resolve (monitor->publisher) != monitor->publisher);
-    //assert (streq (zsock_type_str (monitor->publisher), "PUB"));
+
 
     put_explorer_monitor(monitor);
     return monitor;
 }
 
 void free_monitor(ExplorerMonitor* monitor) {
-    zsock_destroy(&monitor->publisher);
+    //zsock_destroy(&monitor->publisher);
     fclose(monitor->logFile);
     free(monitor);
 }
@@ -82,6 +79,7 @@ void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int 
     case EXPLORER_EXPLORE_MOVE:
       if(mon_var_x == monitor->mon_x && mon_var_y == monitor->mon_y) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: retrieved; Event parameters : "); }
+        raise_explorer_retrieved(monitor,monitor->move_count);
         monitor->move_count = 0;
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
       }
@@ -177,8 +175,8 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
   // Export event to external monitors
   char str[60];
   //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
-  sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
-  zstr_send (monitor->publisher, str);
+  //sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
+  //zstr_send (monitor->publisher, str);
 }
 
 

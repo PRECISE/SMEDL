@@ -37,16 +37,11 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
 
     monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
-    printf("zsock_new_pub\n");
     assert (monitor->publisher);
-    printf("assert1\n");
     assert (zsock_resolve (monitor->publisher) != monitor->publisher);
-    printf("assert2\n");
     assert (streq (zsock_type_str (monitor->publisher), "PUB"));
-    printf("assert3\n");
 
     put_explorer_monitor(monitor);
-    printf("assert4\n");
 
     return monitor;
 }
@@ -62,25 +57,16 @@ void free_monitor(ExplorerMonitor* monitor) {
  */
 
 void explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
-  printf("view\n");
-  if(mon_var_view_pointer != NULL){
-     printf("not null\n");
-  }
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_LOOK:
       if(contains_object(mon_var_view_pointer)) {
-        printf("look - move1 - start\n");
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: found; Event parameters : "); }
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_MOVE;
-        printf("look - move1\n");
       }
       else {
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_MOVE;
-        printf("look - move2\n");
-
       }
       break;
-
   }
 }
 
@@ -92,18 +78,15 @@ void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
 
 
 void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading) {
-  printf("drive");
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_MOVE:
       if(mon_var_x == monitor->mon_x && mon_var_y == monitor->mon_y) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: retrieved; Event parameters : "); }
-        printf("retrieved called");
         raise_explorer_retrieved(monitor,monitor->move_count);
         monitor->move_count = 0;
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
       }
       else {
-        printf("move1");
         monitor->mon_x = mon_var_x;
         monitor->mon_y = mon_var_y;
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
@@ -185,8 +168,6 @@ void raise_explorer_found(ExplorerMonitor* monitor) {
 }
 
 
-
-
 void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) {
   param *p_head = NULL;
   push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
@@ -221,16 +202,20 @@ void free_explorer_monitor_maps() {
 }
 
 int add_explorer_monitor_to_map(ExplorerMonitor *monitor, int identity) {
-    printf("assert3.5");
+
     ExplorerMonitorMap* map = explorer_monitor_maps[identity];
+    //printf("abc");
     int bucket = hash_monitor_identity(monitor->identities[identity]->type,
         monitor->identities[identity]->value, EXPLORER_MONITOR_MAP_SIZE);
+
     ExplorerMonitorRecord* record = (ExplorerMonitorRecord*)malloc(sizeof(ExplorerMonitorRecord));
     if(monitor == NULL || record == NULL) {
         free(monitor);
         free(record);
+
         return 0;
     }
+
     record->monitor = monitor;
     pthread_mutex_lock(&explorer_monitor_maps_lock);
     record->next = map->list[bucket];
