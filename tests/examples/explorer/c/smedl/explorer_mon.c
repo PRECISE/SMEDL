@@ -24,8 +24,10 @@ const char **explorer_states_names[3] = { explorer_main_states, explorer_explore
 
 ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     ExplorerMonitor* monitor = (ExplorerMonitor*)malloc(sizeof(ExplorerMonitor));
+
     pthread_mutex_init(&monitor->monitor_lock, NULL);
     monitor->identities[EXPLORER_ID] = init_monitor_identity(OPAQUE, d->id);
+    
     monitor->mon_x = d->mon_x;
     monitor->mon_y = d->mon_y;
     monitor->mon_heading = d->mon_heading;
@@ -35,7 +37,6 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
     monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
-
     monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
     assert (monitor->publisher);
     assert (zsock_resolve (monitor->publisher) != monitor->publisher);
@@ -169,6 +170,7 @@ void raise_explorer_found(ExplorerMonitor* monitor) {
 
 
 void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) {
+    
   param *p_head = NULL;
   push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
   push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
@@ -202,12 +204,9 @@ void free_explorer_monitor_maps() {
 }
 
 int add_explorer_monitor_to_map(ExplorerMonitor *monitor, int identity) {
-
     ExplorerMonitorMap* map = explorer_monitor_maps[identity];
-    //printf("abc");
     int bucket = hash_monitor_identity(monitor->identities[identity]->type,
         monitor->identities[identity]->value, EXPLORER_MONITOR_MAP_SIZE);
-
     ExplorerMonitorRecord* record = (ExplorerMonitorRecord*)malloc(sizeof(ExplorerMonitorRecord));
     if(monitor == NULL || record == NULL) {
         free(monitor);
