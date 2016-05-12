@@ -6,7 +6,7 @@
 ;; Version: 0.0.1
 ;; Created: 25 April 2016
 ;; Keywords: languages
-;; Homepage: 
+;; Homepage:
 
 ;; This file is not part of GNU Emacs.
 
@@ -41,6 +41,7 @@
 ;; each category of keyword is given a particular face
 (setq smedl-font-lock-keywords
       `(
+        ("//.*$" . font-lock-comment-face)
         (,smedl-type-regexp . font-lock-type-face)
         (,smedl-constant-regexp . font-lock-constant-face)
         (,smedl-functions-regexp . font-lock-builtin-face)
