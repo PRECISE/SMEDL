@@ -139,7 +139,10 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
-	explorer_drive(mon, location[1] + y_delta, location[0] + x_delta, facing);
+    if(y_delta == 0 && x_delta == 0){
+        printf("retrieved\n");
+    }
+	explorer_drive(mon, location[1] + x_delta, location[0] + y_delta, facing);
     location[0] += y_delta;
 	location[1] += x_delta;
 	if(map[location[0]][location[1]] > 0) {
@@ -338,6 +341,7 @@ void *run(void* input) {
 		move_count++;
 		explorer_count(mon);
 	}
+    printf("targetNum:%d,move_count:%d\n",count_targets(),move_count);
 	lawnmower();
 	print_map();
 	free(data);

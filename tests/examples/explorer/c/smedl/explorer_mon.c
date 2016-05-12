@@ -170,6 +170,7 @@ void raise_explorer_found(ExplorerMonitor* monitor) {
 
 
 void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) {
+    
   param *p_head = NULL;
   push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
   push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
