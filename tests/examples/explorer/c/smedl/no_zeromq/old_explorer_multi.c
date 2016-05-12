@@ -3,7 +3,8 @@
 #include <pthread.h>
 #include "explorer_mon.h"
 #include "explorer_multi.h"
-#include <time.h> 
+#include <time.h>
+#include <unistd.h> 
 
 
 typedef enum { up, left, down, right } Direction;
@@ -384,7 +385,7 @@ int main(int argc, char *argv[]) {
 }
 
 void print_map() {
-
+        sleep(1);   
 	pthread_mutex_lock(&print_lock);
 	printf("{\"ExplorerID\":%d, \"Map\":\n\"", explorer_id);
 	for(int i = 0; i < 10; i++) {

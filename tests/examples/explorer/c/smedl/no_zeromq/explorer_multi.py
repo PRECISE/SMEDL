@@ -3,7 +3,7 @@ from random import randint
 
 cmd = ["./multi"]
 
-for i in range(0,1):
+for i in range(0,125):
     cmd.append(str(randint(0, 9)))
     cmd.append(str(randint(0, 19)))
 
