@@ -79,7 +79,7 @@ void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
 
 
 void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, void * map) {
-
+  //printf("mon_y:%d,mon_x:%d\n",mon_var_y,mon_var_x);
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_MOVE:
       if(check_retrieved(map, mon_var_x, mon_var_y)) {

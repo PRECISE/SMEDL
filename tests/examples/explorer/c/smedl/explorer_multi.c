@@ -99,7 +99,7 @@ void set_rotated_view(int **temp_view) {
 			multiview[i][j] = temp_view[i][j];
 		}
 	}
-        explorer_view(mon,multiview);
+    explorer_view(mon,multiview);
 	free_temp_view(temp_view);
 	return;
 }
@@ -139,11 +139,11 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
-    explorer_drive(mon, location[1] + x_delta, location[0] + y_delta, facing, map);
     location[0] += y_delta;
 	location[1] += x_delta;
+    explorer_drive(mon, location[1], location[0], facing, map);
 	if(map[location[0]][location[1]] > 0) {
-        printf("\ntrue\n");
+        printf("\nlocy:%dlocx:%d\n",location[0],location[1]);
         map[location[0]][location[1]] = 0;
 	}
 	pthread_mutex_lock(&print_lock);
@@ -194,6 +194,7 @@ int get_targets_in_view() {
 			}
 			location = spot;
 			targets++;
+            explorer_view(mon,multiview);
 		}
 	}
 	return targets;
@@ -326,17 +327,17 @@ void *run(void* input) {
 	data->mon_y = location[0];
 	data->mon_x = location[1];
 	data->mon_heading = facing;
-       data->id = &explorer_id;
-
+    data->id = &explorer_id;
+    data->move_count = 0;
 	pthread_mutex_lock(&checker_lock);
-       mon = init_explorer_monitor(data);
+    mon = init_explorer_monitor(data);
 	pthread_mutex_unlock(&checker_lock);
 	print_map();
 	int move_count = 0;
 	while(move_count < 200 && count_targets() > 0) {
+        explorer_count(mon);
 		lawnmower();
 		move_count++;
-		explorer_count(mon);
 	}
     lawnmower();
 	print_map();

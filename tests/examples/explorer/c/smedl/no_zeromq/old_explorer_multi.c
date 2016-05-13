@@ -329,6 +329,7 @@ void *run(void* input) {
 	data->mon_x = location[1];
 	data->mon_heading = facing;
         data->id = &explorer_id;
+    data->move_count = 0;
 	pthread_mutex_lock(&checker_lock);
         mon = init_explorer_monitor(data);
 	pthread_mutex_unlock(&checker_lock);
