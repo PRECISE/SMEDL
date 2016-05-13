@@ -5,28 +5,28 @@ Each sample counts as 0.01 seconds.
 
   %   cumulative   self              self     total           
  time   seconds   seconds    calls  Ts/call  Ts/call  name    
-  0.00      0.00     0.00    79123     0.00     0.00  get_view_spot
-  0.00      0.00     0.00    23566     0.00     0.00  free_temp_view
-  0.00      0.00     0.00    23566     0.00     0.00  make_temp_view
-  0.00      0.00     0.00    15435     0.00     0.00  rotate_temp_view
-  0.00      0.00     0.00     8131     0.00     0.00  explorer_view
-  0.00      0.00     0.00     8131     0.00     0.00  get_view
-  0.00      0.00     0.00     8131     0.00     0.00  set_rotated_view
-  0.00      0.00     0.00     7537     0.00     0.00  explorer_drive
-  0.00      0.00     0.00     7537     0.00     0.00  move
-  0.00      0.00     0.00     7537     0.00     0.00  update_map
-  0.00      0.00     0.00     6554     0.00     0.00  contains_object
-  0.00      0.00     0.00     6370     0.00     0.00  count_targets
-  0.00      0.00     0.00     6370     0.00     0.00  get_targets_in_view
-  0.00      0.00     0.00     6370     0.00     0.00  lawnmower
-  0.00      0.00     0.00     6245     0.00     0.00  explorer_count
-  0.00      0.00     0.00     6184     0.00     0.00  is_wall
-  0.00      0.00     0.00     5304     0.00     0.00  move_max_straight
-  0.00      0.00     0.00     1589     0.00     0.00  move_to_spot
-  0.00      0.00     0.00      880     0.00     0.00  rotate_facing
-  0.00      0.00     0.00      732     0.00     0.00  pivot
-  0.00      0.00     0.00      644     0.00     0.00  move_within_view
-  0.00      0.00     0.00      411     0.00     0.00  explorer_turn
+  0.00      0.00     0.00    78781     0.00     0.00  get_view_spot
+  0.00      0.00     0.00    23012     0.00     0.00  free_temp_view
+  0.00      0.00     0.00    23012     0.00     0.00  make_temp_view
+  0.00      0.00     0.00    15004     0.00     0.00  rotate_temp_view
+  0.00      0.00     0.00     8008     0.00     0.00  explorer_view
+  0.00      0.00     0.00     8008     0.00     0.00  get_view
+  0.00      0.00     0.00     8008     0.00     0.00  set_rotated_view
+  0.00      0.00     0.00     7246     0.00     0.00  explorer_drive
+  0.00      0.00     0.00     7246     0.00     0.00  move
+  0.00      0.00     0.00     7246     0.00     0.00  update_map
+  0.00      0.00     0.00     6328     0.00     0.00  get_targets_in_view
+  0.00      0.00     0.00     6328     0.00     0.00  lawnmower
+  0.00      0.00     0.00     6327     0.00     0.00  count_targets
+  0.00      0.00     0.00     6312     0.00     0.00  contains_object
+  0.00      0.00     0.00     6203     0.00     0.00  explorer_count
+  0.00      0.00     0.00     5924     0.00     0.00  is_wall
+  0.00      0.00     0.00     5084     0.00     0.00  move_max_straight
+  0.00      0.00     0.00     1551     0.00     0.00  move_to_spot
+  0.00      0.00     0.00      853     0.00     0.00  pivot
+  0.00      0.00     0.00      840     0.00     0.00  rotate_facing
+  0.00      0.00     0.00      611     0.00     0.00  move_within_view
+  0.00      0.00     0.00      391     0.00     0.00  explorer_turn
   0.00      0.00     0.00      250     0.00     0.00  print_map
   0.00      0.00     0.00      125     0.00     0.00  add_explorer_monitor_to_map
   0.00      0.00     0.00      125     0.00     0.00  add_input
@@ -37,9 +37,9 @@ Each sample counts as 0.01 seconds.
   0.00      0.00     0.00      125     0.00     0.00  init_monitor_identity
   0.00      0.00     0.00      125     0.00     0.00  make_map
   0.00      0.00     0.00      125     0.00     0.00  put_explorer_monitor
-  0.00      0.00     0.00       26     0.00     0.00  push_action
-  0.00      0.00     0.00       26     0.00     0.00  push_param
-  0.00      0.00     0.00       26     0.00     0.00  raise_explorer_retrieved
+  0.00      0.00     0.00       24     0.00     0.00  push_action
+  0.00      0.00     0.00       24     0.00     0.00  push_param
+  0.00      0.00     0.00       24     0.00     0.00  raise_explorer_retrieved
   0.00      0.00     0.00        1     0.00     0.00  init_explorer_monitor_maps
 
  %         the percentage of the total running time of the
@@ -81,117 +81,117 @@ notice and this notice are preserved.
 granularity: each sample hit covers 2 byte(s) no time propagated
 
 index % time    self  children    called     name
-                0.00    0.00    2362/79123       pivot [20]
-                0.00    0.00   19100/79123       is_wall [16]
-                0.00    0.00   57661/79123       get_targets_in_view [13]
-[1]      0.0    0.00    0.00   79123         get_view_spot [1]
+                0.00    0.00    3235/78781       pivot [19]
+                0.00    0.00   18232/78781       is_wall [16]
+                0.00    0.00   57314/78781       get_targets_in_view [11]
+[1]      0.0    0.00    0.00   78781         get_view_spot [1]
 -----------------------------------------------
-                0.00    0.00    8131/23566       set_rotated_view [7]
-                0.00    0.00   15435/23566       rotate_temp_view [4]
-[2]      0.0    0.00    0.00   23566         free_temp_view [2]
+                0.00    0.00    8008/23012       set_rotated_view [7]
+                0.00    0.00   15004/23012       rotate_temp_view [4]
+[2]      0.0    0.00    0.00   23012         free_temp_view [2]
 -----------------------------------------------
-                0.00    0.00    8131/23566       get_view [6]
-                0.00    0.00   15435/23566       rotate_temp_view [4]
-[3]      0.0    0.00    0.00   23566         make_temp_view [3]
+                0.00    0.00    8008/23012       get_view [6]
+                0.00    0.00   15004/23012       rotate_temp_view [4]
+[3]      0.0    0.00    0.00   23012         make_temp_view [3]
 -----------------------------------------------
-                0.00    0.00   15435/15435       set_rotated_view [7]
-[4]      0.0    0.00    0.00   15435         rotate_temp_view [4]
-                0.00    0.00   15435/23566       make_temp_view [3]
-                0.00    0.00   15435/23566       free_temp_view [2]
+                0.00    0.00   15004/15004       set_rotated_view [7]
+[4]      0.0    0.00    0.00   15004         rotate_temp_view [4]
+                0.00    0.00   15004/23012       make_temp_view [3]
+                0.00    0.00   15004/23012       free_temp_view [2]
 -----------------------------------------------
-                0.00    0.00    8131/8131        set_rotated_view [7]
-[5]      0.0    0.00    0.00    8131         explorer_view [5]
-                0.00    0.00    6554/6554        contains_object [11]
+                0.00    0.00    8008/8008        set_rotated_view [7]
+[5]      0.0    0.00    0.00    8008         explorer_view [5]
+                0.00    0.00    6312/6312        contains_object [14]
 -----------------------------------------------
-                0.00    0.00    1761/8131        rotate_facing [19]
-                0.00    0.00    6370/8131        lawnmower [14]
-[6]      0.0    0.00    0.00    8131         get_view [6]
-                0.00    0.00    8131/23566       make_temp_view [3]
-                0.00    0.00    8131/8131        set_rotated_view [7]
+                0.00    0.00    1680/8008        rotate_facing [20]
+                0.00    0.00    6328/8008        lawnmower [12]
+[6]      0.0    0.00    0.00    8008         get_view [6]
+                0.00    0.00    8008/23012       make_temp_view [3]
+                0.00    0.00    8008/8008        set_rotated_view [7]
 -----------------------------------------------
-                0.00    0.00    8131/8131        get_view [6]
-[7]      0.0    0.00    0.00    8131         set_rotated_view [7]
-                0.00    0.00   15435/15435       rotate_temp_view [4]
-                0.00    0.00    8131/8131        explorer_view [5]
-                0.00    0.00    8131/23566       free_temp_view [2]
+                0.00    0.00    8008/8008        get_view [6]
+[7]      0.0    0.00    0.00    8008         set_rotated_view [7]
+                0.00    0.00   15004/15004       rotate_temp_view [4]
+                0.00    0.00    8008/8008        explorer_view [5]
+                0.00    0.00    8008/23012       free_temp_view [2]
 -----------------------------------------------
-                0.00    0.00    7537/7537        update_map [10]
-[8]      0.0    0.00    0.00    7537         explorer_drive [8]
-                0.00    0.00      26/26          raise_explorer_retrieved [35]
+                0.00    0.00    7246/7246        update_map [10]
+[8]      0.0    0.00    0.00    7246         explorer_drive [8]
+                0.00    0.00      24/24          raise_explorer_retrieved [35]
 -----------------------------------------------
-                0.00    0.00     644/7537        move_within_view [21]
-                0.00    0.00    1589/7537        move_to_spot [18]
-                0.00    0.00    5304/7537        move_max_straight [17]
-[9]      0.0    0.00    0.00    7537         move [9]
-                0.00    0.00    7537/7537        update_map [10]
+                0.00    0.00     611/7246        move_within_view [21]
+                0.00    0.00    1551/7246        move_to_spot [18]
+                0.00    0.00    5084/7246        move_max_straight [17]
+[9]      0.0    0.00    0.00    7246         move [9]
+                0.00    0.00    7246/7246        update_map [10]
 -----------------------------------------------
-                0.00    0.00    7537/7537        move [9]
-[10]     0.0    0.00    0.00    7537         update_map [10]
-                0.00    0.00    7537/7537        explorer_drive [8]
+                0.00    0.00    7246/7246        move [9]
+[10]     0.0    0.00    0.00    7246         update_map [10]
+                0.00    0.00    7246/7246        explorer_drive [8]
 -----------------------------------------------
-                0.00    0.00    6554/6554        explorer_view [5]
-[11]     0.0    0.00    0.00    6554         contains_object [11]
+                0.00    0.00    6328/6328        lawnmower [12]
+[11]     0.0    0.00    0.00    6328         get_targets_in_view [11]
+                0.00    0.00   57314/78781       get_view_spot [1]
+                0.00    0.00    1032/1551        move_to_spot [18]
+                0.00    0.00     212/853         pivot [19]
+                0.00    0.00     138/611         move_within_view [21]
 -----------------------------------------------
-                0.00    0.00    6370/6370        run [60]
-[12]     0.0    0.00    0.00    6370         count_targets [12]
+                0.00    0.00    6328/6328        run [60]
+[12]     0.0    0.00    0.00    6328         lawnmower [12]
+                0.00    0.00    6328/6328        get_targets_in_view [11]
+                0.00    0.00    6328/8008        get_view [6]
+                0.00    0.00    5084/5924        is_wall [16]
+                0.00    0.00    4244/5084        move_max_straight [17]
+                0.00    0.00     840/840         rotate_facing [20]
+                0.00    0.00     437/853         pivot [19]
 -----------------------------------------------
-                0.00    0.00    6370/6370        lawnmower [14]
-[13]     0.0    0.00    0.00    6370         get_targets_in_view [13]
-                0.00    0.00   57661/79123       get_view_spot [1]
-                0.00    0.00    1028/1589        move_to_spot [18]
-                0.00    0.00     128/644         move_within_view [21]
-                0.00    0.00      38/732         pivot [20]
+                0.00    0.00    6327/6327        run [60]
+[13]     0.0    0.00    0.00    6327         count_targets [13]
 -----------------------------------------------
-                0.00    0.00    6370/6370        run [60]
-[14]     0.0    0.00    0.00    6370         lawnmower [14]
-                0.00    0.00    6370/6370        get_targets_in_view [13]
-                0.00    0.00    6370/8131        get_view [6]
-                0.00    0.00    5304/6184        is_wall [16]
-                0.00    0.00    4424/5304        move_max_straight [17]
-                0.00    0.00     880/880         rotate_facing [19]
-                0.00    0.00     473/732         pivot [20]
+                0.00    0.00    6312/6312        explorer_view [5]
+[14]     0.0    0.00    0.00    6312         contains_object [14]
 -----------------------------------------------
-                0.00    0.00    6245/6245        run [60]
-[15]     0.0    0.00    0.00    6245         explorer_count [15]
+                0.00    0.00    6203/6203        run [60]
+[15]     0.0    0.00    0.00    6203         explorer_count [15]
 -----------------------------------------------
-                0.00    0.00     880/6184        rotate_facing [19]
-                0.00    0.00    5304/6184        lawnmower [14]
-[16]     0.0    0.00    0.00    6184         is_wall [16]
-                0.00    0.00   19100/79123       get_view_spot [1]
+                0.00    0.00     840/5924        rotate_facing [20]
+                0.00    0.00    5084/5924        lawnmower [12]
+[16]     0.0    0.00    0.00    5924         is_wall [16]
+                0.00    0.00   18232/78781       get_view_spot [1]
 -----------------------------------------------
-                0.00    0.00     880/5304        rotate_facing [19]
-                0.00    0.00    4424/5304        lawnmower [14]
-[17]     0.0    0.00    0.00    5304         move_max_straight [17]
-                0.00    0.00    5304/7537        move [9]
+                0.00    0.00     840/5084        rotate_facing [20]
+                0.00    0.00    4244/5084        lawnmower [12]
+[17]     0.0    0.00    0.00    5084         move_max_straight [17]
+                0.00    0.00    5084/7246        move [9]
 -----------------------------------------------
-                0.00    0.00     561/1589        pivot [20]
-                0.00    0.00    1028/1589        get_targets_in_view [13]
-[18]     0.0    0.00    0.00    1589         move_to_spot [18]
-                0.00    0.00    1589/7537        move [9]
+                0.00    0.00     519/1551        pivot [19]
+                0.00    0.00    1032/1551        get_targets_in_view [11]
+[18]     0.0    0.00    0.00    1551         move_to_spot [18]
+                0.00    0.00    1551/7246        move [9]
 -----------------------------------------------
-                0.00    0.00     880/880         lawnmower [14]
-[19]     0.0    0.00    0.00     880         rotate_facing [19]
-                0.00    0.00    1761/8131        get_view [6]
-                0.00    0.00     880/6184        is_wall [16]
-                0.00    0.00     880/5304        move_max_straight [17]
-                0.00    0.00     411/411         explorer_turn [22]
-                0.00    0.00     221/732         pivot [20]
+                0.00    0.00     204/853         rotate_facing [20]
+                0.00    0.00     212/853         get_targets_in_view [11]
+                0.00    0.00     437/853         lawnmower [12]
+[19]     0.0    0.00    0.00     853         pivot [19]
+                0.00    0.00    3235/78781       get_view_spot [1]
+                0.00    0.00     519/1551        move_to_spot [18]
+                0.00    0.00     473/611         move_within_view [21]
 -----------------------------------------------
-                0.00    0.00      38/732         get_targets_in_view [13]
-                0.00    0.00     221/732         rotate_facing [19]
-                0.00    0.00     473/732         lawnmower [14]
-[20]     0.0    0.00    0.00     732         pivot [20]
-                0.00    0.00    2362/79123       get_view_spot [1]
-                0.00    0.00     561/1589        move_to_spot [18]
-                0.00    0.00     516/644         move_within_view [21]
+                0.00    0.00     840/840         lawnmower [12]
+[20]     0.0    0.00    0.00     840         rotate_facing [20]
+                0.00    0.00    1680/8008        get_view [6]
+                0.00    0.00     840/5924        is_wall [16]
+                0.00    0.00     840/5084        move_max_straight [17]
+                0.00    0.00     391/391         explorer_turn [22]
+                0.00    0.00     204/853         pivot [19]
 -----------------------------------------------
-                0.00    0.00     128/644         get_targets_in_view [13]
-                0.00    0.00     516/644         pivot [20]
-[21]     0.0    0.00    0.00     644         move_within_view [21]
-                0.00    0.00     644/7537        move [9]
+                0.00    0.00     138/611         get_targets_in_view [11]
+                0.00    0.00     473/611         pivot [19]
+[21]     0.0    0.00    0.00     611         move_within_view [21]
+                0.00    0.00     611/7246        move [9]
 -----------------------------------------------
-                0.00    0.00     411/411         rotate_facing [19]
-[22]     0.0    0.00    0.00     411         explorer_turn [22]
+                0.00    0.00     391/391         rotate_facing [20]
+[22]     0.0    0.00    0.00     391         explorer_turn [22]
 -----------------------------------------------
                 0.00    0.00     250/250         run [60]
 [23]     0.0    0.00    0.00     250         print_map [23]
@@ -227,16 +227,16 @@ index % time    self  children    called     name
 [32]     0.0    0.00    0.00     125         put_explorer_monitor [32]
                 0.00    0.00     125/125         add_explorer_monitor_to_map [24]
 -----------------------------------------------
-                0.00    0.00      26/26          raise_explorer_retrieved [35]
-[33]     0.0    0.00    0.00      26         push_action [33]
+                0.00    0.00      24/24          raise_explorer_retrieved [35]
+[33]     0.0    0.00    0.00      24         push_action [33]
 -----------------------------------------------
-                0.00    0.00      26/26          raise_explorer_retrieved [35]
-[34]     0.0    0.00    0.00      26         push_param [34]
+                0.00    0.00      24/24          raise_explorer_retrieved [35]
+[34]     0.0    0.00    0.00      24         push_param [34]
 -----------------------------------------------
-                0.00    0.00      26/26          explorer_drive [8]
-[35]     0.0    0.00    0.00      26         raise_explorer_retrieved [35]
-                0.00    0.00      26/26          push_param [34]
-                0.00    0.00      26/26          push_action [33]
+                0.00    0.00      24/24          explorer_drive [8]
+[35]     0.0    0.00    0.00      24         raise_explorer_retrieved [35]
+                0.00    0.00      24/24          push_param [34]
+                0.00    0.00      24/24          push_action [33]
 -----------------------------------------------
                 0.00    0.00       1/1           main [49]
 [36]     0.0    0.00    0.00       1         init_explorer_monitor_maps [36]
@@ -334,13 +334,13 @@ Index by function name
 
   [24] add_explorer_monitor_to_map [6] get_view           [18] move_to_spot
   [25] add_input               [1] get_view_spot          [21] move_within_view
-  [26] add_thread             [28] hash_monitor_identity  [20] pivot
-  [11] contains_object        [29] init_explorer_monitor  [23] print_map
-  [12] count_targets          [36] init_explorer_monitor_maps [33] push_action
+  [26] add_thread             [28] hash_monitor_identity  [19] pivot
+  [14] contains_object        [29] init_explorer_monitor  [23] print_map
+  [13] count_targets          [36] init_explorer_monitor_maps [33] push_action
   [15] explorer_count         [30] init_monitor_identity  [34] push_param
    [8] explorer_drive         [16] is_wall                [32] put_explorer_monitor
-  [22] explorer_turn          [14] lawnmower              [35] raise_explorer_retrieved
-   [5] explorer_view          [31] make_map               [19] rotate_facing
+  [22] explorer_turn          [12] lawnmower              [35] raise_explorer_retrieved
+   [5] explorer_view          [31] make_map               [20] rotate_facing
   [27] free_monitor            [3] make_temp_view          [4] rotate_temp_view
    [2] free_temp_view          [9] move                    [7] set_rotated_view
-  [13] get_targets_in_view    [17] move_max_straight      [10] update_map
+  [11] get_targets_in_view    [17] move_max_straight      [10] update_map

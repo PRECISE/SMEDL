@@ -139,6 +139,9 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
+        if(y_delta==0 && x_delta==0){
+           printf("retrieved\n");
+        }
 	explorer_drive(mon, location[1] + x_delta, location[0] + y_delta, facing,map);
         location[0] += y_delta;
 	location[1] += x_delta;

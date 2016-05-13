@@ -173,7 +173,7 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
   param *p_head = NULL;
   push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
   push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
-  printf("retrieve raised\n");
+  printf("retrieved raised\n");
   // Export event to external monitors
   char str[60];
   //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);

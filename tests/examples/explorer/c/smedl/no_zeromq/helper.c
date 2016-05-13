@@ -32,15 +32,24 @@
     }
 }*/
 
-int contains_object(int** map) {
+int contains_object(void* map) {
+    int *p=(int*)map;
     for(int i = 0; i < 3; i++) {
         for(int j = 0; j < 3; j++) {
-            if(&map[i][j] > 0) {
+            if(p[i*3+j] > 0) {
                 return 1;
             }
         }
     }
     return 0;
+}
+
+int check_retrieved(void* map,int x,int y){
+   int *p=(int*)map;
+  if(*(p+y*20+x) > 0){
+     return 1;
+  }
+  return 0;
 }
 
 /*void free_view(ExplorerMonitor *monitor) {
