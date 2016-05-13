@@ -2,7 +2,7 @@ object Explorer
 identity
   opaque id;
 state
-  int mon_x, mon_y, mon_heading, interest_threshold,move_count;
+  int mon_x, mon_y, mon_heading,move_count;
 events
   imported view(pointer), drive(int, int, int, pointer), turn(int),count();
   internal found();

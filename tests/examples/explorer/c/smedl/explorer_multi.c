@@ -142,8 +142,10 @@ void update_map(int y_delta, int x_delta) {
     location[0] += y_delta;
 	location[1] += x_delta;
     explorer_drive(mon, location[1], location[0], facing, map);
+    explorer_view(mon,multiview);
 	if(map[location[0]][location[1]] > 0) {
-        printf("\nlocy:%dlocx:%d\n",location[0],location[1]);
+        printf("true\n");
+        //explorer_drive(mon, location[1], location[0], facing, map);
         map[location[0]][location[1]] = 0;
 	}
 	pthread_mutex_lock(&print_lock);
@@ -194,7 +196,6 @@ int get_targets_in_view() {
 			}
 			location = spot;
 			targets++;
-            explorer_view(mon,multiview);
 		}
 	}
 	return targets;
@@ -357,7 +358,7 @@ int main(int argc, char *argv[]) {
         printf("{\"Status\":\"Failed - Mutex init failed %i\n\"}]}", argc);
         return 1;
     }
-       //
+        //
        init_explorer_monitor_maps();
        //
 	printf("{\"Data\":[\n");

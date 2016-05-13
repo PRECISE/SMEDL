@@ -48,6 +48,8 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
 }
 
 void free_monitor(ExplorerMonitor* monitor) {
+    //zmq_close(monitor->tempPublisher);
+    //zmq_ctx_destroy(monitor->context);
     zsock_destroy(&monitor->publisher);
     fclose(monitor->logFile);
     free(monitor);
@@ -184,6 +186,7 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
   sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
   printf(str);
   zstr_send (monitor->publisher, str);
+  //sleep(3);
 }
 
 
