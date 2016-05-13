@@ -94,7 +94,10 @@ endif
 #                    #
 ######################
 
-VFILES:=Smedl.v
+VFILES:=Types.v\
+  ElaboratedAST.v\
+  AST.v\
+  Smedl.v
 
 ifneq ($(filter-out archclean clean cleanall printenv,$(MAKECMDGOALS)),)
 -include $(addsuffix .d,$(VFILES))

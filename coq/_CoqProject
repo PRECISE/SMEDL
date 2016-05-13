@@ -1,2 +1,5 @@
 -R . SMEDL
+Types.v
+ElaboratedAST.v
+AST.v
 Smedl.v
