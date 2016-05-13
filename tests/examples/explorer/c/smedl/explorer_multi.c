@@ -139,14 +139,12 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
-    if(y_delta == 0 && x_delta == 0){
-        printf("retrieved\n");
-    }
-	explorer_drive(mon, location[1] + x_delta, location[0] + y_delta, facing);
+    explorer_drive(mon, location[1] + x_delta, location[0] + y_delta, facing, map);
     location[0] += y_delta;
 	location[1] += x_delta;
 	if(map[location[0]][location[1]] > 0) {
-		map[location[0]][location[1]] = 0;
+        printf("\ntrue\n");
+        map[location[0]][location[1]] = 0;
 	}
 	pthread_mutex_lock(&print_lock);
 	printf("{%d:[%d,%d]},\n", explorer_id, y_delta, x_delta);
@@ -334,15 +332,13 @@ void *run(void* input) {
        mon = init_explorer_monitor(data);
 	pthread_mutex_unlock(&checker_lock);
 	print_map();
-
 	int move_count = 0;
 	while(move_count < 200 && count_targets() > 0) {
 		lawnmower();
 		move_count++;
 		explorer_count(mon);
 	}
-    printf("targetNum:%d,move_count:%d\n",count_targets(),move_count);
-	lawnmower();
+    lawnmower();
 	print_map();
 	free(data);
 	free_monitor(mon);
