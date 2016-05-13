@@ -78,12 +78,15 @@ void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
 }
 
 
-void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading) {
+void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, void * map) {
+
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_MOVE:
-      if(mon_var_x == monitor->mon_x && mon_var_y == monitor->mon_y) {
+      if(check_retrieved(map, mon_var_x, mon_var_y)) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: retrieved; Event parameters : "); }
         raise_explorer_retrieved(monitor,monitor->move_count);
+        monitor->mon_x = mon_var_x;
+        monitor->mon_y = mon_var_y;
         monitor->move_count = 0;
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
       }
@@ -97,17 +100,17 @@ void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int 
   }
 }
 
-void explorer_drive_probe(void* id, int mon_var_x, int mon_var_y, int mon_var_heading) {
+void explorer_drive_probe(void* id, int mon_var_x, int mon_var_y, int mon_var_heading, void * map) {
   ExplorerMonitorRecord* results = get_explorer_monitors_by_identity(EXPLORER_ID, OPAQUE, id);
   results = filter_explorer_monitors_by_identity(results, EXPLORER_ID, id);
   while(results != NULL) {
     ExplorerMonitor* monitor = results->monitor;
-    explorer_drive(monitor, mon_var_x, mon_var_y, mon_var_heading);
+    explorer_drive(monitor, mon_var_x, mon_var_y, mon_var_heading,map);
     results = results->next;
   }
 }
 
-void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading) {
+void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading,void * map) {
   param *p_head = NULL;
   push_param(&p_head, &mon_var_x, NULL, NULL, NULL);
   push_param(&p_head, &mon_var_y, NULL, NULL, NULL);
