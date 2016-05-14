@@ -20,10 +20,10 @@ Inductive BinOp :=
 | And : BinOp
 | Or : BinOp
 | Plus : BinOp
-| Times : BinOp
-| Minus : BinOp.
+| Times : BinOp.
 
 Inductive Expr :=
+| Var : string -> Expr
 | LitInt : nat -> Expr
 | LitFloat : Q -> Expr                   
 | LitBool : bool -> Expr

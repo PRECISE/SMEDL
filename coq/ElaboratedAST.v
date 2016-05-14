@@ -1,4 +1,5 @@
 Require Import Coq.Lists.List.
+Require Import Coq.QArith.QArith.
 Require Import Coq.Strings.String.
 Require Import Types.
 
@@ -38,8 +39,9 @@ Section ElaboratedAST.
 
   Inductive Expr : Ty -> Set :=
   | Var : forall (x : var), Expr (var_env x)
-  | BoolLit : bool -> Expr SBool
-  | IntLit : nat -> Expr SInt 
+  | LitBool : bool -> Expr SBool
+  | LitInt : nat -> Expr SInt 
+  | LitFloat : Q -> Expr SFloat
   (* Need to enhance BinOp instead of special-casing EqExpr. *)
   | EqExpr : forall {ty}, Expr ty -> Expr ty -> Expr SBool
   | BinOpExpr : forall {ty}, BinOp ty -> Expr ty -> Expr ty -> Expr ty
@@ -70,7 +72,9 @@ Global Arguments Cmd {vars} _ {events} {event_params} _.
 Global Arguments BinOpExpr {_} {_} {_} _ _ _.
 Global Arguments UnOpExpr {_} {_} {_} _ _.
 Global Arguments Var {_} {_} _.
-Global Arguments IntLit {_} {_} _.
+Global Arguments LitInt {_} {_} _.
+Global Arguments LitFloat {_} {_} _.
+Global Arguments LitBool {_} {_} _.
 
 
 Module Example.
@@ -99,8 +103,8 @@ Module Example.
   Solve Obligations with (simpl; intuition; invert_false).
 
   Program Definition x1 : Expr var_env_ex SInt :=
-    BinOpExpr IPlus (Var "x1") (IntLit 1).
+    BinOpExpr IPlus (Var "x1") (LitInt 1).
 
   Program Definition x2 : Expr var_env_ex SBool :=
-    UnOpExpr Not (Var "x2").
+    UnOpExpr Not (BinOpExpr And (LitBool true) (Var "x2")).
 End Example.
