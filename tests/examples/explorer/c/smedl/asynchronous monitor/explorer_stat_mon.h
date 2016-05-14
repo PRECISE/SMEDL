@@ -2,63 +2,65 @@
 #include "actions.h"
 #include <stdio.h> // For the log file
 #include <pthread.h>
-#include "czmq.h"
+#include <czmq.h>
 
-#define EXPLORER_STAT_MONITOR_MAP_SIZE 100 // number of buckets
-#define EXPLORER_STAT_MONITOR_IDENTITIES 1
+#define EXPLORERSTAT_MONITOR_MAP_SIZE 100 // number of buckets
+#define EXPLORERSTAT_MONITOR_IDENTITIES 1
 
-typedef struct Explorer_statData {
+typedef struct ExplorerstatData {
   void* id;
   int sum;
-  int sum_count;
+  int count;
   int targetNum;
-} Explorer_statData;
+} ExplorerstatData;
 
-typedef struct Explorer_statMonitor {
+typedef struct ExplorerstatMonitor {
   pthread_mutex_t monitor_lock;
   MonitorIdentity *identities[1];
   int state[1];
   int sum;
-  int sum_count;
+  int count;
   int targetNum;
   action *action_queue;
   FILE *logFile;
-  zsock_t *publisher;
-  zsock_t *subscriber;
-} Explorer_statMonitor;
+  zsock_t * publisher;
+  zsock_t * subscriber;
+} ExplorerstatMonitor;
 
-typedef struct Explorer_statMonitorRecord {
-  Explorer_statMonitor *monitor;
-  struct Explorer_statMonitorRecord *next;
-} Explorer_statMonitorRecord;
+typedef struct ExplorerstatMonitorRecord {
+  ExplorerstatMonitor *monitor;
+  struct ExplorerstatMonitorRecord *next;
+} ExplorerstatMonitorRecord;
 
-typedef struct Explorer_statMonitorMap {
-  Explorer_statMonitorRecord *list[EXPLORER_STAT_MONITOR_MAP_SIZE];
-} Explorer_statMonitorMap;
+typedef struct ExplorerstatMonitorMap {
+  ExplorerstatMonitorRecord *list[EXPLORERSTAT_MONITOR_MAP_SIZE];
+} ExplorerstatMonitorMap;
 
-Explorer_statMonitorMap* explorer_stat_monitor_maps[EXPLORER_STAT_MONITOR_IDENTITIES]; //a map for each identity
-pthread_mutex_t explorer_stat_monitor_maps_lock;
+ExplorerstatMonitorMap* explorerstat_monitor_maps[EXPLORERSTAT_MONITOR_IDENTITIES]; //a map for each identity
+pthread_mutex_t explorerstat_monitor_maps_lock;
 
-Explorer_statMonitor* init_explorer_stat_monitor(Explorer_statData*);
-void free_monitor(Explorer_statMonitor*);
+
+
+ExplorerstatMonitor* init_explorerstat_monitor(ExplorerstatData*);
+void free_monitor(ExplorerstatMonitor*);
 
 /*
  * Monitor Event Handlers
  */
-void explorer_stat_retrieved(Explorer_StatMonitor* monitor, int mon_var_move_count);
-void raise_explorer_stat_retrieved(Explorer_StatMonitor* monitor, int mon_var_move_count);
-void explorer_stat_over_threshold(Explorer_StatMonitor* monitor);
-void raise_explorer_stat_over_threshold(Explorer_StatMonitor* monitor);
-void raise_explorer_stat_op(Explorer_StatMonitor* monitor, int mon_var_None);
+void explorerstat_retrieved(ExplorerstatMonitor* monitor, int mon_var_move_count);
+void raise_explorerstat_retrieved(ExplorerstatMonitor* monitor, int mon_var_move_count);
+void explorerstat_reachNum(ExplorerstatMonitor* monitor);
+void raise_explorerstat_reachNum(ExplorerstatMonitor* monitor);
+void raise_explorerstat_output(ExplorerstatMonitor* monitor, float mon_var_None);
 
 /*
  * Monitor Utility Functions
  */
-Explorer_statMonitorRecord* get_explorer_stat_monitors();
-Explorer_statMonitorRecord* get_explorer_stat_monitors_by_identity(int, int, void*);
-Explorer_statMonitorRecord* filter_explorer_stat_monitors_by_identity(Explorer_statMonitorRecord*, int, void*);
-int init_explorer_stat_monitor_maps();
-void free_explorer_stat_monitor_maps();
-int add_explorer_stat_monitor_to_map(Explorer_statMonitor*, int);
-int put_explorer_stat_monitor(Explorer_statMonitor*); //puts into all maps
+ExplorerstatMonitorRecord* get_explorerstat_monitors();
+ExplorerstatMonitorRecord* get_explorerstat_monitors_by_identity(int, int, void*);
+ExplorerstatMonitorRecord* filter_explorerstat_monitors_by_identity(ExplorerstatMonitorRecord*, int, void*);
+int init_explorerstat_monitor_maps();
+void free_explorerstat_monitor_maps();
+int add_explorerstat_monitor_to_map(ExplorerstatMonitor*, int);
+int put_explorerstat_monitor(ExplorerstatMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
