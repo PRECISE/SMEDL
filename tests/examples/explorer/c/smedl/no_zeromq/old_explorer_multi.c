@@ -139,17 +139,18 @@ int get_view_spot(int spot) {
 }
 
 void update_map(int y_delta, int x_delta) {
-	explorer_drive(mon, location[1] + x_delta, location[0] + y_delta, facing,map);
-        location[0] += y_delta;
-	location[1] += x_delta;
-	if(map[location[0]][location[1]] > 0) {
-           printf("delta_x:%d\n",x_delta);
-           printf("delta_y:%d\n",y_delta);
-           map[location[0]][location[1]] = 0;
-	}
-	pthread_mutex_lock(&print_lock);
-	printf("{%d:[%d,%d]},\n", explorer_id, y_delta, x_delta);
-	pthread_mutex_unlock(&print_lock);
+    location[0] += y_delta;
+    location[1] += x_delta;
+    explorer_drive(mon, location[1], location[0], facing, map);
+    explorer_view(mon,multiview);
+    if(map[location[0]][location[1]] > 0) {
+        printf("true\n");
+        //explorer_drive(mon, location[1], location[0], facing, map);
+        map[location[0]][location[1]] = 0;
+    }
+    pthread_mutex_lock(&print_lock);
+    printf("{%d:[%d,%d]},\n", explorer_id, y_delta, x_delta);
+    pthread_mutex_unlock(&print_lock);
 }
 
 void move(int forward, int side) {
@@ -335,16 +336,13 @@ void *run(void* input) {
 	pthread_mutex_unlock(&checker_lock);
 
 	print_map();
-	pthread_mutex_lock(&print_lock);
 
-	pthread_mutex_unlock(&print_lock);
 
 	int move_count = 0;
-        printf("before target:%d\n",count_targets());
 	while(move_count < 200 && count_targets() > 0) {
+        explorer_count(mon);
 		lawnmower();
 		move_count++;
-		explorer_count(mon);
 	}
 	lawnmower();
         printf("target:%d\n",count_targets());
