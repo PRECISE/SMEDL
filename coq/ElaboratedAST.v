@@ -75,6 +75,8 @@ Global Arguments Var {_} {_} _.
 Global Arguments LitInt {_} {_} _.
 Global Arguments LitFloat {_} {_} _.
 Global Arguments LitBool {_} {_} _.
+Global Arguments Assign {_} {_} {_} {_} _ _ _.
+Global Arguments Raise {_} {_} {_} _ _ _ _.
 
 
 Module Example.
