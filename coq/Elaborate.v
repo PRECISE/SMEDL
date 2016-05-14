@@ -21,6 +21,7 @@ Definition bind2 {a b c : Type} (f : a -> b -> option c) (x : option a) (y : opt
   end.
 
 Arguments existT {_} {_} _ _.
+Arguments exist {_} {_} _ _.
 
 Definition check_UnOpExpr {free_vars : list string}
            (env : var free_vars -> Ty)
@@ -59,14 +60,14 @@ Definition check_BinOpExpr {free_vars : list string}
   | _ => None
   end.
 
-Fixpoint check {free_vars : list string}
+Fixpoint check_Expr {free_vars : list string}
          (env : var free_vars -> Ty)
          (e : AST.Expr) :
   option { ty : Ty & ElaboratedAST.Expr env ty } :=
   match e with
   | AST.Var v => match in_dec string_dec v free_vars with
-                 | left pf => Some (existT (env (exist _ v pf))
-                                           (Var (exist _ v pf)))
+                 | left pf => Some (existT (env (exist v pf))
+                                           (Var (exist v pf)))
                  | right _ => None
                  end
   | AST.LitInt n =>
@@ -76,7 +77,39 @@ Fixpoint check {free_vars : list string}
   | AST.LitBool b =>
     Some (existT SBool (ElaboratedAST.LitBool b))
   | AST.UnOpExpr op e' =>
-    bind (check_UnOpExpr env op) (check env e')
+    bind (check_UnOpExpr env op) (check_Expr env e')
   | AST.BinOpExpr op lhs rhs =>
-    bind2 (check_BinOpExpr env op) (check env lhs) (check env rhs)
+    bind2 (check_BinOpExpr env op) (check_Expr env lhs) (check_Expr env rhs)
+  end.
+
+Fixpoint check_Cmd
+         {globals : list string}
+         (global_env : var globals -> Ty)
+         {events : list string}
+         {event_params : event events -> list string}
+         (event_env : forall (e : event events), event_param events event_params e -> Ty)
+         (e : AST.Cmd) :
+  option (ElaboratedAST.Cmd global_env event_env) :=
+  match e with
+  | AST.Assign v e =>
+    match in_dec string_dec v globals with
+    | right _ => None
+    | left pf => match check_Expr global_env e with
+                 | None => None
+                 | Some (existT actual e') =>
+                   let expected := global_env (exist v pf) in
+                   match ty_dec expected actual with
+                   | right _ => None
+                   | left refl =>
+                     Some (Assign event_env
+                                  (exist v pf)
+                                  (eq_rec_r _ e' refl))
+                   end
+                 end
+    end
+  | AST.Raise f e =>
+    match in_dec string_dec f events with
+    | right _ => None
+    | left pf => None           (* TODO *)
+    end
   end.
