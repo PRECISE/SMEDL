@@ -3,3 +3,4 @@ Types.v
 ElaboratedAST.v
 AST.v
 Smedl.v
+Elaborate.v
