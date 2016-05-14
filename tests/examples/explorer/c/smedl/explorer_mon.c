@@ -6,7 +6,9 @@
 #include "explorer_mon.h"
 #include "helper.h"
 #include "czmq.h"
-
+#include <sched.h>
+#include <pthread.h>
+#include <unistd.h>
 
 typedef enum { EXPLORER_ID } explorer_identity;
 const identity_type explorer_identity_types[EXPLORER_MONITOR_IDENTITIES] = { OPAQUE };
@@ -186,7 +188,8 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
   sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
   printf(str);
   zstr_send (monitor->publisher, str);
-  //sleep(3);
+  usleep(2000);
+  //sched_yield();
 }
 
 
