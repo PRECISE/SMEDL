@@ -9,29 +9,28 @@
 typedef enum { EXPLORERSTAT_ID } explorerstat_identity;
 const identity_type explorerstat_identity_types[EXPLORERSTAT_MONITOR_IDENTITIES] = { OPAQUE };
 
-typedef enum { EXPLORERSTAT_STAT_SCENARIO, EXPLORERSTAT_CHECK_SCENARIO } explorerstat_scenario;
+typedef enum { EXPLORERSTAT_STAT_SCENARIO } explorerstat_scenario;
 typedef enum { EXPLORERSTAT_STAT_START } explorerstat_stat_state;
-typedef enum { EXPLORERSTAT_CHECK_CHECKSUM } explorerstat_check_state;
 typedef enum { EXPLORERSTAT_RETRIEVED_EVENT, EXPLORERSTAT_REACHNUM_EVENT, EXPLORERSTAT_OUTPUT_EVENT } explorerstat_event;
 typedef enum { EXPLORERSTAT_DEFAULT } explorerstat_error;
 const char *explorerstat_stat_states[1] = { "Start" };
-const char *explorerstat_check_states[1] = { "CheckSum" };
-const char **explorerstat_states_names[2] = { explorerstat_stat_states, explorerstat_check_states };
+const char **explorerstat_states_names[1] = { explorerstat_stat_states };
 
 ExplorerstatMonitor* mon1 = NULL;
 
 
 ExplorerstatMonitor* init_explorerstat_monitor( ExplorerstatData *d ) {
+
     ExplorerstatMonitor* monitor = (ExplorerstatMonitor*)malloc(sizeof(ExplorerstatMonitor));
     pthread_mutex_init(&monitor->monitor_lock, NULL);
-    monitor->identities[EXPLORERSTAT_ID] = init_monitor_identity(OPAQUE, d->id);
+        monitor->identities[EXPLORERSTAT_ID] = init_monitor_identity(OPAQUE, d->id);
+
     monitor->sum = d->sum;
     monitor->count = d->count;
     monitor->targetNum = d->targetNum;
     monitor->state[EXPLORERSTAT_STAT_SCENARIO] = EXPLORERSTAT_STAT_START;
-    monitor->state[EXPLORERSTAT_CHECK_SCENARIO] = EXPLORERSTAT_CHECK_CHECKSUM;
     monitor->logFile = fopen("ExplorerstatMonitor.log", "w");
-    
+
     monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
     assert (monitor->publisher);
     assert (zsock_resolve (monitor->publisher) != monitor->publisher);
@@ -41,16 +40,15 @@ ExplorerstatMonitor* init_explorerstat_monitor( ExplorerstatData *d ) {
     assert (monitor->subscriber);
     assert (zsock_resolve (monitor->subscriber) != monitor->subscriber);
     assert (streq (zsock_type_str (monitor->subscriber), "SUB"));
-    
+
     put_explorerstat_monitor(monitor);
+    
     mon1 = monitor;
     return monitor;
 }
 
-int getParameterOfRetrieved(char* eventName, char * msg){
-    if(strstr(msg,eventName)==NULL){
-        return -1;
-    }
+
+int getParameterOfRetrieved(char * msg){
     if(msg != NULL){
         int position = 0;
         for(position =0;position<strlen(msg);position++){
@@ -86,16 +84,15 @@ event_filter (zloop_t *loop, zsock_t *reader, void *arg)
     printf ("INCOMING_MSG: %s\n", msg_str);
     
     // TODO: Do filtering here, with Monitor address as one of the arguments so we can call the event handlers
-    
-    int moveCount = getParameterOfRetrieved("retrieved",msg_str);
-    if(moveCount >= 0){
-        explorerstat_retrieved(mon1,moveCount);
-    }
+
+    int moveCount = getParameterOfRetrieved(msg_str);
+    explorerstat_retrieved(mon1,moveCount);
     
     free (msg_str);
     zmsg_destroy (&msg);
     return 0;
 }
+
 
 void start_monitor(ExplorerstatMonitor* monitor) {
     bool verbose = true;
@@ -124,13 +121,16 @@ void free_monitor(ExplorerstatMonitor* monitor) {
  */
 
 void explorerstat_retrieved(ExplorerstatMonitor* monitor, int mon_var_move_count) {
+    printf("retrived called\n");
   switch (monitor->state[EXPLORERSTAT_STAT_SCENARIO]) {
     case EXPLORERSTAT_STAT_START:
         monitor->sum = monitor->sum + 1;
         monitor->count = monitor->count + mon_var_move_count;
-        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: reachNum; Event parameters : "); }
       monitor->state[EXPLORERSTAT_STAT_SCENARIO] = EXPLORERSTAT_STAT_START;
-          explorerstat_reachNum(monitor);
+          if(monitor->sum >= monitor->targetNum){
+              printf("reach\n");
+              explorerstat_reachNum(monitor);
+          }
       break;
 
   }
@@ -144,22 +144,15 @@ void raise_explorerstat_retrieved(ExplorerstatMonitor* monitor, int mon_var_move
 
 
 void explorerstat_reachNum(ExplorerstatMonitor* monitor) {
-  switch (monitor->state[EXPLORERSTAT_CHECK_SCENARIO]) {
-    case EXPLORERSTAT_CHECK_CHECKSUM:
-      if(monitor->sum < monitor->targetNum) {
-        monitor->state[EXPLORERSTAT_CHECK_SCENARIO] = EXPLORERSTAT_CHECK_CHECKSUM;
-      }
-      else {
+  switch (monitor->state[EXPLORERSTAT_STAT_SCENARIO]) {
+    case EXPLORERSTAT_STAT_START:
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: output; Event parameters : "); }
-          printf("count:%d,sum:%d\n",monitor->count,monitor->sum);
-          int tempsum = monitor -> sum;
-          int tempcount = monitor -> count;
-        monitor->sum = 0;
-        monitor->count = 0;
-        monitor->state[EXPLORERSTAT_CHECK_SCENARIO] = EXPLORERSTAT_CHECK_CHECKSUM;
-          raise_explorerstat_output(monitor,(tempcount+0.0)/tempsum);
 
-      }
+      monitor->state[EXPLORERSTAT_STAT_SCENARIO] = EXPLORERSTAT_STAT_START;
+          printf("count:%d,sum:%d\n",monitor->count,monitor->sum);
+          raise_explorerstat_output(monitor,((monitor->count)+0.0)/(monitor->sum));
+          monitor->sum = 0;
+          monitor->count = 0;
       break;
 
   }
@@ -169,6 +162,7 @@ void raise_explorerstat_reachNum(ExplorerstatMonitor* monitor) {
   param *p_head = NULL;
   push_action(&monitor->action_queue, EXPLORERSTAT_REACHNUM_EVENT, p_head);
 }
+
 
 
 
@@ -183,8 +177,6 @@ void raise_explorerstat_output(ExplorerstatMonitor* monitor, float mon_var_None)
     //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
     sprintf(str, "/explorer/1/output  %f", mon_var_None);
     zstr_send (monitor->publisher, str);
-    printf("msum:%d,mcount:%d\n",monitor->sum,monitor->count);
-    
 }
 
 

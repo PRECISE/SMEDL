@@ -86,6 +86,7 @@ void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int 
   //printf("mon_y:%d,mon_x:%d\n",mon_var_y,mon_var_x);
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_MOVE:
+          
       if(check_retrieved(map, mon_var_x, mon_var_y)) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: retrieved; Event parameters : "); }
         raise_explorer_retrieved(monitor,monitor->move_count);
@@ -177,18 +178,20 @@ void raise_explorer_found(ExplorerMonitor* monitor) {
 
 
 void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) {
-    
-  param *p_head = NULL;
-  push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
-  push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
+  
+  //param *p_head = NULL;
+  //push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
+  //push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
 
   // Export event to external monitors
   char str[60];
   //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
   sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
   printf(str);
+    //sleep(1);
+    usleep(6000);
   zstr_send (monitor->publisher, str);
-  usleep(2000);
+
   //sched_yield();
 }
 

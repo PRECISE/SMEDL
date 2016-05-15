@@ -4,7 +4,6 @@
 #include <pthread.h>
 #include <czmq.h>
 
-
 #define EXPLORERSTAT_MONITOR_MAP_SIZE 100 // number of buckets
 #define EXPLORERSTAT_MONITOR_IDENTITIES 1
 
@@ -18,14 +17,14 @@ typedef struct ExplorerstatData {
 typedef struct ExplorerstatMonitor {
   pthread_mutex_t monitor_lock;
   MonitorIdentity *identities[1];
-  int state[2];
+  int state[1];
   int sum;
   int count;
   int targetNum;
   action *action_queue;
   FILE *logFile;
-    zsock_t * publisher;
-    zsock_t * subscriber;
+  zsock_t * publisher;
+  zsock_t * subscriber;
 } ExplorerstatMonitor;
 
 typedef struct ExplorerstatMonitorRecord {
@@ -39,6 +38,8 @@ typedef struct ExplorerstatMonitorMap {
 
 ExplorerstatMonitorMap* explorerstat_monitor_maps[EXPLORERSTAT_MONITOR_IDENTITIES]; //a map for each identity
 pthread_mutex_t explorerstat_monitor_maps_lock;
+
+
 
 ExplorerstatMonitor* init_explorerstat_monitor(ExplorerstatData*);
 void free_monitor(ExplorerstatMonitor*);

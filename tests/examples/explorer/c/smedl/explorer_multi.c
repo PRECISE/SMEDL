@@ -145,7 +145,6 @@ void update_map(int y_delta, int x_delta) {
     explorer_view(mon,multiview);
 	if(map[location[0]][location[1]] > 0) {
         printf("true\n");
-        //explorer_drive(mon, location[1], location[0], facing, map);
         map[location[0]][location[1]] = 0;
 	}
 	pthread_mutex_lock(&print_lock);
