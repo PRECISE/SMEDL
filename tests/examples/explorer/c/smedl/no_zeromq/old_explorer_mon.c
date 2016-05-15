@@ -5,7 +5,6 @@
 #include <time.h>
 #include "explorer_mon.h"
 #include "helper.h"
-#include "czmq.h"
 
 
 typedef enum { EXPLORER_ID } explorer_identity;
@@ -170,9 +169,9 @@ void raise_explorer_found(ExplorerMonitor* monitor) {
 
 
 void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) {
-  param *p_head = NULL;
-  push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
-  push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
+  //param *p_head = NULL;
+  //push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
+  //push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
   printf("retrieve raised\n");
   // Export event to external monitors
   char str[60];
