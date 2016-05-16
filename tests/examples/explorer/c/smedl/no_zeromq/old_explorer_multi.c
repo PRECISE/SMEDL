@@ -427,7 +427,9 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-void print_map() {   
+void print_map() {
+    clock_t timer;
+    timer = clock();
 	pthread_mutex_lock(&print_lock);
 	printf("{\"ExplorerID\":%d, \"Map\":\n\"", explorer_id);
 	for(int i = 0; i < 10; i++) {
@@ -445,4 +447,7 @@ void print_map() {
 	//printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->mon_y, mon->mon_x, mon->heading);
 
 	pthread_mutex_unlock(&print_lock);
+    timer = clock() - timer;
+    printf ("print time %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
+
 }
