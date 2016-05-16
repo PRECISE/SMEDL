@@ -3,7 +3,7 @@ from random import randint
 
 cmd = ["./explorer_mon"]
 
-for i in range(0,2):
+for i in range(0,10):
     cmd.append(str(randint(0, 9)))
     cmd.append(str(randint(0, 19)))
 
