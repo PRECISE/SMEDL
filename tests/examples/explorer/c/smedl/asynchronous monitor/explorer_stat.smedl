@@ -1,11 +1,14 @@
-object Explorer_Stat
+object ExplorerStat
 state
-    int sum,sum_count,targetNum;
+    int sum,count,targetNum;
 events 
     imported retrieved(int);
-    internal over_threshold() = sum == targetNum;
-    exported op(int);
+    internal reachNum();
+    exported output(float);
 scenarios
     stat:
-        Start -> retrieved(move_count){sum = sum + 1; sum_count = sum_count + move_count}-> Start
-        Start -> over_threshold() {raise op(sum/sum_count);sum_count = 0} -> Start
+        Start -> retrieved(move_count) 
+              {sum=sum+1;count=count+move_count;raise reachNum()}-> Start
+    check:
+        CheckSum -> reachNum() when (sum < targetNum) -> CheckSum
+                    else {raise output(count/sum);sum=0;count=0} -> CheckSum

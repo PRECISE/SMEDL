@@ -1,11 +1,14 @@
-//Compile: gcc -o explorer_mon -L/usr/local/lib -lczmq -I/usr/local/include -std=c99 actions.c monitor_map.c explorer_mon.c
+//Compile: gcc -o explorer_mon -L/usr/local/lib -lczmq -I/usr/local/include -std=c99 actions.c monitor_map.c explorer_mon.c helper.c explorer_multi.c
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include "explorer_mon.h"
 #include "helper.h"
-
+#include "czmq.h"
+#include <sched.h>
+#include <pthread.h>
+#include <unistd.h>
 
 typedef enum { EXPLORER_ID } explorer_identity;
 const identity_type explorer_identity_types[EXPLORER_MONITOR_IDENTITIES] = { OPAQUE };
@@ -23,8 +26,10 @@ const char **explorer_states_names[3] = { explorer_main_states, explorer_explore
 
 ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     ExplorerMonitor* monitor = (ExplorerMonitor*)malloc(sizeof(ExplorerMonitor));
+
     pthread_mutex_init(&monitor->monitor_lock, NULL);
     monitor->identities[EXPLORER_ID] = init_monitor_identity(OPAQUE, d->id);
+    
     monitor->mon_x = d->mon_x;
     monitor->mon_y = d->mon_y;
     monitor->mon_heading = d->mon_heading;
@@ -34,15 +39,20 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
     monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
-
-
+    monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
+    assert (monitor->publisher);
+    assert (zsock_resolve (monitor->publisher) != monitor->publisher);
+    assert (streq (zsock_type_str (monitor->publisher), "PUB"));
 
     put_explorer_monitor(monitor);
+
     return monitor;
 }
 
 void free_monitor(ExplorerMonitor* monitor) {
-
+    //zmq_close(monitor->tempPublisher);
+    //zmq_ctx_destroy(monitor->context);
+    zsock_destroy(&monitor->publisher);
     fclose(monitor->logFile);
     free(monitor);
 }
@@ -62,7 +72,6 @@ void explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_MOVE;
       }
       break;
-
   }
 }
 
@@ -74,9 +83,11 @@ void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
 
 
 void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, void * map) {
+  //printf("mon_y:%d,mon_x:%d\n",mon_var_y,mon_var_x);
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_MOVE:
-    if(check_retrieved(map, mon_var_x, mon_var_y)) {
+          
+      if(check_retrieved(map, mon_var_x, mon_var_y)) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: retrieved; Event parameters : "); }
         raise_explorer_retrieved(monitor,monitor->move_count);
         monitor->mon_x = mon_var_x;
@@ -104,7 +115,7 @@ void explorer_drive_probe(void* id, int mon_var_x, int mon_var_y, int mon_var_he
   }
 }
 
-void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, void * map) {
+void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading,void * map) {
   param *p_head = NULL;
   push_param(&p_head, &mon_var_x, NULL, NULL, NULL);
   push_param(&p_head, &mon_var_y, NULL, NULL, NULL);
@@ -166,18 +177,22 @@ void raise_explorer_found(ExplorerMonitor* monitor) {
 }
 
 
-
-
 void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) {
+  
   //param *p_head = NULL;
   //push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
   //push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
-  printf("retrieve raised\n");
+
   // Export event to external monitors
   char str[60];
   //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
-  //sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
-  //zstr_send (monitor->publisher, str);
+  sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
+  printf(str);
+    sleep(1);
+    //usleep(8000);
+  zstr_send (monitor->publisher, str);
+
+  //sched_yield();
 }
 
 
@@ -208,8 +223,10 @@ int add_explorer_monitor_to_map(ExplorerMonitor *monitor, int identity) {
     if(monitor == NULL || record == NULL) {
         free(monitor);
         free(record);
+
         return 0;
     }
+
     record->monitor = monitor;
     pthread_mutex_lock(&explorer_monitor_maps_lock);
     record->next = map->list[bucket];

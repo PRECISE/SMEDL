@@ -6,7 +6,9 @@
 #include "explorer_mon.h"
 #include "helper.h"
 #include "czmq.h"
-
+#include <sched.h>
+#include <pthread.h>
+#include <unistd.h>
 
 typedef enum { EXPLORER_ID } explorer_identity;
 const identity_type explorer_identity_types[EXPLORER_MONITOR_IDENTITIES] = { OPAQUE };
@@ -48,6 +50,8 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
 }
 
 void free_monitor(ExplorerMonitor* monitor) {
+    //zmq_close(monitor->tempPublisher);
+    //zmq_ctx_destroy(monitor->context);
     zsock_destroy(&monitor->publisher);
     fclose(monitor->logFile);
     free(monitor);
@@ -78,12 +82,16 @@ void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
 }
 
 
-void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading) {
+void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, void * map) {
+  //printf("mon_y:%d,mon_x:%d\n",mon_var_y,mon_var_x);
   switch (monitor->state[EXPLORER_EXPLORE_SCENARIO]) {
     case EXPLORER_EXPLORE_MOVE:
-      if(mon_var_x == monitor->mon_x && mon_var_y == monitor->mon_y) {
+          
+      if(check_retrieved(map, mon_var_x, mon_var_y)) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: retrieved; Event parameters : "); }
         raise_explorer_retrieved(monitor,monitor->move_count);
+        monitor->mon_x = mon_var_x;
+        monitor->mon_y = mon_var_y;
         monitor->move_count = 0;
         monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
       }
@@ -97,17 +105,17 @@ void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int 
   }
 }
 
-void explorer_drive_probe(void* id, int mon_var_x, int mon_var_y, int mon_var_heading) {
+void explorer_drive_probe(void* id, int mon_var_x, int mon_var_y, int mon_var_heading, void * map) {
   ExplorerMonitorRecord* results = get_explorer_monitors_by_identity(EXPLORER_ID, OPAQUE, id);
   results = filter_explorer_monitors_by_identity(results, EXPLORER_ID, id);
   while(results != NULL) {
     ExplorerMonitor* monitor = results->monitor;
-    explorer_drive(monitor, mon_var_x, mon_var_y, mon_var_heading);
+    explorer_drive(monitor, mon_var_x, mon_var_y, mon_var_heading,map);
     results = results->next;
   }
 }
 
-void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading) {
+void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading,void * map) {
   param *p_head = NULL;
   push_param(&p_head, &mon_var_x, NULL, NULL, NULL);
   push_param(&p_head, &mon_var_y, NULL, NULL, NULL);
@@ -170,17 +178,21 @@ void raise_explorer_found(ExplorerMonitor* monitor) {
 
 
 void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) {
-    
-  param *p_head = NULL;
-  push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
-  push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
+  
+  //param *p_head = NULL;
+  //push_param(&p_head, &mon_var_move_count, NULL, NULL, NULL);
+  //push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
 
   // Export event to external monitors
   char str[60];
   //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
   sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
   printf(str);
+    //sleep(1);
+    usleep(10000);
   zstr_send (monitor->publisher, str);
+
+  //sched_yield();
 }
 
 

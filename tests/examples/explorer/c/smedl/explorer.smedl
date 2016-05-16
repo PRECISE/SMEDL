@@ -2,9 +2,9 @@ object Explorer
 identity
   opaque id;
 state
-  int mon_x, mon_y, mon_heading, interest_threshold,move_count;
+  int mon_x, mon_y, mon_heading,move_count;
 events
-  imported view(pointer), drive(int, int, int), turn(int),count();
+  imported view(pointer), drive(int, int, int, pointer), turn(int),count();
   internal found();
   exported retrieved(int);
 scenarios
@@ -16,7 +16,7 @@ scenarios
       else -> Move
     Move -> turn(facing) when facing != mon_heading {mon_heading = facing } -> Look
       else -> Move
-    Move -> drive(x, y, heading) when x == mon_x && y == mon_y { raise retrieved(move_count); move_count = 0 } -> Look
+    Move -> drive(x, y, heading, map) when check_retrieved(map,x,y) { raise retrieved(move_count); mon_x = x; mon_y = y; move_count = 0 } -> Look
       else {mon_x = x; mon_y = y} -> Look
   count:
     Start -> count(){move_count = move_count + 1} -> Start
