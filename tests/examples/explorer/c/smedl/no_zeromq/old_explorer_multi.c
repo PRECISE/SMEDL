@@ -313,6 +313,8 @@ void print_view() {
 }
 
 void *run(void* input) {
+        clock_t timer;
+        timer = clock();
 	explorer_id = ((ExplorerInput*)input)->id;
 
 	data = (ExplorerData*)malloc(sizeof(ExplorerData));
@@ -347,6 +349,8 @@ void *run(void* input) {
 	print_map();
 	free(data);
     free_monitor(mon);
+       timer = clock() - timer;
+       printf("threadid:%d,time:%lu\n",explorer_id, timer);
 	pthread_exit(NULL);
 }
 
@@ -389,7 +393,6 @@ void generateMap(char ** robotData){
 int main(int argc, char *argv[]) {
         clock_t timer;
         timer = clock();
-
        //
        init_explorer_monitor_maps();
        //
@@ -407,18 +410,22 @@ int main(int argc, char *argv[]) {
                 arv[0]=ystr;arv[1]=xstr;
 		add_input(i, arv);
 	}
+        clock_t timer2 = clock()-timer;
+        printf ("before thread: %lu clicks (%f seconds).\n",timer2,((float)timer)/CLOCKS_PER_SEC);
 	while(input_head != NULL) {
 		add_thread();
                 
 		pthread_create(&thread_head->id, NULL, &run, input_head);
 		input_head = input_head->next;
 	}
+        clock_t timer3 = clock() - timer;
+        printf ("before thread1: %lu clicks (%f seconds).\n",timer3, ((float)timer)/CLOCKS_PER_SEC);
   	while(thread_head != NULL) { 	
     	pthread_join(thread_head->id, NULL);
     	thread_head = thread_head->next;
   	}
-       timer = clock() - timer;
-       printf ("It took me %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
+       clock_t timer4 = clock() - timer;
+       printf ("It took me %lu clicks (%f seconds).\n",timer4,((float)timer)/CLOCKS_PER_SEC);
 
   	printf("{\"Status\":\"Success\"}]}\n");
 	return 0;
