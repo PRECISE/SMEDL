@@ -1,9 +1,9 @@
 from subprocess import call
 from random import randint
 
-cmd = ["./multi"]
+cmd = ["./multi_mac"]
 
-for i in range(0,1):
+for i in range(0,125):
     cmd.append(str(randint(0, 9)))
     cmd.append(str(randint(0, 19)))
 
@@ -13,5 +13,4 @@ for i in range(0,1):
     for i in range(0, 10):
         map[randint(0, 199)] = str(1)
     cmd = cmd + map
-print str(cmd)
 call(cmd)
