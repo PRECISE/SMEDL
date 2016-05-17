@@ -150,7 +150,6 @@ void update_map(int y_delta, int x_delta) {
     explorer_drive(mon, location[1], location[0], facing, map);
     explorer_view(mon,multiview);
     if(map[location[0]][location[1]] > 0) {
-        printf("true\n");
         map[location[0]][location[1]] = 0;
     }
     pthread_mutex_lock(&print_lock);
@@ -331,8 +330,7 @@ void *run(void* input) {
     int y,x ;
     char xstr[15]; char ystr[15];
     
-    clock_t timer;
-    timer = clock();
+
     explorer_id = *((int*)input);
 
     data = (ExplorerData*)malloc(sizeof(ExplorerData));
@@ -376,9 +374,6 @@ void *run(void* input) {
         robotData[0]=ystr;robotData[1]=xstr;
 
     
-    if(robotData==NULL){
-        printf("rd\n");
-    }
 
     if(make_map(robotData) == 1) {
         printf("Invalid non-int args\n");
@@ -410,8 +405,7 @@ void *run(void* input) {
     print_map();
     free(data);
     free_monitor(mon);
-    timer = clock() - timer;
-    printf("threadid:%d,time:%lu\n",explorer_id, timer);
+
     pthread_exit(NULL);
 }
 
@@ -443,8 +437,7 @@ int main(int argc, char *argv[]) {
 }
 
 void print_map() {
-    clock_t timer;
-    timer = clock();
+
     pthread_mutex_lock(&print_lock);
     printf("{\"ExplorerID\":%d, \"Map\":\n\"", explorer_id);
     for(int i = 0; i < 10; i++) {
@@ -462,7 +455,6 @@ void print_map() {
     //printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->mon_y, mon->mon_x, mon->heading);
     
     pthread_mutex_unlock(&print_lock);
-    timer = clock() - timer;
-    printf ("print time %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
+
     
 }

@@ -4,7 +4,6 @@
 #include "explorer_mon.h"
 #include "explorer_multi.h"
 #include <time.h>
-#include <unistd.h> 
 
 
 typedef enum { up, left, down, right } Direction;
@@ -40,11 +39,12 @@ void add_input(int id, char **args) {
 }
 
 int make_map(ExplorerInput *input) {
-	if(sscanf(input->args[0], "%i", &location[0]) != 1 || sscanf(input->args[1], "%i", &location[1]) != 1) {
+	int offset = 202 * input->id;
+	if(sscanf(input->args[offset + 1], "%i", &location[0]) != 1 || sscanf(input->args[offset + 2], "%i", &location[1]) != 1) {
 		return 1;
 	}
-	for(int i = 3; i < 202; i++) {
-		if(sscanf(input->args[i], "%i", &map[(i-3)/20][(i-3)%20]) != 1) {
+	for(int i = 3; i < 203; i++) {
+		if(sscanf(input->args[offset + i], "%i", &map[(i-3)/20][(i-3)%20]) != 1) {
 			return 1;
 		}
 	}
@@ -140,16 +140,16 @@ int get_view_spot(int spot) {
 
 void update_map(int y_delta, int x_delta) {
     location[0] += y_delta;
-    location[1] += x_delta;
+	location[1] += x_delta;
     explorer_drive(mon, location[1], location[0], facing, map);
     explorer_view(mon,multiview);
-    if(map[location[0]][location[1]] > 0) {
+	if(map[location[0]][location[1]] > 0) {
         printf("true\n");
         map[location[0]][location[1]] = 0;
-    }
-    pthread_mutex_lock(&print_lock);
-    printf("{%d:[%d,%d]},\n", explorer_id, y_delta, x_delta);
-    pthread_mutex_unlock(&print_lock);
+	}
+	pthread_mutex_lock(&print_lock);
+	printf("{%d:[%d,%d]},\n", explorer_id, y_delta, x_delta);
+	pthread_mutex_unlock(&print_lock);
 }
 
 void move(int forward, int side) {
@@ -313,10 +313,7 @@ void print_view() {
 }
 
 void *run(void* input) {
-        clock_t timer;
-        timer = clock();
 	explorer_id = ((ExplorerInput*)input)->id;
-
 	data = (ExplorerData*)malloc(sizeof(ExplorerData));
 
 	if(make_map(input) == 1) {
@@ -335,88 +332,45 @@ void *run(void* input) {
 	pthread_mutex_lock(&checker_lock);
     mon = init_explorer_monitor(data);
 	pthread_mutex_unlock(&checker_lock);
-
 	print_map();
-
-
 	int move_count = 0;
 	while(move_count < 200 && count_targets() > 0) {
         explorer_count(mon);
 		lawnmower();
 		move_count++;
 	}
-	lawnmower();
+    lawnmower();
 	print_map();
 	free(data);
-    free_monitor(mon);
-       timer = clock() - timer;
-       printf("threadid:%d,time:%lu\n",explorer_id, timer);
+	free_monitor(mon);
 	pthread_exit(NULL);
-}
-
-void generateMap(char ** robotData){
-    const int LENGTH = 202;
-    const int TARGETNUM = 5;
-    const int OBSTACLENUM = 5;
-    const int CHANGENUM = TARGETNUM + OBSTACLENUM;
-    int chosen[CHANGENUM];
-    int chosenNum=0;
-    for(int i=0;i< LENGTH;i++){
-      robotData[i]="0";
-    }
-    for(int i=0;i<CHANGENUM;i++){
-      chosen[i]=-2;
-    }
-    while(chosenNum < CHANGENUM){
-       int mark = 0;
-       int temp;
-       temp = rand()%200 + 2;
-       for(int k=0;k<CHANGENUM;k++){
-          if(chosen[k]==temp){
-             mark = 1; break;
-          }
-       }
-       if(mark == 1){
-          continue;
-       }
-       chosen[chosenNum++]=temp;
-    }
-    for(int i = 0; i < CHANGENUM; i++){
-       if(i<TARGETNUM){
-          robotData[chosen[i]] = "1";
-       }else{
-          robotData[chosen[i]] = "-1";
-       }
-    }  
 }
 
 int main(int argc, char *argv[]) {
         clock_t timer;
         timer = clock();
-       //
+	if((argc - 203) % 202 != 0) {
+		printf("{\"Status\":\"Failed - Invalid number of args %i\n\"}]}", argc);
+		return 1;
+	}
+	if (pthread_mutex_init(&print_lock, NULL) != 0 || pthread_mutex_init(&checker_lock, NULL) != 0) {
+        printf("{\"Status\":\"Failed - Mutex init failed %i\n\"}]}", argc);
+        return 1;
+    }
+        //
        init_explorer_monitor_maps();
        //
 	printf("{\"Data\":[\n");
-
-	for(int i = 0; i < atoi(argv[1]); i++) {
-                 int y,x ;
-              char xstr[15]; char ystr[15];
-                char ** arv = (char **)malloc(202*sizeof(char*));
-                 generateMap(arv);
-                 y = rand()%10;
-                 sprintf(ystr,"%d",y);
-                 x = rand()%20;
-                 sprintf(xstr,"%d",x);
-                arv[0]=ystr;arv[1]=xstr;
-		add_input(i, arv);
+	int explorer_count = (argc - 1) / 202;
+	for(int i = 0; i < explorer_count; i++) {
+		add_input(i, argv);
 	}
 	while(input_head != NULL) {
 		add_thread();
-                
 		pthread_create(&thread_head->id, NULL, &run, input_head);
 		input_head = input_head->next;
 	}
-  	while(thread_head != NULL) { 	
+  	while(thread_head != NULL) {
     	pthread_join(thread_head->id, NULL);
     	thread_head = thread_head->next;
   	}
@@ -440,14 +394,10 @@ void print_map() {
 			if(j < 19) printf(" ");
 		}
 		if(i == 9) printf("\",");
-		printf("\n");       
-
-        
+		printf("\n");
 	}
 	//printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->mon_y, mon->mon_x, mon->heading);
-
 	pthread_mutex_unlock(&print_lock);
     timer = clock() - timer;
-    printf ("print time %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
-
+    printf ("print time %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);//
 }

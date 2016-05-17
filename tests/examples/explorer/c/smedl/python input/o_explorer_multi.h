@@ -18,7 +18,7 @@ void add_thread();
 
 void add_input(int, char**);
 
-int make_map(char **input);
+int make_map(ExplorerInput*);
 
 int** make_temp_view();
 
