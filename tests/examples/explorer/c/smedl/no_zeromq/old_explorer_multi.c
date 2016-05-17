@@ -412,6 +412,10 @@ void *run(void* input) {
 
 
 int main(int argc, char *argv[]) {
+    if(argc !=2){
+        printf("number of parameters is wrong");
+        return 0;
+    }
     clock_t timer;
     timer = clock();
     //
