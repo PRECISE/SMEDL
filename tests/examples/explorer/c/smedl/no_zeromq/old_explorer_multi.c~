@@ -105,7 +105,7 @@ void set_rotated_view(int **temp_view) {
             multiview[i][j] = temp_view[i][j];
         }
     }
-    explorer_view(mon,multiview);
+    //explorer_view(mon,multiview);
     free_temp_view(temp_view);
     return;
 }
@@ -150,7 +150,6 @@ void update_map(int y_delta, int x_delta) {
     explorer_drive(mon, location[1], location[0], facing, map);
     explorer_view(mon,multiview);
     if(map[location[0]][location[1]] > 0) {
-        printf("true\n");
         map[location[0]][location[1]] = 0;
     }
     pthread_mutex_lock(&print_lock);
@@ -413,6 +412,10 @@ void *run(void* input) {
 
 
 int main(int argc, char *argv[]) {
+    if(argc !=2){
+        printf("number of parameters is wrong");
+        return 0;
+    }
     clock_t timer;
     timer = clock();
     //
