@@ -411,7 +411,7 @@ void *run(void* input) {
 int main(int argc, char *argv[]) {
     clock_t timer;
     timer = clock();
-    //
+    //gi
     init_explorer_monitor_maps();
     //
     printf("{\"Data\":[\n");
