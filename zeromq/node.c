@@ -19,13 +19,14 @@ int main (void)
     assert (rc == 0);
 
     zmq_setsockopt (subscriber, ZMQ_SUBSCRIBE, "A", 1);
-
-    while (1) {
+    int i =0;
+    while (i<10) {
         printf ("Before Send\n");
+        usleep(2000);
         s_sendmore (publisher, "A");
         s_send (publisher, "Hello from Node 1!");
         printf ("Sent\n");
-        sleep (5);
+        
 
         //  Read envelope with address
         char *address = s_recv (subscriber);
@@ -34,6 +35,7 @@ int main (void)
         printf ("[%s] %s\n", address, contents);
         free (address);
         free (contents);
+        i ++ ;
     }
 
     zmq_close (publisher);
