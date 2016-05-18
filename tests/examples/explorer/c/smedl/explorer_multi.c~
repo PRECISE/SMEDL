@@ -394,7 +394,7 @@ void *run(void* input) {
     
     
     int move_count = 0;
-    while(move_count < 5 && count_targets() > 0) {
+    while(move_count < 200 && count_targets() > 0) {
         explorer_count(mon);
         lawnmower();
         move_count++;
