@@ -400,6 +400,7 @@ void *run(void* input) {
         explorer_count(mon);
         lawnmower();
         move_count++;
+        usleep(5000);
     }
     lawnmower();
 
