@@ -207,7 +207,7 @@ void explorer_reachNum(ExplorerMonitor* monitor) {
           monitor->count = 0;
           monitor->state[EXPLORER_CHECK_SCENARIO] = EXPLORER_CHECK_CHECKSUM;
 
-          raise_explorerstat_output(monitor,(tempcount+0.0)/tempsum);
+          raise_explorer_output(monitor,(tempcount+0.0)/tempsum);
       }
       break;
 

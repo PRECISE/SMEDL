@@ -398,7 +398,7 @@ void *run(void* input) {
 
     int move_count = 0;
     while(move_count < 200 && count_targets() > 0) {
-        explorer_count(mon);
+        explorer_count_move(mon);
         lawnmower();
         move_count++;
         usleep(5000);
