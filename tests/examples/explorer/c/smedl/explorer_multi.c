@@ -5,8 +5,8 @@
 #include "explorer_multi.h"
 #include <time.h>
 
-#define ROWNUM 40
-#define COLUMNNUM 50
+#define ROWNUM 100
+#define COLUMNNUM 200
 typedef enum { up, left, down, right } Direction;
 pthread_mutex_t print_lock;
 pthread_mutex_t checker_lock;
@@ -59,7 +59,7 @@ int make_map(char **input) {
 
 int count_targets() {
 	int targets = 0;
-	for(int i = 0; i < 10; i++) {
+	for(int i = 0; i < ROWNUM; i++) {
 		for(int j = 0; j < COLUMNNUM; j++) {
 			if(map[i][j] > 0) {
 				targets++;
@@ -395,11 +395,14 @@ void *run(void* input) {
     
 
     int move_count = 0;
-    while(move_count < 50000 && count_targets() > 0) {
+    
+    usleep(2000);
+    while(move_count < 20000 && count_targets() > 0) {
         explorer_count(mon);
+        usleep(2000);
         lawnmower();
         move_count++;
-        usleep(5000);
+        
     }
     lawnmower();
 

@@ -11,7 +11,7 @@ capture_event (zloop_t *loop, zsock_t *reader, void *arg)
     assert (msg);
     char *msg_str = zmsg_popstr (msg);
     const char * EVENTSTR = "output";
-    if(strstr(msg_str,EVENTSTR) != NULL){
+    if(strstr() != NULL){
         printf ("CAPTURED: %s\n", msg_str);
     }
     free (msg_str);

@@ -40,10 +40,10 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
 
-    //monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
-    //assert (monitor->publisher);
-    //assert (zsock_resolve (monitor->publisher) != monitor->publisher);
-    //assert (streq (zsock_type_str (monitor->publisher), "PUB"));
+    monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
+    assert (monitor->publisher);
+    assert (zsock_resolve (monitor->publisher) != monitor->publisher);
+    assert (streq (zsock_type_str (monitor->publisher), "PUB"));
 
     put_explorer_monitor(monitor);
 
@@ -52,7 +52,7 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
 
 void free_monitor(ExplorerMonitor* monitor) {
 
-    //zsock_destroy(&monitor->publisher);
+    zsock_destroy(&monitor->publisher);
 
 
     fclose(monitor->logFile);
