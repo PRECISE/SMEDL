@@ -1,9 +1,10 @@
 Require Import Coq.Lists.List.
+Require Import Coq.Vectors.Vector.
 Require Import Coq.QArith.QArith.
 Require Import Coq.Strings.String.
-Require Import Types.
+Require Import SMEDL.Types.
 
-Open Scope type. 
+Open Scope type.
 
 Section ElaboratedAST.
   (* The type environment for the AST *)
@@ -13,7 +14,7 @@ Section ElaboratedAST.
 
   Variable events : list string.
   Definition event := { e : string | In e events }.
-  Variable event_params : event -> list string.
+  Variable event_params : event -> {n : nat | Fin.t n string}.
   Definition event_param (e : event) :=
     { p : string | In p (event_params e) }.
   Variable event_env : forall (e : event), event_param e -> Ty.
@@ -51,7 +52,9 @@ Section ElaboratedAST.
   Inductive Cmd : Set := 
   | Assign : forall (x : var), Expr (var_env x) -> Cmd
   | Raise : forall (e : event),
-      (forall (p : event_param e), Expr (event_env e p)) -> Cmd.
+      (forall (p : event_param e), Expr (event_env e p)) -> Cmd
+  | If : Expr SBool -> Cmd -> Cmd -> Cmd
+  | Seq : Cmd -> Cmd -> Cmd.
 
   (* Transitions *)
   Record Transition := mkTransition
@@ -71,13 +74,15 @@ Global Arguments Expr {vars} _ _.
 Global Arguments Cmd {vars} _ {events} {event_params} _.
 Global Arguments BinOpExpr {_} {_} {_} _ _ _.
 Global Arguments UnOpExpr {_} {_} {_} _ _.
+Global Arguments EqExpr {_} {_} {_} _ _.
 Global Arguments Var {_} {_} _.
 Global Arguments LitInt {_} {_} _.
 Global Arguments LitFloat {_} {_} _.
 Global Arguments LitBool {_} {_} _.
-Global Arguments Assign {_} {_} {_} {_} _ _ _.
-Global Arguments Raise {_} {_} {_} _ _ _ _.
-
+Global Arguments Assign {_} {_} {_} {_} {_} _ _.
+Global Arguments Raise {_} {_} {_} {_} {_} _ _.
+Global Arguments If {_} {_} {_} {_} {_} _ _ _.
+Global Arguments Seq {_} {_} {_} {_} {_} _ _.
 
 Module Example.
   Ltac invert_false :=
