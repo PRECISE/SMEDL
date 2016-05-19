@@ -53,9 +53,9 @@ void free_monitor(ExplorerMonitor*);
  * Monitor Event Handlers
  */
 void explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer);
-void raise_explorer_view(ExplorerMonitor* monitor, pointer mon_var_view_pointer);
+void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer);
 void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, void* mon_var_map);
-void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, pointer mon_var_map);
+void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, void* mon_var_map);
 void explorer_turn(ExplorerMonitor* monitor, int mon_var_facing);
 void raise_explorer_turn(ExplorerMonitor* monitor, int mon_var_facing);
 void explorer_count_move(ExplorerMonitor* monitor);
