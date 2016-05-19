@@ -392,14 +392,17 @@ void *run(void* input) {
     
     print_map();
     
-    
+
     int move_count = 0;
     while(move_count < 200 && count_targets() > 0) {
         explorer_count(mon);
         lawnmower();
         move_count++;
+        usleep(5000);
     }
     lawnmower();
+    timer = clock() - timer;
+
     print_map();
     free(data);
     free_monitor(mon);
@@ -409,6 +412,10 @@ void *run(void* input) {
 
 
 int main(int argc, char *argv[]) {
+    if(argc < 2){
+         printf("number of parameters is wrong\n");
+         return 0;
+    }
     clock_t timer;
     timer = clock();
     //

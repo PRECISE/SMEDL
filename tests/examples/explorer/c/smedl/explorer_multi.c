@@ -392,14 +392,17 @@ void *run(void* input) {
     
     print_map();
     
-    
+
     int move_count = 0;
     while(move_count < 200 && count_targets() > 0) {
         explorer_count(mon);
         lawnmower();
         move_count++;
+        usleep(5000);
     }
     lawnmower();
+
+
     print_map();
     free(data);
     free_monitor(mon);
