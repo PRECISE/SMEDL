@@ -189,12 +189,12 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
   char str[60];
   //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
   
-  sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
+  //sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
   //printf(str);
     //sleep(1);
    // usleep(1000);
 
-  zstr_send (monitor->publisher, str);
+  //zstr_send (monitor->publisher, str);
 
 
   //sched_yield();
