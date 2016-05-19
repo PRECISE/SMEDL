@@ -394,7 +394,7 @@ void *run(void* input) {
     
     print_map();
     
-    
+
     int move_count = 0;
     while(move_count < 200 && count_targets() > 0) {
         explorer_count(mon);
@@ -402,6 +402,7 @@ void *run(void* input) {
         move_count++;
     }
     lawnmower();
+
     print_map();
     free(data);
     free_monitor(mon);

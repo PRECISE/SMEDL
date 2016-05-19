@@ -105,7 +105,7 @@ void set_rotated_view(int **temp_view) {
             multiview[i][j] = temp_view[i][j];
         }
     }
-    //explorer_view(mon,multiview);
+    explorer_view(mon,multiview);
     free_temp_view(temp_view);
     return;
 }
@@ -394,7 +394,8 @@ void *run(void* input) {
     
     print_map();
     
-    
+    clock_t timer;
+    timer = clock();
     int move_count = 0;
     while(move_count < 200 && count_targets() > 0) {
         explorer_count(mon);
@@ -402,6 +403,8 @@ void *run(void* input) {
         move_count++;
     }
     lawnmower();
+    timer = clock() - timer;
+    printf ("lawnmower took me %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
     print_map();
     free(data);
     free_monitor(mon);
