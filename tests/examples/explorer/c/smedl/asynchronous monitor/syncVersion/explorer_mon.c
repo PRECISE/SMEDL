@@ -76,7 +76,7 @@ void explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
   }
 }
 
-void raise_explorer_view(ExplorerMonitor* monitor, pointer mon_var_view_pointer) {
+void raise_explorer_view(ExplorerMonitor* monitor, void* mon_var_view_pointer) {
   param *p_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &mon_var_view_pointer);
   push_action(&monitor->action_queue, EXPLORER_VIEW_EVENT, p_head);
@@ -104,7 +104,7 @@ void explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int 
   }
 }
 
-void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, pointer mon_var_map) {
+void raise_explorer_drive(ExplorerMonitor* monitor, int mon_var_x, int mon_var_y, int mon_var_heading, void * mon_var_map) {
   param *p_head = NULL;
   push_param(&p_head, &mon_var_x, NULL, NULL, NULL);
   push_param(&p_head, &mon_var_y, NULL, NULL, NULL);
