@@ -5,8 +5,8 @@
 #include "explorer_multi.h"
 #include <time.h>
 
-#define ROWNUM 100
-#define COLUMNNUM 200
+#define ROWNUM 20
+#define COLUMNNUM 40
 typedef enum { up, left, down, right } Direction;
 pthread_mutex_t print_lock;
 pthread_mutex_t checker_lock;
@@ -105,7 +105,7 @@ void set_rotated_view(int **temp_view) {
 			multiview[i][j] = temp_view[i][j];
 		}
 	}
-    explorer_view(mon,multiview);
+    //explorer_view(mon,multiview);
 	free_temp_view(temp_view);
 	return;
 }
@@ -147,8 +147,8 @@ int get_view_spot(int spot) {
 void update_map(int y_delta, int x_delta) {
     location[0] += y_delta;
 	location[1] += x_delta;
-    explorer_drive(mon, location[1], location[0], facing, map);
-    explorer_view(mon,multiview);
+    //explorer_drive(mon, location[1], location[0], facing, map);
+    //explorer_view(mon,multiview);
 	if(map[location[0]][location[1]] > 0) {
         map[location[0]][location[1]] = 0;
 	}
@@ -285,7 +285,7 @@ void rotate_facing() {
 		}
 		facing = (facing + 1) % 4;
 		get_view();
-		explorer_turn(mon, facing);
+		//explorer_turn(mon, facing);
 	}
 
 }
@@ -329,9 +329,9 @@ void *run(void* input) {
     char xstr[15]; char ystr[15];
     
 
-    explorer_id = *((int*)input);
+    //explorer_id = *((int*)input);
 
-    data = (ExplorerData*)malloc(sizeof(ExplorerData));
+    //data = (ExplorerData*)malloc(sizeof(ExplorerData));
     robotData =  (char **)malloc(LENGTH*sizeof(char*));
 
 
@@ -382,24 +382,26 @@ void *run(void* input) {
     facing = right;
     pthread_mutex_lock(&print_lock);
     pthread_mutex_unlock(&print_lock);
-    data->mon_y = location[0];
+
+
+    /*data->mon_y = location[0];
     data->mon_x = location[1];
     data->mon_heading = facing;
     data->id = &explorer_id;
     data->move_count = 0;
     pthread_mutex_lock(&checker_lock);
     mon = init_explorer_monitor(data);
-    pthread_mutex_unlock(&checker_lock);
+    pthread_mutex_unlock(&checker_lock);*/
     
     //print_map();
     
 
     int move_count = 0;
     
-    usleep(2000);
-    while(move_count < 20000 && count_targets() > 0) {
-        explorer_count(mon);
-        usleep(2000);
+    //usleep(3000);
+    while(move_count < 10000 && count_targets() > 0) {
+        //explorer_count(mon);
+        usleep(3000);
         lawnmower();
         move_count++;
         
@@ -408,8 +410,8 @@ void *run(void* input) {
 
 
     //print_map();
-    free(data);
-    free_monitor(mon);
+    //free(data);
+    //free_monitor(mon);
 
     pthread_exit(NULL);
 }
@@ -420,10 +422,13 @@ int main(int argc, char *argv[]) {
          printf("number of parameters is wrong\n");
          return 0;
     }
+    int k = 30;
+    long time_all = 0;
+    while(k>0){
     clock_t timer;
     timer = clock();
     //
-    init_explorer_monitor_maps();
+    //init_explorer_monitor_maps();
     //
     printf("{\"Data\":[\n");
     
@@ -438,9 +443,14 @@ int main(int argc, char *argv[]) {
         thread_head = thread_head->next;
     }
     timer = clock() - timer;
+    time_all += timer;
     printf ("It took me %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
     
     printf("{\"Status\":\"Success\"}]}\n");
+    k--;
+    //sleep(1);
+    }
+    printf("average time:%lu\n",time_all/30);
     return 0;
 }
 
