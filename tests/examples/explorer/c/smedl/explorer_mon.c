@@ -40,10 +40,10 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
 
-    monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
+    /*monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
     assert (monitor->publisher);
     assert (zsock_resolve (monitor->publisher) != monitor->publisher);
-    assert (streq (zsock_type_str (monitor->publisher), "PUB"));
+    assert (streq (zsock_type_str (monitor->publisher), "PUB"));*/
 
     put_explorer_monitor(monitor);
 
@@ -52,7 +52,7 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
 
 void free_monitor(ExplorerMonitor* monitor) {
 
-    zsock_destroy(&monitor->publisher);
+    //zsock_destroy(&monitor->publisher);
 
 
     fclose(monitor->logFile);
@@ -189,12 +189,12 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
   char str[60];
   //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
   
-  sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
+  //sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
   //printf(str);
     //sleep(1);
    // usleep(1000);
 
-  zstr_send (monitor->publisher, str);
+  //zstr_send (monitor->publisher, str);
 
 
   //sched_yield();
