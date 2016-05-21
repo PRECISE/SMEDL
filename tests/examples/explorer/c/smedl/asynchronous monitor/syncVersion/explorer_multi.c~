@@ -5,13 +5,12 @@
 #include "explorer_multi.h"
 #include <time.h>
 
-#define ROWNUM 60
-#define COLUMNNUM 120
+#define ROWNUM 40
+#define COLUMNNUM 80
 typedef enum { up, left, down, right } Direction;
 pthread_mutex_t print_lock;
 pthread_mutex_t checker_lock;
 pthread_mutex_t eventAdder_lock;
-pthread_mutex_t moveAdder_lock;
 
 
 __thread int explorer_id;
@@ -111,8 +110,8 @@ void set_rotated_view(int **temp_view) {
 			multiview[i][j] = temp_view[i][j];
 		}
 	}
-        //explorer_view(mon,multiview);
-        //eventNum++;
+        explorer_view(mon,multiview);
+        eventNum++;
 	free_temp_view(temp_view);
 	return;
 }
@@ -154,9 +153,9 @@ int get_view_spot(int spot) {
 void update_map(int y_delta, int x_delta) {
     location[0] += y_delta;
     location[1] += x_delta;
-    //explorer_drive(mon, location[1], location[0], facing, map);
-    //explorer_view(mon,multiview);
-    //eventNum+=2;
+    explorer_drive(mon, location[1], location[0], facing, map);
+    explorer_view(mon,multiview);
+    eventNum+=2;
 	if(map[location[0]][location[1]] > 0) {
         map[location[0]][location[1]] = 0;
 	}
@@ -293,8 +292,8 @@ void rotate_facing() {
 		}
 		facing = (facing + 1) % 4;
 		get_view();
-		//explorer_turn(mon, facing);
-                //eventNum++;
+		explorer_turn(mon, facing);
+                eventNum++;
 	}
 
 }
@@ -390,7 +389,7 @@ void *run(void* input) {
     pthread_mutex_lock(&print_lock);
     pthread_mutex_unlock(&print_lock);
 
-    /*explorer_id = *((int*)input);
+    explorer_id = *((int*)input);
     data = (ExplorerData*)malloc(sizeof(ExplorerData));
     data->mon_y = location[0];
     data->mon_x = location[1];
@@ -399,7 +398,7 @@ void *run(void* input) {
     data->move_count = 0;
     pthread_mutex_lock(&checker_lock);
     mon = init_explorer_monitor(data);
-    pthread_mutex_unlock(&checker_lock);*/
+    pthread_mutex_unlock(&checker_lock);
     
     //print_map();
     
@@ -408,8 +407,8 @@ void *run(void* input) {
     
     //usleep(3000);
     while(move_count < 10000 && count_targets() > 0) {
-        //explorer_count(mon);
-        //eventNum++;
+        explorer_count_move(mon);
+        eventNum++;
         usleep(3000);
         lawnmower();
         move_count++;
@@ -426,7 +425,6 @@ void *run(void* input) {
     eventNum = 0;
     overAllMoves += move_count + 1;
     pthread_mutex_unlock(&eventAdder_lock);
-
     pthread_exit(NULL);
 }
 
@@ -465,8 +463,8 @@ int main(int argc, char *argv[]) {
         aveTimeAll += (timer + 0.0)/overAllEventNum;
     aveEventAll += overAllEventNum;
     aveMoveAll += overAllMoves;
-    overAllMoves = 0;
     overAllEventNum = 0;
+    overAllMoves = 0;
     printf ("It took me %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
     printf("{\"Status\":\"Success\"}]}\n");
     
