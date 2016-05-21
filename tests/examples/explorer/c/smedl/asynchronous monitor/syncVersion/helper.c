@@ -32,6 +32,9 @@
     }
 }*/
 
+const int ROWNUM = 30;
+const int COLUMNNUM = 60;
+
 int contains_object(void* map) {
     int *p=(int*)map;
     for(int i = 0; i < 3; i++) {
@@ -47,7 +50,7 @@ int contains_object(void* map) {
 int check_retrieved(void* map,int x,int y){
    int *p=(int*)map;
   //printf("p:%d\n",*(p+y*20+x));
-  if(*(p+y*20+x) > 0){
+  if(*(p+y*COLUMNNUM+x) > 0){
      return 1;
   }
   return 0;

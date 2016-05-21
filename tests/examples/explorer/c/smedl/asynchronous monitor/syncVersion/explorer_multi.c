@@ -5,13 +5,16 @@
 #include "explorer_multi.h"
 #include <time.h>
 
-
+#define ROWNUM 30
+#define COLUMNNUM 60
 typedef enum { up, left, down, right } Direction;
 pthread_mutex_t print_lock;
 pthread_mutex_t checker_lock;
+pthread_mutex_t eventAdder_lock;
+
 
 __thread int explorer_id;
-__thread int map[10][20];
+__thread int map[ROWNUM][COLUMNNUM];
 __thread int multiview[3][3];
 __thread int location[2];
 __thread Direction scan_direction;
@@ -19,8 +22,12 @@ __thread Direction facing;
 __thread char** robotData;
 __thread struct ExplorerData *data;
 __thread struct ExplorerMonitor *mon;
+__thread int eventNum;
 
 int target_route[9] = {6, 7, 8, 5, 4, 3, 0, 1, 2};
+
+int overAllEventNum = 0;
+int overAllMoves = 0;
 
 ThreadList *thread_head = NULL;
 ExplorerInput *input_head = NULL;
@@ -45,11 +52,9 @@ int make_map(char **input) {
     if(sscanf(input[0], "%i", &location[0]) != 1 || sscanf(input[1], "%i", &location[1]) != 1) {
         return 1;
     }
-    if(input!=NULL){
-        printf("make map\n");
-    }
-    for(int i = 3; i < 202; i++) {
-        if(sscanf(input[i], "%i", &map[(i-3)/20][(i-3)%20]) != 1) {
+
+    for(int i = 3; i < ROWNUM*COLUMNNUM + 2; i++) {
+        if(sscanf(input[i], "%i", &map[(i-3)/COLUMNNUM][(i-3)%COLUMNNUM]) != 1) {
             return 1;
         }
     }
@@ -59,8 +64,8 @@ int make_map(char **input) {
 
 int count_targets() {
 	int targets = 0;
-	for(int i = 0; i < 10; i++) {
-		for(int j = 0; j < 20; j++) {
+	for(int i = 0; i < ROWNUM; i++) {
+		for(int j = 0; j < COLUMNNUM; j++) {
 			if(map[i][j] > 0) {
 				targets++;
 			}
@@ -105,7 +110,8 @@ void set_rotated_view(int **temp_view) {
 			multiview[i][j] = temp_view[i][j];
 		}
 	}
-    explorer_view(mon,multiview);
+        explorer_view(mon,multiview);
+        eventNum++;
 	free_temp_view(temp_view);
 	return;
 }
@@ -129,7 +135,7 @@ void get_view() {
 				y_view = location[0] + 1 + i;
 				x_view = location[1] - 1 + j;
 			}
-			if(y_view >= 0 && y_view < 10 && x_view >= 0 && x_view < 20) {
+			if(y_view >= 0 && y_view < ROWNUM && x_view >= 0 && x_view < COLUMNNUM) {
 				temp_view[i][j] = map[y_view][x_view];
 			} else {
 				temp_view[i][j] = -1;
@@ -146,14 +152,15 @@ int get_view_spot(int spot) {
 
 void update_map(int y_delta, int x_delta) {
     location[0] += y_delta;
-	location[1] += x_delta;
+    location[1] += x_delta;
     explorer_drive(mon, location[1], location[0], facing, map);
     explorer_view(mon,multiview);
+    eventNum+=2;
 	if(map[location[0]][location[1]] > 0) {
         map[location[0]][location[1]] = 0;
 	}
 	pthread_mutex_lock(&print_lock);
-	printf("{%d:[%d,%d]},\n", explorer_id, y_delta, x_delta);
+	//printf("{%d:[%d,%d]},\n", explorer_id, y_delta, x_delta);
 	pthread_mutex_unlock(&print_lock);
 }
 
@@ -286,6 +293,7 @@ void rotate_facing() {
 		facing = (facing + 1) % 4;
 		get_view();
 		explorer_turn(mon, facing);
+                eventNum++;
 	}
 
 }
@@ -319,7 +327,7 @@ void print_view() {
 
 void *run(void* input) {
     
-    const int LENGTH = 202;
+    const int LENGTH = ROWNUM * COLUMNNUM + 2;
     const int TARGETNUM = 5;
     const int OBSTACLENUM = 5;
     const int CHANGENUM = TARGETNUM + OBSTACLENUM;
@@ -329,9 +337,7 @@ void *run(void* input) {
     char xstr[15]; char ystr[15];
     
 
-    explorer_id = *((int*)input);
 
-    data = (ExplorerData*)malloc(sizeof(ExplorerData));
     robotData =  (char **)malloc(LENGTH*sizeof(char*));
 
 
@@ -345,7 +351,7 @@ void *run(void* input) {
         while(chosenNum < CHANGENUM){
             int mark = 0;
             int temp;
-            temp = rand()%200 + 2;
+            temp = rand()%(ROWNUM * COLUMNNUM) + 2;
             for(int k=0;k<CHANGENUM;k++){
                 if(chosen[k]==temp){
                     mark = 1; break;
@@ -365,9 +371,9 @@ void *run(void* input) {
             }
         }
         
-        y = rand()%10;
+        y = rand()%ROWNUM;
         sprintf(ystr,"%d",y);
-        x = rand()%20;
+        x = rand()%COLUMNNUM;
         sprintf(xstr,"%d",x);
         robotData[0]=ystr;robotData[1]=xstr;
 
@@ -377,39 +383,48 @@ void *run(void* input) {
         printf("Invalid non-int args\n");
         pthread_exit(NULL);
     }
+    free(robotData);
     scan_direction = right;
     facing = right;
     pthread_mutex_lock(&print_lock);
     pthread_mutex_unlock(&print_lock);
+
+    explorer_id = *((int*)input);
+    data = (ExplorerData*)malloc(sizeof(ExplorerData));
     data->mon_y = location[0];
     data->mon_x = location[1];
     data->mon_heading = facing;
     data->id = &explorer_id;
     data->move_count = 0;
-    data->count = 0;
-    data->sum = 0;
-    data->targetNum = 5;//there are 5 targets in each map
     pthread_mutex_lock(&checker_lock);
     mon = init_explorer_monitor(data);
     pthread_mutex_unlock(&checker_lock);
     
-    print_map();
+    //print_map();
     
 
     int move_count = 0;
-    while(move_count < 200 && count_targets() > 0) {
+    
+    //usleep(3000);
+    while(move_count < 10000 && count_targets() > 0) {
         explorer_count_move(mon);
+        eventNum++;
+        usleep(3000);
         lawnmower();
         move_count++;
-        usleep(5000);
+        
     }
     lawnmower();
 
 
-    print_map();
+    //print_map();
     free(data);
     free_monitor(mon);
-
+    pthread_mutex_lock(&eventAdder_lock);
+    overAllEventNum += eventNum;
+    eventNum = 0;
+    overAllMoves += move_count + 1;
+    pthread_mutex_unlock(&eventAdder_lock);
     pthread_exit(NULL);
 }
 
@@ -419,6 +434,12 @@ int main(int argc, char *argv[]) {
          printf("number of parameters is wrong\n");
          return 0;
     }
+    int k = 30;
+    long time_all = 0;
+    float aveTimeAll = 0;
+    int aveEventAll = 0;
+    int aveMoveAll = 0;
+    while(k>0){
     clock_t timer;
     timer = clock();
     //
@@ -437,9 +458,21 @@ int main(int argc, char *argv[]) {
         thread_head = thread_head->next;
     }
     timer = clock() - timer;
+    time_all += timer;
+    if(overAllEventNum > 0)
+        aveTimeAll += (timer + 0.0)/overAllEventNum;
+    aveEventAll += overAllEventNum;
+    aveMoveAll += overAllMoves;
+    overAllEventNum = 0;
+    overAllMoves = 0;
     printf ("It took me %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
-    
     printf("{\"Status\":\"Success\"}]}\n");
+    
+    k--;
+    
+    sleep(1);
+    }
+    printf("average time:%lu,event num:%d,time per event:%f, overall moves:%d\n",time_all/30,aveEventAll/30,aveTimeAll/30, aveMoveAll/30);
     return 0;
 }
 
@@ -448,14 +481,14 @@ void print_map() {
 
 	pthread_mutex_lock(&print_lock);
 	printf("{\"ExplorerID\":%d, \"Map\":\n\"", explorer_id);
-	for(int i = 0; i < 10; i++) {
-		for(int j = 0; j < 20; j++) {
+	for(int i = 0; i < ROWNUM; i++) {
+		for(int j = 0; j < COLUMNNUM; j++) {
 			if(location[0] == i && location[1] == j) {
 				printf("x");
 			} else printf("%d", map[i][j]);
-			if(j < 19) printf(" ");
+			if(j < COLUMNNUM - 1) printf(" ");
 		}
-		if(i == 9) printf("\",");
+		if(i == ROWNUM - 1) printf("\",");
 		printf("\n");
 	}
 	//printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->mon_y, mon->mon_x, mon->heading);

@@ -32,10 +32,8 @@
     }
 }*/
 
-
-const int ROWNUM = 60;
-const int COLUMNNUM = 120;
-
+const int ROWNUM = 40;
+const int COLUMNNUM = 80;
 
 int contains_object(void* map) {
     int *p=(int*)map;

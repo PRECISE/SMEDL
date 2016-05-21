@@ -227,7 +227,7 @@ void raise_explorer_output(ExplorerMonitor* monitor, float mon_var_None) {
   char str[60];
   //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
   sprintf(str, "/explorer/1/output  %f", mon_var_None);
-  printf(str);
+  //printf(str);
 
 }
 
