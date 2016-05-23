@@ -65,7 +65,8 @@
   "Major mode for editing SMEDL (Stateful Meta-Event Description Language)…"
 
   ;; code for syntax highlighting
-  (setq font-lock-defaults '((smedl-font-lock-keywords))))
+  (setq font-lock-defaults '((smedl-font-lock-keywords)))
+  (setq comment-start "// "))
 
 ;; clear memory. no longer needed
 (setq smedl-sections nil)
