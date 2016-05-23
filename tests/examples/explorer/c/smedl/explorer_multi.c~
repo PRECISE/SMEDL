@@ -498,6 +498,7 @@ void print_map() {
 		if(i == ROWNUM - 1) printf("\",");
 		printf("\n");
 	}
+	//printf("\"Coords\":[%d, %d], \"Facing\":%d}\n", mon->mon_y, mon->mon_x, mon->heading);
 	pthread_mutex_unlock(&print_lock);
     
 }
