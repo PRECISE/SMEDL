@@ -2,3 +2,6 @@
 Types.v
 AST.v
 Typing.v
+Notation.v
+VarEnv.v
+EventEnv.v
