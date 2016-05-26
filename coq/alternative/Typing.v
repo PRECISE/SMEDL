@@ -3,39 +3,15 @@ Require Import Coq.Vectors.Vector.
 Require Import Coq.Sets.Ensembles.
 Require Import SMEDL.Types.
 Require Import SMEDL.AST.
+Require SMEDL.VarEnv.
+Import SMEDL.VarEnv.Notations.
+Import SMEDL.VarEnv.Coercions.
+Require SMEDL.EventEnv.
+Import SMEDL.EventEnv.Notations.
+Import SMEDL.EventEnv.Coercions.
 
 Arguments exist {_ _} _ _.
 Arguments existT {_ _} _ _.
-Arguments In {_} _ _.
-Arguments Add {_} _ _ _.
-
-(** Variable environments *)
-Record VarEnv : Type := mkVarEnv
-  { VarEnv_vars : Ensemble string;
-    VarEnv_lookup : {v : string | In VarEnv_vars v} -> Ty;
-  }.
-
-Notation "v ∈ Γ" := (In (VarEnv_vars Γ) v) (at level 40).
-
-Coercion VarEnv_var (Γ : VarEnv) : Set :=
-  {n : string | In (VarEnv_vars Γ) n}.
-
-Coercion VarEnv_var_name {Γ : VarEnv} (v : Γ) : string :=
-  proj1_sig v.
-
-Notation "Γ [ v ]" := (VarEnv_lookup Γ v) (at level 40).
-
-Program Definition VarEnv_extend (Γ : VarEnv) (n : string) (x : Ty) : VarEnv :=
-  mkVarEnv (Add (VarEnv_vars Γ) n)
-           (fun v => if string_dec (proj1_sig v) n
-                     then x
-                     else (Γ[v])).
-Obligation 1.
-inversion H0; subst.
-- assumption.
-- inversion H1.
-  congruence.
-Qed.
 
 (** Typing judgements *)
 (* Expressions *)
@@ -77,20 +53,20 @@ Inductive HasTy_UnOp : UnOp -> Ty -> Ty -> Prop :=
 
 Hint Constructors HasTy_UnOp.
 
-Inductive HasTy_Expr : VarEnv -> Expr -> Ty -> Prop :=
-| HasTy_Var : forall (Γ : VarEnv),
+Inductive HasTy_Expr : VarEnv.t -> Expr -> Ty -> Prop :=
+| HasTy_Var : forall (Γ : VarEnv.t),
     forall (v : Γ), HasTy_Expr Γ (Var v) (Γ[v])
-| HasTy_LitNat : forall (Γ : VarEnv),
+| HasTy_LitNat : forall (Γ : VarEnv.t),
     forall n, HasTy_Expr Γ (LitInt n) SInt
-| HasTy_LitFloat : forall (Γ : VarEnv),
+| HasTy_LitFloat : forall (Γ : VarEnv.t),
     forall q, HasTy_Expr Γ (LitFloat q) SFloat
-| HasTy_LitBool : forall (Γ : VarEnv),
+| HasTy_LitBool : forall (Γ : VarEnv.t),
     forall b, HasTy_Expr Γ (LitBool b) SBool
-| HasTy_UnOpExpr : forall (Γ : VarEnv),
+| HasTy_UnOpExpr : forall (Γ : VarEnv.t),
     forall op body body_ty ty,
     HasTy_UnOp op body_ty ty ->
     HasTy_Expr Γ (UnOpExpr op body) ty
-| HasTy_BinOpExpr : forall (Γ : VarEnv),
+| HasTy_BinOpExpr : forall (Γ : VarEnv.t),
     forall op lhs_ty rhs_ty ty lhs rhs,
       HasTy_BinOp op lhs_ty rhs_ty ty ->
       HasTy_Expr Γ lhs lhs_ty ->
@@ -101,39 +77,9 @@ Hint Constructors HasTy_Expr.
 
 Notation "Γ |- e :: τ" := (HasTy_Expr Γ e τ) (at level 70).
 
-(* Commands *)
 
-(** Event environments *)
-Record EventEnv := mkEventEnv
-  { EventEnv_events : Ensemble string;
-    EventEnv_event_airity : {name : string | In EventEnv_events name} -> nat;
-    EventEnv_lookup :
-      forall (ev : {n : string | In EventEnv_events n})
-             (n : Fin.t (EventEnv_event_airity ev)),
-        Ty;
-    EventEnv_param_name :
-      forall (ev : {n : string | In EventEnv_events n})
-             (n : Fin.t (EventEnv_event_airity ev)),
-        string;
-    EventEnv_param_names_unique :
-      forall (ev : {n : string | In EventEnv_events n})
-             (n1 n2 : Fin.t (EventEnv_event_airity ev)),
-        EventEnv_param_name ev n1 = EventEnv_param_name ev n2 ->
-        n1 = n2;
-  }.
-
-Notation "ev ∈ Δ" := (In (EventEnv_events Δ) ev) (at level 40).
-
-Coercion EventEnv_event (Δ : EventEnv) : Type :=
-  { ev : string | ev ∈ Δ }.
-
-Notation "Δ ![ ev , p ]" := (EventEnv_lookup Δ ev p) (at level 50).
-
-Notation "Δ ?[ ev , p ]" := (EventEnv_param_name Δ ev p) (at level 50).
-
-Notation "Δ #[ ev ]" := (EventEnv_event_airity Δ ev) (at level 50).
-
-Inductive HasTy_Cmd (Δ : EventEnv) (Γ : VarEnv) : Cmd -> Prop :=
+(** Commands *)
+Inductive HasTy_Cmd (Δ : EventEnv.t) (Γ : VarEnv.t) : Cmd -> Prop :=
 | HasTy_Assign : forall (v : Γ) e,
     HasTy_Expr Γ e (Γ[v]) ->
     HasTy_Cmd Δ Γ (Assign v e)
@@ -143,7 +89,7 @@ Inductive HasTy_Cmd (Δ : EventEnv) (Γ : VarEnv) : Cmd -> Prop :=
     (* Right types of args *)
     (forall p (Hlt : p < Δ#[ev]) arg,
         List.nth_error args p = Some arg ->
-        HasTy_Expr Γ arg (Δ![ev,Fin.of_nat_lt Hlt])) ->
+        HasTy_Expr Γ arg (Δ![ev;Fin.of_nat_lt Hlt])) ->
     HasTy_Cmd Δ Γ (Raise (proj1_sig ev) args)
 | HasTy_Seq : forall c1 c2,
     HasTy_Cmd Δ Γ c1 ->
@@ -157,42 +103,53 @@ Inductive HasTy_Cmd (Δ : EventEnv) (Γ : VarEnv) : Cmd -> Prop :=
 
 Hint Constructors HasTy_Cmd.
 
-Notation "Δ , Γ |- c" := (HasTy_Cmd Δ Γ c) (at level 70).
+Notation "Δ ,, Γ |- c" := (HasTy_Cmd Δ Γ c) (at level 70).
 
-Definition VarEnv_extend_with_event_param
-           (Δ : EventEnv)
-           (ev : Δ)
-           (Γ : VarEnv)
-           (p : Fin.t (Δ#[ev])) : VarEnv :=
-  VarEnv_extend Γ
-                (EventEnv_param_name Δ ev p)
-                (EventEnv_lookup Δ ev p).
+Inductive HasTy_Transition (Δ : EventEnv.t) (Γ : VarEnv.t) : Transition -> Prop :=
+| HasTy_Transition_intro : forall src dst ev actions,
+    List.Forall (fun action : Expr * Cmd =>
+                   let (guard, act) := action in
+                   HasTy_Expr (Γ +![Δ;ev]) guard SBool /\
+                   HasTy_Cmd Δ (Γ +![Δ;ev]) act)
+                actions ->
+    HasTy_Transition Δ Γ (mkTransition src (proj1_sig ev) actions dst).
 
-Program Fixpoint VarEnv_extend_with_event'
-        (Δ : EventEnv)
-        (ev : Δ)
-        (Γ : VarEnv)
-        (p : nat)
-        (Hp : p <= Δ#[ev]) : VarEnv :=
-  match p with
-  | 0 => Γ
-  | S n =>
-    VarEnv_extend_with_event'
-      Δ
-      ev
-      (VarEnv_extend_with_event_param Δ ev Γ (Fin.of_nat_lt Hp))
-      n
-      (Le.le_Sn_le _ _ Hp)
-  end.
+Inductive HasTy_Scenario (Δ : EventEnv.t) (Γ : VarEnv.t) :
+  Scenario -> Prop :=
+| HasTy_Scenario_intro : forall ts,
+    (* Each transition is independently OK. *)
+    List.Forall (HasTy_Transition Δ Γ) ts ->
+    (* No source-state/trigger duplication. *)
+    List.NoDup (List.map (fun t => (Transition_source t, Transition_trigger t)) ts) ->
+    HasTy_Scenario Δ Γ ts.
 
-Program Definition VarEnv_extend_with_event
-        (Δ : EventEnv)
-        (ev : Δ)
-        (Γ : VarEnv) : VarEnv :=
-  VarEnv_extend_with_event' Δ ev Γ (Δ#[ev]) _.
+Inductive HasEventEnv (es : list EventDecl) (ee : EventEnv.t) : Prop :=
+| HasEventEnv_intro :
+    (* Events have the same names *)
+    (forall e, List.In e (List.map fst es) <-> e ∈ ee) ->
+    (* Events have the same number of parameters *)
+    (* TODO *)
+    (* Events parameters have the same names *)
+    (* TODO *)
+    (* Event parameters have the same types *)
+    (* TODO *)
+    HasEventEnv es ee.
 
-Inductive HasTy_Transition (Δ : EventEnv) (Γ : VarEnv) : Transition -> Prop :=
-| HasTy_Transition_intro : forall src dst ev guard act,
-    HasTy_Expr (VarEnv_extend_with_event Δ ev Γ) guard SBool ->
-    HasTy_Cmd Δ (VarEnv_extend_with_event Δ ev Γ) act ->
-    HasTy_Transition Δ Γ (mkTransition src (proj1_sig ev) guard act dst).
+(* Equivalence of event environments relies on Ensemble extensionality. Is that
+ OK?*)
+
+(* Lemma HasEventEnv_unique : forall es ee1 ee2, *)
+(*     HasEventEnv es ee1 -> *)
+(*     HasEventEnv es ee2 -> *)
+(*     ee1 = ee2.                  (* TODO: = or some other equivalence? *) *)
+(* Proof. *)
+(*   intros. *)
+(*   inversion H; inversion H0. *)
+(*   destruct ee1, ee2. *)
+(*   simpl in *. *)
+(* Abort. *)
+
+(* Inductive HasTy_LM : LocalMonitor -> Prop := *)
+(* | HasTy_LM_intro : forall es gs ts, *)
+(*     (* Events  *) *)
+(*     HasTy_LM (mkLocalMonitor es gs ts). *)
