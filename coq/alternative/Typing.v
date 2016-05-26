@@ -123,31 +123,130 @@ Inductive HasTy_Scenario (Δ : EventEnv.t) (Γ : VarEnv.t) :
     List.NoDup (List.map (fun t => (Transition_source t, Transition_trigger t)) ts) ->
     HasTy_Scenario Δ Γ ts.
 
-Inductive HasEventEnv (es : list EventDecl) (ee : EventEnv.t) : Prop :=
-| HasEventEnv_intro :
+Inductive HasTy_EventEnv (es : list EventDecl) (ee : EventEnv.t) : Prop :=
+| HasTy_EventEnv_intro :
     (* Events have the same names *)
-    (forall e, List.In e (List.map fst es) <-> e ∈ ee) ->
+    (forall e, ((exists ps, List.In (e, ps) es) <-> e ∈ ee)) ->
+    (* No duplicate event names *)
+    (List.NoDup (List.map fst es)) ->
+    (* No duplicate parameter names *)
+    (forall e ps, List.In (e, ps) es ->
+                  List.NoDup (List.map fst ps)) ->
     (* Events have the same number of parameters *)
-    (* TODO *)
+    (forall e ps, List.In (proj1_sig e, ps) es ->
+                  List.length ps = EventEnv.arity ee e) ->
     (* Events parameters have the same names *)
-    (* TODO *)
+    (forall e ps,
+        List.In (proj1_sig e, ps) es ->
+        forall pi,
+          (List.nth_error (List.map fst ps)
+                          (proj1_sig (Fin.to_nat pi))) =
+          Some (nth (EventEnv.param_name ee e) pi)) ->
     (* Event parameters have the same types *)
-    (* TODO *)
-    HasEventEnv es ee.
+    (forall e ps,
+        List.In (proj1_sig e, ps) es ->
+        forall pi,
+          (List.nth_error (List.map snd ps)
+                          (proj1_sig (Fin.to_nat pi))) =
+          Some (nth (EventEnv.lookup ee e) pi)) ->
+    HasTy_EventEnv es ee.
 
-(* Equivalence of event environments relies on Ensemble extensionality. Is that
- OK?*)
+(* Equivalence of event environments relies on Ensemble extensionality and
+ Functional Extensionality. Is that OK?*)
 
-(* Lemma HasEventEnv_unique : forall es ee1 ee2, *)
-(*     HasEventEnv es ee1 -> *)
-(*     HasEventEnv es ee2 -> *)
-(*     ee1 = ee2.                  (* TODO: = or some other equivalence? *) *)
-(* Proof. *)
-(*   intros. *)
-(*   inversion H; inversion H0. *)
-(*   destruct ee1, ee2. *)
-(*   simpl in *. *)
-(* Abort. *)
+Require Import Coq.Logic.FunctionalExtensionality.
+
+Lemma HasEventEnv_unique : forall es ee1 ee2,
+    HasTy_EventEnv es ee1 ->
+    HasTy_EventEnv es ee2 ->
+    ee1 = ee2.                  (* TODO: = or some other equivalence? *)
+Proof.
+  intros.
+  inversion H; inversion H0.
+  destruct ee1, ee2.
+  simpl in *.
+
+  assert (Heq : events0 = events)
+    by (apply Extensionality_Ensembles;
+        unfold Same_set, Included;
+        firstorder).
+  subst.
+
+  assert (Heq : arity0 = arity).
+  { extensionality x.
+    specialize (H10 x).
+    specialize (H4 x).
+    destruct x.
+    specialize (H7 x).
+    inversion H7.
+    specialize (H14 i).
+    inversion H14.
+    specialize (H10 x0).
+    specialize (H4 x0).
+    rewrite <- H10, <- H4;
+      simpl; auto.
+  }
+  subst.
+
+  assert (Heq : param_name0 = param_name).
+  { extensionality x.
+    apply Vector.eq_nth_iff; intros; subst.
+    specialize (H5 x).
+    specialize (H11 x).
+    destruct x.
+    specialize (H7 x).
+    inversion H7.
+    specialize (H14 i).
+    inversion H14.
+    specialize (H5 x0).
+    specialize (H11 x0).
+    simpl in *.
+    specialize (H5 H15 p2).
+    specialize (H11 H15 p2).
+    rewrite H5 in H11.
+    inversion H11.
+    rewrite H17.
+    auto.
+  }
+  subst.
+
+  assert (Heq : lookup0 = lookup).
+  { extensionality x.
+    apply Vector.eq_nth_iff; intros; subst.
+    specialize (H6 x).
+    specialize (H12 x).
+    destruct x.
+    specialize (H7 x).
+    inversion H7.
+    specialize (H14 i).
+    inversion H14.
+    specialize (H6 x0).
+    specialize (H12 x0).
+    simpl in *.
+    specialize (H6 H15 p2).
+    specialize (H12 H15 p2).
+    rewrite H6 in H12.
+    inversion H12.
+    rewrite H17.
+    auto.
+  }
+  subst.
+
+  assert (Heq : param_names_unique0 = param_names_unique).
+  { extensionality x.
+    extensionality n1.
+    extensionality n2.
+    extensionality Hn1n2.
+    Require Import Eqdep_dec.
+    apply eq_proofs_unicity.
+    clear.
+    intros.
+    destruct (Fin.eq_dec x0 y); intuition.
+  }
+  subst.
+
+  reflexivity.
+Qed.
 
 (* Inductive HasTy_LM : LocalMonitor -> Prop := *)
 (* | HasTy_LM_intro : forall es gs ts, *)
