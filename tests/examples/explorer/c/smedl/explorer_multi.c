@@ -51,7 +51,6 @@ void add_input(int id, char **args) {
 
 
 int make_map(char **input) {
-
     if(sscanf(input[0], "%i", &location[0]) != 1 || sscanf(input[1], "%i", &location[1]) != 1) {
         return 1;
     }
@@ -331,7 +330,7 @@ void print_view() {
 }
 
 void *run(void* input) {
-    
+
     const int LENGTH = ROWNUM * COLUMNNUM + 2;
     const int TARGETNUM = 5;
     const int OBSTACLENUM = 5;
@@ -340,11 +339,8 @@ void *run(void* input) {
     int chosenNum=0;
     int y,x ;
     char xstr[15]; char ystr[15];
-    
-
 
     robotData =  (char **)malloc(LENGTH*sizeof(char*));
-
 
         for(int i=0;i< LENGTH;i++){
             robotData[i]="0";
@@ -352,7 +348,7 @@ void *run(void* input) {
         for(int i=0;i<CHANGENUM;i++){
             chosen[i]=-2;
         }
-        
+
         while(chosenNum < CHANGENUM){
             int mark = 0;
             int temp;
@@ -367,7 +363,7 @@ void *run(void* input) {
             }
             chosen[chosenNum++]=temp;
         }
-        
+
         for(int i = 0; i < CHANGENUM; i++){
             if(i<TARGETNUM){
                 robotData[chosen[i]] = "1";
@@ -375,14 +371,14 @@ void *run(void* input) {
                 robotData[chosen[i]] = "-1";
             }
         }
-        
+
         y = rand()%ROWNUM;
         sprintf(ystr,"%d",y);
         x = rand()%COLUMNNUM;
         sprintf(xstr,"%d",x);
         robotData[0]=ystr;robotData[1]=xstr;
 
-    
+
 
     if(make_map(robotData) == 1) {
         printf("Invalid non-int args\n");
@@ -405,12 +401,12 @@ void *run(void* input) {
     pthread_mutex_lock(&checker_lock);
     mon = init_explorer_monitor(data);
     pthread_mutex_unlock(&checker_lock);*/
-    
+
     //print_map();
-    
+
 
     int move_count = 0;
-    
+
     while(move_count < 10000 && count_targets() > 0) {
         //instrumentation point for event count
         //explorer_count(mon);
@@ -418,7 +414,7 @@ void *run(void* input) {
         usleep(3000);
         lawnmower();
         move_count++;
-        
+
     }
     lawnmower();
 
@@ -453,14 +449,14 @@ int main(int argc, char *argv[]) {
     //init_explorer_monitor_maps();
     //
     printf("{\"Data\":[\n");
-    
+
     for(int i = 0; i < atoi(argv[1]); i++) {
         add_thread();
         pthread_create(&thread_head->id, NULL, &run, &i);
     }
-    
-    
-    while(thread_head != NULL) { 	
+
+
+    while(thread_head != NULL) {
         pthread_join(thread_head->id, NULL);
         thread_head = thread_head->next;
     }
@@ -474,9 +470,9 @@ int main(int argc, char *argv[]) {
     overAllEventNum = 0;
     printf ("It took me %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
     printf("{\"Status\":\"Success\"}]}\n");
-    
+
     k--;
-    
+
     sleep(1);
     }
     printf("average time:%lu,event num:%d,time per event:%f, overall moves:%d\n",time_all/30,aveEventAll/30,aveTimeAll/30, aveMoveAll/30);
@@ -499,5 +495,5 @@ void print_map() {
 		printf("\n");
 	}
 	pthread_mutex_unlock(&print_lock);
-    
+
 }
