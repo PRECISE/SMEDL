@@ -10,16 +10,16 @@ Import SMEDL.VarEnv.Coercions.
 (** Event environments *)
 Record t := make
   { events : Ensemble string;
-    event_airity : {name : string | In events name} -> nat;
+    arity : {name : string | In events name} -> nat;
     lookup :
       forall (ev : {n : string | In events n}),
-        Vector.t Ty (event_airity ev);
+        Vector.t Ty (arity ev);
     param_name :
       forall (ev : {n : string | In events n}),
-        Vector.t string (event_airity ev);
+        Vector.t string (arity ev);
     param_names_unique :
       forall (ev : {n : string | In events n})
-             (n1 n2 : Fin.t (event_airity ev)),
+             (n1 n2 : Fin.t (arity ev)),
         nth (param_name ev) n1 = nth (param_name ev) n2 ->
         n1 = n2;
   }.
@@ -49,7 +49,7 @@ Program Definition extend_with_event
     (fun Γ p => Γ +[(nth (param_name Δ ev) p);
                      (nth (lookup Δ ev) p)])
     Γ
-    (event_airity Δ ev)
+    (arity Δ ev)
     _.
 
 Module Notations.
@@ -62,7 +62,7 @@ Module Notations.
   Notation "Δ ?[ ev ; p ]" := (nth (param_name Δ ev) p)
                                 (at level 50).
 
-  Notation "Δ #[ ev ]" := (event_airity Δ ev)
+  Notation "Δ #[ ev ]" := (arity Δ ev)
                             (at level 50).
 
   Notation "Γ +![ Δ ; ev ]" := (extend_with_event Γ Δ ev)
@@ -70,16 +70,16 @@ Module Notations.
 End Notations.
 Export Notations.
 
-(* Lemma EventEnv_equiv : forall events event_airity lookup param_name param_names_unique events' event_airity' lookup' param_name' param_names_unique', *)
+(* Lemma EventEnv_equiv : forall events arity lookup param_name param_names_unique events' arity' lookup' param_name' param_names_unique', *)
 (*     Same_set _ events events' -> *)
 (*     (forall ev ev', *)
 (*         proj1_sig ev = proj1_sig ev' -> *)
-(*         (event_airity ev = event_airity' ev') /\ *)
+(*         (arity ev = arity' ev') /\ *)
 (*         (forall p p', *)
 (*             Fin.to_nat p = Fin.to_nat p' -> *)
 (*             (nth (lookup ev) p = nth (lookup' ev' p')) /\ *)
 (*             (nth (param_name ev) p = nth (param_name' ev') p')) /\ *)
 (*         (param_names_unique ev = param_names_unique' ev)) -> *)
-(*     make events event_airity lookup param_name param_names_unique *)
+(*     make events arity lookup param_name param_names_unique *)
 (*     =  *)
-(*     make events' event_airity' lookup' param_name' param_names_unique'. *)
+(*     make events' arity' lookup' param_name' param_names_unique'. *)
