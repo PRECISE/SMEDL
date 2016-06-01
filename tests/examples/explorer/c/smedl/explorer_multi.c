@@ -55,8 +55,8 @@ int make_map(char **input) {
         return 1;
     }
 
-    for(int i = 3; i < ROWNUM*COLUMNNUM + 2; i++) {
-        if(sscanf(input[i], "%i", &map[(i-3)/COLUMNNUM][(i-3)%COLUMNNUM]) != 1) {
+    for(int i = 2; i < ROWNUM*COLUMNNUM+2; i++) {
+        if(sscanf(input[i], "%i", &map[(i-2)/COLUMNNUM][(i-2)%COLUMNNUM]) != 1) {
             return 1;
         }
     }
@@ -372,6 +372,8 @@ void *run(void* input) {
             }
         }
 
+
+
         y = rand()%ROWNUM;
         sprintf(ystr,"%d",y);
         x = rand()%COLUMNNUM;
@@ -384,11 +386,23 @@ void *run(void* input) {
         printf("Invalid non-int args\n");
         pthread_exit(NULL);
     }
+
+        if(count_targets()<TARGETNUM){
+           printf("printf chosen,id:%d\n",*((int*)input));
+           for(int i=0;i<CHANGENUM;i++){
+             printf("%d,%s;",chosen[i],robotData[chosen[i]]);
+           }
+           printf("\n");
+        }
+
     free(robotData);
     scan_direction = right;
     facing = right;
     pthread_mutex_lock(&print_lock);
     pthread_mutex_unlock(&print_lock);
+
+
+
 
     //instantiation of the monitor instance
     explorer_id = *((int*)input);
@@ -403,7 +417,7 @@ void *run(void* input) {
     pthread_mutex_unlock(&checker_lock);
 
     //print_map();
-
+    printf("id:%d,targetNum:%d\n",*(int*)(mon->identities[0]->value),count_targets());
 
     int move_count = 0;
 
@@ -429,7 +443,10 @@ void *run(void* input) {
     eventNum = 0;
     overAllMoves += move_count + 1;
     pthread_mutex_unlock(&eventAdder_lock);
-    //printf("mon:%d\n",mon->callTime);
+    printf("id:%d,mon:%d\n",*(int*)(mon->identities[0]->value),mon->callTime);
+    if(count_targets() == 0){
+        printf("id:%d,all retrieved\n",*(int*)(mon->identities[0]->value));
+    }
     pthread_exit(NULL);
 }
 
