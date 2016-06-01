@@ -29,6 +29,7 @@ typedef struct ExplorerMonitor {
   action *action_queue;
   FILE *logFile;
   zsock_t *publisher;
+  int callTime;
 } ExplorerMonitor;
 
 typedef struct ExplorerMonitorRecord {
@@ -73,3 +74,7 @@ void free_explorer_monitor_maps();
 int add_explorer_monitor_to_map(ExplorerMonitor*, int);
 int put_explorer_monitor(ExplorerMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
+
+
+pthread_mutex_t pub_lock;
+zsock_t *head_publisher;

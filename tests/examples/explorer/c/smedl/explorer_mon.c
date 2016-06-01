@@ -39,7 +39,7 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
     monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
     monitor->logFile = fopen("ExplorerMonitor.log", "w");
-
+    monitor->callTime = 0;
     /*monitor->publisher = zsock_new_pub (">tcp://localhost:5559");
     assert (monitor->publisher);
     assert (zsock_resolve (monitor->publisher) != monitor->publisher);
@@ -186,18 +186,15 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
   //push_action(&monitor->action_queue, EXPLORER_RETRIEVED_EVENT, p_head);
 
   // Export event to external monitors
+  monitor->callTime ++;
   char str[60];
-  //sprintf(str, "/explorer/%d/retrieved  %d", monitor->identities[EXPLORER_ID]->value, mon_var_move_count);
-  
-  //sprintf(str, "/explorer/1/retrieved  %d", mon_var_move_count);
-  //printf(str);
-    //sleep(1);
-   // usleep(1000);
-
-  //zstr_send (monitor->publisher, str);
-
-
-  //sched_yield();
+  sprintf(str, "/explorer/%d/retrieved  %d", *(int*)(monitor->identities[EXPLORER_ID]->value), mon_var_move_count);
+  pthread_mutex_lock(&(pub_lock));
+  sched_yield();
+  printf(str);
+  printf("\n");
+  zstr_send (head_publisher, str);
+  pthread_mutex_unlock(&(pub_lock));
 }
 
 

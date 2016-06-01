@@ -11,6 +11,7 @@ typedef enum { up, left, down, right } Direction;
 pthread_mutex_t print_lock;
 pthread_mutex_t checker_lock;
 pthread_mutex_t eventAdder_lock;
+pthread_mutex_t overall_helper_lock;
 
 
 __thread int explorer_id;
@@ -28,6 +29,8 @@ int target_route[9] = {6, 7, 8, 5, 4, 3, 0, 1, 2};
 
 int overAllEventNum = 0;
 int overAllMoves = 0;
+int overAllHelperCounts = 0;
+long overAllHelperTime = 0;
 
 ThreadList *thread_head = NULL;
 ExplorerInput *input_head = NULL;
@@ -394,6 +397,7 @@ void *run(void* input) {
     data->mon_y = location[0];
     data->mon_x = location[1];
     data->mon_heading = facing;
+    data->targetNum = TARGETNUM;
     data->id = &explorer_id;
     data->move_count = 0;
     pthread_mutex_lock(&checker_lock);
@@ -416,6 +420,10 @@ void *run(void* input) {
     }
     lawnmower();
 
+    pthread_mutex_lock(&overall_helper_lock);
+    overAllHelperCounts += mon->helpercount;
+    overAllHelperTime += mon->helpertime;
+    pthread_mutex_unlock(&overall_helper_lock);
 
     //print_map();
     free(data);
@@ -439,40 +447,48 @@ int main(int argc, char *argv[]) {
     float aveTimeAll = 0;
     int aveEventAll = 0;
     int aveMoveAll = 0;
-    while(k>0){
+    long aveHelperAll = 0;
+    int aveHelperCount = 0;
+    while (k>0){
     clock_t timer;
     timer = clock();
     //
     init_explorer_monitor_maps();
     //
     printf("{\"Data\":[\n");
-    
+
     for(int i = 0; i < atoi(argv[1]); i++) {
         add_thread();
         pthread_create(&thread_head->id, NULL, &run, &i);
     }
-    
-    
+    int i = 0;
     while(thread_head != NULL) { 	
         pthread_join(thread_head->id, NULL);
         thread_head = thread_head->next;
+        i++;
     }
     timer = clock() - timer;
+    printf ("It took me %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
+    
     time_all += timer;
     if(overAllEventNum > 0)
         aveTimeAll += (timer + 0.0)/overAllEventNum;
     aveEventAll += overAllEventNum;
     aveMoveAll += overAllMoves;
+    aveHelperAll += overAllHelperTime;
+    aveHelperCount += overAllHelperCounts;
     overAllEventNum = 0;
     overAllMoves = 0;
-    printf ("It took me %lu clicks (%f seconds).\n",timer,((float)timer)/CLOCKS_PER_SEC);
+    overAllHelperTime = 0;
+
+    overAllHelperCounts = 0;
     printf("{\"Status\":\"Success\"}]}\n");
-    
     k--;
-    
-    sleep(1);
+
     }
+    printf("average count:%d\n",aveHelperCount);
     printf("average time:%lu,event num:%d,time per event:%f, overall moves:%d\n",time_all/30,aveEventAll/30,aveTimeAll/30, aveMoveAll/30);
+    printf("average helper time:%d,counts:%d\n",aveHelperAll/(aveHelperCount*5),aveHelperCount/30);
     return 0;
 }
 

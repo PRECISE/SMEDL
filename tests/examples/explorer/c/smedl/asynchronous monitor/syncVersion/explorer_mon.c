@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include "explorer_mon.h"
+#include "helper.h"
 
 typedef enum { EXPLORER_ID } explorer_identity;
 const identity_type explorer_identity_types[EXPLORER_MONITOR_IDENTITIES] = { OPAQUE };
@@ -34,6 +35,9 @@ ExplorerMonitor* init_explorer_monitor( ExplorerData *d ) {
     monitor->count = d->count;
     monitor->sum = d->sum;
     monitor->targetNum = d->targetNum;
+    //
+    monitor->helpercount = 0;
+    monitor->helpertime = 0;
     monitor->state[EXPLORER_MAIN_SCENARIO] = EXPLORER_MAIN_EXPLORE;
     monitor->state[EXPLORER_EXPLORE_SCENARIO] = EXPLORER_EXPLORE_LOOK;
     monitor->state[EXPLORER_COUNT_SCENARIO] = EXPLORER_COUNT_START;
@@ -179,6 +183,13 @@ void explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) {
         { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: reachNum; Event parameters : "); }
       monitor->state[EXPLORER_STAT_SCENARIO] = EXPLORER_STAT_START;
           explorer_reachNum(monitor);
+             clock_t timer;
+    timer = clock();
+          helper_call();
+        timer = clock() - timer;
+        monitor->helpercount += 1;
+        monitor-> helpertime +=timer;
+
       break;
 
   }
@@ -192,7 +203,6 @@ void raise_explorer_retrieved(ExplorerMonitor* monitor, int mon_var_move_count) 
 
 
 void explorer_reachNum(ExplorerMonitor* monitor) {
-
   switch (monitor->state[EXPLORER_CHECK_SCENARIO]) {
     case EXPLORER_CHECK_CHECKSUM:
       if(monitor->sum < monitor->targetNum) {
