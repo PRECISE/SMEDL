@@ -429,7 +429,7 @@ void *run(void* input) {
     eventNum = 0;
     overAllMoves += move_count + 1;
     pthread_mutex_unlock(&eventAdder_lock);
-    printf("mon:%d\n",mon->callTime);
+    //printf("mon:%d\n",mon->callTime);
     pthread_exit(NULL);
 }
 
