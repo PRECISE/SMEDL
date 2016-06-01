@@ -5,12 +5,10 @@ Require Import SMEDL.Types.
 
 Open Scope type.
 
-Definition EventParamDecl := list (string * Ty).
-Definition EventDecl := list (string * EventParamDecl).
-Definition EvenDeclBlock := list EventDecl.
+Definition EventParamDecl := string * Ty.
+Definition EventDecl := string * list EventParamDecl.
 
 Definition GlobalDecl := string * Ty.
-Definition GlobalDeclBlock := list EventDecl.
 
 Inductive UnOp :=
 | Not : UnOp
@@ -38,15 +36,21 @@ Inductive Cmd :=
 | Seq : Cmd -> Cmd -> Cmd.
 
 Record Transition := mkTransition
-  { transitionSourceState : string;
-    transitionGuard : Expr;
-    transitionAction : Cmd;
-    transitionDestState : string
+  { Transition_source : string;
+    Transition_trigger : string;
+    (* Guard/Action pairs. Evaluated left-to-right. *)
+    Transition_action : list (Expr * Cmd);
+    Transition_dest : string
   }.
 
 Definition Scenario := list Transition.
 
-Definition Monitor := list Scenario.
+Record LocalMonitor :=
+  mkLocalMonitor
+    { events : list EventDecl;
+      globals : list GlobalDecl;
+      scenarios : list Scenario;
+    }.
 
 Definition show_UnOp (op : UnOp) : string :=
   match op with

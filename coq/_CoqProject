@@ -1,7 +1,10 @@
 -R . SMEDL
-Types.v
-ElaboratedAST.v
 AST.v
-Smedl.v
-Elaborate.v
-These.v
+EventEnv.v
+Machine.v
+Notation.v
+Semantics.v
+Types.v
+Typing.v
+TypingFacts.v
+VarEnv.v
