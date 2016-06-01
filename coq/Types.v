@@ -16,3 +16,14 @@ Proof.
 
   intuition congruence.
 Qed.
+
+Require Import Coq.Strings.String.
+
+Fixpoint show_Ty (ty : Ty) : string :=
+  match ty with
+  | SBool => "bool"
+  | SInt => "int"
+  | SFloat => "float"
+  | SProduct lhs rhs =>
+    "(" ++ show_Ty lhs ++ "*" ++ show_Ty rhs ++ ")"
+  end.
