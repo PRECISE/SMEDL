@@ -6,8 +6,8 @@
 #include <time.h>
 
 //input size
-#define ROWNUM 60
-#define COLUMNNUM 120
+#define ROWNUM 30
+#define COLUMNNUM 60
 
 typedef enum { up, left, down, right } Direction;
 pthread_mutex_t print_lock;
@@ -113,8 +113,8 @@ void set_rotated_view(int **temp_view) {
 		}
 	}
         //instrumenation point for event view
-        //explorer_view(mon,multiview);
-        //eventNum++;
+        explorer_view(mon,multiview);
+        eventNum++;
 	free_temp_view(temp_view);
 	return;
 }
@@ -157,9 +157,9 @@ void update_map(int y_delta, int x_delta) {
     location[0] += y_delta;
     location[1] += x_delta;
     //instrumentation point for event drive and view
-    //explorer_drive(mon, location[1], location[0], facing, map);
-    //explorer_view(mon,multiview);
-    //eventNum+=2;
+    explorer_drive(mon, location[1], location[0], facing, map);
+    explorer_view(mon,multiview);
+    eventNum+=2;
     if(map[location[0]][location[1]] > 0) {
         map[location[0]][location[1]] = 0;
     }
@@ -297,8 +297,8 @@ void rotate_facing() {
 		facing = (facing + 1) % 4;
 		get_view();
                 //instrumentation point for event turn
-		//explorer_turn(mon, facing);
-                //eventNum++;
+		explorer_turn(mon, facing);
+                eventNum++;
 	}
 
 }
@@ -391,7 +391,7 @@ void *run(void* input) {
     pthread_mutex_unlock(&print_lock);
 
     //instantiation of the monitor instance
-    /*explorer_id = *((int*)input);
+    explorer_id = *((int*)input);
     data = (ExplorerData*)malloc(sizeof(ExplorerData));
     data->mon_y = location[0];
     data->mon_x = location[1];
@@ -400,34 +400,36 @@ void *run(void* input) {
     data->move_count = 0;
     pthread_mutex_lock(&checker_lock);
     mon = init_explorer_monitor(data);
-    pthread_mutex_unlock(&checker_lock);*/
+    pthread_mutex_unlock(&checker_lock);
 
     //print_map();
 
 
     int move_count = 0;
 
+
     while(move_count < 10000 && count_targets() > 0) {
         //instrumentation point for event count
-        //explorer_count(mon);
-        //eventNum++;
-        usleep(3000);
+        explorer_count(mon);
+        eventNum++;
+
         lawnmower();
         move_count++;
 
     }
+
     lawnmower();
 
 
     //print_map();
-    //free(data);
-    //free_monitor(mon);
+    free(data);
+    free_monitor(mon);
     pthread_mutex_lock(&eventAdder_lock);
     overAllEventNum += eventNum;
     eventNum = 0;
     overAllMoves += move_count + 1;
     pthread_mutex_unlock(&eventAdder_lock);
-
+    printf("mon:%d\n",mon->callTime);
     pthread_exit(NULL);
 }
 
@@ -437,7 +439,7 @@ int main(int argc, char *argv[]) {
          printf("number of parameters is wrong\n");
          return 0;
     }
-    int k = 30;
+    int k = 1;
     long time_all = 0;
     float aveTimeAll = 0;
     int aveEventAll = 0;
@@ -446,20 +448,39 @@ int main(int argc, char *argv[]) {
     clock_t timer;
     timer = clock();
     //instantiation of monitor maps
-    //init_explorer_monitor_maps();
+    init_explorer_monitor_maps();
     //
     printf("{\"Data\":[\n");
 
+    head_publisher = zsock_new_pub (">tcp://localhost:5559");
+    assert (head_publisher);
+    assert (zsock_resolve (head_publisher) != head_publisher);
+    assert (streq (zsock_type_str (head_publisher), "PUB"));
+
+    int * p = (int*)malloc(sizeof(int)*atoi(argv[1]));
+    int * q = p;
+    int * r = p;
+    for(int i = 0; i< atoi(argv[1]); i++){
+         *p = i;
+         p++;
+    }
     for(int i = 0; i < atoi(argv[1]); i++) {
         add_thread();
-        pthread_create(&thread_head->id, NULL, &run, &i);
+        pthread_create(&thread_head->id, NULL, &run, q);
+        q++;
     }
+
 
 
     while(thread_head != NULL) {
         pthread_join(thread_head->id, NULL);
         thread_head = thread_head->next;
     }
+
+    free(r);
+    zsock_destroy(&head_publisher);
+
+
     timer = clock() - timer;
     time_all += timer;
     if(overAllEventNum > 0)
@@ -473,9 +494,8 @@ int main(int argc, char *argv[]) {
 
     k--;
 
-    sleep(1);
     }
-    printf("average time:%lu,event num:%d,time per event:%f, overall moves:%d\n",time_all/30,aveEventAll/30,aveTimeAll/30, aveMoveAll/30);
+    //printf("average time:%lu,event num:%d,time per event:%f, overall moves:%d\n",time_all/30,aveEventAll/30,aveTimeAll/30, aveMoveAll/30);
     return 0;
 }
 

@@ -33,8 +33,8 @@
 }*/
 
 //input size should be known before hand
-const int ROWNUM = 60;
-const int COLUMNNUM = 120;
+const int ROWNUM = 30;
+const int COLUMNNUM = 60;
 
 
 int contains_object(void* map) {

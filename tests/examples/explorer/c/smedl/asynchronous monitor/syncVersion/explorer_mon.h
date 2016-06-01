@@ -16,6 +16,7 @@ typedef struct ExplorerData {
   int count;
   int sum;
   int targetNum;
+
 } ExplorerData;
 
 typedef struct ExplorerMonitor {
@@ -32,6 +33,8 @@ typedef struct ExplorerMonitor {
   action *action_queue;
   FILE *logFile;
   //zsock_t *publisher;
+  int helpercount;
+  long helpertime;
 } ExplorerMonitor;
 
 typedef struct ExplorerMonitorRecord {

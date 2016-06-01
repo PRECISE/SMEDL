@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include "explorer_mon.h"
+#include <unistd.h>
 
 /*int *get_coordinates(ExplorerMonitor *monitor) {
     int *coords = (int*)malloc(sizeof(int) * 2);
@@ -54,6 +55,15 @@ int check_retrieved(void* map,int x,int y){
      return 1;
   }
   return 0;
+}
+
+void helper_call(){
+
+   for(int i=0; i< 40000; i++)
+   {
+
+   }
+
 }
 
 /*void free_view(ExplorerMonitor *monitor) {
