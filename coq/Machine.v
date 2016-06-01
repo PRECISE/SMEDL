@@ -1,36 +1,41 @@
-Record Transition {s : Type} {e : Type} := mkTransition
-  { source : s;
-    event : e;
-    output : list e;
-    destination : s;
-  }.
+Require Import Coq.Lists.List.
 
-Arguments mkTransition {_} {_} _ _ _ _.
+Record Machine :=
+  mkMachine
+    { S : Type;
+      Σ : Type;
+      Λ : Type;
+      S0 : S;
+      δ : S -> Σ -> S;
+      ω : S -> Σ -> list Λ
+    }.
 
-(* Semantics *)
-Record FSM := mkFSM
-  { fsmState : Type;
-    fsmEvent : Type;
-    fsmTransitions :> @Transition fsmState fsmEvent -> Type;
-  }.
+Section MachineSemantics.
+  Variable M : Machine.
 
-Definition full_trace (fsm : FSM) :=
-  list (@Transition (fsmState fsm) (fsmEvent fsm)).
+  Record Configuration : Type :=
+    mkConfiguration {
+        source : S M;
+        input : Σ M;
+        destination : S M;
+        output : list (Λ M);
+      }.
 
-Inductive FullTrace : forall (fsm : FSM), full_trace fsm -> Type :=
-| FullTrace_Empty fsm : FullTrace fsm nil
-| FullTrace_Step fsm : forall s s' s'' e e' es es' ts,
-    FullTrace fsm (mkTransition s e es s'::ts)
-    -> fsm (mkTransition s e es s')
-    -> FullTrace fsm (mkTransition s' e' es' s''::
-                                    mkTransition s e es s'::
-                                    ts).
+  Inductive Trace : list Configuration -> Prop :=
+  | Trace_start : forall σ,
+      Trace (mkConfiguration (S0 M) σ (δ M (S0 M) σ) (ω M (S0 M) σ)
+               ::nil)
+  | Trace_next : forall ts src σ s' σ' λs',
+      Trace (mkConfiguration s' σ' src λs'
+               ::ts) ->
+      Trace (mkConfiguration src σ (δ M src σ) (ω M src σ)
+               ::mkConfiguration s' σ' src λs'
+               ::ts).
 
-Fixpoint extract (fsm : FSM) (tr : full_trace fsm) : list (fsmEvent fsm) :=
-  match tr with
-  | nil => nil
-  | t::tr' => app (output t) (extract fsm tr')
-  end.
-
-Definition Produces (fsm : FSM) (es : list (fsmEvent fsm)) : Type :=
-  exists tr, extract fsm tr = es.
+  Definition Semantics
+             (σs : list (Σ M))
+             (λs : list (list (Λ M))) : Prop :=
+    forall ts, Trace ts ->
+               σs = List.map input ts /\
+               λs = List.map output ts.
+End MachineSemantics.
