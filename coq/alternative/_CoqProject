@@ -1,7 +1,10 @@
 -R . SMEDL
-Types.v
 AST.v
-Typing.v
-Notation.v
-VarEnv.v
 EventEnv.v
+Machine.v
+Notation.v
+Semantics.v
+Types.v
+Typing.v
+TypingFacts.v
+VarEnv.v

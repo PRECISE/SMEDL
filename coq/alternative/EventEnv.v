@@ -69,17 +69,3 @@ Module Notations.
                                  (at level 50).
 End Notations.
 Export Notations.
-
-(* Lemma EventEnv_equiv : forall events arity lookup param_name param_names_unique events' arity' lookup' param_name' param_names_unique', *)
-(*     Same_set _ events events' -> *)
-(*     (forall ev ev', *)
-(*         proj1_sig ev = proj1_sig ev' -> *)
-(*         (arity ev = arity' ev') /\ *)
-(*         (forall p p', *)
-(*             Fin.to_nat p = Fin.to_nat p' -> *)
-(*             (nth (lookup ev) p = nth (lookup' ev' p')) /\ *)
-(*             (nth (param_name ev) p = nth (param_name' ev') p')) /\ *)
-(*         (param_names_unique ev = param_names_unique' ev)) -> *)
-(*     make events arity lookup param_name param_names_unique *)
-(*     =  *)
-(*     make events' arity' lookup' param_name' param_names_unique'. *)
