@@ -105,14 +105,19 @@ Hint Constructors HasTy_Cmd.
 
 Notation "Δ ,, Γ |- c" := (HasTy_Cmd Δ Γ c) (at level 70).
 
-Inductive HasTy_Transition (Δ : EventEnv.t) (Γ : VarEnv.t) : Transition -> Prop :=
+Inductive HasTy_Transition (Δ : EventEnv.t) (Γ : VarEnv.t)
+  : Transition -> Prop :=
 | HasTy_Transition_intro : forall src dst ev actions,
-    List.Forall (fun action : Expr * Cmd =>
-                   let (guard, act) := action in
-                   HasTy_Expr (Γ +![Δ;ev]) guard SBool /\
-                   HasTy_Cmd Δ (Γ +![Δ;ev]) act)
-                actions ->
+    (* All of the guards and actions typecheck. *)
+    List.Forall
+      (fun action : Expr * Cmd =>
+         let (guard, act) := action in
+         HasTy_Expr (Γ +![Δ;ev]) guard SBool /\
+         HasTy_Cmd Δ (Γ +![Δ;ev]) act)
+      actions ->
     HasTy_Transition Δ Γ (mkTransition src (proj1_sig ev) actions dst).
+
+Hint Constructors HasTy_Transition.
 
 Inductive HasTy_Scenario (Δ : EventEnv.t) (Γ : VarEnv.t) :
   Scenario -> Prop :=
@@ -123,10 +128,10 @@ Inductive HasTy_Scenario (Δ : EventEnv.t) (Γ : VarEnv.t) :
     List.NoDup (List.map (fun t => (Transition_source t, Transition_trigger t)) ts) ->
     HasTy_Scenario Δ Γ ts.
 
-Inductive HasTy_EventEnv (es : list EventDecl) (ee : EventEnv.t) : Prop :=
+Inductive HasTy_EventEnv (es : list EventDecl) (Δ : EventEnv.t) : Prop :=
 | HasTy_EventEnv_intro :
     (* Events have the same names *)
-    (forall e, ((exists ps, List.In (e, ps) es) <-> e ∈ ee)) ->
+    (forall e, ((exists ps, List.In (e, ps) es) <-> e ∈ Δ)) ->
     (* No duplicate event names *)
     (List.NoDup (List.map fst es)) ->
     (* No duplicate parameter names *)
@@ -134,121 +139,46 @@ Inductive HasTy_EventEnv (es : list EventDecl) (ee : EventEnv.t) : Prop :=
                   List.NoDup (List.map fst ps)) ->
     (* Events have the same number of parameters *)
     (forall e ps, List.In (proj1_sig e, ps) es ->
-                  List.length ps = EventEnv.arity ee e) ->
+                  List.length ps = EventEnv.arity Δ e) ->
     (* Events parameters have the same names *)
     (forall e ps,
         List.In (proj1_sig e, ps) es ->
         forall pi,
           (List.nth_error (List.map fst ps)
                           (proj1_sig (Fin.to_nat pi))) =
-          Some (nth (EventEnv.param_name ee e) pi)) ->
+          Some (nth (EventEnv.param_name Δ e) pi)) ->
     (* Event parameters have the same types *)
     (forall e ps,
         List.In (proj1_sig e, ps) es ->
         forall pi,
           (List.nth_error (List.map snd ps)
                           (proj1_sig (Fin.to_nat pi))) =
-          Some (nth (EventEnv.lookup ee e) pi)) ->
-    HasTy_EventEnv es ee.
+          Some (nth (EventEnv.lookup Δ e) pi)) ->
+    HasTy_EventEnv es Δ.
 
-(* Equivalence of event environments relies on Ensemble extensionality and
- Functional Extensionality. Is that OK?*)
+Hint Constructors HasTy_EventEnv.
 
-Require Import Coq.Logic.FunctionalExtensionality.
+Inductive HasTy_VarEnv (gs : list GlobalDecl) (Γ : VarEnv.t) : Prop :=
+| HasTy_VarEnv_intro :
+    (* Unique variable names *)
+    List.NoDup (List.map fst gs) ->
+    (* Same variable names *)
+    (forall n, In (VarEnv.vars Γ) n <-> exists ty, List.In (n, ty) gs) ->
+    (* Same types for same names *)
+    (forall v ty, Γ[v] = ty <-> List.In ((proj1_sig v), ty) gs) ->
+    HasTy_VarEnv gs Γ.
 
-Lemma HasEventEnv_unique : forall es ee1 ee2,
-    HasTy_EventEnv es ee1 ->
-    HasTy_EventEnv es ee2 ->
-    ee1 = ee2.                  (* TODO: = or some other equivalence? *)
-Proof.
-  intros.
-  inversion H; inversion H0.
-  destruct ee1, ee2.
-  simpl in *.
+Hint Constructors HasTy_VarEnv.
 
-  assert (Heq : events0 = events)
-    by (apply Extensionality_Ensembles;
-        unfold Same_set, Included;
-        firstorder).
-  subst.
+Inductive HasTy_LM : LocalMonitor -> Prop :=
+| HasTy_LM_intro : forall es Δ gs Γ ss,
+    (* Events typecheck *)
+    HasTy_EventEnv es Δ ->
+    HasTy_VarEnv gs Γ ->
+    (* Scenarios typecheck independently *)
+    List.Forall (fun s => HasTy_Scenario Δ Γ s) ss ->
+    (* TODO: Scenarios are compatible *)
+    (* Events  *)
+    HasTy_LM (mkLocalMonitor es gs ss).
 
-  assert (Heq : arity0 = arity).
-  { extensionality x.
-    specialize (H10 x).
-    specialize (H4 x).
-    destruct x.
-    specialize (H7 x).
-    inversion H7.
-    specialize (H14 i).
-    inversion H14.
-    specialize (H10 x0).
-    specialize (H4 x0).
-    rewrite <- H10, <- H4;
-      simpl; auto.
-  }
-  subst.
-
-  assert (Heq : param_name0 = param_name).
-  { extensionality x.
-    apply Vector.eq_nth_iff; intros; subst.
-    specialize (H5 x).
-    specialize (H11 x).
-    destruct x.
-    specialize (H7 x).
-    inversion H7.
-    specialize (H14 i).
-    inversion H14.
-    specialize (H5 x0).
-    specialize (H11 x0).
-    simpl in *.
-    specialize (H5 H15 p2).
-    specialize (H11 H15 p2).
-    rewrite H5 in H11.
-    inversion H11.
-    rewrite H17.
-    auto.
-  }
-  subst.
-
-  assert (Heq : lookup0 = lookup).
-  { extensionality x.
-    apply Vector.eq_nth_iff; intros; subst.
-    specialize (H6 x).
-    specialize (H12 x).
-    destruct x.
-    specialize (H7 x).
-    inversion H7.
-    specialize (H14 i).
-    inversion H14.
-    specialize (H6 x0).
-    specialize (H12 x0).
-    simpl in *.
-    specialize (H6 H15 p2).
-    specialize (H12 H15 p2).
-    rewrite H6 in H12.
-    inversion H12.
-    rewrite H17.
-    auto.
-  }
-  subst.
-
-  assert (Heq : param_names_unique0 = param_names_unique).
-  { extensionality x.
-    extensionality n1.
-    extensionality n2.
-    extensionality Hn1n2.
-    Require Import Eqdep_dec.
-    apply eq_proofs_unicity.
-    clear.
-    intros.
-    destruct (Fin.eq_dec x0 y); intuition.
-  }
-  subst.
-
-  reflexivity.
-Qed.
-
-(* Inductive HasTy_LM : LocalMonitor -> Prop := *)
-(* | HasTy_LM_intro : forall es gs ts, *)
-(*     (* Events  *) *)
-(*     HasTy_LM (mkLocalMonitor es gs ts). *)
+Hint Constructors HasTy_LM.
