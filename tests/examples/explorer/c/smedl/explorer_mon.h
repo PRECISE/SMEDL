@@ -28,7 +28,7 @@ typedef struct ExplorerMonitor {
   int move_count;
   action *action_queue;
   FILE *logFile;
-  zsock_t *publisher;
+  //zsock_t *publisher;
   int callTime;
 } ExplorerMonitor;
 
