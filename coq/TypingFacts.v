@@ -153,3 +153,48 @@ Proof.
   subst.
   reflexivity.
 Qed.
+
+Lemma VarEnv_shrink : forall {Γ ty gs} v,
+  HasTy_VarEnv (((proj1_sig v), ty) :: gs) Γ ->
+  HasTy_VarEnv gs (VarEnv.remove Γ v).
+Proof.
+  inversion_clear 1 as [Hunique Hdom Hlookup].
+  eapply HasTy_VarEnv_intro.
+
+  - inversion Hunique; auto.
+  - intro n; specialize (Hdom n);
+      inversion Hdom as [Hdom_ty Hty_dom].
+    split.
+    + inversion 1 as [Hin Hsingle].
+      apply Hdom_ty in Hin as Hex.
+      inversion Hex as [? Hmaps].
+      inversion Hmaps as [Hhd | ?];
+        [inversion Hhd; subst|];
+        firstorder.
+    + inversion 1 as [ty' Hin].
+      unfold VarEnv.remove, Subtract, Setminus, In in *.
+      simpl in *.
+      split; eauto using List.in_cons.
+      inversion 1; subst.
+      inversion Hunique; subst.
+      apply (List.in_map fst) in Hin.
+      auto.
+  - intros v' ty'.
+    specialize (Hlookup (VarEnv.weaken_var v') ty').
+    destruct v as [n Hin].
+    destruct v' as [n' Hin'].
+    inversion_clear Hlookup as [Hlookup_maps Hmaps_lookup].
+    simpl in *.
+    split; [intro Hlookup | intro Hmaps].
+    + apply Hlookup_maps in Hlookup.
+      inversion Hlookup as [Heq | ?]; auto.
+      (* The case that auto doesn't handle is the one where the variable being
+      looked up is the one that was removed.
+      *)
+      exfalso.
+      inversion Heq; subst.
+      inversion Hin'.
+      intuition.
+    + apply Hmaps_lookup.
+      eauto using List.in_cons.
+Qed.

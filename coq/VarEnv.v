@@ -40,3 +40,19 @@ Module Notations.
   Notation "Γ +[ v ; ty ]" := (extend Γ v ty) (at level 40).
 End Notations.
 Export Notations.
+
+Program Definition remove (Γ : t) (v : Γ) : t :=
+  make (Subtract _ (vars Γ) v)
+       (fun v' => lookup Γ v').
+Obligation 1.
+destruct H.
+exact H.
+Defined.
+
+Program Definition weaken_var {Γ : t} {v : Γ} (v' : remove Γ v) : Γ :=
+   v'.
+Obligation 1.
+destruct v' as [? H].
+destruct H as [H ?].
+exact H.
+Defined.
