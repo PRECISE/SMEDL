@@ -15,6 +15,28 @@ Require Import SMEDL.Typing.
 Arguments exist {_ _} _ _.
 Arguments existT {_ _} _ _.
 
+Ltac inversion_VarEnv :=
+  match goal with
+  | [ H : HasTy_VarEnv _ _ |- _ ] =>
+    let Hunique := fresh "Hunique" in
+    let Hdom := fresh "Hdom" in
+    let Hlookup := fresh "Hlookup" in
+    inversion_clear H as [Hunique Hdom Hlookup]
+  end.
+
+Ltac inversion_EventEnv :=
+  match goal with
+  | [ H : HasTy_EventEnv _ _ |- _ ] =>
+    let Hdom := fresh "Hdom" in
+    let Hunique := fresh "Hunique" in
+    let Hparam_unique := fresh "Hparam_unique" in
+    let Harity := fresh "Harity" in
+    let Hlookup := fresh "Hlookup" in
+    let Hparam_name := fresh "Hparam_name" in
+    inversion_clear H as
+        [Hdom Hunique Hparam_unique Harity Hparam_name Hlookup]
+  end.
+
 (* Equivalence of event environments relies on Ensemble extensionality and
  Functional Extensionality. Is that OK?*)
 
@@ -27,8 +49,7 @@ Lemma HasTy_EventEnv_unique : forall es Δ1 Δ2,
     HasTy_EventEnv es Δ2 ->
     Δ1 = Δ2.                  (* TODO: = or some other equivalence? *)
 Proof.
-  intros.
-  inversion H; inversion H0.
+  intros; repeat inversion_EventEnv.
   destruct Δ1, Δ2.
   simpl in *.
 
@@ -39,79 +60,70 @@ Proof.
   subst.
 
   assert (Heq : arity0 = arity).
-  { extensionality x.
-    specialize (H10 x).
-    specialize (H4 x).
-    destruct x.
-    specialize (H7 x).
-    inversion H7.
-    specialize (H14 i).
-    inversion H14.
-    specialize (H10 x0).
-    specialize (H4 x0).
-    rewrite <- H10, <- H4;
+  { extensionality e.
+    specialize (Harity e).
+    specialize (Harity0 e).
+    destruct e as [n Hn].
+    specialize (Hdom n).
+    inversion Hdom as [_ Hin_in].
+    specialize (Hin_in Hn).
+    inversion Hin_in as [ps Hin].
+    specialize (Harity ps Hin).
+    specialize (Harity0 ps Hin).
+    rewrite <- Harity, <- Harity0;
       simpl; auto.
   }
   subst.
 
   assert (Heq : param_name0 = param_name).
-  { extensionality x.
+  { extensionality e.
     apply Vector.eq_nth_iff; intros; subst.
-    specialize (H5 x).
-    specialize (H11 x).
-    destruct x.
-    specialize (H7 x).
-    inversion H7.
-    specialize (H14 i).
-    inversion H14.
-    specialize (H5 x0).
-    specialize (H11 x0).
-    simpl in *.
-    specialize (H5 H15 p2).
-    specialize (H11 H15 p2).
-    rewrite H5 in H11.
-    inversion H11.
-    rewrite H17.
+    specialize (Hparam_name e).
+    specialize (Hparam_name0 e).
+    destruct e as [n Hn].
+    specialize (Hdom n).
+    inversion Hdom as [_ Hin_in].
+    specialize (Hin_in Hn).
+    inversion Hin_in as [ps Hin].
+    specialize (Hparam_name ps Hin p2).
+    specialize (Hparam_name0 ps Hin p2).
+    rewrite Hparam_name0 in Hparam_name.
+    inversion Hparam_name.
     auto.
   }
   subst.
 
   assert (Heq : lookup0 = lookup).
-  { extensionality x.
+  { extensionality e.
     apply Vector.eq_nth_iff; intros; subst.
-    specialize (H6 x).
-    specialize (H12 x).
-    destruct x.
-    specialize (H7 x).
-    inversion H7.
-    specialize (H14 i).
-    inversion H14.
-    specialize (H6 x0).
-    specialize (H12 x0).
-    simpl in *.
-    specialize (H6 H15 p2).
-    specialize (H12 H15 p2).
-    rewrite H6 in H12.
-    inversion H12.
-    rewrite H17.
+    specialize (Hlookup e).
+    specialize (Hlookup0 e).
+    destruct e as [n Hn].
+    specialize (Hdom n).
+    inversion Hdom as [_ Hin_in].
+    specialize (Hin_in Hn).
+    inversion Hin_in as [ps Hin].
+    specialize (Hlookup ps Hin p2).
+    specialize (Hlookup0 ps Hin p2).
+    rewrite Hlookup0 in Hlookup.
+    inversion Hlookup.
     auto.
   }
   subst.
 
   assert (Heq : param_names_unique0 = param_names_unique).
-  { extensionality x.
+  { extensionality e.
     extensionality n1.
     extensionality n2.
     extensionality Hn1n2.
     Require Import Eqdep_dec.
     apply eq_proofs_unicity.
-    clear.
-    intros.
-    destruct (Fin.eq_dec x0 y); intuition.
+    intros x y.
+    destruct (Fin.eq_dec x y); intuition.
   }
   subst.
 
-  reflexivity.
+  trivial.
 Qed.
 
 (* The global variable declarations completely determine the global variable
@@ -121,8 +133,7 @@ Lemma HasTy_Var_unique : forall gs Γ1 Γ2,
     HasTy_VarEnv gs Γ2 ->
     Γ1 = Γ2.                  (* TODO: = or some other equivalence? *)
 Proof.
-  intros.
-  inversion H; inversion H0.
+  intros; repeat inversion_VarEnv.
   destruct Γ1, Γ2; simpl in *.
 
   assert (vars0 = vars)
@@ -133,32 +144,32 @@ Proof.
 
   assert (lookup = lookup0).
   { extensionality v.
-    specialize (H3 v).
-    specialize (H6 v).
-    destruct v.
-    specialize (H2 x).
-    inversion H2.
-    specialize (H7 i).
-    inversion H7 as [ty Hty].
-    specialize (H3 ty).
-    specialize (H6 ty).
-    inversion H3.
-    inversion H6.
-    specialize (H10 Hty).
-    specialize (H12 Hty).
-    rewrite H10.
-    rewrite H12.
-    reflexivity.
+    specialize (Hlookup v).
+    specialize (Hlookup0 v).
+    destruct v as [n Hn].
+    specialize (Hdom n).
+    inversion Hdom as [Hin_maps Hmaps_in].
+    specialize (Hin_maps Hn).
+    inversion Hin_maps as [ty Hty].
+    specialize (Hlookup ty).
+    specialize (Hlookup0 ty).
+    inversion Hlookup as [Hlookup_maps Hmaps_lookup].
+    inversion Hlookup0 as [Hlookup_maps0 Hmaps_lookup0].
+    specialize (Hmaps_lookup Hty).
+    specialize (Hmaps_lookup0 Hty).
+    rewrite Hmaps_lookup.
+    rewrite Hmaps_lookup0.
+    trivial.
   }
   subst.
-  reflexivity.
+  trivial.
 Qed.
 
 Lemma VarEnv_shrink : forall {Γ ty gs} v,
   HasTy_VarEnv (((proj1_sig v), ty) :: gs) Γ ->
   HasTy_VarEnv gs (VarEnv.remove Γ v).
 Proof.
-  inversion_clear 1 as [Hunique Hdom Hlookup].
+  intros; inversion_VarEnv.
   eapply HasTy_VarEnv_intro.
 
   - inversion Hunique; auto.
