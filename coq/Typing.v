@@ -75,9 +75,6 @@ Inductive HasTy_Expr : VarEnv.t -> Expr -> Ty -> Prop :=
 
 Hint Constructors HasTy_Expr.
 
-Notation "Γ |- e :: τ" := (HasTy_Expr Γ e τ) (at level 70).
-
-
 (** Commands *)
 Inductive HasTy_Cmd (Δ : EventEnv.t) (Γ : VarEnv.t) : Cmd -> Prop :=
 | HasTy_Assign : forall (v : Γ) e,
@@ -102,8 +99,6 @@ Inductive HasTy_Cmd (Δ : EventEnv.t) (Γ : VarEnv.t) : Cmd -> Prop :=
     HasTy_Cmd Δ Γ (If cond c_then c_else).
 
 Hint Constructors HasTy_Cmd.
-
-Notation "Δ ,, Γ |- c" := (HasTy_Cmd Δ Γ c) (at level 70).
 
 Inductive HasTy_Transition (Δ : EventEnv.t) (Γ : VarEnv.t)
   : Transition -> Prop :=
