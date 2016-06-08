@@ -97,10 +97,10 @@ checkin_actor (zsock_t *pipe, void *unused)
     assert (self);
 
     // Initialize REP socket
-    assert (self->req == NULL);
-    self->req = zsock_new_rep ("@tcp://*:5561");
-    assert (self->req);
-    zpoller_add (self->poller, self->req);
+    assert (self->rep == NULL);
+    self->rep = zsock_new_rep ("@tcp://*:5561");
+    assert (self->rep);
+    zpoller_add (self->poller, self->rep);
 
     //  Signal successful initialization
     zsock_signal (pipe, 0);
@@ -114,8 +114,8 @@ checkin_actor (zsock_t *pipe, void *unused)
         if (which == self->pipe)
             s_self_handle_pipe (self);
         else
-        if (which == self->req) {
-            zsock_send (self->req, "i", 1);
+        if (which == self->rep) {
+            zsock_send (self->rep, "i", 1);
         }
     }
     s_self_destroy (&self);
