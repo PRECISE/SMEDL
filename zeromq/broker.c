@@ -66,7 +66,7 @@ s_self_handle_pipe (self_t *self)
     else
     if (streq (command, "RESUME")) {
         zpoller_destroy (&self->poller);
-        self->poller = zpoller_new (self->pipe, self->frontend, self->backend, NULL);
+        self->poller = zpoller_new (self->pipe, self->rep, NULL);
         assert (self->poller);
         zsock_signal (self->pipe, 0);
     }
