@@ -4,6 +4,125 @@
 
 #include "czmq.h"
 
+//  --------------------------------------------------------------------------
+//  The self_t structure holds the state for one actor instance
+
+typedef struct {
+    zsock_t *pipe;              //  Actor command pipe
+    zpoller_t *poller;          //  Socket poller
+    zsock_t *rep;               //  Reply 'REP' socket
+    bool terminated;            //  Did caller ask us to quit?
+    bool verbose;               //  Verbose logging enabled?
+} self_t;
+
+static void
+s_self_destroy (self_t **self_p)
+{
+    assert (self_p);
+    if (*self_p) {
+        self_t *self = *self_p;
+        zsock_destroy (&self->rep);
+        zpoller_destroy (&self->poller);
+        free (self);
+        *self_p = NULL;
+    }
+}
+
+static self_t *
+s_self_new (zsock_t *pipe)
+{
+    self_t *self = (self_t *) zmalloc (sizeof (self_t));
+    if (self) {
+        self->pipe = pipe;
+        self->poller = zpoller_new (self->pipe, NULL);
+        if (!self->poller)
+            s_self_destroy (&self);
+    }
+    return self;
+}
+
+//  --------------------------------------------------------------------------
+//  Handle a command from calling application
+
+static int
+s_self_handle_pipe (self_t *self)
+{
+    //  Get the whole message off the pipe in one go
+    zmsg_t *request = zmsg_recv (self->pipe);
+    if (!request)
+        return -1;                  //  Interrupted
+
+    char *command = zmsg_popstr (request);
+    assert (command);
+    if (self->verbose)
+        zsys_info ("checkin_actor: API command=%s", command);
+
+    if (streq (command, "PAUSE")) {
+        zpoller_destroy (&self->poller);
+        self->poller = zpoller_new (self->pipe, NULL);
+        assert (self->poller);
+        zsock_signal (self->pipe, 0);
+    }
+    else
+    if (streq (command, "RESUME")) {
+        zpoller_destroy (&self->poller);
+        self->poller = zpoller_new (self->pipe, self->frontend, self->backend, NULL);
+        assert (self->poller);
+        zsock_signal (self->pipe, 0);
+    }
+    else
+    if (streq (command, "VERBOSE")) {
+        self->verbose = true;
+        zsock_signal (self->pipe, 0);
+    }
+    else
+    if (streq (command, "$TERM"))
+        self->terminated = true;
+    else {
+        zsys_error ("checkin_actor: - invalid command: %s", command);
+        assert (false);
+    }
+    zstr_free (&command);
+    zmsg_destroy (&request);
+    return 0;
+}
+
+//  --------------------------------------------------------------------------
+//  checkin_actor() implements the checkin actor interface
+
+void
+checkin_actor (zsock_t *pipe, void *unused)
+{
+    self_t *self = s_self_new (pipe);
+    assert (self);
+
+    // Initialize REP socket
+    assert (self->req == NULL);
+    self->req = zsock_new_rep ("@tcp://*:5561");
+    assert (self->req);
+    zpoller_add (self->poller, self->req);
+
+    //  Signal successful initialization
+    zsock_signal (pipe, 0);
+
+
+    while (!self->terminated) {
+        zsock_t *which = (zsock_t *) zpoller_wait (self->poller, -1);
+        if (zpoller_terminated (self->poller))
+            break;          //  Interrupted
+        else
+        if (which == self->pipe)
+            s_self_handle_pipe (self);
+        else
+        if (which == self->req) {
+            zsock_send (self->req, "i", 1);
+        }
+    }
+    s_self_destroy (&self);
+}
+
+//  --------------------------------------------------------------------------
+
 static int
 capture_event (zloop_t *loop, zsock_t *reader, void *arg)
 {
