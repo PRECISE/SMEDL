@@ -75,29 +75,24 @@ static void send_batch(amqp_connection_state_t conn,
   }
 }
 
-static void send_rabbit(amqp_connection_state_t conn,
-                       char const *queue_name)
+static void send_rabbit_msg(amqp_connection_state_t conn,
+                       char const *routingkey, char *messagebody)
 {
-  int i;
-  char message[256];
-  amqp_bytes_t message_bytes;
-
-  for (i = 0; i < (int)sizeof(message); i++) {
-    message[i] = i & 0xff;
-  }
-
-  message_bytes.len = sizeof(message);
-  message_bytes.bytes = message;
-
-  die_on_error(amqp_basic_publish(conn,
+  {
+    amqp_basic_properties_t props;
+    props._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_DELIVERY_MODE_FLAG;
+    props.content_type = amqp_cstring_bytes("text/plain");
+    props.delivery_mode = 2; /* persistent delivery mode */
+    die_on_error(amqp_basic_publish(conn,
                                     1,
                                     amqp_cstring_bytes("smedl.topic"),
-                                    amqp_cstring_bytes(queue_name),
+                                    amqp_cstring_bytes(routingkey),
                                     0,
                                     0,
-                                    NULL,
-                                    message_bytes),
+                                    &props,
+                                    amqp_cstring_bytes(messagebody)),
                  "Publishing");
+  }
 
   printf("SENT\n");
 }
