@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 4, 12, 20, 39, 38, 1)
+__version__ = (2016, 7, 6, 19, 18, 10, 2)
 
 __all__ = [
     'smedlParser',
@@ -37,6 +37,7 @@ class smedlParser(Parser):
                  ignorecase=None,
                  left_recursion=True,
                  keywords=KEYWORDS,
+                 namechars='',
                  **kwargs):
         super(smedlParser, self).__init__(
             whitespace=whitespace,
@@ -46,6 +47,7 @@ class smedlParser(Parser):
             ignorecase=ignorecase,
             left_recursion=left_recursion,
             keywords=keywords,
+            namechars=namechars,
             **kwargs
         )
 
@@ -827,6 +829,7 @@ def main(
 
     with open(filename) as f:
         text = f.read()
+    whitespace = whitespace or None
     parser = smedlParser(parseinfo=False)
     ast = parser.parse(
         text,
