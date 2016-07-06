@@ -17,18 +17,18 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 7, 6, 19, 9, 43, 2)
+__version__ = (2016, 7, 6, 19, 18, 38, 2)
 
 __all__ = [
-    'UnknownParser',
-    'UnknownSemantics',
+    'pedlParser',
+    'pedlSemantics',
     'main'
 ]
 
 KEYWORDS = set([])
 
 
-class UnknownParser(Parser):
+class pedlParser(Parser):
     def __init__(self,
                  whitespace=None,
                  nameguard=None,
@@ -39,7 +39,7 @@ class UnknownParser(Parser):
                  keywords=KEYWORDS,
                  namechars='',
                  **kwargs):
-        super(UnknownParser, self).__init__(
+        super(pedlParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
             comments_re=comments_re,
@@ -523,7 +523,7 @@ class UnknownParser(Parser):
             self._error('no available options')
 
 
-class UnknownSemantics(object):
+class pedlSemantics(object):
     def object(self, ast):
         return ast
 
@@ -606,7 +606,7 @@ def main(
     with open(filename) as f:
         text = f.read()
     whitespace = whitespace or None
-    parser = UnknownParser(parseinfo=False)
+    parser = pedlParser(parseinfo=False)
     ast = parser.parse(
         text,
         startrule,
@@ -620,7 +620,7 @@ def main(
 
 if __name__ == '__main__':
     import json
-    ast = generic_main(main, UnknownParser, name='Unknown')
+    ast = generic_main(main, pedlParser, name='pedl')
     print('AST:')
     print(ast)
     print()

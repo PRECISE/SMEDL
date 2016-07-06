@@ -1,6 +1,7 @@
-(*
- * This grammar defines SMEDL in the Grako-variation of EBNF.
- *)
+# This grammar defines SMEDL in the Grako-variation of EBNF.
+
+# Grammar directives
+@@grammar :: smedl
 
 object
     =

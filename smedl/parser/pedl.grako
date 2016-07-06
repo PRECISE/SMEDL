@@ -1,6 +1,7 @@
-(*
- * This grammar defines PEDL in the Grako-variation of EBNF.
- *)
+# This grammar defines PEDL in the Grako-variation of EBNF.
+
+# Grammar directives
+@@grammar :: pedl
 
 object
     =
