@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 7, 6, 19, 18, 38, 2)
+__version__ = (2016, 7, 6, 19, 54, 33, 2)
 
 __all__ = [
     'pedlParser',
@@ -141,8 +141,7 @@ class pedlParser(Parser):
             self.name_last_node('event_params')
         self._token(')')
         self._token('=')
-
-        def block4():
+        with self._group():
             with self._choice():
                 with self._option():
                     self._token('update(')
@@ -154,7 +153,6 @@ class pedlParser(Parser):
                     self.name_last_node('call_param')
                     self._token(')')
                 self._error('no available options')
-        self._closure(block4)
         with self._optional():
             self._token('when')
             self._expression_()
@@ -170,41 +168,31 @@ class pedlParser(Parser):
         with self._choice():
             with self._option():
                 self._identifier_()
-                self.name_last_node('update_var')
-            with self._option():
-                self._identifier_()
                 self.name_last_node('update_fn')
                 self._token('.')
+                self._identifier_()
+                self.name_last_node('update_var')
+            with self._option():
                 self._identifier_()
                 self.name_last_node('update_var')
             self._error('no available options')
 
         self.ast._define(
-            ['update_var', 'update_fn'],
+            ['update_fn', 'update_var'],
             []
         )
 
     @graken()
     def _state_update_(self):
-        with self._choice():
-            with self._option():
-                self._target_()
-                self.name_last_node('target')
-                self._token('=')
-                self._expression_()
-                self.name_last_node('expression')
-            with self._option():
-                self._target_()
-                self.name_last_node('target')
-                self._token('(')
-                self._expression_list_()
-                self.add_last_node_to_name('expression_list')
-                self._token(')')
-            self._error('no available options')
+        self._target_()
+        self.name_last_node('target')
+        self._token('=')
+        self._expression_()
+        self.name_last_node('expression')
 
         self.ast._define(
             ['target', 'expression'],
-            ['expression_list']
+            []
         )
 
     @graken()

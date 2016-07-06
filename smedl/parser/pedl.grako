@@ -32,22 +32,20 @@ event_def
     =
     monitor:identifier '(' monitor_params:identifier_list ').' event:identifier
         '(' [event_params:state_update_list] ')' '='
-        {'update(' update_param ')' |
-        'call(' call_param:identifier ')'}
+        ('update(' update_param ')' | 'call(' call_param:identifier ')')
         ['when' when:expression]
     ;
 
 update_param
     =
-      update_var:identifier
-    | update_fn:identifier '.' update_var:identifier
+      update_fn:identifier '.' update_var:identifier
+    | update_var:identifier
     ;
 
 
 state_update
     =
       target:target '=' expression:expression
-    | target:target '(' expression_list+:expression_list ')'
     ;
 
 identifier
