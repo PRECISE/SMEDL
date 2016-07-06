@@ -1,7 +1,5 @@
 (*
  * This grammar defines PEDL in the Grako-variation of EBNF.
- *
- * Written February 3 2015.
  *)
 
 object
@@ -33,42 +31,22 @@ event_def
     =
     monitor:identifier '(' monitor_params:identifier_list ').' event:identifier
         '(' [event_params:state_update_list] ')' '='
-        {'update(' update_params:expression_list ')' |
-        'call(' call_params:expression_list ')'}
-        ['when' when:expression] [event_action:action]
+        {'update(' update_param ')' |
+        'call(' call_param:identifier ')'}
+        ['when' when:expression]
     ;
 
-action
+update_param
     =
-    '{' actions+:nonempty_action_item_list '}'
+      update_var:identifier
+    | update_fn:identifier '.' update_var:identifier
     ;
 
-action_item
-    =
-      state_update:state_update
-    | raise:raise_stmt
-    | instantiation:instantiation_stmt
-    ;
 
 state_update
     =
       target:target '=' expression:expression
     | target:target '(' expression_list+:expression_list ')'
-    ;
-
-raise_stmt
-    =
-    'raise' id:identifier ['(' expr_list+:expression_list ')']
-    ;
-
-instantiation_stmt
-    =
-    'new' id:identifier ['(' state_update_list+:state_update_list ')']
-    ;
-
-type
-    =
-    ?/[a-zA-Z][A-Za-z0-9_]*/?
     ;
 
 identifier
@@ -143,7 +121,6 @@ trailer
 
 target
     =
-    (* To be improved *)
     identifier
     ;
 
@@ -163,9 +140,4 @@ state_update_list
     =
       @:state_update {',' @:state_update}*
     | ()
-    ;
-
-nonempty_action_item_list
-    =
-      @:action_item {';' @:action_item}*
     ;

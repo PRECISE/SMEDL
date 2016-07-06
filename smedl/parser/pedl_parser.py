@@ -14,19 +14,21 @@
 from __future__ import print_function, division, absolute_import, unicode_literals
 
 from grako.parsing import graken, Parser
-from grako.util import re, RE_FLAGS
+from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 1, 26, 19, 55, 10, 1)
+__version__ = (2016, 7, 6, 19, 9, 43, 2)
 
 __all__ = [
-    'pedlParser',
-    'pedlSemantics',
+    'UnknownParser',
+    'UnknownSemantics',
     'main'
 ]
 
+KEYWORDS = set([])
 
-class pedlParser(Parser):
+
+class UnknownParser(Parser):
     def __init__(self,
                  whitespace=None,
                  nameguard=None,
@@ -34,14 +36,18 @@ class pedlParser(Parser):
                  eol_comments_re=None,
                  ignorecase=None,
                  left_recursion=True,
+                 keywords=KEYWORDS,
+                 namechars='',
                  **kwargs):
-        super(pedlParser, self).__init__(
+        super(UnknownParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
             comments_re=comments_re,
             eol_comments_re=eol_comments_re,
             ignorecase=ignorecase,
             left_recursion=left_recursion,
+            keywords=keywords,
+            namechars=namechars,
             **kwargs
         )
 
@@ -49,20 +55,18 @@ class pedlParser(Parser):
     def _object_(self):
         self._token('object')
         self._identifier_()
-        self.ast['object'] = self.last_node
+        self.name_last_node('object')
         self._token('events')
 
         def block2():
             self._new_mon_()
         self._positive_closure(block2)
-
-        self.ast['monitors'] = self.last_node
+        self.name_last_node('monitors')
 
         def block4():
             self._event_def_()
         self._positive_closure(block4)
-
-        self.ast['event_defs'] = self.last_node
+        self.name_last_node('event_defs')
         self._check_eof()
 
         self.ast._define(
@@ -74,16 +78,16 @@ class pedlParser(Parser):
     def _new_mon_(self):
         self._token('new')
         self._identifier_()
-        self.ast['monitor'] = self.last_node
+        self.name_last_node('monitor')
         with self._optional():
             self._token('(')
             self._identifier_list_()
-            self.ast['monitor_params'] = self.last_node
+            self.name_last_node('monitor_params')
             self._token(')')
         self._token('=')
         self._token('create')
         self._structure_()
-        self.ast['struct'] = self.last_node
+        self.name_last_node('struct')
 
         self.ast._define(
             ['monitor', 'monitor_params', 'struct'],
@@ -93,13 +97,13 @@ class pedlParser(Parser):
     @graken()
     def _structure_(self):
         self._identifier_()
-        self.ast['struct_id'] = self.last_node
+        self.name_last_node('struct_id')
         self._token('{')
 
         def block2():
             self._field_()
         self._closure(block2)
-        self.ast['fields'] = self.last_node
+        self.name_last_node('fields')
         self._token('}')
 
         self.ast._define(
@@ -110,10 +114,10 @@ class pedlParser(Parser):
     @graken()
     def _field_(self):
         self._identifier_()
-        self.ast['variable'] = self.last_node
+        self.name_last_node('variable')
         self._token('=')
         self._expression_()
-        self.ast['value'] = self.last_node
+        self.name_last_node('value')
         self._token(';')
 
         self.ast._define(
@@ -124,17 +128,17 @@ class pedlParser(Parser):
     @graken()
     def _event_def_(self):
         self._identifier_()
-        self.ast['monitor'] = self.last_node
+        self.name_last_node('monitor')
         self._token('(')
         self._identifier_list_()
-        self.ast['monitor_params'] = self.last_node
+        self.name_last_node('monitor_params')
         self._token(').')
         self._identifier_()
-        self.ast['event'] = self.last_node
+        self.name_last_node('event')
         self._token('(')
         with self._optional():
             self._state_update_list_()
-            self.ast['event_params'] = self.last_node
+            self.name_last_node('event_params')
         self._token(')')
         self._token('=')
 
@@ -142,57 +146,41 @@ class pedlParser(Parser):
             with self._choice():
                 with self._option():
                     self._token('update(')
-                    self._expression_list_()
-                    self.ast['update_params'] = self.last_node
+                    self._update_param_()
                     self._token(')')
                 with self._option():
                     self._token('call(')
-                    self._expression_list_()
-                    self.ast['call_params'] = self.last_node
+                    self._identifier_()
+                    self.name_last_node('call_param')
                     self._token(')')
                 self._error('no available options')
         self._closure(block4)
         with self._optional():
             self._token('when')
             self._expression_()
-            self.ast['when'] = self.last_node
-        with self._optional():
-            self._action_()
-            self.ast['event_action'] = self.last_node
+            self.name_last_node('when')
 
         self.ast._define(
-            ['monitor', 'monitor_params', 'event', 'event_params', 'update_params', 'call_params', 'when', 'event_action'],
+            ['monitor', 'monitor_params', 'event', 'event_params', 'call_param', 'when'],
             []
         )
 
     @graken()
-    def _action_(self):
-        self._token('{')
-        self._nonempty_action_item_list_()
-        self.ast.setlist('actions', self.last_node)
-        self._token('}')
-
-        self.ast._define(
-            [],
-            ['actions']
-        )
-
-    @graken()
-    def _action_item_(self):
+    def _update_param_(self):
         with self._choice():
             with self._option():
-                self._state_update_()
-                self.ast['state_update'] = self.last_node
+                self._identifier_()
+                self.name_last_node('update_var')
             with self._option():
-                self._raise_stmt_()
-                self.ast['raise_'] = self.last_node
-            with self._option():
-                self._instantiation_stmt_()
-                self.ast['instantiation'] = self.last_node
+                self._identifier_()
+                self.name_last_node('update_fn')
+                self._token('.')
+                self._identifier_()
+                self.name_last_node('update_var')
             self._error('no available options')
 
         self.ast._define(
-            ['state_update', 'raise', 'instantiation'],
+            ['update_var', 'update_fn'],
             []
         )
 
@@ -201,16 +189,16 @@ class pedlParser(Parser):
         with self._choice():
             with self._option():
                 self._target_()
-                self.ast['target'] = self.last_node
+                self.name_last_node('target')
                 self._token('=')
                 self._expression_()
-                self.ast['expression'] = self.last_node
+                self.name_last_node('expression')
             with self._option():
                 self._target_()
-                self.ast['target'] = self.last_node
+                self.name_last_node('target')
                 self._token('(')
                 self._expression_list_()
-                self.ast.setlist('expression_list', self.last_node)
+                self.add_last_node_to_name('expression_list')
                 self._token(')')
             self._error('no available options')
 
@@ -218,42 +206,6 @@ class pedlParser(Parser):
             ['target', 'expression'],
             ['expression_list']
         )
-
-    @graken()
-    def _raise_stmt_(self):
-        self._token('raise')
-        self._identifier_()
-        self.ast['id'] = self.last_node
-        with self._optional():
-            self._token('(')
-            self._expression_list_()
-            self.ast.setlist('expr_list', self.last_node)
-            self._token(')')
-
-        self.ast._define(
-            ['id'],
-            ['expr_list']
-        )
-
-    @graken()
-    def _instantiation_stmt_(self):
-        self._token('new')
-        self._identifier_()
-        self.ast['id'] = self.last_node
-        with self._optional():
-            self._token('(')
-            self._state_update_list_()
-            self.ast.setlist('state_update_list', self.last_node)
-            self._token(')')
-
-        self.ast._define(
-            ['id'],
-            ['state_update_list']
-        )
-
-    @graken()
-    def _type_(self):
-        self._pattern(r'[a-zA-Z][A-Za-z0-9_]*')
 
     @graken()
     def _identifier_(self):
@@ -272,16 +224,16 @@ class pedlParser(Parser):
         with self._choice():
             with self._option():
                 self._and_expr_()
-                self.ast['or_ex'] = self.last_node
+                self.name_last_node('or_ex')
 
                 def block1():
                     self._token('||')
                     self._and_expr_()
-                    self.ast['or_ex'] = self.last_node
+                    self.name_last_node('or_ex')
                 self._positive_closure(block1)
             with self._option():
                 self._and_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -294,16 +246,16 @@ class pedlParser(Parser):
         with self._choice():
             with self._option():
                 self._sub_expr_()
-                self.ast['and_ex'] = self.last_node
+                self.name_last_node('and_ex')
 
                 def block1():
                     self._token('&&')
                     self._sub_expr_()
-                    self.ast['and_ex'] = self.last_node
+                    self.name_last_node('and_ex')
                 self._positive_closure(block1)
             with self._option():
                 self._sub_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -321,7 +273,7 @@ class pedlParser(Parser):
                 self._closure(block0)
                 self._token('!(')
                 self._expression_()
-                self.ast['not_ex'] = self.last_node
+                self.name_last_node('not_ex')
                 self._token(')')
             with self._option():
 
@@ -330,11 +282,11 @@ class pedlParser(Parser):
                 self._closure(block2)
                 self._token('(')
                 self._expression_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
                 self._token(')')
             with self._option():
                 self._comp_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -347,7 +299,7 @@ class pedlParser(Parser):
         with self._choice():
             with self._option():
                 self._arith_expr_()
-                self.ast['comp'] = self.last_node
+                self.name_last_node('comp')
 
                 def block1():
                     with self._group():
@@ -365,18 +317,18 @@ class pedlParser(Parser):
                             with self._option():
                                 self._token('<')
                             self._error('expecting one of: != < <= == > >=')
-                    self.ast['operator'] = self.last_node
+                    self.name_last_node('operator')
                     self._arith_expr_()
-                    self.ast['comp'] = self.last_node
+                    self.name_last_node('comp')
                 self._positive_closure(block1)
             with self._option():
                 self._token('(')
                 self._comp_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
                 self._token(')')
             with self._option():
                 self._arith_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -389,7 +341,7 @@ class pedlParser(Parser):
         with self._choice():
             with self._option():
                 self._term_()
-                self.ast['arith'] = self.last_node
+                self.name_last_node('arith')
 
                 def block1():
                     with self._group():
@@ -405,13 +357,13 @@ class pedlParser(Parser):
                             with self._option():
                                 self._token('%')
                             self._error('expecting one of: % * + - /')
-                    self.ast['operator'] = self.last_node
+                    self.name_last_node('operator')
                     self._term_()
-                    self.ast['arith'] = self.last_node
+                    self.name_last_node('arith')
                 self._positive_closure(block1)
             with self._option():
                 self._term_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
             self._error('no available options')
 
         self.ast._define(
@@ -436,14 +388,14 @@ class pedlParser(Parser):
                             with self._option():
                                 self._token('!')
                             self._error('expecting one of: ! + - ~')
-                    self.ast['unary'] = self.last_node
+                    self.name_last_node('unary')
                 self._closure(block0)
                 self._atom_()
-                self.ast['atom'] = self.last_node
+                self.name_last_node('atom')
 
                 def block4():
                     self._trailer_()
-                    self.ast['trailer'] = self.last_node
+                    self.name_last_node('trailer')
                 self._closure(block4)
             with self._option():
 
@@ -457,11 +409,11 @@ class pedlParser(Parser):
                             with self._option():
                                 self._token('~')
                             self._error('expecting one of: + - ~')
-                    self.ast['unary'] = self.last_node
+                    self.name_last_node('unary')
                 self._closure(block6)
                 self._token('(')
                 self._arith_expr_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
                 self._token(')')
             self._error('no available options')
 
@@ -494,22 +446,22 @@ class pedlParser(Parser):
                 self._token('[')
                 with self._optional():
                     self._expression_()
-                    self.ast['index'] = self.last_node
+                    self.name_last_node('index')
                 self._token(']')
             with self._option():
                 self._token('(')
                 with self._optional():
                     self._expression_list_()
-                    self.ast['params'] = self.last_node
+                    self.name_last_node('params')
                 self._token(')')
             with self._option():
                 self._token('.')
                 self._identifier_()
-                self.ast['dot'] = self.last_node
+                self.name_last_node('dot')
 
                 def block3():
                     self._trailer_()
-                    self.ast['trailer'] = self.last_node
+                    self.name_last_node('trailer')
                 self._closure(block3)
             self._error('expecting one of: ( [')
 
@@ -527,12 +479,12 @@ class pedlParser(Parser):
         with self._choice():
             with self._option():
                 self._expression_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
 
                 def block1():
                     self._token(',')
                     self._expression_()
-                    self.ast['@'] = self.last_node
+                    self.name_last_node('@')
                 self._closure(block1)
             with self._option():
                 pass
@@ -543,12 +495,12 @@ class pedlParser(Parser):
         with self._choice():
             with self._option():
                 self._identifier_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
 
                 def block1():
                     self._token(',')
                     self._identifier_()
-                    self.ast['@'] = self.last_node
+                    self.name_last_node('@')
                 self._closure(block1)
             with self._option():
                 pass
@@ -559,30 +511,19 @@ class pedlParser(Parser):
         with self._choice():
             with self._option():
                 self._state_update_()
-                self.ast['@'] = self.last_node
+                self.name_last_node('@')
 
                 def block1():
                     self._token(',')
                     self._state_update_()
-                    self.ast['@'] = self.last_node
+                    self.name_last_node('@')
                 self._closure(block1)
             with self._option():
                 pass
             self._error('no available options')
 
-    @graken()
-    def _nonempty_action_item_list_(self):
-        self._action_item_()
-        self.ast['@'] = self.last_node
 
-        def block1():
-            self._token(';')
-            self._action_item_()
-            self.ast['@'] = self.last_node
-        self._closure(block1)
-
-
-class pedlSemantics(object):
+class UnknownSemantics(object):
     def object(self, ast):
         return ast
 
@@ -598,22 +539,10 @@ class pedlSemantics(object):
     def event_def(self, ast):
         return ast
 
-    def action(self, ast):
-        return ast
-
-    def action_item(self, ast):
+    def update_param(self, ast):
         return ast
 
     def state_update(self, ast):
-        return ast
-
-    def raise_stmt(self, ast):
-        return ast
-
-    def instantiation_stmt(self, ast):
-        return ast
-
-    def type(self, ast):
         return ast
 
     def identifier(self, ast):
@@ -661,61 +590,40 @@ class pedlSemantics(object):
     def state_update_list(self, ast):
         return ast
 
-    def nonempty_action_item_list(self, ast):
-        return ast
 
+def main(
+        filename,
+        startrule,
+        trace=False,
+        whitespace=None,
+        nameguard=None,
+        comments_re=None,
+        eol_comments_re=None,
+        ignorecase=None,
+        left_recursion=True,
+        **kwargs):
 
-def main(filename, startrule, trace=False, whitespace=None, nameguard=None):
-    import json
     with open(filename) as f:
         text = f.read()
-    parser = pedlParser(parseinfo=False)
+    whitespace = whitespace or None
+    parser = UnknownParser(parseinfo=False)
     ast = parser.parse(
         text,
         startrule,
         filename=filename,
         trace=trace,
         whitespace=whitespace,
-        nameguard=nameguard)
+        nameguard=nameguard,
+        ignorecase=ignorecase,
+        **kwargs)
+    return ast
+
+if __name__ == '__main__':
+    import json
+    ast = generic_main(main, UnknownParser, name='Unknown')
     print('AST:')
     print(ast)
     print()
     print('JSON:')
     print(json.dumps(ast, indent=2))
     print()
-
-if __name__ == '__main__':
-    import argparse
-    import string
-    import sys
-
-    class ListRules(argparse.Action):
-        def __call__(self, parser, namespace, values, option_string):
-            print('Rules:')
-            for r in pedlParser.rule_list():
-                print(r)
-            print()
-            sys.exit(0)
-
-    parser = argparse.ArgumentParser(description="Simple parser for pedl.")
-    parser.add_argument('-l', '--list', action=ListRules, nargs=0,
-                        help="list all rules and exit")
-    parser.add_argument('-n', '--no-nameguard', action='store_true',
-                        dest='no_nameguard',
-                        help="disable the 'nameguard' feature")
-    parser.add_argument('-t', '--trace', action='store_true',
-                        help="output trace information")
-    parser.add_argument('-w', '--whitespace', type=str, default=string.whitespace,
-                        help="whitespace specification")
-    parser.add_argument('file', metavar="FILE", help="the input file to parse")
-    parser.add_argument('startrule', metavar="STARTRULE",
-                        help="the start rule for parsing")
-    args = parser.parse_args()
-
-    main(
-        args.file,
-        args.startrule,
-        trace=args.trace,
-        whitespace=args.whitespace,
-        nameguard=not args.no_nameguard
-    )
