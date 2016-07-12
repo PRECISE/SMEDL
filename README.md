@@ -5,7 +5,7 @@
 --------------
 1. [Python 3](https://docs.python.org/3/)
 2. [pip](https://pip.pypa.io/en/stable/)
-    - [Grako 3.6](https://pythonhosted.org/grako/)
+    - [Grako 3.9](https://pythonhosted.org/grako/)
     - [Jinja2 2.8](http://jinja.pocoo.org/)
 
 ## Getting started

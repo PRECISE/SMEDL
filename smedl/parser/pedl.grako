@@ -48,6 +48,9 @@ field
 # The current rule defines two possible event types in the target program:
 # update and call.
 #
+# The event_params list associated with the event is used to describe the values
+# of an event's input parameters with values from the target program.
+#
 # An update block monitors a change in a variable's value. The parameter in the
 # update block describes which variable to monitor (see the update_param rule).
 #
