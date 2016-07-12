@@ -4,11 +4,11 @@ identity
 state
   int upbound, lobound;
 events
-  imported updatePos(int, char), changeDir();
+  imported updatePos(int), changeDir();
   internal click();
 scenarios
   sc1:
-    SafeMon -> updatePos(pos, c) when pos == this.upbound || pos == this.lobound -> Switch
+    SafeMon -> updatePos(pos) when pos == this.upbound || pos == this.lobound -> Switch
         else -> SafeMon
     Switch -> changeDir() { raise click() } -> SafeMon
     SafeMon -> changeDir() -> SafeMon
@@ -17,7 +17,7 @@ scenarios
   sc2:
     One -> click() -> Two
     Two -> click() -> One
-    One -> updatePos(pos, c) -> One
+    One -> updatePos(pos) -> One
     One -> changeDir() -> One
-    Two -> updatePos(pos, c) -> Two
+    Two -> updatePos(pos) -> Two
     Two -> changeDir() -> Two

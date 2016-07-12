@@ -1,8 +1,12 @@
 # This grammar defines PEDL in the Grako-variation of EBNF.
+#  written by Peter Gebhard
 
-# Grammar directives
+# Grako-specific directives
 @@grammar :: pedl
 
+# Object is the top-level rule for a PEDL file. We look for an 'object' keyword
+# followed by the object identifier and an 'events' keyword for the section
+# containing the PEDL events.
 object
     =
     'object' object:identifier
@@ -12,6 +16,7 @@ object
     $
     ;
 
+# new_mon describes how a new monitor can be created.
 new_mon
     =
     'new' monitor:identifier ['(' monitor_params:identifier_list ')'] '='

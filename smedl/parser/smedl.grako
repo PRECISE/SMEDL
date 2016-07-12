@@ -1,6 +1,7 @@
 # This grammar defines SMEDL in the Grako-variation of EBNF.
+#  written by Peter Gebhard
 
-# Grammar directives
+# Grako-specific directives
 @@grammar :: smedl
 
 object
