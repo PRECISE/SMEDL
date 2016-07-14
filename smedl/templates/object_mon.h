@@ -1,6 +1,9 @@
 #include "monitor_map.h"
 #include "actions.h"
 #include <stdio.h> // For the log file
+#include <amqp_tcp_socket.h>
+#include <amqp.h>
+#include <amqp_framing.h>
 {%- if multithreaded %}{{ '\n' }}#include <pthread.h>{% endif %}
 
 #define {{ obj|upper }}_MONITOR_MAP_SIZE 100 // number of buckets
@@ -18,6 +21,10 @@ typedef struct {{ obj|title }}Monitor {
 {{ state_var_declarations }}
   action *action_queue;
   FILE *logFile;
+  amqp_socket_t *recv_socket;
+  amqp_connection_state_t recv_conn;
+  amqp_socket_t *send_socket;
+  amqp_connection_state_t send_conn;
 } {{ obj|title }}Monitor;
 
 typedef struct {{ obj|title }}MonitorRecord {
@@ -51,3 +58,4 @@ void free_{{ obj|lower }}_monitor_maps();
 int add_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor*, int);
 int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
+

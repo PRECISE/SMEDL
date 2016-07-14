@@ -39,9 +39,9 @@ pip install .
 ----------------------
 The 'mgen' script is the primary interface for generating software monitors
 from SMEDL and PEDL definitions. This script can be run with the following
-command (from the src/ directory):
+command (from the project root directory):
 
-`./mgen.py PEDL_SMEDL_FILENAME`
+`python -m smedl.mgen PEDL_SMEDL_FILENAME`
 
 This script will generate C source code representing a runtime monitor as
 specified by the PEDL and SMEDL definitions, along with necessary monitor
@@ -86,13 +86,13 @@ generate the SMEDL and PEDL parsers for their EBNF-defined grammars.
 
 To generate a SMEDL parser using the grammar:
 
-	  grako parser/smedl.grako -o parser/smedl_parser.py
-	( grako      GRAMMAR       -o     OUTPUT_PARSER  )
+	  grako smedl/parser/smedl.grako -o smedl/parser/smedl_parser.py
+	( grako      GRAMMAR             -o     OUTPUT_PARSER  )
 
 To parse a SMEDL file using the generated parser:
 
-      python parser/smedl_parser.py example.smedl object
-    ( python      PARSER             INPUT_FILE   START_RULE )
+      python smedl/parser/smedl_parser.py example.smedl object
+    ( python      PARSER                   INPUT_FILE   START_RULE )
 
 (Use '-t' command-line option to enable debug tracing)
 

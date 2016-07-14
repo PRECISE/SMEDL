@@ -1,6 +1,9 @@
 #include "monitor_map.h"
 #include "actions.h"
 #include <stdio.h> // For the log file
+#include <amqp_tcp_socket.h>
+#include <amqp.h>
+#include <amqp_framing.h>
 #include <pthread.h>
 
 #define SPV_MONITOR_MAP_SIZE 100 // number of buckets
@@ -18,6 +21,10 @@ typedef struct SpvMonitor {
   int last_time;
   action *action_queue;
   FILE *logFile;
+  amqp_socket_t *recv_socket;
+  amqp_connection_state_t recv_conn;
+  amqp_socket_t *send_socket;
+  amqp_connection_state_t send_conn;
 } SpvMonitor;
 
 typedef struct SpvMonitorRecord {

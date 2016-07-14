@@ -333,6 +333,9 @@ class MonitorGenerator(object):
         callCases = []
         values['signatures']= []
         values['event_code'] = []
+        values['event_msg_handlers'] = []
+        values['bindingkeys_num'] = 1 # TODO: Make these customizable
+        values['bindingkeys_str'] = '"#"'
 
         for m in methods:
             eventFunction = []
@@ -376,6 +379,34 @@ class MonitorGenerator(object):
                         eventFunction.append('      break;')
                     eventFunction.append('  }')
                 eventFunction.append('}')
+
+                # Build event message handler block for incoming RabbitMQ messages
+                msg_handler = []
+                if len(values['event_msg_handlers']) == 0:
+                    cond = 'if'
+                else:
+                    cond = '                else if'
+                msg_handler.append(cond + ' (!strcmp(eventName,"%s_%s")) {' % (obj.lower(), m))
+                sscanfStr = '%s'
+                sscanfAttrs = 'e'
+                retAttrs = ''
+                for p in monitorParams[1:]:
+                    msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
+                    if p['c_type'] == 'int':
+                        sscanfStr += ' %d'
+                    elif p['c_type'] == 'char':
+                        sscanfStr += ' %s'
+                    elif p['c_type'] == 'float':
+                        sscanfStr += ' %f'
+                    sscanfAttrs += ', &' + p['name']
+                    retAttrs += ', ' + p['name']
+                msg_handler.append('                    int ret = sscanf(string, "' + sscanfStr + '", ' + sscanfAttrs + ');')
+                msg_handler.append('                    if (ret == ' + str(len(monitorParams)) + ') {')
+                msg_handler.append('                        ' + obj.lower() + '_' + m + '(monitor' + retAttrs + ');')
+                msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), m))
+                msg_handler.append('                    }')
+                msg_handler.append('                }')
+                values['event_msg_handlers'].append('\n'.join(msg_handler))
 
             raiseFunction = self._writeRaiseFunction(m, obj)
 
@@ -430,6 +461,10 @@ class MonitorGenerator(object):
         out_c.close()
 
         # Copy pre-written static helper files to the output path
+        cfg = open(os.path.splitext(filename)[0] + '_mon.cfg', 'w')
+        cfg.write(env.get_template('object_mon.cfg').render())
+        cfg.close()
+
         a_h = open(os.path.dirname(filename) + '/actions.h', 'w')
         a_h.write(env.get_template('actions.h').render())
         a_h.close()
@@ -606,14 +641,39 @@ class MonitorGenerator(object):
         if len(paramString) > 0:
             for p in self._getEventParams(paramString):
                 if p[0] == 'int':
-                    output.append('  push_param(&p_head, &%s, NULL, NULL, NULL);'%p[1])
+                    output.append('  push_param(&p_head, &%s, NULL, NULL, NULL);' % p[1])
                 elif p[0] == 'char':
-                    output.append('  push_param(&p_head, NULL, &%s, NULL, NULL);'%p[1])
-                elif p[0] == 'double':
-                    output.append('  push_param(&p_head, NULL, NULL, &%s, NULL);'%p[1])
+                    output.append('  push_param(&p_head, NULL, &%s, NULL, NULL);' % p[1])
+                elif p[0] == 'float':
+                    output.append('  push_param(&p_head, NULL, NULL, &%s, NULL);' % p[1])
                 elif p[0] == 'pointer':
-                    output.append('  push_param(&p_head, NULL, NULL, NULL, &%s);'%p[1])
+                    output.append('  push_param(&p_head, NULL, NULL, NULL, &%s);' % p[1])
         output.append('  push_action(&monitor->action_queue, %s_%s_EVENT, p_head);' % (obj.upper(), event.upper()))
+
+        if 'exported_events' == self._symbolTable.get(event)['type']:
+            output.append('  char message[256];')
+            sprintf = '  sprintf(message, "%s_%s' % (obj.lower(), event)
+            evParams = self._getEventParams(paramString)[1:]
+            if len(evParams) > 0:
+                for p in evParams:
+                    if p[0] == 'int':
+                        sprintf += ' %d'
+                    elif p[0] == 'char':
+                        sprintf += ' %s'
+                    elif p[0] == 'float':
+                        sprintf += ' %f'
+            sprintf += '"'
+            if len(evParams) > 0:
+                for p in evParams:
+                    sprintf += ', %s' % p[1]
+            sprintf += ');'
+            output.append(sprintf)
+            output.append('  char routing_key[256];')
+            sprintf_routing = '  sprintf(routing_key, "%s-%s_%s.' % (obj.lower(), obj.lower(), event)
+            sprintf_routing += '%d", monitor->identities['
+            sprintf_routing += '%s_ID]);' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
+            output.append(sprintf_routing)
+            output.append('  send_message(monitor, message, routing_key);')
         output.append('}\n\n')
         return {'code':output, 'signature':signature}
 
