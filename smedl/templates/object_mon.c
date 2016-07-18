@@ -25,7 +25,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
 const char *hostname, *username, *password, *exchange;
 const int port;
 
-const int bindingkeyNum = {{ bindingkeys_num }};
+#define bindingkeyNum {{ bindingkeys_num }}
 const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor( {{ obj|title }}Data *d ) {
