@@ -200,6 +200,9 @@ class MonitorGenerator(object):
                             if action['state_update']:
                                 elseActions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
                             if action['raise_stmt']:
+                                if self._debug:
+                                    print("ELSE ACTION RAISE DEBUG: " + str(action['raise_stmt']['expr_list']))
+                                    print(action)
                                 elseActions.append(RaiseAction(action['raise_stmt']['id'], action['raise_stmt']['expr_list']))
                             if action['instantiation']:
                                 elseActions.append(InstantiationAction(action['instantiation']['id'], action['instantiation']['state_update_list']))
@@ -234,6 +237,9 @@ class MonitorGenerator(object):
                                 if action['state_update']:
                                     actions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
                                 if action['raise_stmt']:
+                                    if self._debug:
+                                        print("STEP ACTION RAISE DEBUG: " + str(action['raise_stmt']['expr_list']))
+                                        print(action)
                                     actions.append(RaiseAction(action['raise_stmt']['id'], action['raise_stmt']['expr_list']))
                                 if action['instantiation']:
                                     actions.append(InstantiationAction(action['instantiation']['id'], action['instantiation']['state_update_list']))
@@ -353,6 +359,10 @@ class MonitorGenerator(object):
                             c_type = self._convertTypeForC(datatype)
                             identityParams.append({'name': name, 'c_type': c_type, 'datatype': datatype})
                             #print('%s pedl params: %s %s'%(m, c_type, name))
+
+            if self._debug:
+                print(m)
+                print(self._symbolTable.get(m, 'params'))
 
             monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                 [{'name': p['name'], 'c_type': self._convertTypeForC(p['type'])} for p in self._symbolTable.get(m, 'params')]
@@ -530,20 +540,20 @@ class MonitorGenerator(object):
                 output.append('      if(' + transitions[i].guard.replace('this.', 'monitor->') + ') {\n')
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s\n' % self._writeAction(action))
+                        output.append('        %s\n' % self._writeAction(obj, action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 output.append('      }\n')
             elif len(transitions) == 1:
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s\n' % self._writeAction(action))
+                        output.append('        %s\n' % self._writeAction(obj, action))
                 output.append('      %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 break
             elif transitions[i].guard:
                 output.append('      else if(' + transitions[i].guard.replace('this.', 'monitor->') + ') {\n')
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s\n' % self._writeAction(action))
+                        output.append('        %s\n' % self._writeAction(obj, action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 output.append('      }\n')
 
@@ -552,7 +562,7 @@ class MonitorGenerator(object):
                 output.append('      else {\n')
                 if transitions[i].elseActions:
                     for action in transitions[i].elseActions:
-                        output.append('        %s\n' % self._writeAction(action))
+                        output.append('        %s\n' % self._writeAction(obj, action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
                 output.append('      }\n')
             elif self._implicitErrors:
@@ -563,7 +573,7 @@ class MonitorGenerator(object):
         return "".join(output)
 
 
-    def _writeAction(self, action):
+    def _writeAction(self, obj, action):
         if action.type == ActionType.StateUpdate:
             out = "monitor->" + action.target + ' ' + action.operator
             if action.expression:
@@ -571,7 +581,8 @@ class MonitorGenerator(object):
             out += ';'
             return out
         elif action.type == ActionType.Raise:
-            return "{ time_t action_time = time(NULL); fprintf(monitor->logFile, \"%s    %s\\n\", ctime(&action_time), \"" + str(action) + "\"); }"
+            out = 'raise_%s_%s(monitor, %s);' % (obj.lower(), action.event, ", ".join([self._formatExpression(p) for p in action.params]))
+            return out
         elif action.type == ActionType.Instantiation:
             return "{ time_t action_time = time(NULL); fprintf(monitor->logFile, \"%s    %s\\n\", ctime(&action_time), \"" + str(action) + "\"); }"
         elif action.type == ActionType.Call:
@@ -733,18 +744,21 @@ class MonitorGenerator(object):
     def _formatExpression(self, expr):
         if expr is None:
             expr = ""
-        exprStr = AstToPython.expr(expr)
-        exprStr = self._addThisDotToStateVariables(exprStr)
+        if isinstance(expr, AST):
+            exprStr = AstToPython.expr(expr)
+        else:
+            exprStr = expr
+        exprStr = self._addMonitorArrowToStateVariables(exprStr)
         # expr = checkReferences(expr) # TODO--------
         return self._removeParentheses(exprStr)
 
 
-    def _addThisDotToStateVariables(self, string):
+    def _addMonitorArrowToStateVariables(self, string):
         for sv in self._symbolTable.getSymbolsByType('state'):
             indices = [t.start() for t in re.finditer(sv, string)]
             for index in indices:
-                if string[index-5:index] != 'this.':  # Prevent duplicated 'this.'
-                    string = string[:index] + 'this.' + string[index:]
+                if string[index-5:index] != 'this.' and string[index-9:index] != 'monitor->':  # Prevent duplicated 'this.'
+                    string = string[:index] + 'monitor->' + string[index:]
         return string
 
 

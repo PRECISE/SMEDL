@@ -75,7 +75,7 @@ class AstToPython(object):
 
     @classmethod
     def expr_list(cls, inputlist):
-        if inputlist[0] is not None:
+        if inputlist[0] is not None and isinstance(inputlist[0], list):
             inputlist = inputlist[0]
         out = []
         for el in inputlist:
