@@ -203,5 +203,5 @@ state_update_list
 
 action_item_list
     =
-      @:action_item {';' @:action_item}*
+      @:action_item ';' { @:action_item ';' }*
     ;
