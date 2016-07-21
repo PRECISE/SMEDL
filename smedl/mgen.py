@@ -19,6 +19,19 @@ import shutil
 import string
 from pathlib import Path
 
+# Turn a list of arguments into an argument string for using in a generated
+# method call. prefix determines whether a leading comma is prepended when the
+# argument list is not empty.
+#
+# args : list of strings. The arguments to turn into an argument string.
+# prefix : boolean. Whether to prefix a comma when the list is non-empty.
+def joinArgs(args, prefix=""):
+    if (not args):
+        return ""
+    else:
+        return prefix + ", ".join(args)
+
+
 class MonitorGenerator(object):
 
     def __init__(self, structs=False, debug=False):
@@ -407,7 +420,9 @@ class MonitorGenerator(object):
                     elif p['c_type'] == 'char':
                         sscanfStr += ' %s'
                     elif p['c_type'] == 'float':
-                        sscanfStr += ' %f'
+                        exit("this should never happen. there is a missing float->double conversion.")
+                    elif p['c_type'] == 'double':
+                        sscanfStr += ' %lf'
                     sscanfAttrs += ', &' + p['name']
                     retAttrs += ', ' + p['name']
                 msg_handler.append('                    int ret = sscanf(string, "' + sscanfStr + '", ' + sscanfAttrs + ');')
@@ -497,7 +512,8 @@ class MonitorGenerator(object):
     def _convertTypeForC(self, smedlType):
         typeMap =  {
             'int': 'int',
-            'float': 'float',
+            'float': 'double',
+            'double': 'double',
             'pointer': 'void*',
             'thread': 'pthread_t',
             'opaque': 'void*'
@@ -581,10 +597,9 @@ class MonitorGenerator(object):
             out += ';'
             return out
         elif action.type == ActionType.Raise:
-            out = 'raise_%s_%s(monitor, %s);' % (obj.lower(), action.event, ", ".join([self._formatExpression(p) for p in action.params]))
-            return out
+            return 'raise_%s_%s(monitor%s);' % (obj.lower(), action.event, joinArgs([self._formatExpression(p) for p in action.params], ", "))
         elif action.type == ActionType.Instantiation:
-            return "{ time_t action_time = time(NULL); fprintf(monitor->logFile, \"%s    %s\\n\", ctime(&action_time), \"" + str(action) + "\"); }"
+            exit("Instantiation actions are not implemented. Sorry!")
         elif action.type == ActionType.Call:
             out = action.target + '('
             paramCount = len(action.params)
@@ -640,7 +655,7 @@ class MonitorGenerator(object):
 
 
     def _writeRaiseFunction(self, event, obj):
-        paramString = ', '.join(['%s %s'%(p['type'], p['name']) for p in self._symbolTable.get(event, 'params')])
+        paramString = ', '.join(['%s %s'%(self._convertTypeForC(p['type']), p['name']) for p in self._symbolTable.get(event, 'params')])
         if len(paramString) > 0:
             paramString = obj.title() + "Monitor* monitor, " + paramString
         else:
@@ -651,11 +666,14 @@ class MonitorGenerator(object):
         output.append('  param *p_head = NULL;')
         if len(paramString) > 0:
             for p in self._getEventParams(paramString):
+                # comparing SMEDL types not C types.
                 if p[0] == 'int':
                     output.append('  push_param(&p_head, &%s, NULL, NULL, NULL);' % p[1])
                 elif p[0] == 'char':
                     output.append('  push_param(&p_head, NULL, &%s, NULL, NULL);' % p[1])
                 elif p[0] == 'float':
+                    exit("this should never happen. there is a missing float->double conversion.")
+                elif p[0] == 'double':
                     output.append('  push_param(&p_head, NULL, NULL, &%s, NULL);' % p[1])
                 elif p[0] == 'pointer':
                     output.append('  push_param(&p_head, NULL, NULL, NULL, &%s);' % p[1])
@@ -667,12 +685,15 @@ class MonitorGenerator(object):
             evParams = self._getEventParams(paramString)[1:]
             if len(evParams) > 0:
                 for p in evParams:
+                    # comparing SMEDL types not C types.
                     if p[0] == 'int':
                         sprintf += ' %d'
                     elif p[0] == 'char':
                         sprintf += ' %s'
+                    elif p[0] == 'double':
+                        sprintf += ' %lf'
                     elif p[0] == 'float':
-                        sprintf += ' %f'
+                        exit("this should never happen. there is a missing float->double conversion.")
             sprintf += '"'
             if len(evParams) > 0:
                 for p in evParams:
@@ -680,8 +701,11 @@ class MonitorGenerator(object):
             sprintf += ');'
             output.append(sprintf)
             output.append('  char routing_key[256];')
+
             sprintf_routing = '  sprintf(routing_key, "%s-%s_%s.' % (obj.lower(), obj.lower(), event)
-            sprintf_routing += '%d", monitor->identities['
+            # TODO: peter, write functions for printing and parsing monitor identities
+            # this cast is broken and wrong, but works as long as we have only one monitor process
+            sprintf_routing += '%ld", (long)monitor->identities['
             sprintf_routing += '%s_ID]);' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
             output.append(sprintf_routing)
             output.append('  send_message(monitor, message, routing_key);')

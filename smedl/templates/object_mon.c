@@ -9,6 +9,7 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <libconfig.h>
+#include "utils.h"
 #include "{{ base_file_name }}_mon.h"
 {%- if helper %}{{ '\n' }}#include "{{ helper }}"{% endif %}
 
@@ -22,9 +23,6 @@ typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
 {{ state_names }}
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
 
-const char *hostname, *username, *password, *exchange;
-const int port;
-
 #define bindingkeyNum {{ bindingkeys_num }}
 const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
 
@@ -35,7 +33,6 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
 {% endfor -%}
 {% for v in state_vars %}    monitor->{{ v.name }} = d->{{ v.name }};
 {% endfor %}{{state_inits}}
-    monitor->logFile = fopen("{{ obj|title }}Monitor.log", "w");
 
     /* Read settings from config file */
     config_t cfg;
@@ -46,15 +43,19 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
         fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
             config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
-        return(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
     setting = config_lookup(&cfg, "rabbitmq");
+
+    const char *hostname, *username, *password;
+    int port;
+
     if (setting != NULL) {
         config_setting_lookup_string(setting, "hostname", &hostname);
         config_setting_lookup_int(setting, "port", &port);
         config_setting_lookup_string(setting, "username", &username);
         config_setting_lookup_string(setting, "password", &password);
-        config_setting_lookup_string(setting, "exchange", &exchange);
+        config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange));
     }
 
     /* RabbitMQ initialization */
@@ -78,13 +79,13 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
     queuename = amqp_bytes_malloc_dup(r->queue);
     if (queuename.bytes == NULL) {
         fprintf(stderr, "Out of memory while copying queue name");
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     //binding several binding keys
     for(int i = 0;i<bindingkeyNum;i++){
         amqp_queue_bind(monitor->recv_conn, 1, queuename,
-            amqp_cstring_bytes(exchange), amqp_cstring_bytes(bindingkeys[i]),
+            amqp_cstring_bytes(monitor->amqp_exchange), amqp_cstring_bytes(bindingkeys[i]),
             amqp_empty_table);
     }
 
@@ -104,7 +105,7 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn), "Opening channel");
-    amqp_exchange_declare(monitor->send_conn, 1, amqp_cstring_bytes(exchange),
+    amqp_exchange_declare(monitor->send_conn, 1, amqp_cstring_bytes(monitor->amqp_exchange),
         amqp_cstring_bytes("topic"), 0, 0, 0, 0, amqp_empty_table);
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn), "Declaring exchange");
 
@@ -112,24 +113,13 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
     return monitor;
 }
 
-char * getEventName(char *string){
-    int index = 0;
-    for (;index<strlen(string);index++) {
-        if (string[index]==' ') {
-            break;
-        }
+// mallocs a string for the event name
+char *getEventName(char *string, size_t len){
+    char *eventName = calloc(len, sizeof(char));
+    for (int i; i<len && string[i]!=' '; i++) {
+        eventName[i] = string[i];
     }
-
-    if (index == strlen(string)) {
-        return string;
-    } else if (index != 0) {
-        char substr[strlen(string)];
-        strncpy(substr, string, index);
-        substr[index] = '\0';
-        return substr;
-    } else {
-        return NULL;
-    }
+    return eventName;
 }
 
 void start_monitor({{ obj|title }}Monitor* monitor) {
@@ -142,14 +132,13 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
         ret = amqp_consume_message(monitor->recv_conn, &envelope, NULL, 0);
         amqp_message_t msg = envelope.message;
         amqp_bytes_t bytes = msg.body;
-        amqp_bytes_t routing_key = envelope.routing_key;
-        char* rk = (char*)routing_key.bytes;
+        //amqp_bytes_t routing_key = envelope.routing_key;
+        //char* rk = (char*)routing_key.bytes;
         char* string = (char*)bytes.bytes;
-        char* event[255] = {NULL};
-        char* eventName = NULL;
+        //char* event[255] = {NULL};
 
         if (string != NULL) {
-            eventName = getEventName(string);
+            char* eventName = getEventName(string, bytes.len);
             if (eventName != NULL) {
                 char e[255];
 
@@ -159,6 +148,7 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                     printf("error_called\n");
                 }
             }
+            free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -226,7 +216,7 @@ void send_message({{ obj|title }}Monitor* monitor, char* message, char* routing_
     message_bytes.bytes = message;
     die_on_error(amqp_basic_publish(monitor->send_conn,
                                     1,
-                                    amqp_cstring_bytes(exchange),
+                                    amqp_cstring_bytes(monitor->amqp_exchange),
                                     amqp_cstring_bytes(routing_key),
                                     0,
                                     0,
@@ -240,7 +230,6 @@ void free_monitor({{ obj|title }}Monitor* monitor) {
     die_on_amqp_error(amqp_channel_close(monitor->send_conn, 1, AMQP_REPLY_SUCCESS), "Closing channel");
     die_on_amqp_error(amqp_connection_close(monitor->send_conn, AMQP_REPLY_SUCCESS), "Closing connection");
     die_on_error(amqp_destroy_connection(monitor->send_conn), "Ending connection");
-    fclose(monitor->logFile);
     free(monitor);
 }
 

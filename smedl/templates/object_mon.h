@@ -20,7 +20,7 @@ typedef struct {{ obj|title }}Monitor {
   int state[{{ scenario_names|length }}];
 {{ state_var_declarations }}
   action *action_queue;
-  FILE *logFile;
+  const char *amqp_exchange;
   amqp_socket_t *recv_socket;
   amqp_connection_state_t recv_conn;
   amqp_socket_t *send_socket;
@@ -40,6 +40,7 @@ typedef struct {{ obj|title }}MonitorMap {
 pthread_mutex_t {{ obj|lower }}_monitor_maps_lock;
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor({{ obj|title }}Data*);
+void start_monitor({{ obj|title }}Monitor* monitor);
 void free_monitor({{ obj|title }}Monitor*);
 
 /*
