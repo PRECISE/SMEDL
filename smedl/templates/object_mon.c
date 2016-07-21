@@ -114,11 +114,25 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
 }
 
 // mallocs a string for the event name
-char *getEventName(char *string, size_t len){
-    char *eventName = calloc(len, sizeof(char));
-    for (int i; i<len && string[i]!=' '; i++) {
-        eventName[i] = string[i];
+// returns null if the given string isn't a properly-terminated c string
+char *getEventName(char *str, size_t maxlen){
+    // make sure that str is really a cstring before trying to copy from it.
+    size_t len = strnlen(str, maxlen);
+    if (len >= maxlen) {
+        return NULL;
     }
+    // find the first space or the end of the string
+    char* end = index(str, ' ');
+    // copylen is the length of the string with the terminator
+    size_t copylen;
+    if (NULL == end) {
+      copylen = maxlen - 1;
+    } else {
+      copylen = end - str;
+    }
+    char* eventName = malloc(copylen+1);
+    memcpy(eventName, str, copylen);
+    eventName[copylen] = '\0';
     return eventName;
 }
 
