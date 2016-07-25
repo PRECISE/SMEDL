@@ -33,6 +33,7 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
 {% endfor -%}
 {% for v in state_vars %}    monitor->{{ v.name }} = d->{{ v.name }};
 {% endfor %}{{state_inits}}
+    monitor->action_queue = NULL;
 
     /* Read settings from config file */
     config_t cfg;
