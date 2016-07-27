@@ -1,4 +1,4 @@
-object SafeMon
+object SafeMonObj
 identity
   opaque id;
 state
@@ -10,7 +10,7 @@ scenarios
   sc1:
     SafeMon -> updatePos(pos) when pos == this.upbound || pos == this.lobound -> Switch
         else -> SafeMon
-    Switch -> changeDir() { raise click() } -> SafeMon
+    Switch -> changeDir() { raise click(); } -> SafeMon
     SafeMon -> changeDir() -> SafeMon
     SafeMon -> click() -> SafeMon
     Switch -> click() -> Switch
