@@ -30,7 +30,7 @@ class SmedlSymbolTable(OrderedDict):
             if self[symbol] == attributes:
                 return
             else:
-                raise ValueError('Symbol %s already exists in the table. Use the update() method instead.' % symbol)
+                raise ValueError('Symbol %s already exists in the table. Maybe you have a name conflict? Or you can use the update() method instead.' % symbol)
         elif attributes is None:
             self[symbol] = {}
         else:
