@@ -51,7 +51,8 @@ class MonitorGenerator(object):
                 pedlText = pedlFile.read()
             pedlPar = pedlParser(
                 parseinfo=False,
-                comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
+                comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)",
+                semantics=pedlModelBuilderSemantics())
             self.pedlAST = pedlPar.parse(
                 pedlText,
                 'object',
@@ -61,8 +62,6 @@ class MonitorGenerator(object):
             if self._printStructs:
                 print('PEDL AST:')
                 print(self.pedlAST)
-                print('\nPEDL JSON:')
-                print(json.dumps(self.pedlAST, indent=2))
 
         # Parse the SMEDL, if it exists
         smedlPath = Path(pedlsmedlName + '.smedl')
@@ -288,6 +287,8 @@ class MonitorGenerator(object):
 
 
     def _outputToTemplate(self, allFSMs, filename, helper, pedlAST):
+        if self._debug:
+            print("Target Monitor Points: " + pedlAST.getTargetMonitorPoints())
         obj = self._symbolTable.getSymbolsByType('object')[0]
         state_vars = [{'type': self._symbolTable.get(v)['datatype'], 'name': v} for v in self._symbolTable.getSymbolsByType('state')]
         for s in state_vars:
@@ -363,14 +364,15 @@ class MonitorGenerator(object):
             identityParams = []
             pedlEvent = False
             if 'imported_events' == self._symbolTable.get(m)['type'] and pedlAST is not None:
-                for e in pedlAST['event_defs']:
-                    if str(m) == e['event']:
+                for e in pedlAST.event_defs:
+                    if str(m) == e.event:
                         pedlEvent = True
-                        if e['when']:
-                            name = e['when']['comp'][0]['atom']
-                            datatype = self._symbolTable.get(name)['datatype']
-                            c_type = self._convertTypeForC(datatype)
-                            identityParams.append({'name': name, 'c_type': c_type, 'datatype': datatype})
+                        # TODO: parse identities in PEDL events
+                        #if e.when:
+                            #name = e.when['comp'][0]['atom']
+                            #datatype = self._symbolTable.get(name)['datatype']
+                            #c_type = self._convertTypeForC(datatype)
+                            #identityParams.append({'name': name, 'c_type': c_type, 'datatype': datatype})
                             #print('%s pedl params: %s %s'%(m, c_type, name))
 
             if self._debug:
