@@ -7,7 +7,7 @@
 # Object is the top-level rule for a PEDL file. We look for an 'object' keyword
 # followed by the object identifier and an 'events' keyword for the section
 # containing the PEDL events.
-object
+object::Object
     =
     'object' object:identifier
     'events'
@@ -22,7 +22,7 @@ object
 # 'create' keyword specifies that this new monitor should be constructed on
 # the creation of a data structure named PQueueData. The contents of this
 # structure are defined in the 'structure' rule.
-new_mon
+new_mon::MonitorConstructor
     =
     'new' monitor:identifier ['(' monitor_params:identifier_list ')'] '='
         'create' struct:structure
@@ -30,7 +30,7 @@ new_mon
 
 # structure describes the data structure used by a monitor. It is defined
 # by a name (the struct_id label) and a set of fields.
-structure
+structure::MonitorStruct
     =
     struct_id:identifier '{' fields:{field}* '}'
     ;
@@ -38,7 +38,7 @@ structure
 # field describes a data structure field. It maps a monitor's internal state
 # variable (labeled as variable) to its initial value (labeled as value).
 # ex. monitor_foo = this.bar + 5
-field
+field::Field
     =
     variable:identifier '=' value:expression ';'
     ;
@@ -61,7 +61,7 @@ field
 # which the event will be raised. Typically, this expression is to be used to
 # manage distribution of the event to various monitors based on their
 # identities (i.e. event filtering).
-event_def
+event_def::Event
     =
     monitor:identifier '(' monitor_params:identifier_list ').' event:identifier
         '(' [event_params:state_update_list] ')' '='
@@ -74,7 +74,7 @@ event_def
 # describe a local variable, use dot notation to describe the function where
 # the variable is defined followed by the variable's name. To describe a global
 # variable, simply list the variable's name.
-update_param
+update_param::UpdateParam
     =
       update_fn:identifier '.' update_var:identifier
     | update_var:identifier
@@ -82,26 +82,26 @@ update_param
 
 # state_update defines a generic statement wherein a target is updated based on
 # the result of the right-hand expression.
-state_update
+state_update::StateUpdate
     =
       target:target '=' expression:expression
     ;
 
 # identifier defines an alphanumeric string starting with a letter.
-identifier
+identifier::str
     =
     ?/[a-zA-Z][A-Za-z0-9_]*/?
     ;
 
 # integer defines a numeric string with an optional neg/pos sign.
-integer
+integer::int
     =
     ?/[-+]?[0-9]+/?
     ;
 
 # float defines a numeric string with an optional neg/pos sign and an optional
 # decimal point.
-float
+float::float
     =
     ?/[-+]?[0-9]*\.?[0-9]+/?
     ;
@@ -109,7 +109,7 @@ float
 # expression breaks apart the parsing of an expression input into possible
 # expression components. The following rules provide various ways to parse a
 # subexpression.
-expression
+expression::Expression
     =
       or_ex:and_expr {'||' or_ex:and_expr}+
     | @:and_expr

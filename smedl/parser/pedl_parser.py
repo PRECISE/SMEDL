@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 7, 6, 19, 54, 33, 2)
+__version__ = (2016, 7, 27, 18, 30, 51, 2)
 
 __all__ = [
     'pedlParser',
@@ -51,7 +51,7 @@ class pedlParser(Parser):
             **kwargs
         )
 
-    @graken()
+    @graken('Object')
     def _object_(self):
         self._token('object')
         self._identifier_()
@@ -74,7 +74,7 @@ class pedlParser(Parser):
             []
         )
 
-    @graken()
+    @graken('MonitorConstructor')
     def _new_mon_(self):
         self._token('new')
         self._identifier_()
@@ -94,7 +94,7 @@ class pedlParser(Parser):
             []
         )
 
-    @graken()
+    @graken('MonitorStruct')
     def _structure_(self):
         self._identifier_()
         self.name_last_node('struct_id')
@@ -111,7 +111,7 @@ class pedlParser(Parser):
             []
         )
 
-    @graken()
+    @graken('Field')
     def _field_(self):
         self._identifier_()
         self.name_last_node('variable')
@@ -125,7 +125,7 @@ class pedlParser(Parser):
             []
         )
 
-    @graken()
+    @graken('Event')
     def _event_def_(self):
         self._identifier_()
         self.name_last_node('monitor')
@@ -163,7 +163,7 @@ class pedlParser(Parser):
             []
         )
 
-    @graken()
+    @graken('UpdateParam')
     def _update_param_(self):
         with self._choice():
             with self._option():
@@ -182,7 +182,7 @@ class pedlParser(Parser):
             []
         )
 
-    @graken()
+    @graken('StateUpdate')
     def _state_update_(self):
         self._target_()
         self.name_last_node('target')
@@ -195,19 +195,19 @@ class pedlParser(Parser):
             []
         )
 
-    @graken()
+    @graken('str')
     def _identifier_(self):
         self._pattern(r'[a-zA-Z][A-Za-z0-9_]*')
 
-    @graken()
+    @graken('int')
     def _integer_(self):
         self._pattern(r'[-+]?[0-9]+')
 
-    @graken()
+    @graken('float')
     def _float_(self):
         self._pattern(r'[-+]?[0-9]*\.?[0-9]+')
 
-    @graken()
+    @graken('Expression')
     def _expression_(self):
         with self._choice():
             with self._option():
