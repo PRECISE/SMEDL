@@ -109,7 +109,7 @@ float::float
 # expression breaks apart the parsing of an expression input into possible
 # expression components. The following rules provide various ways to parse a
 # subexpression.
-expression::Expression
+expression
     =
       or_ex:and_expr {'||' or_ex:and_expr}+
     | @:and_expr

@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 7, 27, 18, 30, 51, 2)
+__version__ = (2016, 7, 27, 20, 31, 27, 2)
 
 __all__ = [
     'pedlParser',
@@ -207,7 +207,7 @@ class pedlParser(Parser):
     def _float_(self):
         self._pattern(r'[-+]?[0-9]*\.?[0-9]+')
 
-    @graken('Expression')
+    @graken()
     def _expression_(self):
         with self._choice():
             with self._option():

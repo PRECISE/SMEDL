@@ -16,7 +16,7 @@ from grako.model import Node
 from grako.model import ModelBuilderSemantics
 
 
-__version__ = '2016.07.27.14'
+__version__ = '2016.07.27.16'
 
 
 class pedlModelBuilderSemantics(ModelBuilderSemantics):
@@ -131,16 +131,5 @@ class StateUpdate(ModelBase):
             *args,
             target=target,
             expression=expression,
-            **kwargs
-        )
-
-
-class Expression(ModelBase):
-    def __init__(self, *args,
-                 or_ex=None,
-                 **kwargs):
-        super(Expression, self).__init__(
-            *args,
-            or_ex=or_ex,
             **kwargs
         )
