@@ -9,6 +9,7 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <libconfig.h>
+#include "utils.h"
 #include "poster_test_mon.h"
 
 typedef enum { POSTER_ID } poster_identity;
@@ -24,9 +25,6 @@ const char *poster_swap_bins_states[1] = { "Waiting" };
 const char *poster_check_rate_states[1] = { "Waiting" };
 const char *poster_handle_data_states[1] = { "Waiting" };
 const char **poster_states_names[3] = { poster_swap_bins_states, poster_check_rate_states, poster_handle_data_states };
-
-const char *hostname, *username, *password, *exchange;
-const int port;
 
 #define bindingkeyNum 1
 const char *bindingkeys[bindingkeyNum] = { "#" };
@@ -44,7 +42,7 @@ PosterMonitor* init_poster_monitor( PosterData *d ) {
     monitor->state[POSTER_SWAP_BINS_SCENARIO] = POSTER_SWAP_BINS_WAITING;
     monitor->state[POSTER_CHECK_RATE_SCENARIO] = POSTER_CHECK_RATE_WAITING;
     monitor->state[POSTER_HANDLE_DATA_SCENARIO] = POSTER_HANDLE_DATA_WAITING;
-    monitor->logFile = fopen("PosterMonitor.log", "w");
+    monitor->action_queue = NULL;
 
     /* Read settings from config file */
     config_t cfg;
@@ -55,15 +53,19 @@ PosterMonitor* init_poster_monitor( PosterData *d ) {
         fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
             config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
-        return(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
     setting = config_lookup(&cfg, "rabbitmq");
+
+    const char *hostname, *username, *password;
+    int port;
+
     if (setting != NULL) {
         config_setting_lookup_string(setting, "hostname", &hostname);
         config_setting_lookup_int(setting, "port", &port);
         config_setting_lookup_string(setting, "username", &username);
         config_setting_lookup_string(setting, "password", &password);
-        config_setting_lookup_string(setting, "exchange", &exchange);
+        config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange));
     }
 
     /* RabbitMQ initialization */
@@ -87,13 +89,13 @@ PosterMonitor* init_poster_monitor( PosterData *d ) {
     queuename = amqp_bytes_malloc_dup(r->queue);
     if (queuename.bytes == NULL) {
         fprintf(stderr, "Out of memory while copying queue name");
-        return 1;
+        exit(EXIT_FAILURE);
     }
 
     //binding several binding keys
     for(int i = 0;i<bindingkeyNum;i++){
         amqp_queue_bind(monitor->recv_conn, 1, queuename,
-            amqp_cstring_bytes(exchange), amqp_cstring_bytes(bindingkeys[i]),
+            amqp_cstring_bytes(monitor->amqp_exchange), amqp_cstring_bytes(bindingkeys[i]),
             amqp_empty_table);
     }
 
@@ -113,7 +115,7 @@ PosterMonitor* init_poster_monitor( PosterData *d ) {
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn), "Opening channel");
-    amqp_exchange_declare(monitor->send_conn, 1, amqp_cstring_bytes(exchange),
+    amqp_exchange_declare(monitor->send_conn, 1, amqp_cstring_bytes(monitor->amqp_exchange),
         amqp_cstring_bytes("topic"), 0, 0, 0, 0, amqp_empty_table);
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn), "Declaring exchange");
 
@@ -121,24 +123,27 @@ PosterMonitor* init_poster_monitor( PosterData *d ) {
     return monitor;
 }
 
-char * getEventName(char *string){
-    int index = 0;
-    for (;index<strlen(string);index++) {
-        if (string[index]==' ') {
-            break;
-        }
-    }
-
-    if (index == strlen(string)) {
-        return string;
-    } else if (index != 0) {
-        char substr[strlen(string)];
-        strncpy(substr, string, index);
-        substr[index] = '\0';
-        return substr;
-    } else {
+// mallocs a string for the event name
+// returns null if the given string isn't a properly-terminated c string
+char *getEventName(char *str, size_t maxlen){
+    // make sure that str is really a cstring before trying to copy from it.
+    size_t len = strnlen(str, maxlen);
+    if (len >= maxlen) {
         return NULL;
     }
+    // find the first space or the end of the string
+    char* end = index(str, ' ');
+    // copylen is the length of the string with the terminator
+    size_t copylen;
+    if (NULL == end) {
+      copylen = maxlen - 1;
+    } else {
+      copylen = end - str;
+    }
+    char* eventName = malloc(copylen+1);
+    memcpy(eventName, str, copylen);
+    eventName[copylen] = '\0';
+    return eventName;
 }
 
 void start_monitor(PosterMonitor* monitor) {
@@ -151,14 +156,13 @@ void start_monitor(PosterMonitor* monitor) {
         ret = amqp_consume_message(monitor->recv_conn, &envelope, NULL, 0);
         amqp_message_t msg = envelope.message;
         amqp_bytes_t bytes = msg.body;
-        amqp_bytes_t routing_key = envelope.routing_key;
-        char* rk = (char*)routing_key.bytes;
+        //amqp_bytes_t routing_key = envelope.routing_key;
+        //char* rk = (char*)routing_key.bytes;
         char* string = (char*)bytes.bytes;
-        char* event[255] = {NULL};
-        char* eventName = NULL;
+        //char* event[255] = {NULL};
 
         if (string != NULL) {
-            eventName = getEventName(string);
+            char* eventName = getEventName(string, bytes.len);
             if (eventName != NULL) {
                 char e[255];
 
@@ -191,6 +195,7 @@ void start_monitor(PosterMonitor* monitor) {
                     printf("error_called\n");
                 }
             }
+            free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -258,7 +263,7 @@ void send_message(PosterMonitor* monitor, char* message, char* routing_key) {
     message_bytes.bytes = message;
     die_on_error(amqp_basic_publish(monitor->send_conn,
                                     1,
-                                    amqp_cstring_bytes(exchange),
+                                    amqp_cstring_bytes(monitor->amqp_exchange),
                                     amqp_cstring_bytes(routing_key),
                                     0,
                                     0,
@@ -272,7 +277,6 @@ void free_monitor(PosterMonitor* monitor) {
     die_on_amqp_error(amqp_channel_close(monitor->send_conn, 1, AMQP_REPLY_SUCCESS), "Closing channel");
     die_on_amqp_error(amqp_connection_close(monitor->send_conn, AMQP_REPLY_SUCCESS), "Closing connection");
     die_on_error(amqp_destroy_connection(monitor->send_conn), "Ending connection");
-    fclose(monitor->logFile);
     free(monitor);
 }
 
@@ -354,7 +358,7 @@ void raise_poster_too_few_tracks(PosterMonitor* monitor, int mon_var_cur_time) {
   char message[256];
   sprintf(message, "poster_too_few_tracks %d", mon_var_cur_time);
   char routing_key[256];
-  sprintf(routing_key, "poster-poster_too_few_tracks.%d", monitor->identities[POSTER_ID]);
+  sprintf(routing_key, "poster-poster_too_few_tracks.%ld", (long)monitor->identities[POSTER_ID]);
   send_message(monitor, message, routing_key);
 }
 

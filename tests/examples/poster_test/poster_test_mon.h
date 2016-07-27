@@ -30,7 +30,7 @@ typedef struct PosterMonitor {
   int cur_time;
   int last_init;
   action *action_queue;
-  FILE *logFile;
+  const char *amqp_exchange;
   amqp_socket_t *recv_socket;
   amqp_connection_state_t recv_conn;
   amqp_socket_t *send_socket;
@@ -50,6 +50,7 @@ PosterMonitorMap* poster_monitor_maps[POSTER_MONITOR_IDENTITIES]; //a map for ea
 pthread_mutex_t poster_monitor_maps_lock;
 
 PosterMonitor* init_poster_monitor(PosterData*);
+void start_monitor(PosterMonitor* monitor);
 void free_monitor(PosterMonitor*);
 
 /*
