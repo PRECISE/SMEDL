@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 7, 27, 20, 31, 27, 2)
+__version__ = (2016, 7, 27, 20, 45, 15, 2)
 
 __all__ = [
     'pedlParser',
@@ -146,6 +146,7 @@ class pedlParser(Parser):
                 with self._option():
                     self._token('update(')
                     self._update_param_()
+                    self.name_last_node('update_param')
                     self._token(')')
                 with self._option():
                     self._token('call(')
@@ -159,7 +160,7 @@ class pedlParser(Parser):
             self.name_last_node('when')
 
         self.ast._define(
-            ['monitor', 'monitor_params', 'event', 'event_params', 'call_param', 'when'],
+            ['monitor', 'monitor_params', 'event', 'event_params', 'update_param', 'call_param', 'when'],
             []
         )
 
