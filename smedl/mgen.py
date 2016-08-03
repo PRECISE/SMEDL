@@ -34,11 +34,11 @@ def joinArgs(args, prefix=""):
 
 class MonitorGenerator(object):
 
-    def __init__(self, structs=False, debug=False):
+    def __init__(self, structs=False, debug=False, implicit=True):
         self._symbolTable = SmedlSymbolTable()
         self._printStructs = structs
         self._debug = debug
-        self._implicitErrors = False
+        self._implicitErrors = implicit
         self.pedlAST = None
         self.smedlAST = None
 
@@ -288,7 +288,8 @@ class MonitorGenerator(object):
 
     def _outputToTemplate(self, allFSMs, filename, helper, pedlAST):
         if self._debug:
-            print("Target Monitor Points: " + pedlAST.getTargetMonitorPoints())
+            if pedlAST:
+                print("Target Monitor Points: " + pedlAST.getTargetMonitorPoints())
         obj = self._symbolTable.getSymbolsByType('object')[0]
         state_vars = [{'type': self._symbolTable.get(v)['datatype'], 'name': v} for v in self._symbolTable.getSymbolsByType('state')]
         for s in state_vars:
@@ -583,7 +584,7 @@ class MonitorGenerator(object):
                         output.append('        %s\n' % self._writeAction(obj, action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
                 output.append('      }\n')
-            elif self._implicitErrors:
+            elif self._implicitErrors and i == len(transitions)-1:
                 output.append('      else {\n')
                 output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, currentState))
                 output.append('      }\n')
@@ -815,11 +816,12 @@ def main():
     parser.add_argument('--helper', help='Include header file for helper functions')
     parser.add_argument('-s', '--structs', help='Print internal data structures', action='store_true')
     parser.add_argument('-d', '--debug', help='Show debug output', action='store_true')
+    parser.add_argument('-e', '--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
     # TODO: Add version flag
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="the name of the PEDL and SMEDL files to parse")
     args = parser.parse_args()
 
-    mgen = MonitorGenerator(structs=args.structs, debug=args.debug)
+    mgen = MonitorGenerator(structs=args.structs, debug=args.debug, implicit=args.noimplicit)
     mgen.generate(args.pedlsmedl, helper=args.helper)
 
 if __name__ == '__main__':
