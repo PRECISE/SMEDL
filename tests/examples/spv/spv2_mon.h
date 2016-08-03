@@ -17,7 +17,7 @@ typedef struct SpvData {
 typedef struct SpvMonitor {
   pthread_mutex_t monitor_lock;
   MonitorIdentity *identities[1];
-  int state[3];
+  int state[1];
   int last_time;
   action *action_queue;
   const char *amqp_exchange;
@@ -46,12 +46,8 @@ void free_monitor(SpvMonitor*);
 /*
  * Monitor Event Handlers
  */
-void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, double mon_var_lat, double mon_var_lon, int mon_var_ret);
-void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, double mon_var_lat, double mon_var_lon, int mon_var_ret);
-void spv_test(SpvMonitor* monitor);
-void raise_spv_test(SpvMonitor* monitor);
-void raise_spv_timestep_error(SpvMonitor* monitor, int mon_var_ttime, int mon_var_last_time);
-void raise_spv_after_end_error(SpvMonitor* monitor);
+void spv_parse_record(SpvMonitor* monitor, int mon_var_time, double mon_var_lat, double mon_var_lon, int mon_var_ret);
+void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_time, double mon_var_lat, double mon_var_lon, int mon_var_ret);
 
 /*
  * Monitor Utility Functions
