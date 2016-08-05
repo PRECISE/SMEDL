@@ -144,9 +144,9 @@ Proof.
 
   assert (lookup = lookup0).
   { extensionality v.
-    specialize (Hlookup v).
-    specialize (Hlookup0 v).
     destruct v as [n Hn].
+    specialize (Hlookup n Hn).
+    specialize (Hlookup0 n Hn).
     specialize (Hdom n).
     inversion Hdom as [Hin_maps Hmaps_in].
     specialize (Hin_maps Hn).
@@ -165,15 +165,15 @@ Proof.
   trivial.
 Qed.
 
-Lemma VarEnv_shrink : forall {Γ ty gs} v,
-  HasTy_VarEnv (((proj1_sig v), ty) :: gs) Γ ->
-  HasTy_VarEnv gs (VarEnv.remove Γ v).
+Lemma VarEnv_shrink : forall {Γ ty gs} n Hn,
+  HasTy_VarEnv ((n, ty) :: gs) Γ ->
+  HasTy_VarEnv gs (VarEnv.remove Γ (exist n Hn)).
 Proof.
   intros; inversion_VarEnv.
-  eapply HasTy_VarEnv_intro.
+  econstructor.
 
   - inversion Hunique; auto.
-  - intro n; specialize (Hdom n);
+  - intro n'; specialize (Hdom n');
       inversion Hdom as [Hdom_ty Hty_dom].
     split.
     + inversion 1 as [Hin Hsingle].
@@ -190,12 +190,10 @@ Proof.
       inversion Hunique; subst.
       apply (List.in_map fst) in Hin.
       auto.
-  - intros v' ty'.
-    specialize (Hlookup (VarEnv.weaken_var v') ty').
-    destruct v as [n Hin].
-    destruct v' as [n' Hin'].
+  - intros n' Hn' ty'.
+    destruct Hn' as [Hin' Hneq].
+    specialize (Hlookup n' Hin' ty').
     inversion_clear Hlookup as [Hlookup_maps Hmaps_lookup].
-    simpl in *.
     split; [intro Hlookup | intro Hmaps].
     + apply Hlookup_maps in Hlookup.
       inversion Hlookup as [Heq | ?]; auto.
@@ -204,8 +202,25 @@ Proof.
       *)
       exfalso.
       inversion Heq; subst.
-      inversion Hin'.
       intuition.
     + apply Hmaps_lookup.
       eauto using List.in_cons.
+Qed.
+
+Hint Resolve VarEnv_shrink.
+
+Lemma VarEnv_maps_lookup : forall n gs Γ,
+    In (VarEnv.vars Γ) n ->
+    HasTy_VarEnv gs Γ ->
+    List.In n (List.map fst gs).
+Proof.
+  intros.
+  inversion_VarEnv.
+  specialize (Hdom n).
+  specialize (Hlookup n H).
+  inversion Hdom as [Hin_maps Hmaps_in].
+  specialize (Hin_maps H).
+  inversion Hin_maps as [ty Hmaps].
+  apply (List.in_map fst) in Hmaps.
+  auto.
 Qed.

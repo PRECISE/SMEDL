@@ -160,7 +160,7 @@ Inductive HasTy_VarEnv (gs : list GlobalDecl) (Γ : VarEnv.t) : Prop :=
     (* Same variable names *)
     (forall n, In (VarEnv.vars Γ) n <-> exists ty, List.In (n, ty) gs) ->
     (* Same types for same names *)
-    (forall v ty, Γ[v] = ty <-> List.In ((proj1_sig v), ty) gs) ->
+    (forall n Hn ty, Γ[(exist n Hn)] = ty <-> List.In (n, ty) gs) ->
     HasTy_VarEnv gs Γ.
 
 Hint Constructors HasTy_VarEnv.

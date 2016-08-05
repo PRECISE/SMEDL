@@ -49,6 +49,18 @@ Section Machines.
       forall ts, Trace ts ->
                  σs = List.map input ts /\
                  λs = List.map output ts.
+
+    Fixpoint δ_run (s : S M) (σs : list Σ) : S M :=
+      match σs with
+      | nil => s
+      | σ::σs' => δ_run (δ M s σ) σs'
+      end.
+
+    Fixpoint ω_run (s : S M) (σs : list Σ) : list Λ :=
+      match σs with
+      | nil => nil
+      | σ::σs' => app (ω_run (δ M s σ) σs') (ω M s σ)
+      end.
   End MachineSemantics.
 
   Definition prod (m1 m2 : Machine Σ Λ) : Machine Σ Λ :=
@@ -61,4 +73,26 @@ Section Machines.
                  let (s1, s2) := s in
                  List.app (ω m1 s1 σ)
                           (ω m2 s2 σ)).
-End Machines. 
+End Machines.
+
+Arguments δ_run {_ _} _ _ _.
+Arguments ω_run {_ _} _ _ _.
+Arguments prod {_ _} _ _.
+
+Definition wire Σ Λ' Λ (m1 : Machine Σ Λ') (m2 : Machine Λ' Λ) :
+  Machine Σ Λ :=
+  mkMachine (S m1 * S m2)
+            (S0 m1, S0 m2)
+            (fun s σ =>
+               (let (s1, s2) := s in
+                let s1' := δ m1 s1 σ in
+                let λ1s := ω m1 s1 σ in
+                let s2' := δ_run m2 s2 λ1s in
+                (s1', s2')))
+            (fun s σ =>
+               (let (s1, s2) := s in
+                let s1' := δ m1 s1 σ in
+                let λ1s := ω m1 s1 σ in
+                ω_run m2 s2 λ1s)).
+
+Arguments wire {_ _ _} _ _.
