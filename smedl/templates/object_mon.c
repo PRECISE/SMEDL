@@ -83,16 +83,6 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
         exit(EXIT_FAILURE);
     }
 
-    //binding several binding keys
-    for(int i = 0;i<bindingkeyNum;i++){
-        amqp_queue_bind(monitor->recv_conn, 1, queuename,
-            amqp_cstring_bytes(monitor->amqp_exchange), amqp_cstring_bytes(bindingkeys[i]),
-            amqp_empty_table);
-    }
-
-    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Binding queue");
-    amqp_basic_consume(monitor->recv_conn, 1, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
-    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Consuming");
     monitor->send_conn = amqp_new_connection();
     monitor->send_socket = amqp_tcp_socket_new(monitor->send_conn);
     if (!monitor->send_socket) {
@@ -109,6 +99,17 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
     amqp_exchange_declare(monitor->send_conn, 1, amqp_cstring_bytes(monitor->amqp_exchange),
         amqp_cstring_bytes("topic"), 0, 0, 0, 0, amqp_empty_table);
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn), "Declaring exchange");
+
+    //binding several binding keys
+    for(int i = 0;i<bindingkeyNum;i++){
+      amqp_queue_bind(monitor->recv_conn, 1, queuename,
+                      amqp_cstring_bytes(monitor->amqp_exchange), amqp_cstring_bytes(bindingkeys[i]),
+                      amqp_empty_table);
+    }
+
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Binding queue");
+    amqp_basic_consume(monitor->recv_conn, 1, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Consuming");
 
     put_{{ obj|lower }}_monitor(monitor);
     return monitor;
