@@ -489,10 +489,6 @@ class MonitorGenerator(object):
         out_c.close()
 
         # Copy pre-written static helper files to the output path
-        cfg = open(os.path.splitext(filename)[0] + '_mon.cfg', 'w')
-        cfg.write(env.get_template('object_mon.cfg').render())
-        cfg.close()
-
         a_h = open(os.path.dirname(filename) + '/actions.h', 'w')
         a_h.write(env.get_template('actions.h').render())
         a_h.close()
