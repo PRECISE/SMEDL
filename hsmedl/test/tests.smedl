@@ -1,0 +1,13 @@
+object aascllwl
+state
+  bool nlenshiy;
+events
+  imported error swehegge() = 22.232302490215563;
+scenarios
+  bhnaetca:
+    fpintanv -> swehegge(hhobnhnt) when true -> fpintanv
+             else -> erloecst
+  iehnfptc:
+    arhaessv -> swehegge when null { ejdakttm-- } -> arhaessv
+    arhaessv -> swehegge(aaahfdui) when null { raise ellaedkn(95) }
+             -> swehegge when esteitca -> arhaessv

@@ -12,6 +12,7 @@ import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Set (Set)
 import qualified Data.Set as S
+import           Debug.Trace
 import           Text.Parsec hiding ((<|>), optional)
 import           Text.Parsec.Expr
 import           Text.Parsec.Language (emptyDef)
@@ -28,6 +29,9 @@ import qualified Text.Parsec.Token as P
 truth :: Alternative f => f a -> f Bool
 truth p = True <$ p <|> pure False
 
+traceP :: String -> Parser ()
+traceP = traceM
+
 ------------------------------------------------------------------------------
 -- Fundamental structures of the SMEDL language for Parsec
 ------------------------------------------------------------------------------
@@ -42,8 +46,9 @@ smedlDef = emptyDef
     , identLetter    = alphaNum <|> oneOf "_'"
     , opStart        = opLetter smedlDef
     , opLetter       = oneOf "=|&/<>+-*/%~![].:;,"
-    , reservedOpNames= [ "=", "||", "&&", "==", "/=", "<", "<=", ">"
-                       , ">=", "+", "-", "*", "/", "%", "~", "!", "->" ]
+    , reservedOpNames= [ "=", "++", "--", "||", "&&", "==", "/=", "<"
+                       , "<=", ">", ">=", "+", "-", "*", "/", "%", "~"
+                       , "!", "->" ]
     , reservedNames  = [ "when", "object", "identity", "state"
                        , "events", "scenarios", "raise", "imported"
                        , "internal", "exported", "int", "pointer" ]
@@ -148,15 +153,13 @@ instance Ord Atom where
     compare ANull _               = GT
 
 parseAtom :: Parser Atom
-parseAtom
-    =  ABool True <$ reserved "true"
-   <|> ABool False <$ reserved "false"
-   <|> ANull <$ reserved "null"
-   <|> naturalOrFloat <&> \case
-           Left i -> AInt i
-           Right f -> AFloat f
-   <|> AIdent <$> identifier
-   <?> "atom"
+parseAtom = choice
+    [ ABool True <$ reserved "true"
+    , ABool False <$ reserved "false"
+    , ANull <$ reserved "null"
+    , naturalOrFloat <&> \case Left i  -> AInt i
+                               Right f -> AFloat f
+    , AIdent <$> identifier ] <?> "atom"
 
 {- expression = or_ex:and_expr {'||' or_ex:and_expr}+ | @:and_expr ;
    expression_list = @:expression {',' @:expression}* | () ;
@@ -199,6 +202,7 @@ data Expr
     | EIdx  Atom Int             -- jww (2016-08-15): TODO
     | EApp  Atom [Expr]          -- jww (2016-08-15): TODO
     | EDot  Expr Expr            -- jww (2016-08-15): TODO
+    deriving Eq
 
 instance Show Expr where
     show (EOr  x1 x2)  = show x1 ++ " || " ++ show x2
@@ -246,10 +250,12 @@ exprTable =
     ]
 
 parseTerm :: Parser Expr
-parseTerm = parens parseExpr <|> EAtom <$> parseAtom <?> "term"
+parseTerm = traceP "parseTerm" >>
+    parens parseExpr <|> EAtom <$> parseAtom <?> "term"
 
 parseExpr :: Parser Expr
-parseExpr = buildExpressionParser exprTable parseTerm <?> "expr"
+parseExpr = traceP "parseExpr" >>
+    buildExpressionParser exprTable parseTerm <?> "expr"
 
 {- event_definition =
        error:['error'] event_id:identifier ['(' params:parameter_list ')']
@@ -270,6 +276,7 @@ data EventDef = EventDef
     , eventId     :: String
     , eventParams :: [Type]
     , eventDef    :: Maybe Expr }
+    deriving Eq
 
 instance Show EventDef where
     show EventDef {..}
@@ -286,10 +293,11 @@ instance Show EventDef where
 
 parseEventDefs :: Parser [EventDef]
 parseEventDefs = do
-    kind <-  Internal <$ reserved "internal"
-        <|> Imported <$ reserved "imported"
-        <|> Exported <$ reserved "exported"
-        <?> "event definition kind"
+    traceP "parseEventDefs"
+    kind <- choice
+        [ Internal <$ reserved "internal"
+        , Imported <$ reserved "imported"
+        , Exported <$ reserved "exported" ] <?> "event definition kind"
     isErr <- truth (reserved "error") <?> "error keyword"
     xs <- commaSep1 $ do
         name   <- identifier <?> "event name"
@@ -319,22 +327,24 @@ parseEventDefs = do
    call_stmt = target:target '(' expr_list+:expression_list ')' ; -}
 
 data StateUpdate
-    = SUIncrement Expr
-    | SUDecrement Expr
-    | SUAssign Expr Expr
+    = SUIncrement String
+    | SUDecrement String
+    | SUAssign String Expr
+    deriving Eq
 
 instance Show StateUpdate where
-    show (SUIncrement x)  = show x ++ "++"
-    show (SUDecrement x)  = show x ++ "--"
-    show (SUAssign x1 x2) = show x1 ++ " = " ++ show x2
+    show (SUIncrement x)  = x ++ "++"
+    show (SUDecrement x)  = x ++ "--"
+    show (SUAssign x1 x2) = x1 ++ " = " ++ show x2
 
 parseStateUpdate :: Parser StateUpdate
 parseStateUpdate = do
-    x <- parseExpr
-    SUIncrement x <$ reservedOp "++"
-        <|> SUDecrement x <$ reservedOp "--"
-        <|> SUAssign x <$> (reservedOp "=" *> parseExpr)
-        <?> "state update"
+    traceP "parseStateUpdate"
+    x <- identifier <?> "variable name"
+    choice
+        [ SUIncrement x <$ reservedOp "++"
+        , SUDecrement x <$ reservedOp "--"
+        , reservedOp "=" *> (SUAssign x <$> parseExpr) ] <?> "state update"
 
 -- jww (2016-08-15): TODO: Teng writes: "Moreover, the meaning of CallStmt is
 -- to call the helper function. Maybe you should add a element in namespaces
@@ -354,11 +364,12 @@ data Action
       -- jww (2016-08-15): The arguments should be typed based on the defined
       -- event within the environment.
     | ACallStmt String [Expr]
+    deriving Eq
 
 showArgs :: [String] -> String
 showArgs args = if null args
                     then ""
-                    else "(" ++ intercalate ", " (map show args) ++ ")"
+                    else "(" ++ intercalate ", " args ++ ")"
 
 showExprArgs :: [Expr] -> String
 showExprArgs = showArgs . map show
@@ -369,19 +380,17 @@ instance Show Action where
     show (AInstantiation _ _)    = "AInstantiation"
     show (ACallStmt _ _)         = "ACallStmt"
 
-parseActionRaise :: Parser Action
-parseActionRaise = do
-    reserved "raise"
-    ARaiseStmt <$> identifier
-               <*> parens (commaSep parseExpr)
-               <?> "raise action"
-
 parseAction :: Parser Action
-parseAction =  parseActionRaise
-           -- <|> -- jww (2016-08-21): parseActionInstantiation NYI
-           -- <|> -- jww (2016-08-21): parseActionCallStmt NYI
-           <|> AStateUpdate <$> parseStateUpdate
-           <?> "action"
+parseAction = do
+    traceP "parseAction"
+    -- <|> -- jww (2016-08-21): parseActionInstantiation NYI
+    -- <|> -- jww (2016-08-21): parseActionCallStmt NYI
+    choice
+        [ reserved "raise" *>
+          (ARaiseStmt <$> (identifier <?> "event name")
+                      <*> (parens (commaSep parseExpr) <|> return [])
+                      <?> "raise action")
+        , AStateUpdate <$> parseStateUpdate ] <?> "action"
 
 {- event_instance = expression:expression ['when' when:expression] ; -}
 
@@ -389,6 +398,7 @@ data EventInstance = EventInstance
     { eventName     :: String
     , eventArgs     :: [String]
     , eventWhenExpr :: Maybe Expr }
+    deriving Eq
 
 instance Show EventInstance where
     show EventInstance {..}
@@ -399,16 +409,18 @@ instance Show EventInstance where
                Nothing -> "")
 
 parseEventInstance :: String -> Parser EventInstance
-parseEventInstance ident = EventInstance
-    <$> pure ident
-    <*> (parens (commaSep identifier) <|> return [])
-    <*> (Just <$> (reserved "when" *> parseExpr) <|> return Nothing)
+parseEventInstance ident = traceP "parseEventInstance" >>
+    EventInstance
+        <$> pure ident
+        <*> (parens (commaSep (identifier <?> "event name")) <|> return [])
+        <*> (Just <$> (reserved "when" *> parseExpr) <|> return Nothing)
 
 {- step_definition = step_event:event_instance [step_actions:actions] ; -}
 
 data Step = Step
     { stepEvent   :: EventInstance
     , stepActions :: [Action] }
+    deriving Eq
 
 showActions :: [Action] -> String
 showActions acts | null acts = ""
@@ -418,9 +430,11 @@ instance Show Step where
     show Step {..} = show stepEvent ++ showActions stepActions
 
 parseStep :: String -> Parser Step
-parseStep ident = Step
-    <$> parseEventInstance ident
-    <*> (braces (semiSep1 parseAction) <|> return [])
+parseStep ident = do
+    traceP "parseStep"
+    eventInst <- parseEventInstance ident
+    acts <- braces (semiSep1 parseAction) <|> return []
+    return $ Step eventInst acts
 
 {- trace_definition
        = start_state:identifier '->'
@@ -433,6 +447,7 @@ data Trace = Trace
     , endState    :: String
     , elseActions :: [Action]
     , elseState   :: Maybe String }
+    deriving Eq
 
 instance Show Trace where
     show Trace {..}
@@ -447,21 +462,21 @@ instance Show Trace where
         leader = "\n" ++ replicate (length startState + 1) ' '
 
 parseTrace :: [EventDef] -> Parser Trace
-parseTrace defs = try $ do
+parseTrace defs = trace "parseTrace" $ do
     start_state <- identifier <?> "start state"
     _ <- char ':' *> fail "scenario keyword" <|> pure ()
     reservedOp "->"
-    trace_steps <- (<?> "trace steps") $ many1 $ try $ do
-        ident <- identifier
+    trace_steps <- many1 $ do
+        ident <- identifier <?> "possible event name"
         if any (\ev -> eventId ev == ident) defs
-        then parseStep ident <* reservedOp "->"
-        else fail "Event name did not match"
+            then parseStep ident <* reservedOp "->"
+            else fail "Event name did not match"
     end_state <- identifier <?> "end state"
     (else_actions, else_state) <-
         (do reserved "else"
             acts <- braces (many1 (parseAction <* reservedOp ";")) <|> return []
             reservedOp "->"
-            name <- identifier
+            name <- identifier <?> "else state name"
             return (acts, Just name)) <|> return ([], Nothing)
     return $ Trace start_state trace_steps end_state else_actions else_state
 
@@ -473,6 +488,7 @@ data Scenario = Scenario
     { isAtomic   :: Bool
     , scenarioId :: String
     , traces     :: [Trace] }       -- non-empty
+    deriving Eq
 
 instance Show Scenario where
     show Scenario {..}
@@ -481,10 +497,12 @@ instance Show Scenario where
        ++ indent 2 (intercalate "\n" (map show traces))
 
 parseScenario :: [EventDef] -> Parser Scenario
-parseScenario defs = Scenario
-    <$> ((True <$ reserved "atomic") <|> return False)
-    <*> identifier
-    <*> (reservedOp ":" *> many1 (parseTrace defs))
+parseScenario defs = do
+    traceP "parseScenario"
+    atomic <- (True <$ reserved "atomic") <|> return False
+    name   <- (identifier <?> "scenario name") <* reservedOp ":"
+    traces <- many1 (parseTrace defs)
+    return $ Scenario atomic name traces
 
 {- import_definition = '#import' import_id:identifier ;
    object =
@@ -505,7 +523,6 @@ parseScenario defs = Scenario
 data Type
     = TInt
     | TFloat
-    | TIdent
     | TBool
     | TPointer
     | TUser String
@@ -513,13 +530,14 @@ data Type
 
 instance Show Type where
     show TInt      = "int"
+    show TFloat    = "float"
+    show TBool     = "bool"
     show TPointer  = "pointer"
     show (TUser s) = s
 
 atomType :: Atom -> Type
 atomType (AInt _)   = TInt
 atomType (AFloat _) = TFloat
-atomType (AIdent _) = TIdent
 atomType (ABool _)  = TBool
 atomType ANull      = TPointer
 
@@ -530,6 +548,7 @@ data Object = Object
     , variables  :: Map String Type      -- name -> type
     , events     :: [EventDef]
     , scenarios  :: [Scenario] }         -- non-empty
+    deriving Eq
 
 indent :: Int -> String -> String
 indent n = (replicate n ' ' ++)
@@ -545,7 +564,9 @@ instance Show Object where
        ++ (if M.null variables
            then ""
            else "state\n" ++ indent 2 (showVars variables))
-       ++ ("events\n" ++ indent 2 (intercalate "\n" (map show events)))
+       ++ (if null events
+           then ""
+           else "events\n" ++ indent 2 (intercalate "\n" (map show events)))
        ++ ("scenarios\n" ++ indent 2 (intercalate "\n" (map show scenarios)))
       where
           showVars =
@@ -556,28 +577,31 @@ parseImports :: Parser [String]
 parseImports = return []
 
 parseType :: Parser Type
-parseType
-    =  TInt <$ reserved "int"
-   <|> TPointer <$ reserved "pointer"
-   <|> TUser <$> identifier
+parseType = choice
+    [ TInt     <$ reserved "int"
+    , TPointer <$ reserved "pointer"
+    , TUser    <$> (identifier <?> "user type name") ] <?> "type"
 
 parseVarDecl :: Parser (Type, [String]) -- type, names
-parseVarDecl = (,) <$> parseType <*> commaSep1 identifier
+parseVarDecl = traceP "parseVarDecl" >>
+    (,) <$> parseType <*> commaSep1 (identifier <?> "variable name")
 
 parseVarDecls :: Parser (Map String Type)
-parseVarDecls =
+parseVarDecls = traceP "parseVarDecls" >>
     foldr (\(t, ns) -> foldr (\n -> M.insert n t) ?? ns) mempty
         <$> many1 (parseVarDecl <* reservedOp ";")
         <?> "variable declarations"
 
 parseObject :: Parser Object
 parseObject = do
+    traceP "parseObject"
     imps   <- parseImports
-    name   <- reserved "object" *> identifier
+    name   <- reserved "object" *> identifier <?> "object name"
     idents <- reserved "identity" *> parseVarDecls <|> pure mempty
     state  <- reserved "state" *> parseVarDecls <|> pure mempty
-    evs    <- reserved "events" *>
-              (concat <$> many1 (parseEventDefs <* reservedOp ";"))
+    evs    <- reserved "events"
+                  *> (concat <$> many1 (parseEventDefs <* reservedOp ";"))
+                  <|> pure mempty
     scs    <- reserved "scenarios" *> many1 (parseScenario evs)
     eof                         -- confirm nothing more to parse
     return $ Object imps name idents state evs scs
@@ -806,19 +830,20 @@ runMonitor obj mon ev = case go mon ev of
     Right (_, Evolution k events) -> Right (k mon, events)
   where
     go :: Monitor -> Event -> Either String (EventDef, Evolution)
-    go mon ev =
-        case lookupEventDef obj ev of
+    go mon' ev' =
+        case lookupEventDef obj ev' of
             Nothing ->
-                Left $ "Event (" ++ show ev
+                Left $ "Event (" ++ show ev'
                     ++ ") does not match any known event definitions"
             Just edef -> do
                 -- Loop through all the scenario steps, looking for those that
                 -- match on the current state. If so, process them (which will
                 -- include logic to test whether the step is indeed applicable,
                 -- based on the input event and monitor state).
-                evolutions <- mapM (\s -> runScenario s mon ev) (scenarios obj)
+                evolutions <- mapM (\s -> runScenario s mon' ev')
+                                   (scenarios obj)
                 let evolve = mconcat evolutions
-                evolve' <- apply mon evolve
+                evolve' <- apply mon' evolve
                 return (edef, evolve')
 
     apply :: Monitor -> Evolution -> Either String Evolution
