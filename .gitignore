@@ -19,3 +19,6 @@ pip-selfcheck.json
 pyvenv.cfg
 *.log
 *.egg-info/
+hsmedl/Smedl
+hsmedl/*.ho
+hsmedl/*.hi
