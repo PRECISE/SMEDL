@@ -18,6 +18,7 @@ import re
 import shutil
 import string
 from pathlib import Path
+from .architecture import *
 
 # Turn a list of arguments into an argument string for using in a generated
 # method call. prefix determines whether a leading comma is prepended when the
@@ -41,9 +42,13 @@ class MonitorGenerator(object):
         self._implicitErrors = implicit
         self.pedlAST = None
         self.smedlAST = None
+        self.a4smedlAST = None
+        self.monitorInterface = []
+        self.archSpec = []
+        self.identities = []
 
 
-    def generate(self, pedlsmedlName, helper=None):
+    def generate(self, pedlsmedlName, a4smedlName, helper=None):
         # Parse the PEDL, if it exists
         pedlPath = Path(pedlsmedlName + '.pedl')
         if pedlPath.exists():
@@ -86,13 +91,38 @@ class MonitorGenerator(object):
             if '.smedl' in pedlsmedlName or '.pedl' in pedlsmedlName:
                 raise ValueError('Did you accidentally include .smedl or .pedl in the input filename? Try again without including the extension.')
             raise ValueError('No matching SMEDL file found.')
-
+        
+        # Parser the architecture, it exists
+        if not a4smedlName == None:
+            a4smedlPath = Path(a4smedlName + '.a4smedl')
+            if a4smedlPath.exists():
+                with a4smedlPath.open() as a4smedlFile:
+                    a4smedlText = a4smedlFile.read()
+                a4smedlPar = a4smedlParser(parseinfo=False,comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
+                self.a4smedlAST = a4smedlPar.parse(a4smedlText,'top',filename=a4smedlPath,trace=False,whitespace=None)
+                if self._printStructs:
+                    print('A4SMEDL AST:')
+                    print(self.a4smedlAST)
+                    print('\nA4SMEDL JSON:')
+                    print(json.dumps(self.a4smedlAST,indent=2))
+        
         # Process the SMEDL AST
         self._symbolTable = SmedlSymbolTable()
         self._parseToSymbolTable('top', self.smedlAST)
         self._getParameterNames(self.smedlAST)
         allFSMs = self._generateFSMs(self.smedlAST)
-
+        
+        # procss architecture AST
+        self._parseArchitecture('top',self.a4smedlAST)
+        
+        #for mon in self.monitorInterface:
+        #    print(mon)
+        #    print('\n')
+        
+        #for pattern in self.archSpec:
+        #    print(pattern)
+        #    print('\n')
+        
         # Output the internal symbol table and FSMs
         if self._printStructs:
             print('\nSMEDL Symbol Table:')
@@ -104,6 +134,372 @@ class MonitorGenerator(object):
 
         self._outputToTemplate(allFSMs, pedlsmedlName, helper, self.pedlAST)
 
+    def _parseInter(self,object):
+        if isinstance(object, AST):
+            for k,v in list(object.items()):
+                if k == 'interfaces':
+                    if isinstance(v, list):
+                        for mon in v:
+                            self._makeMonitor(mon)
+
+
+    def _parseArchitecture(self, label, object):
+        if isinstance(object, AST):
+            for k, v in list(object.items()):
+                if k == 'monitor_declaration':
+                    self._parseInter(v)
+                elif k == 'archSpec':
+                    self._parseSpec(v)
+
+
+
+    def _makeMonitor(self,object):
+        if isinstance(object,list):
+            for mon in object:
+                monId = None
+                para = []
+                imported = []
+                exported = []
+                montype = None
+                for k,v in list(mon.items()):
+                    if k == 'mon_type':
+                        monType = v
+                    elif k == 'monitor_identifier':
+                        monId = v
+                    elif k == 'params':
+                        if not v == None:
+                            para = v
+                    elif k == 'imported_events':
+                        imported = self._makeEventList(v)
+                    elif k == 'exported_events':
+                        #print('exported')
+                        exported = self._makeEventList(v)
+                            #print(v)
+                interface = Interface(monType,monId,para,imported,exported)
+                #print(interface)
+                self.monitorInterface.append(interface)
+
+    def _makeEventList(self,object):
+        lst = []
+        if object == None:
+            return lst
+        if isinstance(object,list):
+            for events in object:
+                if isinstance(events,list):
+                    for ev in events:
+                        if isinstance(ev,AST):
+                            err = None
+                            ev_id = None
+                            para = []
+                            for k,v in list(ev.items()):
+                                if k == 'error':
+                                    err = v
+                                elif k == 'event_id':
+                                    ev_id = v
+                                elif k == 'params' :
+                                    if v == None :
+                                        para = []
+                                    elif isinstance(v,list):
+                                        para = v
+                                    elif isinstance(v,str):
+                                            para = [v]
+                            event = Event(err,ev_id,para)
+                            lst.append(event)
+                elif isinstance(events,AST):
+                    err = None
+                    ev_id = None
+                    para = []
+                    for k,v in list(events.items()):
+                        if k == 'error':
+                            err = v
+                        elif k == 'event_id':
+                            ev_id = v
+                        elif k == 'params' :
+                            if v == None :
+                                para = []
+                            elif isinstance(v,list):
+                                para = v
+                            elif isinstance(v,str):
+                                para = [v]
+                    event = Event(err,ev_id,para)
+                    lst.append(event)
+
+        return lst
+
+    def _parseSpec(self,object):
+        if isinstance(object, AST):
+            
+            for k,v in list(object.items()):
+                if k == 'conn_expr':
+                    #print(v)
+                    #print('\n')
+                    if isinstance(v, list):
+                        #i = 0
+                        for conn in v:
+                            #print(i)
+                            self._makeConnExpr(conn)
+    
+
+    def _makeConnExpr(self,object):
+        if isinstance(object, AST):
+            
+            conn_name = None
+            s_i = None
+            t_i = None
+            t_e = None
+            for k,v in list(object.items()):
+                if k == 'connection':
+                    conn_name = v
+                elif k == 'source_machine_identifier':
+                    s_i = v
+                elif k == 'source_event_identifier':
+                    s_e == v
+                elif k == 'target_machine_identifier':
+                    t_i = v
+                elif k == 'target_event_identifier':
+                    t_e = v
+                elif k == 'pattern_spec':
+                    pa_spec = self._makePatternSpec(v)
+            if conn_name == None:
+                conn_name = s_i + '_' + s_e
+            if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
+                raise ValueError('attributes of events do not match')
+            connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
+            #print(connEx)
+            self.archSpec.append(connEx)
+        elif isinstance(object,list):
+            conn_name = None
+            s_i = None
+            t_i = None
+            t_e = None
+            for obj in object:
+                for k,v in list(obj.items()):
+                    pa_spec = []
+                    if k == 'connection':
+                        conn_name = v
+                    elif k == 'source_machine_identifier':
+                        s_i = v
+                    elif k == 'source_event_identifier':
+                        s_e = v
+                    elif k == 'target_machine_identifier':
+                        t_i = v
+                    elif k == 'target_event_identifier':
+                        t_e = v
+                    elif k == 'pattern_spec':
+                        pa_spec = self._makePatternSpec(v)
+                if conn_name == None:
+                    conn_name = s_i + '_'+s_e
+            #TODO:match number of attributes of the source and target events
+                if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
+                    raise ValueError('attributes of events do not match')
+                connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
+                #print(connEx)
+                self.archSpec.append(connEx)
+
+    def _makePatternSpec(self,object):
+        lst = []
+        if object == None:
+            return lst
+        if isinstance(object,AST):
+            lt = None
+            li = -1
+            rt = None
+            ri = -1
+            for k,v in list(object.items()):
+                if k == 'left':
+                    for kk,vv in list(v.items()):
+                        if kk == 'term_id':
+                            lt = vv
+                        elif kk == 'term_index':
+                            li = int(vv)
+                elif k == 'operator':
+                    op = v
+                elif k == 'right' :
+                    for kk,vv in list(v.items()):
+                        if kk == 'term_id':
+                            rt = vv
+                        elif kk == 'term_index':
+                            ri = int(vv)
+            spec = PatternExpr()
+            spec.addOperator(op)
+            spec.addTerm(lt,li,rt,ri)
+            lst.append(spec)
+
+        elif isinstance(object,list):
+            lt = None
+            li = -1
+            rt = None
+            ri = -1
+            for event in object:
+                for k,v in list(event.items()):
+                    if k == 'left':
+                        for kk,vv in list(v.items()):
+                            if kk == 'term_id':
+                                lt = vv
+                            elif kk == 'term_index':
+                                li = int(vv)
+                    elif k == 'operator':
+                        op = v
+                    elif k == 'right' :
+                        for kk,vv in list(v.items()):
+                            if kk == 'term_id':
+                                rt = vv
+                            elif kk == 'term_index':
+                                ri = int(vv)
+                spec = PatternExpr()
+                spec.addOperator(op)
+                spec.addTerm(lt,li,rt,ri)
+                lst.append(spec)
+        
+        return lst
+
+    def _checkConnExprDef(self,si,se,ti,te):
+        left_mon = None
+        left_ev = None
+        right_mon = None
+        right_ev = None
+        for mon in self.monitorInterface:
+            if si == mon.id:
+                for ev in mon.exportedEvents:
+                    if ev.event_id == se:
+                        left_ev = ev.params
+                        break
+                left_mon = mon
+            elif ti == mon.id:
+                for ev in mon.importedEvents:
+                    if ev.event_id == se:
+                        right_ev = ev.params
+                        break
+                right_mon = mon
+        if left_mon == None or right_mon == None or not left_ev == right_ev:
+            return False
+        return True
+
+    def _checkBound(self,conn,term,index):
+        if term == conn.sourceMachine or term == conn.targetMachine:
+            for mon in self.monitorInterface:
+                if term == mon.id:
+                    if index < len(mon.params):
+                        return True
+            return False
+        else:
+            #term must be in sourceMachine.exported events
+            for mon in self.monitorInterface:
+                if conn.sourceMachine == mon.id:
+                    for ev in  mon.exportedEvents:
+                        if ev.event_id == term:
+                            if index < len(ev.params):
+                                return True
+            return False
+
+    def _getBindingKeysNum(self):
+        num = 0
+        name = self._symbolTable.getSymbolsByType('object')[0]
+        for conn in self.archSpec:
+            if name==conn.targetMachine:
+                num=num+1
+        return num
+
+    def _getMachine(self,name):
+        for mon in self.monitorInterface:
+            if name == mon.id:
+                return mon
+        return None
+
+    def _getSourceEvent(self,machine,event):
+        for mon in self.monitorInterface:
+            if machine == mon.id:
+                for ev in  mon.exportedEvents:
+                    if ev.event_id == event:
+                            return ev
+        return None
+
+    def _getIdentityName(self,index):
+        id = 0
+        for name in self.identities:
+            if id == index:
+                return name
+            id = id + 1
+        return None
+    
+    def _getBindingKeys(self):
+        lst = []
+        name = self._symbolTable.getSymbolsByType('object')[0]
+        #print(name)
+        k = 0
+        for conn in self.archSpec:
+            b_str = 'bindingkeys['+str(k)+']'
+            if name==conn.targetMachine:
+                
+                p_str = b_str + '=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy('+b_str+',"'+conn.connName+'");\n'
+                sourceMachine = self._getMachine(conn.sourceMachine)
+                if sourceMachine == None:
+                    raise ValueError('source machine not exist')
+                sourceEvent = self._getSourceEvent(conn.sourceMachine,conn.sourceEvent)
+                if sourceEvent == None:
+                    raise ValueError('source event not exist')
+                if conn.patternSpec == [] or conn.patternSpec == None:
+                    lst.append(p_str+'strcat('+b_str+',".#");\n')
+                else:
+                    machineIndexDic = {}
+                    eventIndexDic = {}
+                    #TODO: generate predicates on the machine and event, add corresponding filter, for each target event, union all predicates
+                    for p_spec in conn.patternSpec:
+                        leftterm = p_spec.getLeftTerm()
+                        rightterm = p_spec.getRightTerm()
+                        if leftterm == rightterm or (not leftterm == conn.targetMachine and not rightterm == conn.targetsMachine) or (leftterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ) or (rightterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ):
+                            raise ValueError('pattern expression syntax error')
+                        else:
+                            leftindex = p_spec.getLeftIndex()
+                            rightindex = p_spec.getRightIndex()
+                            if self._checkBound(conn,leftterm,leftindex) and self._checkBound(conn,rightterm,rightindex):
+                                if leftterm == conn.targetMachine:
+                                    val = self._getIdentityName(leftindex)
+                                    if rightterm == conn.sourceEvent:
+                                        eventIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                    elif rightterm == conn.sourceMachine:
+                                        machineIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                elif rightterm == conn.targetMachine:
+                                    #val = self._getIdentityName(rightindex)
+                                    if leftterm == conn.sourceEvent:
+                                        eventIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                    elif leftterm == conn.sourceMachine:
+                                        machineIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                            else:
+                                raise ValueError('out of bound in pattern expression')
+                    #build binding key and add it to lst
+                    machineIndex = 0
+                    eventIndex = 0
+                    
+                    while machineIndex < len(sourceMachine.params):
+                        if not machineIndex in machineIndexDic.keys():
+                            p_str += '\tstrcat('+b_str+',".*");\n'
+                        else:
+                            p_str += '\tstrcat('+b_str+',".");\n'
+                            p_str += '\tstrcat('+b_str+',itoa(*(int*)('+machineIndexDic[machineIndex]+'));\n'
+                        machineIndex = machineIndex + 1
+                    
+                    p_str +='\tstrcat('+b_str+',".'+sourceEvent.event_id+'");\n'
+                    while eventIndex < len(sourceEvent.params):
+                        if not eventIndex in eventIndexDic.keys():
+                            p_str += '\tstrcat('+b_str+',".*");\n'
+                        else:
+                            p_str += '\tstrcat('+b_str+',".");\n'
+                            p_str += '\tstrcat('+b_str+',itoa(*(int*)('+eventIndexDic[machineIndex]+')));\n'
+                        eventIndex = eventIndex + 1
+                    lst.append(p_str)
+                    #print(p_str)
+                    k = k + 1
+        bindingkey = ''
+        i = 0
+        #print(lst)
+        for s in lst:
+            bindingkey += s
+            i = i+1
+        if len(lst)==0:
+            bindingkey+='bindingkeys[0]=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy(bindingkeys[0],"#");\n'
+        return bindingkey
+
 
     def _parseToSymbolTable(self, label, object):
         if isinstance(object, AST):
@@ -114,8 +510,10 @@ class MonitorGenerator(object):
                     if isinstance(v, list):
                         for var in v:
                             self._symbolTable.add(var, {'type': 'identity', 'datatype': object['type']})
+                            self.identities.append(var)
                     else:
                         self._symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})
+                        self.identities.append(v)
                 elif label == 'state' and k == 'var':
                     if isinstance(v, list):
                         for var in v:
@@ -355,8 +753,55 @@ class MonitorGenerator(object):
         values['signatures']= []
         values['event_code'] = []
         values['event_msg_handlers'] = []
-        values['bindingkeys_num'] = 1 # TODO: Make these customizable
-        values['bindingkeys_str'] = '"#"'
+        if self._getBindingKeysNum() == 0:
+            values['bindingkeys_num'] = 1 # TODO: Make these customizable
+        else:
+            values['bindingkeys_num'] = self._getBindingKeysNum()# TODO: Make these customizable
+
+        values['b_keys'] = self._getBindingKeys()
+
+        #construct event_msg_handlers
+        
+        name = self._symbolTable.getSymbolsByType('object')[0]
+        for conn in self.archSpec:
+            if conn.targetMachine == name:
+                monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
+                [{'name': p['name'], 'c_type': self._convertTypeForC(p['type'])} for p in self._symbolTable.get(conn.targetEvent, 'params')]
+                msg_handler = []
+                if len(values['event_msg_handlers']) == 0:
+                    cond = 'if'
+                else:
+                    cond = '                else if'
+                
+                msg_handler.append(cond + ' (!strcmp(eventName,"%s")) {' % conn.connName)
+                
+                sscanfStr = '%s'
+                sscanfAttrs = 'e'
+                retAttrs = ''
+                for p in monitorParams[1:]:
+                    msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
+                    if p['c_type'] == 'int':
+                        sscanfStr += ' %d'
+                    elif p['c_type'] == 'char':
+                        sscanfStr += ' %s'
+                    elif p['c_type'] == 'float':
+                        exit("this should never happen. there is a missing float->double conversion.")
+                    elif p['c_type'] == 'double':
+                        sscanfStr += ' %lf'
+                    sscanfAttrs += ', &' + p['name']
+                    retAttrs += ', ' + p['name']
+                
+                
+                msg_handler.append('                    int ret = sscanf(string, "' + sscanfStr + '", ' + sscanfAttrs + ');')
+                msg_handler.append('                    if (ret == ' + str(len(monitorParams)) + ') {')
+                msg_handler.append('                        ' + obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');')
+                msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), conn.targetEvent))
+                msg_handler.append('                    }')
+                msg_handler.append('                }')
+                
+                values['event_msg_handlers'].append('\n'.join(msg_handler))
+                    
+        
 
         for m in methods:
             eventFunction = []
@@ -407,34 +852,34 @@ class MonitorGenerator(object):
                 eventFunction.append('}')
 
                 # Build event message handler block for incoming RabbitMQ messages
-                msg_handler = []
-                if len(values['event_msg_handlers']) == 0:
-                    cond = 'if'
-                else:
-                    cond = '                else if'
-                msg_handler.append(cond + ' (!strcmp(eventName,"%s_%s")) {' % (obj.lower(), m))
-                sscanfStr = '%s'
-                sscanfAttrs = 'e'
-                retAttrs = ''
-                for p in monitorParams[1:]:
-                    msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
-                    if p['c_type'] == 'int':
-                        sscanfStr += ' %d'
-                    elif p['c_type'] == 'char':
-                        sscanfStr += ' %s'
-                    elif p['c_type'] == 'float':
-                        exit("this should never happen. there is a missing float->double conversion.")
-                    elif p['c_type'] == 'double':
-                        sscanfStr += ' %lf'
-                    sscanfAttrs += ', &' + p['name']
-                    retAttrs += ', ' + p['name']
-                msg_handler.append('                    int ret = sscanf(string, "' + sscanfStr + '", ' + sscanfAttrs + ');')
-                msg_handler.append('                    if (ret == ' + str(len(monitorParams)) + ') {')
-                msg_handler.append('                        ' + obj.lower() + '_' + m + '(monitor' + retAttrs + ');')
-                msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), m))
-                msg_handler.append('                    }')
-                msg_handler.append('                }')
-                values['event_msg_handlers'].append('\n'.join(msg_handler))
+                #msg_handler = []
+                #if len(values['event_msg_handlers']) == 0:
+                #    cond = 'if'
+                #else:
+                #    cond = '                else if'
+                #msg_handler.append(cond + ' (!strcmp(eventName,"%s_%s")) {' % (obj.lower(), m))
+                #sscanfStr = '%s'
+                #sscanfAttrs = 'e'
+                #retAttrs = ''
+                #for p in monitorParams[1:]:
+                #    msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
+                #    if p['c_type'] == 'int':
+                #       sscanfStr += ' %d'
+                #   elif p['c_type'] == 'char':
+                #        sscanfStr += ' %s'
+                #    elif p['c_type'] == 'float':
+                #        exit("this should never happen. there is a missing float->double conversion.")
+                #   elif p['c_type'] == 'double':
+                #       sscanfStr += ' %lf'
+                #   sscanfAttrs += ', &' + p['name']
+                #   retAttrs += ', ' + p['name']
+                #msg_handler.append('                    int ret = sscanf(string, "' + sscanfStr + '", ' + sscanfAttrs + ');')
+                #msg_handler.append('                    if (ret == ' + str(len(monitorParams)) + ') {')
+                #msg_handler.append('                        ' + obj.lower() + '_' + m + '(monitor' + retAttrs + ');')
+                #msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), m))
+                #msg_handler.append('                    }')
+                #msg_handler.append('                }')
+                #values['event_msg_handlers'].append('\n'.join(msg_handler))
 
             raiseFunction = self._writeRaiseFunction(m, obj)
 
@@ -701,11 +1146,46 @@ class MonitorGenerator(object):
             output.append(sprintf)
             output.append('  char routing_key[256];')
 
-            sprintf_routing = '  sprintf(routing_key, "%s-%s_%s.' % (obj.lower(), obj.lower(), event)
+            #construct routing key
+            name = self._symbolTable.getSymbolsByType('object')[0]
+            connName = None
+            for conn in self.archSpec:
+                if conn.sourceMachine == name and conn.sourceEvent == event:
+                    connName = conn.connName
+                    break
+
+            if connName == None:
+                connName = obj+'_'+ event
+            sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
             # TODO: peter, write functions for printing and parsing monitor identities
             # this cast is broken and wrong, but works as long as we have only one monitor process
-            sprintf_routing += '%ld", (long)monitor->identities['
-            sprintf_routing += '%s_ID]);' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
+            for v in self.identities:
+                sprintf_routing += '.%ld'
+            
+            sprintf_routing += '.'+event
+            if len(evParams) > 0:
+                for p in evParams:
+                    # attributes can only be int
+                    if p[0] == 'int':
+                        sprintf_routing += '.%d'
+                    else:
+                        sprintf_routing += '.0'
+        
+            sprintf_routing+='"'
+            for v in self.identities:
+                print(v)
+                sprintf_routing += ', (long)(*(int*)(monitor->identities['
+                sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
+                sprintf_routing += v.upper() +']))'
+            
+            if len(evParams) > 0:
+                for p in evParams:
+                    # attributes can only be int
+                    if p[0] == 'int':
+                        sprintf_routing+=', %s' % p[1]
+
+            
+            sprintf_routing += ');'
             output.append(sprintf_routing)
             output.append('  send_message(monitor, message, routing_key);')
         output.append('}\n\n')
@@ -740,7 +1220,8 @@ class MonitorGenerator(object):
 
         if len(names) != len(types):
             raise ValueError("Invalid number of parameters for %s" % function)
-        return [{'type':types[i], 'true_name':names[i], 'name':'mon_var_'+names[i]} for i in range(len(names))]
+            #return [{'type':types[i], 'true_name':names[i], 'name':'mon_var_'+names[i]} for i in range(len(names))]
+        return [{'type':types[i], 'true_name':names[i], 'name':names[i]} for i in range(len(names))]
 
 
     def _getParamTypes(self, function, events):
@@ -815,10 +1296,11 @@ def main():
     parser.add_argument('-e', '--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
     # TODO: Add version flag
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="the name of the PEDL and SMEDL files to parse")
+    parser.add_argument('--arch', type = str, metavar="a4smedl_filename", help="the name of architechture file to parse")
     args = parser.parse_args()
 
     mgen = MonitorGenerator(structs=args.structs, debug=args.debug, implicit=args.noimplicit)
-    mgen.generate(args.pedlsmedl, helper=args.helper)
+    mgen.generate(args.pedlsmedl, args.arch, helper=args.helper)
 
 if __name__ == '__main__':
     main()
