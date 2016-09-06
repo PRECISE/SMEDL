@@ -87,16 +87,6 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
         exit(EXIT_FAILURE);
     }
 
-    //binding several binding keys
-    for(int i = 0;i<bindingkeyNum;i++){
-        amqp_queue_bind(monitor->recv_conn, 1, queuename,
-            amqp_cstring_bytes(monitor->amqp_exchange), amqp_cstring_bytes(bindingkeys[i]),
-            amqp_empty_table);
-    }
-
-    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Binding queue");
-    amqp_basic_consume(monitor->recv_conn, 1, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
-    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Consuming");
     monitor->send_conn = amqp_new_connection();
     monitor->send_socket = amqp_tcp_socket_new(monitor->send_conn);
     if (!monitor->send_socket) {
@@ -113,6 +103,17 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     amqp_exchange_declare(monitor->send_conn, 1, amqp_cstring_bytes(monitor->amqp_exchange),
         amqp_cstring_bytes("topic"), 0, 0, 0, 0, amqp_empty_table);
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn), "Declaring exchange");
+
+    //binding several binding keys
+    for(int i = 0;i<bindingkeyNum;i++){
+      amqp_queue_bind(monitor->recv_conn, 1, queuename,
+                      amqp_cstring_bytes(monitor->amqp_exchange), amqp_cstring_bytes(bindingkeys[i]),
+                      amqp_empty_table);
+    }
+
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Binding queue");
+    amqp_basic_consume(monitor->recv_conn, 1, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Consuming");
 
     put_spv_monitor(monitor);
     return monitor;
@@ -287,8 +288,16 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, double mon_var_lat
       }
       break;
 
+    default:
+      raise_error("spv_parse_record", spv_states_names[SPV_PARSE_RECORD_SCENARIO][monitor->state[SPV_PARSE_RECORD_SCENARIO]], "parse_record", "DEFAULT");
+      break;
   }
   switch (monitor->state[SPV_AFTER_END_SCENARIO]) {
+    case SPV_AFTER_END_END:
+        raise_spv_after_end_error(monitor);
+      monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
+      break;
+
     case SPV_AFTER_END_START:
       if(mon_var_ret == -1) {
         raise_spv_test(monitor);
@@ -299,11 +308,9 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_ttime, double mon_var_lat
       }
       break;
 
-    case SPV_AFTER_END_END:
-        raise_spv_after_end_error(monitor);
-      monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
+    default:
+      raise_error("spv_after_end", spv_states_names[SPV_AFTER_END_SCENARIO][monitor->state[SPV_AFTER_END_SCENARIO]], "parse_record", "DEFAULT");
       break;
-
   }
 }
 
@@ -323,6 +330,9 @@ void spv_test(SpvMonitor* monitor) {
       monitor->state[SPV_TEST_SE_SCENARIO] = SPV_TEST_SE_START;
       break;
 
+    default:
+      raise_error("spv_test_se", spv_states_names[SPV_TEST_SE_SCENARIO][monitor->state[SPV_TEST_SE_SCENARIO]], "test", "DEFAULT");
+      break;
   }
 }
 

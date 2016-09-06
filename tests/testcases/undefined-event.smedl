@@ -3,5 +3,4 @@ object Test
         imported foo();
     scenarios
         check:
-
-        Start -> foo { raise bar(); } -> Start
+            Start -> foo { raise bar(); } -> Start
