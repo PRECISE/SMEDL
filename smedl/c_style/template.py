@@ -298,7 +298,7 @@ class CTemplater(object):
                         output.append('        %s\n' % mgen._writeAction(obj, action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
                 output.append('      }\n')
-            elif self._implicitErrors and i == len(transitions)-1:
+            elif mgen._implicitErrors and i == len(transitions)-1:
                 output.append('      else {\n')
                 output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, currentState))
                 output.append('      }\n')
