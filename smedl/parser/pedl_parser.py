@@ -13,11 +13,12 @@
 
 from __future__ import print_function, division, absolute_import, unicode_literals
 
+from grako.buffering import Buffer
 from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 7, 27, 20, 45, 15, 2)
+__version__ = (2016, 8, 29, 15, 33, 41, 0)
 
 __all__ = [
     'pedlParser',
@@ -28,6 +29,28 @@ __all__ = [
 KEYWORDS = set([])
 
 
+class pedlBuffer(Buffer):
+    def __init__(self,
+                 text,
+                 whitespace=None,
+                 nameguard=None,
+                 comments_re=None,
+                 eol_comments_re=None,
+                 ignorecase=None,
+                 namechars='',
+                 **kwargs):
+        super(pedlBuffer, self).__init__(
+            text,
+            whitespace=whitespace,
+            nameguard=nameguard,
+            comments_re=comments_re,
+            eol_comments_re=eol_comments_re,
+            ignorecase=ignorecase,
+            namechars=namechars,
+            **kwargs
+        )
+
+
 class pedlParser(Parser):
     def __init__(self,
                  whitespace=None,
@@ -36,6 +59,7 @@ class pedlParser(Parser):
                  eol_comments_re=None,
                  ignorecase=None,
                  left_recursion=True,
+                 parseinfo=True,
                  keywords=KEYWORDS,
                  namechars='',
                  **kwargs):
@@ -46,10 +70,16 @@ class pedlParser(Parser):
             eol_comments_re=eol_comments_re,
             ignorecase=ignorecase,
             left_recursion=left_recursion,
+            parseinfo=parseinfo,
             keywords=keywords,
             namechars=namechars,
             **kwargs
         )
+
+    def parse(self, text, *args, **kwargs):
+        if not isinstance(text, Buffer):
+            text = pedlBuffer(text, **kwargs)
+        return super(pedlParser, self).parse(text, *args, **kwargs)
 
     @graken('Object')
     def _object_(self):
@@ -68,9 +98,8 @@ class pedlParser(Parser):
         self._positive_closure(block4)
         self.name_last_node('event_defs')
         self._check_eof()
-
         self.ast._define(
-            ['object', 'monitors', 'event_defs'],
+            ['event_defs', 'monitors', 'object'],
             []
         )
 
@@ -88,7 +117,6 @@ class pedlParser(Parser):
         self._token('create')
         self._structure_()
         self.name_last_node('struct')
-
         self.ast._define(
             ['monitor', 'monitor_params', 'struct'],
             []
@@ -105,9 +133,8 @@ class pedlParser(Parser):
         self._closure(block2)
         self.name_last_node('fields')
         self._token('}')
-
         self.ast._define(
-            ['struct_id', 'fields'],
+            ['fields', 'struct_id'],
             []
         )
 
@@ -119,9 +146,8 @@ class pedlParser(Parser):
         self._expression_()
         self.name_last_node('value')
         self._token(';')
-
         self.ast._define(
-            ['variable', 'value'],
+            ['value', 'variable'],
             []
         )
 
@@ -158,9 +184,8 @@ class pedlParser(Parser):
             self._token('when')
             self._expression_()
             self.name_last_node('when')
-
         self.ast._define(
-            ['monitor', 'monitor_params', 'event', 'event_params', 'update_param', 'call_param', 'when'],
+            ['call_param', 'event', 'event_params', 'monitor', 'monitor_params', 'update_param', 'when'],
             []
         )
 
@@ -177,7 +202,6 @@ class pedlParser(Parser):
                 self._identifier_()
                 self.name_last_node('update_var')
             self._error('no available options')
-
         self.ast._define(
             ['update_fn', 'update_var'],
             []
@@ -190,9 +214,8 @@ class pedlParser(Parser):
         self._token('=')
         self._expression_()
         self.name_last_node('expression')
-
         self.ast._define(
-            ['target', 'expression'],
+            ['expression', 'target'],
             []
         )
 
@@ -224,7 +247,6 @@ class pedlParser(Parser):
                 self._and_expr_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['or_ex'],
             []
@@ -246,7 +268,6 @@ class pedlParser(Parser):
                 self._sub_expr_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['and_ex'],
             []
@@ -277,7 +298,6 @@ class pedlParser(Parser):
                 self._comp_expr_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['not_ex'],
             []
@@ -319,7 +339,6 @@ class pedlParser(Parser):
                 self._arith_expr_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['comp', 'operator'],
             []
@@ -354,7 +373,6 @@ class pedlParser(Parser):
                 self._term_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['arith', 'operator'],
             []
@@ -405,9 +423,8 @@ class pedlParser(Parser):
                 self.name_last_node('@')
                 self._token(')')
             self._error('no available options')
-
         self.ast._define(
-            ['unary', 'atom', 'trailer'],
+            ['atom', 'trailer', 'unary'],
             []
         )
 
@@ -453,9 +470,8 @@ class pedlParser(Parser):
                     self.name_last_node('trailer')
                 self._closure(block3)
             self._error('expecting one of: ( [')
-
         self.ast._define(
-            ['index', 'params', 'dot', 'trailer'],
+            ['dot', 'index', 'params', 'trailer'],
             []
         )
 
@@ -590,6 +606,7 @@ def main(
         eol_comments_re=None,
         ignorecase=None,
         left_recursion=True,
+        parseinfo=True,
         **kwargs):
 
     with open(filename) as f:

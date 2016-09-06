@@ -13,11 +13,12 @@
 
 from __future__ import print_function, division, absolute_import, unicode_literals
 
+from grako.buffering import Buffer
 from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 7, 19, 19, 23, 50, 1)
+__version__ = (2016, 8, 29, 15, 31, 5, 0)
 
 __all__ = [
     'smedlParser',
@@ -28,6 +29,28 @@ __all__ = [
 KEYWORDS = set([])
 
 
+class smedlBuffer(Buffer):
+    def __init__(self,
+                 text,
+                 whitespace=None,
+                 nameguard=None,
+                 comments_re=None,
+                 eol_comments_re=None,
+                 ignorecase=None,
+                 namechars='',
+                 **kwargs):
+        super(smedlBuffer, self).__init__(
+            text,
+            whitespace=whitespace,
+            nameguard=nameguard,
+            comments_re=comments_re,
+            eol_comments_re=eol_comments_re,
+            ignorecase=ignorecase,
+            namechars=namechars,
+            **kwargs
+        )
+
+
 class smedlParser(Parser):
     def __init__(self,
                  whitespace=None,
@@ -36,6 +59,7 @@ class smedlParser(Parser):
                  eol_comments_re=None,
                  ignorecase=None,
                  left_recursion=True,
+                 parseinfo=True,
                  keywords=KEYWORDS,
                  namechars='',
                  **kwargs):
@@ -46,10 +70,16 @@ class smedlParser(Parser):
             eol_comments_re=eol_comments_re,
             ignorecase=ignorecase,
             left_recursion=left_recursion,
+            parseinfo=parseinfo,
             keywords=keywords,
             namechars=namechars,
             **kwargs
         )
+
+    def parse(self, text, *args, **kwargs):
+        if not isinstance(text, Buffer):
+            text = smedlBuffer(text, **kwargs)
+        return super(smedlParser, self).parse(text, *args, **kwargs)
 
     @graken()
     def _object_(self):
@@ -116,10 +146,9 @@ class smedlParser(Parser):
         self._positive_closure(block18)
         self.add_last_node_to_name('scenarios')
         self._check_eof()
-
         self.ast._define(
             ['object'],
-            ['imports', 'identity', 'state', 'internal_events', 'exported_events', 'imported_events', 'scenarios']
+            ['exported_events', 'identity', 'imported_events', 'imports', 'internal_events', 'scenarios', 'state']
         )
 
     @graken()
@@ -135,7 +164,6 @@ class smedlParser(Parser):
             self.name_last_node('var')
         self._closure(block2)
         self._token(';')
-
         self.ast._define(
             ['type', 'var'],
             []
@@ -146,7 +174,6 @@ class smedlParser(Parser):
         self._token('#import')
         self._identifier_()
         self.name_last_node('import_id')
-
         self.ast._define(
             ['import_id'],
             []
@@ -168,9 +195,8 @@ class smedlParser(Parser):
             self._token('=')
             self._expression_()
             self.name_last_node('definition')
-
         self.ast._define(
-            ['error', 'event_id', 'params', 'definition'],
+            ['definition', 'error', 'event_id', 'params'],
             []
         )
 
@@ -187,7 +213,6 @@ class smedlParser(Parser):
             self._trace_definition_()
         self._positive_closure(block3)
         self.name_last_node('traces')
-
         self.ast._define(
             ['atomic', 'scenario_id', 'traces'],
             []
@@ -214,9 +239,8 @@ class smedlParser(Parser):
             self._token('->')
             self._identifier_()
             self.name_last_node('else_state')
-
         self.ast._define(
-            ['start_state', 'end_state', 'else_actions', 'else_state'],
+            ['else_actions', 'else_state', 'end_state', 'start_state'],
             ['trace_steps']
         )
 
@@ -227,9 +251,8 @@ class smedlParser(Parser):
         with self._optional():
             self._actions_()
             self.name_last_node('step_actions')
-
         self.ast._define(
-            ['step_event', 'step_actions'],
+            ['step_actions', 'step_event'],
             []
         )
 
@@ -241,7 +264,6 @@ class smedlParser(Parser):
             self._token('when')
             self._expression_()
             self.name_last_node('when')
-
         self.ast._define(
             ['expression', 'when'],
             []
@@ -253,7 +275,6 @@ class smedlParser(Parser):
         self._action_item_list_()
         self.name_last_node('actions')
         self._token('}')
-
         self.ast._define(
             ['actions'],
             []
@@ -275,9 +296,8 @@ class smedlParser(Parser):
                 self._call_stmt_()
                 self.name_last_node('call_stmt')
             self._error('no available options')
-
         self.ast._define(
-            ['state_update', 'raise_stmt', 'instantiation', 'call_stmt'],
+            ['call_stmt', 'instantiation', 'raise_stmt', 'state_update'],
             []
         )
 
@@ -303,9 +323,8 @@ class smedlParser(Parser):
                 self._expression_()
                 self.name_last_node('expression')
             self._error('no available options')
-
         self.ast._define(
-            ['target', 'operator', 'expression'],
+            ['expression', 'operator', 'target'],
             []
         )
 
@@ -319,7 +338,6 @@ class smedlParser(Parser):
             self._expression_list_()
             self.add_last_node_to_name('expr_list')
             self._token(')')
-
         self.ast._define(
             ['id'],
             ['expr_list']
@@ -335,7 +353,6 @@ class smedlParser(Parser):
             self._state_update_list_()
             self.add_last_node_to_name('state_update_list')
             self._token(')')
-
         self.ast._define(
             ['id'],
             ['state_update_list']
@@ -349,7 +366,6 @@ class smedlParser(Parser):
         self._expression_list_()
         self.add_last_node_to_name('expr_list')
         self._token(')')
-
         self.ast._define(
             ['target'],
             ['expr_list']
@@ -387,7 +403,6 @@ class smedlParser(Parser):
                 self._and_expr_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['or_ex'],
             []
@@ -409,7 +424,6 @@ class smedlParser(Parser):
                 self._sub_expr_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['and_ex'],
             []
@@ -440,7 +454,6 @@ class smedlParser(Parser):
                 self._comp_expr_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['not_ex'],
             []
@@ -482,7 +495,6 @@ class smedlParser(Parser):
                 self._arith_expr_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['comp', 'operator'],
             []
@@ -517,7 +529,6 @@ class smedlParser(Parser):
                 self._term_()
                 self.name_last_node('@')
             self._error('no available options')
-
         self.ast._define(
             ['arith', 'operator'],
             []
@@ -568,9 +579,8 @@ class smedlParser(Parser):
                 self.name_last_node('@')
                 self._token(')')
             self._error('no available options')
-
         self.ast._define(
-            ['unary', 'atom', 'trailer'],
+            ['atom', 'trailer', 'unary'],
             []
         )
 
@@ -616,9 +626,8 @@ class smedlParser(Parser):
                     self.name_last_node('trailer')
                 self._closure(block3)
             self._error('expecting one of: ( [')
-
         self.ast._define(
-            ['index', 'params', 'dot', 'trailer'],
+            ['dot', 'index', 'params', 'trailer'],
             []
         )
 
@@ -826,6 +835,7 @@ def main(
         eol_comments_re=None,
         ignorecase=None,
         left_recursion=True,
+        parseinfo=True,
         **kwargs):
 
     with open(filename) as f:
