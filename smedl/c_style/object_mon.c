@@ -247,7 +247,7 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
     }
 }
 
-void send_message(ExplorerMonitor* monitor, char* message, char* routing_key) {
+void send_message({{ obj|title }}Monitor* monitor, char* message, char* routing_key) {
     amqp_bytes_t message_bytes;
     message_bytes.len = strlen(message)+1;
     message_bytes.bytes = message;

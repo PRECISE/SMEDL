@@ -149,6 +149,7 @@ class MonitorGenerator(object):
                 if k == 'monitor_declaration':
                     self._parseInter(v)
                 elif k == 'archSpec':
+                    
                     self._parseSpec(v)
 
 
@@ -663,21 +664,28 @@ class MonitorGenerator(object):
     def _formatExpression(self, expr):
         if expr is None:
             expr = ""
+    
         if isinstance(expr, AST):
             exprStr = AstToPython.expr(expr)
         else:
             exprStr = expr
+        #print('expr:'+exprStr)
         exprStr = self._addMonitorArrowToStateVariables(exprStr)
         # expr = checkReferences(expr) # TODO--------
         return MonitorGenerator._removeParentheses(exprStr)
 
 
     def _addMonitorArrowToStateVariables(self, string):
+        #print('before:'+string)
         for sv in self._symbolTable.getSymbolsByType('state'):
+            #print('sv:'+sv)
             indices = [t.start() for t in re.finditer(sv, string)]
             for index in indices:
+                #print('index:'+string[index])
                 if string[index-5:index] != 'this.' and string[index-9:index] != 'monitor->':  # Prevent duplicated 'this.'
-                    string = string[:index] + 'monitor->' + string[index:]
+                    if index == 0 or (not (string[index-1]).isalpha() and not string[index-1] == '_') :
+                        string = string[:index] + 'monitor->' + string[index:]
+    #print('after:'+string)
         return string
 
     @staticmethod
@@ -707,6 +715,7 @@ class MonitorGenerator(object):
             if action.expression:
                 out += ' ' + self._formatExpression(action.expression)
             out += ';'
+            #print(out)
             return out
         elif action.type == ActionType.Raise:
             return 'raise_%s_%s(monitor%s);' % (obj.lower(), action.event, joinArgs([self._formatExpression(p) for p in action.params], ", "))

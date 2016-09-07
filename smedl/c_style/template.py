@@ -73,9 +73,54 @@ class CTemplater(object):
         values['signatures']= []
         values['event_code'] = []
         values['event_msg_handlers'] = []
-        values['bindingkeys_num'] = 1 # TODO: Make these customizable
-        values['bindingkeys_str'] = '"#"'
+        if mgen._getBindingKeysNum() == 0:
+            values['bindingkeys_num'] = 1 # TODO: Make these customizable
+        else:
+            values['bindingkeys_num'] = mgen._getBindingKeysNum()# TODO: Make these customizable
 
+        values['b_keys'] = CTemplater._getBindingKeys(mgen)
+
+        #construct event_msg_handlers
+        #msg_handler = []
+        name = mgen._symbolTable.getSymbolsByType('object')[0]
+        for conn in mgen.archSpec:
+            if conn.targetMachine == name:
+                monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
+                [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mgen._symbolTable.get(conn.targetEvent, 'params')]
+                msg_handler = []
+                if len(values['event_msg_handlers']) == 0:
+                    cond = 'if'
+                else:
+                    cond = '                else if'
+                
+                msg_handler.append(cond + ' (!strcmp(eventName,"%s")) {' % conn.connName)
+                
+                sscanfStr = '%s'
+                sscanfAttrs = 'e'
+                retAttrs = ''
+                for p in monitorParams[1:]:
+                    msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
+                    if p['c_type'] == 'int':
+                        sscanfStr += ' %d'
+                    elif p['c_type'] == 'char':
+                        sscanfStr += ' %s'
+                    elif p['c_type'] == 'float':
+                        exit("this should never happen. there is a missing float->double conversion.")
+                    elif p['c_type'] == 'double':
+                        sscanfStr += ' %lf'
+                    sscanfAttrs += ', &' + p['name']
+                    retAttrs += ', ' + p['name']
+            
+            
+                msg_handler.append('                    int ret = sscanf(string, "' + sscanfStr + '", ' + sscanfAttrs + ');')
+                msg_handler.append('                    if (ret == ' + str(len(monitorParams)) + ') {')
+                msg_handler.append('                        ' + obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');')
+                msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), conn.targetEvent))
+                msg_handler.append('                    }')
+                msg_handler.append('                }')
+                
+                values['event_msg_handlers'].append('\n'.join(msg_handler))
+    
         for m in methods:
             eventFunction = []
             probeFunction = []
@@ -124,35 +169,7 @@ class CTemplater(object):
                     eventFunction.append('  }')
                 eventFunction.append('}')
 
-                # Build event message handler block for incoming RabbitMQ messages
-                msg_handler = []
-                if len(values['event_msg_handlers']) == 0:
-                    cond = 'if'
-                else:
-                    cond = '                else if'
-                msg_handler.append(cond + ' (!strcmp(eventName,"%s_%s")) {' % (obj.lower(), m))
-                sscanfStr = '%s'
-                sscanfAttrs = 'e'
-                retAttrs = ''
-                for p in monitorParams[1:]:
-                    msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
-                    if p['c_type'] == 'int':
-                        sscanfStr += ' %d'
-                    elif p['c_type'] == 'char':
-                        sscanfStr += ' %s'
-                    elif p['c_type'] == 'float':
-                        exit("this should never happen. there is a missing float->double conversion.")
-                    elif p['c_type'] == 'double':
-                        sscanfStr += ' %lf'
-                    sscanfAttrs += ', &' + p['name']
-                    retAttrs += ', ' + p['name']
-                msg_handler.append('                    int ret = sscanf(string, "' + sscanfStr + '", ' + sscanfAttrs + ');')
-                msg_handler.append('                    if (ret == ' + str(len(monitorParams)) + ') {')
-                msg_handler.append('                        ' + obj.lower() + '_' + m + '(monitor' + retAttrs + ');')
-                msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), m))
-                msg_handler.append('                    }')
-                msg_handler.append('                }')
-                values['event_msg_handlers'].append('\n'.join(msg_handler))
+
 
             raiseFunction = CTemplater._writeRaiseFunction(mgen, m, obj)
 
@@ -223,6 +240,83 @@ class CTemplater(object):
         m_c.write(env.get_template('monitor_map.c').render())
         m_c.close()
 
+    def _getBindingKeys(mgen):
+        lst = []
+        name = mgen._symbolTable.getSymbolsByType('object')[0]
+        #print(name)
+        k = 0
+        for conn in mgen.archSpec:
+            b_str = 'bindingkeys['+str(k)+']'
+            if name==conn.targetMachine:
+                
+                p_str = b_str + '=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy('+b_str+',"'+conn.connName+'");\n'
+                sourceMachine = mgen._getMachine(conn.sourceMachine)
+                if sourceMachine == None:
+                    raise ValueError('source machine not exist')
+                sourceEvent = mgen._getSourceEvent(conn.sourceMachine,conn.sourceEvent)
+                if sourceEvent == None:
+                    raise ValueError('source event not exist')
+                if conn.patternSpec == [] or conn.patternSpec == None:
+                    lst.append(p_str+'strcat('+b_str+',".#");\n')
+                else:
+                    machineIndexDic = {}
+                    eventIndexDic = {}
+                    #TODO: generate predicates on the machine and event, add corresponding filter, for each target event, union all predicates
+                    for p_spec in conn.patternSpec:
+                        leftterm = p_spec.getLeftTerm()
+                        rightterm = p_spec.getRightTerm()
+                        if leftterm == rightterm or (not leftterm == conn.targetMachine and not rightterm == conn.targetsMachine) or (leftterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ) or (rightterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ):
+                            raise ValueError('pattern expression syntax error')
+                        else:
+                            leftindex = p_spec.getLeftIndex()
+                            rightindex = p_spec.getRightIndex()
+                            if mgen._checkBound(conn,leftterm,leftindex) and mgen._checkBound(conn,rightterm,rightindex):
+                                if leftterm == conn.targetMachine:
+                                    val = mgen._getIdentityName(leftindex)
+                                    if rightterm == conn.sourceEvent:
+                                        eventIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                    elif rightterm == conn.sourceMachine:
+                                        machineIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                elif rightterm == conn.targetMachine:
+                                    #val = self._getIdentityName(rightindex)
+                                    if leftterm == conn.sourceEvent:
+                                        eventIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                    elif leftterm == conn.sourceMachine:
+                                        machineIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                            else:
+                                raise ValueError('out of bound in pattern expression')
+                    #build binding key and add it to lst
+                    machineIndex = 0
+                    eventIndex = 0
+                    
+                    while machineIndex < len(sourceMachine.params):
+                        if not machineIndex in machineIndexDic.keys():
+                            p_str += '\tstrcat('+b_str+',".*");\n'
+                        else:
+                            p_str += '\tstrcat('+b_str+',".");\n'
+                            p_str += '\tstrcat('+b_str+',itoa(*(int*)('+machineIndexDic[machineIndex]+'));\n'
+                        machineIndex = machineIndex + 1
+                    
+                    p_str +='\tstrcat('+b_str+',".'+sourceEvent.event_id+'");\n'
+                    while eventIndex < len(sourceEvent.params):
+                        if not eventIndex in eventIndexDic.keys():
+                            p_str += '\tstrcat('+b_str+',".*");\n'
+                        else:
+                            p_str += '\tstrcat('+b_str+',".");\n'
+                            p_str += '\tstrcat('+b_str+',itoa(*(int*)('+eventIndexDic[machineIndex]+')));\n'
+                        eventIndex = eventIndex + 1
+                    lst.append(p_str)
+                    #print(p_str)
+                    k = k + 1
+        bindingkey = ''
+        i = 0
+        #print(lst)
+        for s in lst:
+            bindingkey += s
+            i = i+1
+        if len(lst)==0:
+            bindingkey+='bindingkeys[0]=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy(bindingkeys[0],"#");\n'
+        return bindingkey
 
     # Translate a SMEDL type to a C type
     def convertTypeForC(smedlType):
@@ -371,11 +465,47 @@ class CTemplater(object):
             output.append(sprintf)
             output.append('  char routing_key[256];')
 
-            sprintf_routing = '  sprintf(routing_key, "%s-%s_%s.' % (obj.lower(), obj.lower(), event)
+            #construct routing key
+            name = mgen._symbolTable.getSymbolsByType('object')[0]
+            #print(name)
+            connName = None
+            #print(mgen.archSpec)
+            for conn in mgen.archSpec:
+                if conn.sourceMachine == name and conn.sourceEvent == event:
+                    connName = conn.connName
+                    break
+        
+                if connName == None:
+                        connName = obj+'_'+ event
+            sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
             # TODO: peter, write functions for printing and parsing monitor identities
             # this cast is broken and wrong, but works as long as we have only one monitor process
-            sprintf_routing += '%ld", (long)monitor->identities['
-            sprintf_routing += '%s_ID]);' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
+            for v in mgen.identities:
+                sprintf_routing += '.%ld'
+            
+                sprintf_routing += '.'+event
+                if len(evParams) > 0:
+                    for p in evParams:
+                        # attributes can only be int
+                        if p[0] == 'int':
+                            sprintf_routing += '.%d'
+                        else:
+                            sprintf_routing += '.0'
+
+            sprintf_routing+='"'
+            for v in mgen.identities:
+                sprintf_routing += ', (long)(*(int*)(monitor->identities['
+                sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
+                sprintf_routing += v.upper() +']))'
+
+            if len(evParams) > 0:
+                for p in evParams:
+                # attributes can only be int
+                    if p[0] == 'int':
+                        sprintf_routing+=', %s' % p[1]
+            
+            
+            sprintf_routing += ');'
             output.append(sprintf_routing)
             output.append('  send_message(monitor, message, routing_key);')
         output.append('}\n\n')
