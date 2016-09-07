@@ -96,6 +96,12 @@ To parse a SMEDL file using the generated parser:
 
 (Use '-t' command-line option to enable debug tracing)
 
+## Compile with architecture description
+--------------------------------------
+
+An architecture description file can be compiled with smedl specification using the command line
+`python -m smedl.mgen PEDL_SMEDL_FILENAME --arch=ARCH_SMEDL_FILENAME`. Note that `ARCH_SMEDL_FILENAME` does not contain '.a4smedl' suffix.
+Moreover, it is necessary to compile separately with corresponding smedl specifications. For more info readers can refer to the corresponding document 'Architecture_Description_Language_for_SMEDL'
 
 ## Updating from the repository
 ----------------------------
