@@ -20,7 +20,8 @@ typedef struct SpvMonitor {
   int state[5];
   int last_time;
   action *action_queue;
-  FILE *logFile;
+  const char *amqp_exchange;
+  const char *ctrl_exchange;
   amqp_socket_t *recv_socket;
   amqp_connection_state_t recv_conn;
   amqp_socket_t *send_socket;
@@ -40,20 +41,21 @@ SpvMonitorMap* spv_monitor_maps[SPV_MONITOR_IDENTITIES]; //a map for each identi
 pthread_mutex_t spv_monitor_maps_lock;
 
 SpvMonitor* init_spv_monitor(SpvData*);
+void start_monitor(SpvMonitor* monitor);
 void free_monitor(SpvMonitor*);
 
 /*
  * Monitor Event Handlers
  */
-void spv_parse_record(SpvMonitor* monitor, int mon_var_tm, float mon_var_lat, float mon_var_lon, int mon_var_ret);
-void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_tm, float mon_var_lat, float mon_var_lon, int mon_var_ret);
-void spv_total_distance(SpvMonitor* monitor, float mon_var_dist);
-void raise_spv_total_distance(SpvMonitor* monitor, float mon_var_dist);
+void spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, double mon_var_lon, int mon_var_ret);
+void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, double mon_var_lon, int mon_var_ret);
+void spv_total_distance(SpvMonitor* monitor, double mon_var_dist);
+void raise_spv_total_distance(SpvMonitor* monitor, double mon_var_dist);
 void raise_spv_timestep_error(SpvMonitor* monitor, int mon_var_tm, int mon_var_last_time);
 void raise_spv_after_end_error(SpvMonitor* monitor);
-void raise_spv_latitude_range_error(SpvMonitor* monitor, float mon_var_lat);
-void raise_spv_longitude_range_error(SpvMonitor* monitor, float mon_var_lon);
-void raise_spv_total_distance_error(SpvMonitor* monitor, float mon_var_dist);
+void raise_spv_latitude_range_error(SpvMonitor* monitor, double mon_var_lat);
+void raise_spv_longitude_range_error(SpvMonitor* monitor, double mon_var_lon);
+void raise_spv_total_distance_error(SpvMonitor* monitor, double mon_var_dist);
 
 /*
  * Monitor Utility Functions
@@ -66,3 +68,4 @@ void free_spv_monitor_maps();
 int add_spv_monitor_to_map(SpvMonitor*, int);
 int put_spv_monitor(SpvMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
+char* monitor_identities_str(MonitorIdentity**);
