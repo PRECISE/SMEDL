@@ -11,5 +11,6 @@ typedef struct MonitorIdentity {
 MonitorIdentity* init_monitor_identity(identity_type, void*);
 int compare_monitor_identity(void*, MonitorIdentity*);
 int hash_monitor_identity(identity_type, void*, int);
+char* monitor_identity_str(MonitorIdentity*);
 
 #endif
