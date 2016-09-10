@@ -11,18 +11,18 @@ object SPV
         exported total_distance_error(float);
     scenarios
         check_time:
-           Start -> parse_record(tm,lat,lon,ret) when ret == -1 || tm > last_time { last_time = tm } -> Start
-                                                   else { raise timestep_error(tm, last_time) } -> Start
+           Start -> parse_record(tm,lat,lon,ret) when ret == -1 || tm > last_time { last_time = tm; } -> Start
+                                                   else { raise timestep_error(tm, last_time); } -> Start
         check_latitude:
           Start -> parse_record(tm,lat,lon,ret) when lat >= -90 && lat <= 90 -> Start
-                                                   else { raise latitude_range_error(lat) } -> Start
+                                                   else { raise latitude_range_error(lat); } -> Start
         check_longitude:
           Start -> parse_record(tm,lat,lon,ret) when lon >= -180 && lon <= +180 -> Start
-                                                   else { raise longitude_range_error(lon) } -> Start
+                                                   else { raise longitude_range_error(lon); } -> Start
         check_distance:
           Start -> total_distance(dist) when dist > 0 && dist < 1 -> Start
-                                        else { raise total_distance_error(dist) } -> Start
+                                        else { raise total_distance_error(dist); } -> Start
         after_end:
            Start -> parse_record(tm,lat,lon,ret) when ret == -1 -> End
                                                    else -> Start
-           End -> parse_record(tm,lat,lon,ret) { raise after_end_error() } -> End
+           End -> parse_record(tm,lat,lon,ret) { raise after_end_error(); } -> End
