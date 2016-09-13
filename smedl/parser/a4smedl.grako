@@ -11,7 +11,7 @@ monitorDeclaration = interfaces+:{monitorInterface}+;
 
 monitorInterface = mon_type:['Async' | 'Sync'] monitor_identifier:identifier '('params:parameter_list')'
    '{' 
-       'imported' imported_events+:event_definition_list
+       {'imported' imported_events+:event_definition_list}
        {'exported' exported_events+:event_definition_list}*
    '}';
 
