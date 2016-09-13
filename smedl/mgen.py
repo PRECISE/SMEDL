@@ -263,6 +263,7 @@ class MonitorGenerator(object):
                     pa_spec = self._makePatternSpec(v)
             if conn_name == None:
                 conn_name = s_i + '_' + s_e
+            
             if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                 raise ValueError('attributes of events do not match')
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
@@ -291,6 +292,7 @@ class MonitorGenerator(object):
                 if conn_name == None:
                     conn_name = s_i + '_'+s_e
             #TODO:match number of attributes of the source and target events
+            
                 if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                     raise ValueError('attributes of events do not match')
                 connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
@@ -368,7 +370,7 @@ class MonitorGenerator(object):
                 left_mon = mon
             elif ti == mon.id:
                 for ev in mon.importedEvents:
-                    if ev.event_id == se:
+                    if ev.event_id == te:
                         right_ev = ev.params
                         break
                 right_mon = mon
@@ -416,6 +418,7 @@ class MonitorGenerator(object):
         return None
 
     def _getIdentityName(self,index):
+        print(self.identities)
         id = 0
         for name in self.identities:
             if id == index:
@@ -432,11 +435,13 @@ class MonitorGenerator(object):
                 if k == 'object':
                     self._symbolTable.add(v, {'type': 'object'})
                 elif label == 'identity' and k == 'var':
+                    print("object:"+str(object))
                     if isinstance(v, list):
                         for var in v:
                             self._symbolTable.add(var, {'type': 'identity', 'datatype': object['type']})
                             self.identities.append(var)
                     else:
+                        print("v:"+v)
                         self._symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})
                         self.identities.append(v)
                 elif label == 'state' and k == 'var':

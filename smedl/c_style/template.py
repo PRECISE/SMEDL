@@ -265,7 +265,7 @@ class CTemplater(object):
                     for p_spec in conn.patternSpec:
                         leftterm = p_spec.getLeftTerm()
                         rightterm = p_spec.getRightTerm()
-                        if leftterm == rightterm or (not leftterm == conn.targetMachine and not rightterm == conn.targetsMachine) or (leftterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ) or (rightterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ):
+                        if leftterm == rightterm or (not leftterm == conn.targetMachine and not rightterm == conn.targetMachine) or (leftterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ) or (rightterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ):
                             raise ValueError('pattern expression syntax error')
                         else:
                             leftindex = p_spec.getLeftIndex()
@@ -278,7 +278,8 @@ class CTemplater(object):
                                     elif rightterm == conn.sourceMachine:
                                         machineIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
                                 elif rightterm == conn.targetMachine:
-                                    #val = self._getIdentityName(rightindex)
+                                    print("right index"+str(rightindex))
+                                    val = mgen._getIdentityName(rightindex)
                                     if leftterm == conn.sourceEvent:
                                         eventIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
                                     elif leftterm == conn.sourceMachine:
@@ -392,7 +393,7 @@ class CTemplater(object):
                         output.append('        %s\n' % mgen._writeAction(obj, action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
                 output.append('      }\n')
-            elif self._implicitErrors and i == len(transitions)-1:
+            elif mgen._implicitErrors and i == len(transitions)-1:
                 output.append('      else {\n')
                 output.append('        raise_error(\"%s\", %s, \"%s\", \"DEFAULT\");\n' % (scenario, stateName, currentState))
                 output.append('      }\n')
