@@ -24,7 +24,6 @@ typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
 
 #define bindingkeyNum {{ bindingkeys_num }}
-const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor( {{ obj|title }}Data *d ) {
     {{ obj|title }}Monitor* monitor = ({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
@@ -110,6 +109,9 @@ const char *bindingkeys[bindingkeyNum] = { {{ bindingkeys_str }} };
         "Declaring control exchange");
 
     // binding several binding keys
+    char ** bindingkeys = (char**)malloc(bindingkeyNum*sizeof(char*));
+    {{ b_keys }}
+    
     for(int i = 0; i < bindingkeyNum; i++){
         amqp_queue_bind(monitor->recv_conn, 1, queuename,
             amqp_cstring_bytes(monitor->amqp_exchange),
@@ -147,6 +149,28 @@ char *getEventName(char *str, size_t maxlen){
     return eventName;
 }
 
+char *getConnName(char *str, size_t maxlen){
+    // make sure that str is really a cstring before trying to copy from it.
+    size_t len = strnlen(str, maxlen);
+    if (len >= maxlen) {
+        return NULL;
+    }
+    // find the first space or the end of the string
+    char* end = index(str, '.');
+    // copylen is the length of the string with the terminator
+    size_t copylen;
+    if (NULL == end) {
+        copylen = maxlen - 1;
+    } else {
+        copylen = end - str;
+    }
+    char* connName = malloc(copylen+1);
+    memcpy(connName, str, copylen);
+    connName[copylen] = '\0';
+    return connName;
+}
+
+
 void start_monitor({{ obj|title }}Monitor* monitor) {
     int received = 0;
     amqp_frame_t frame;
@@ -174,21 +198,18 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
         ret = amqp_consume_message(monitor->recv_conn, &envelope, NULL, 0);
         amqp_message_t msg = envelope.message;
         amqp_bytes_t bytes = msg.body;
-        //amqp_bytes_t routing_key = envelope.routing_key;
-        //char* rk = (char*)routing_key.bytes;
+        amqp_bytes_t routing_key = envelope.routing_key;
+        char* rk = (char*)routing_key.bytes;
         char* string = (char*)bytes.bytes;
         //char* event[255] = {NULL};
 
         if (string != NULL) {
-            char* eventName = getEventName(string, bytes.len);
+            char* eventName = getConnName(rk, bytes.len);
             if (eventName != NULL) {
                 char e[255];
 
                 {{ event_msg_handlers|join('\n') }}
 
-                else {
-                    printf("error_called\n");
-                }
             }
             free(eventName);
         }
