@@ -433,13 +433,13 @@ class MonitorGenerator(object):
                 if k == 'object':
                     self._symbolTable.add(v, {'type': 'object'})
                 elif label == 'identity' and k == 'var':
-                    print("object:"+str(object))
+                    #print("object:"+str(object))
                     if isinstance(v, list):
                         for var in v:
                             self._symbolTable.add(var, {'type': 'identity', 'datatype': object['type']})
                             self.identities.append(var)
                     else:
-                        print("v:"+v)
+                        #print("v:"+v)
                         self._symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})
                         self.identities.append(v)
                 elif label == 'state' and k == 'var':
