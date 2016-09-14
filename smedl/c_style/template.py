@@ -273,17 +273,19 @@ class CTemplater(object):
                             if mgen._checkBound(conn,leftterm,leftindex) and mgen._checkBound(conn,rightterm,rightindex):
                                 if leftterm == conn.targetMachine:
                                     val = mgen._getIdentityName(leftindex)
-                                    if rightterm == conn.sourceEvent:
-                                        eventIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
-                                    elif rightterm == conn.sourceMachine:
-                                        machineIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                    if not val == None:
+                                        if rightterm == conn.sourceEvent:
+                                            eventIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                        elif rightterm == conn.sourceMachine:
+                                            machineIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
                                 elif rightterm == conn.targetMachine:
                                     print("right index"+str(rightindex))
                                     val = mgen._getIdentityName(rightindex)
-                                    if leftterm == conn.sourceEvent:
-                                        eventIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
-                                    elif leftterm == conn.sourceMachine:
-                                        machineIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                    if not val == None:
+                                        if leftterm == conn.sourceEvent:
+                                            eventIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                        elif leftterm == conn.sourceMachine:
+                                            machineIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
                             else:
                                 raise ValueError('out of bound in pattern expression')
                     #build binding key and add it to lst
