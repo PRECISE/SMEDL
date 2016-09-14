@@ -19,6 +19,7 @@ from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 __version__ = (2016, 9, 13, 19, 9, 37, 1)
 
+
 __all__ = [
     'a4smedlParser',
     'a4smedlSemantics',
@@ -108,6 +109,7 @@ class a4smedlParser(Parser):
             self._event_definition_list_()
             self.add_last_node_to_name('exported_events')
         self._closure(block6)
+
         self._token('}')
 
         self.ast._define(

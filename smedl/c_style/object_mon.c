@@ -23,7 +23,9 @@ typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
 {{ state_names }}
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
 
+
 #define bindingkeyNum {{bindingkeys_num}}
+
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor( {{ obj|title }}Data *d ) {
     {{ obj|title }}Monitor* monitor = ({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
@@ -56,6 +58,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
         config_setting_lookup_string(setting, "username", &username);
         config_setting_lookup_string(setting, "password", &password);
         config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange));
+        config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange));
     }
 
     /* RabbitMQ initialization */
@@ -94,19 +97,28 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
-    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn), "Opening channel");
-    amqp_exchange_declare(monitor->send_conn, 1, amqp_cstring_bytes(monitor->amqp_exchange),
-        amqp_cstring_bytes("topic"), 0, 0, 0, 0, amqp_empty_table);
-    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn), "Declaring exchange");
 
-    //binding several binding keys
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
+        "Opening channel");
+    amqp_exchange_declare(monitor->send_conn, 1,
+        amqp_cstring_bytes(monitor->amqp_exchange),
+        amqp_cstring_bytes("topic"), 0, 1, 0, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
+        "Declaring primary exchange");
+    amqp_exchange_declare(monitor->send_conn, 1,
+        amqp_cstring_bytes(monitor->ctrl_exchange),
+        amqp_cstring_bytes("fanout"), 0, 1, 0, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
+        "Declaring control exchange");
+
+    // binding several binding keys
     char ** bindingkeys = (char**)malloc(bindingkeyNum*sizeof(char*));
     {{ b_keys }}
     
-    for(int i = 0;i<bindingkeyNum;i++){
-      amqp_queue_bind(monitor->recv_conn, 1, queuename,
-                      amqp_cstring_bytes(monitor->amqp_exchange), amqp_cstring_bytes(bindingkeys[i]),
-                      amqp_empty_table);
+    for(int i = 0; i < bindingkeyNum; i++){
+        amqp_queue_bind(monitor->recv_conn, 1, queuename,
+            amqp_cstring_bytes(monitor->amqp_exchange),
+            amqp_cstring_bytes(bindingkeys[i]), amqp_empty_table);
     }
 
     die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Binding queue");
@@ -165,6 +177,23 @@ char *getConnName(char *str, size_t maxlen){
 void start_monitor({{ obj|title }}Monitor* monitor) {
     int received = 0;
     amqp_frame_t frame;
+
+    // Announce that the monitor has started
+    char* ids = monitor_identities_str(monitor->identities);
+    char* ann = malloc(strlen(ids)+50);
+    sprintf(ann, "{{ obj|title }} monitor (%s) started.", ids);
+    free(ids);
+    die_on_error(amqp_basic_publish(monitor->send_conn,
+                                    1,
+                                    amqp_cstring_bytes(monitor->ctrl_exchange),
+                                    amqp_cstring_bytes("smedl.control"), // Ignored due to fanout exchange
+                                    0,
+                                    0,
+                                    NULL,
+                                    amqp_cstring_bytes(ann)),
+                "Publishing {{ obj|title }} monitor startup announcement");
+    free(ann);
+
     while (1) {
         amqp_rpc_reply_t ret;
         amqp_envelope_t envelope;
@@ -373,6 +402,23 @@ int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
 }
 
 void raise_error(char *scen, const char *state, char *action, char *type) {
-  printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
+    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
 }
 
+char* monitor_identities_str(MonitorIdentity** identities) {
+    char* out = malloc(20*{{ obj|upper }}_MONITOR_IDENTITIES);
+    out[0] = '\0';
+    for(int i = 0; i < {{ obj|upper }}_MONITOR_IDENTITIES; i++) {
+        char* new_str;
+        char* monid_str = monitor_identity_str(identities[i]);
+        if (i == 0) {
+            strcat(out, monid_str);
+        }
+        else {
+            strcat(out, ", ");
+            strcat(out, monid_str);
+        }
+        free(monid_str);
+    }
+    return out;
+}

@@ -266,6 +266,7 @@ class CTemplater(object):
                         leftterm = p_spec.getLeftTerm()
                         rightterm = p_spec.getRightTerm()
                         if leftterm == rightterm or (not leftterm == conn.targetMachine and not rightterm == conn.targetMachine) or (leftterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ) or (rightterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ):
+
                             raise ValueError('pattern expression syntax error')
                         else:
                             leftindex = p_spec.getLeftIndex()
@@ -279,7 +280,7 @@ class CTemplater(object):
                                         elif rightterm == conn.sourceMachine:
                                             machineIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
                                 elif rightterm == conn.targetMachine:
-                                    print("right index"+str(rightindex))
+                                    #print("right index"+str(rightindex))
                                     val = mgen._getIdentityName(rightindex)
                                     if not val == None:
                                         if leftterm == conn.sourceEvent:

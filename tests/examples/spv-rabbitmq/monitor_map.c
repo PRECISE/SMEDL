@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
@@ -74,4 +75,25 @@ int hash_monitor_identity(identity_type type, void *value, int map_size) {
             break;
     }
     return bucket;
+}
+
+char* monitor_identity_str(MonitorIdentity *id) {
+    char* out = malloc(20);
+    out[0] = '\0';
+    switch (id->type) {
+        case INT:
+        case OPAQUE:
+            sprintf(out, "%d", *(int*)id->value);
+            break;
+        case POINTER:
+            sprintf(out, "%02x", (int)*(uintptr_t*)id->value);
+            break;
+        case THREAD:
+            sprintf(out, "%02x", (int)*(pthread_t*)id->value);
+            break;
+        default:
+            out[0] = '\0';
+            break;
+    }
+    return out;
 }
