@@ -35,6 +35,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
 {% for v in state_vars %}    monitor->{{ v.name }} = d->{{ v.name }};
 {% endfor %}{{state_inits}}
     monitor->action_queue = NULL;
+    monitor->export_queue = NULL;
 
     /* Read settings from config file */
     config_t cfg;
@@ -301,6 +302,57 @@ void free_monitor({{ obj|title }}Monitor* monitor) {
     die_on_error(amqp_destroy_connection(monitor->send_conn), "Ending connection");
     free(monitor);
 }
+
+//called at the end of each event handling function
+void executeEvents({{obj|title}}Monitor* monitor){
+    if(monitor->action_queue != NULL){
+        executePendingEvents(monitor);
+    }
+    
+    if(monitor->action_queue == NULL && monitor->export_queue != NULL){
+        executeExportedEvent(monitor);
+    }
+}
+
+void executePendingEvents({{obj|title}}Monitor* monitor){
+    action** head = &monitor->action_queue;
+    {{var_declaration}}
+    while(*head!=NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type){
+            {% for e in pending_event_case -%}
+            case {{ e.event_enum|join('\n') }}
+            {{e.callstring}}
+                break;
+            {% endfor -%}
+        }
+        pop_action(head);
+    }
+}
+
+//send export events one by one from export_queue
+void executeExportedEvent({{obj|title}}Monitor* monitor){
+    action** head = &monitor->export_queue;
+    {{var_declaration}}
+    while(*head != NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type) {
+            {% for e in export_event_case -%}
+            case {{ e.event_enum|join('\n') }}
+            {{e.callstring}}
+                break;
+            {% endfor -%}
+                
+        }
+        pop_action(head);
+    }
+    
+}
+
 
 /*
  * Monitor Event Handlers
