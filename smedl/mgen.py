@@ -55,7 +55,6 @@ class MonitorGenerator(object):
             with pedlPath.open() as pedlFile:
                 pedlText = pedlFile.read()
             pedlPar = pedlParser(
-                parseinfo=False,
                 comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)",
                 semantics=pedlModelBuilderSemantics())
             self.pedlAST = pedlPar.parse(
@@ -74,7 +73,6 @@ class MonitorGenerator(object):
             with smedlPath.open() as smedlFile:
                 smedlText = smedlFile.read()
             smedlPar = smedlParser(
-                parseinfo=False,
                 comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
             self.smedlAST = smedlPar.parse(
                 smedlText,
@@ -91,7 +89,7 @@ class MonitorGenerator(object):
             if '.smedl' in pedlsmedlName or '.pedl' in pedlsmedlName:
                 raise ValueError('Did you accidentally include .smedl or .pedl in the input filename? Try again without including the extension.')
             raise ValueError('No matching SMEDL file found.')
-        
+
         # Parser the architecture, it exists
         if not a4smedlName == None:
             a4smedlPath = Path(a4smedlName + '.a4smedl')
@@ -105,24 +103,24 @@ class MonitorGenerator(object):
                     print(self.a4smedlAST)
                     print('\nA4SMEDL JSON:')
                     print(json.dumps(self.a4smedlAST,indent=2))
-        
+
         # Process the SMEDL AST
         self._symbolTable = SmedlSymbolTable()
         self._parseToSymbolTable('top', self.smedlAST)
         self._getParameterNames(self.smedlAST)
         allFSMs = self._generateFSMs(self.smedlAST)
-        
+
         # procss architecture AST
         self._parseArchitecture('top',self.a4smedlAST)
-        
+
         #for mon in self.monitorInterface:
         #    print(mon)
         #    print('\n')
-        
+
         #for pattern in self.archSpec:
         #    print(pattern)
         #    print('\n')
-        
+
         # Output the internal symbol table and FSMs
         if self._printStructs:
             print('\nSMEDL Symbol Table:')
@@ -149,7 +147,7 @@ class MonitorGenerator(object):
                 if k == 'monitor_declaration':
                     self._parseInter(v)
                 elif k == 'archSpec':
-                    
+
                     self._parseSpec(v)
 
 
@@ -229,7 +227,7 @@ class MonitorGenerator(object):
 
     def _parseSpec(self,object):
         if isinstance(object, AST):
-            
+
             for k,v in list(object.items()):
                 if k == 'conn_expr':
                     #print(v)
@@ -239,11 +237,11 @@ class MonitorGenerator(object):
                         for conn in v:
                             #print(i)
                             self._makeConnExpr(conn)
-    
+
 
     def _makeConnExpr(self,object):
         if isinstance(object, AST):
-            
+
             conn_name = None
             s_i = None
             t_i = None
@@ -351,7 +349,7 @@ class MonitorGenerator(object):
                 spec.addOperator(op)
                 spec.addTerm(lt,li,rt,ri)
                 lst.append(spec)
-        
+
         return lst
 
     def _checkConnExprDef(self,si,se,ti,te):
@@ -422,7 +420,7 @@ class MonitorGenerator(object):
                 return name
             id = id + 1
         return None
-    
+
 
 
 
