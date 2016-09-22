@@ -268,7 +268,7 @@ class CTemplater(object):
                     paramString = obj.title() + "Monitor* monitor, " + paramString
                 else:
                     paramString = obj.title() + "Monitor* monitor"
-                evParams = MonitorGenerator._getEventParams(paramString)[1:]
+                evParams = mg._getEventParams(paramString)[1:]
                 if len(evParams) > 0:
                     for p in evParams:
                         # comparing SMEDL types not C types.
@@ -623,7 +623,7 @@ class CTemplater(object):
         if paramString == '':
             output.append('      %s(monitor);' % event)
         else:
-            params = mg.MonitorGenerator._getEventParams(paramString)
+            params = mg._getEventParams(paramString)
             for p in params:
                 output.append('      %s %s_%s = monitor->action_queue->params->%c;' % (p[0], p[1], event, p[0][0]))
                 output.append('      pop_param(&monitor->action_queue->params);')
@@ -647,7 +647,7 @@ class CTemplater(object):
         if 'exported_events' == mg._symbolTable.get(event)['type']:
             output.append(' param *ep_head = NULL;')
         if len(paramString) > 0:
-            for p in mg.MonitorGenerator._getEventParams(paramString):
+            for p in mg._getEventParams(paramString):
                 # comparing SMEDL types not C types.
                 if p[0] == 'int':
                     output.append('  push_param(&p_head, &%s, NULL, NULL, NULL);' % p[1])
