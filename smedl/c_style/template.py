@@ -511,7 +511,7 @@ class CTemplater(object):
                             p_str += '\tstrcat('+b_str+',".*");\n'
                         else:
                             p_str += '\tstrcat('+b_str+',".");\n'
-                            p_str += '\tstrcat('+b_str+',itoa(*(int*)('+machineIndexDic[machineIndex]+'));\n'
+                            p_str += '\tstrcat('+b_str+',monitor_identity_str('+machineIndexDic[machineIndex]+'));\n'
                         machineIndex = machineIndex + 1
 
                     p_str +='\tstrcat('+b_str+',".'+sourceEvent.event_id+'");\n'
@@ -520,7 +520,7 @@ class CTemplater(object):
                             p_str += '\tstrcat('+b_str+',".*");\n'
                         else:
                             p_str += '\tstrcat('+b_str+',".");\n'
-                            p_str += '\tstrcat('+b_str+',itoa(*(int*)('+eventIndexDic[machineIndex]+')));\n'
+                            p_str += '\tstrcat('+b_str+',monitor_identity_str('+eventIndexDic[machineIndex]+'));\n'
                         eventIndex = eventIndex + 1
                     lst.append(p_str)
                     k = k + 1
