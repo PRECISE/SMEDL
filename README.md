@@ -5,7 +5,7 @@
 --------------
 1. [Python 3](https://docs.python.org/3/)
 2. [pip](https://pip.pypa.io/en/stable/)
-    - [Grako 3.9](https://pythonhosted.org/grako/)
+    - [Grako 3.14](https://pythonhosted.org/grako/)
     - [Jinja2 2.8](http://jinja.pocoo.org/)
 
 ## Getting started
@@ -56,6 +56,12 @@ Note: There are two debug flags that can be specified at the command-line.
 These are the '-s' flag for displaying the contents of internal data structures
 used by the monitor during its generation steps and the '-d' flag for
 outputting various debug statements written in the monitor generator code.
+
+Other useful flags:
+  --helper <HEADER FILE> : Include the specified header file for providing helper functions
+  --console : Forces output to only show in the console; no file output will be generated
+  --noimplicit : Disables implicit error handling in the generated monitor
+  --arch <ARCH FILE> : The name of architechture file to parse (Described further below)
 
 
 ## Instrumenting the target

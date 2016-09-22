@@ -23,7 +23,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.0.0.dev2',
+    version='1.0.0.dev4',
 
     description='A tool for generating software monitors from SMEDL and PEDL definitions',
     long_description=long_description,
@@ -76,11 +76,12 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'grako>=3.8.1',
+        'grako>=3.14',
         'Jinja2>=2.8',
         'MarkupSafe>=0.23',
-        'mccabe>=0.3.1',
-        'nose>=1.3.7'
+        'mccabe>=0.5',
+        'nose>=1.3.7',
+        'pyelftools'
     ],
 
     # List additional groups of dependencies here (e.g. development
@@ -96,7 +97,7 @@ setup(
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data={
-        'smedl': ['templates/*'],
+        'smedl': ['c_style/*'],
     },
 
     # Although 'package_data' is the preferred approach, in some case you may

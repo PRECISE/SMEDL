@@ -1,7 +1,4 @@
 # This grammar defines A4SMEDL in the Grako-variation of EBNF.
-#  written by Peter Gebhard
-
-
 
 top
     =

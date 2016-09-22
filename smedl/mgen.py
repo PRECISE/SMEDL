@@ -35,10 +35,11 @@ def joinArgs(args, prefix=""):
 
 class MonitorGenerator(object):
 
-    def __init__(self, structs=False, debug=False, implicit=True):
+    def __init__(self, structs=False, debug=False, console=False, implicit=True):
         self._symbolTable = SmedlSymbolTable()
         self._printStructs = structs
         self._debug = debug
+        self._console = console
         self._implicitErrors = implicit
         self.pedlAST = None
         self.smedlAST = None
@@ -54,16 +55,12 @@ class MonitorGenerator(object):
         if pedlPath.exists():
             with pedlPath.open() as pedlFile:
                 pedlText = pedlFile.read()
-            pedlPar = pedlParser(
-                parseinfo=False,
-                comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)",
-                semantics=pedlModelBuilderSemantics())
+            pedlPar = pedlParser()
             self.pedlAST = pedlPar.parse(
                 pedlText,
-                'object',
-                filename=pedlPath,
-                trace=False,
-                whitespace=None)
+                rule_name='object',
+                comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)",
+                semantics=pedlModelBuilderSemantics())
             if self._printStructs:
                 print('PEDL AST:')
                 print(self.pedlAST)
@@ -73,15 +70,11 @@ class MonitorGenerator(object):
         if smedlPath.exists():
             with smedlPath.open() as smedlFile:
                 smedlText = smedlFile.read()
-            smedlPar = smedlParser(
-                parseinfo=False,
-                comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
+            smedlPar = smedlParser()
             self.smedlAST = smedlPar.parse(
                 smedlText,
-                'object',
-                filename=smedlPath,
-                trace=False,
-                whitespace=None)
+                rule_name='object',
+                comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
             if self._printStructs:
                 print('SMEDL AST:')
                 print(self.smedlAST)
@@ -91,38 +84,41 @@ class MonitorGenerator(object):
             if '.smedl' in pedlsmedlName or '.pedl' in pedlsmedlName:
                 raise ValueError('Did you accidentally include .smedl or .pedl in the input filename? Try again without including the extension.')
             raise ValueError('No matching SMEDL file found.')
-        
+
         # Parser the architecture, it exists
         if not a4smedlName == None:
             a4smedlPath = Path(a4smedlName + '.a4smedl')
             if a4smedlPath.exists():
                 with a4smedlPath.open() as a4smedlFile:
                     a4smedlText = a4smedlFile.read()
-                a4smedlPar = a4smedlParser(parseinfo=False,comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
-                self.a4smedlAST = a4smedlPar.parse(a4smedlText,'top',filename=a4smedlPath,trace=False,whitespace=None)
+                a4smedlPar = a4smedlParser()
+                self.a4smedlAST = a4smedlPar.parse(
+                    a4smedlText,
+                    rule_name='top',
+                    comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
                 if self._printStructs:
                     print('A4SMEDL AST:')
                     print(self.a4smedlAST)
                     print('\nA4SMEDL JSON:')
                     print(json.dumps(self.a4smedlAST,indent=2))
-        
+
         # Process the SMEDL AST
         self._symbolTable = SmedlSymbolTable()
         self._parseToSymbolTable('top', self.smedlAST)
         self._getParameterNames(self.smedlAST)
         allFSMs = self._generateFSMs(self.smedlAST)
-        
-        # procss architecture AST
+
+        # process architecture AST
         self._parseArchitecture('top',self.a4smedlAST)
-        
+
         #for mon in self.monitorInterface:
         #    print(mon)
         #    print('\n')
-        
+
         #for pattern in self.archSpec:
         #    print(pattern)
         #    print('\n')
-        
+
         # Output the internal symbol table and FSMs
         if self._printStructs:
             print('\nSMEDL Symbol Table:')
@@ -132,7 +128,8 @@ class MonitorGenerator(object):
                 print('\nFSM: %s\n' % key)
                 print('%s\n' % fsm)
 
-        CTemplater.output(self, allFSMs, pedlsmedlName, helper, self.pedlAST)
+        CTemplater.output(self, allFSMs, pedlsmedlName, helper, self.pedlAST, console_output=self._console)
+
 
     def _parseInter(self,object):
         if isinstance(object, AST):
@@ -149,9 +146,7 @@ class MonitorGenerator(object):
                 if k == 'monitor_declaration':
                     self._parseInter(v)
                 elif k == 'archSpec':
-                    
                     self._parseSpec(v)
-
 
 
     def _makeMonitor(self,object):
@@ -173,12 +168,10 @@ class MonitorGenerator(object):
                     elif k == 'imported_events':
                         imported = self._makeEventList(v)
                     elif k == 'exported_events':
-                        #print('exported')
                         exported = self._makeEventList(v)
-                            #print(v)
                 interface = Interface(monType,monId,para,imported,exported)
-                #print(interface)
                 self.monitorInterface.append(interface)
+
 
     def _makeEventList(self,object):
         lst = []
@@ -224,26 +217,20 @@ class MonitorGenerator(object):
                                 para = [v]
                     event = Event(err,ev_id,para)
                     lst.append(event)
-
         return lst
+
 
     def _parseSpec(self,object):
         if isinstance(object, AST):
-            
             for k,v in list(object.items()):
                 if k == 'conn_expr':
-                    #print(v)
-                    #print('\n')
                     if isinstance(v, list):
-                        #i = 0
                         for conn in v:
-                            #print(i)
                             self._makeConnExpr(conn)
-    
+
 
     def _makeConnExpr(self,object):
         if isinstance(object, AST):
-            
             conn_name = None
             s_i = None
             t_i = None
@@ -266,7 +253,6 @@ class MonitorGenerator(object):
             if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                 raise ValueError('attributes of events do not match')
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
-            #print(connEx)
             self.archSpec.append(connEx)
         elif isinstance(object,list):
             conn_name = None
@@ -290,12 +276,12 @@ class MonitorGenerator(object):
                         pa_spec = self._makePatternSpec(v)
                 if conn_name == None:
                     conn_name = s_i + '_'+s_e
-            #TODO:match number of attributes of the source and target events
+                # TODO: match number of attributes of the source and target events
                 if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                     raise ValueError('attributes of events do not match')
                 connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
-                #print(connEx)
                 self.archSpec.append(connEx)
+
 
     def _makePatternSpec(self,object):
         lst = []
@@ -351,8 +337,8 @@ class MonitorGenerator(object):
                 spec.addOperator(op)
                 spec.addTerm(lt,li,rt,ri)
                 lst.append(spec)
-        
         return lst
+
 
     def _checkConnExprDef(self,si,se,ti,te):
         left_mon = None
@@ -377,6 +363,7 @@ class MonitorGenerator(object):
             return False
         return True
 
+
     def _checkBound(self,conn,term,index):
         if term == conn.sourceMachine or term == conn.targetMachine:
             for mon in self.monitorInterface:
@@ -394,6 +381,7 @@ class MonitorGenerator(object):
                                 return True
             return False
 
+
     def _getBindingKeysNum(self):
         num = 0
         name = self._symbolTable.getSymbolsByType('object')[0]
@@ -402,11 +390,13 @@ class MonitorGenerator(object):
                 num=num+1
         return num
 
+
     def _getMachine(self,name):
         for mon in self.monitorInterface:
             if name == mon.id:
                 return mon
         return None
+
 
     def _getSourceEvent(self,machine,event):
         for mon in self.monitorInterface:
@@ -416,6 +406,7 @@ class MonitorGenerator(object):
                             return ev
         return None
 
+
     def _getIdentityName(self,index):
         id = 0
         for name in self.identities:
@@ -423,8 +414,6 @@ class MonitorGenerator(object):
                 return name
             id = id + 1
         return None
-    
-
 
 
     def _parseToSymbolTable(self, label, object):
@@ -559,11 +548,9 @@ class MonitorGenerator(object):
                         after = trace['end_state']
                     else:
                         after = trace['trace_steps'][i+1]['step_event']['expression']['atom']
-
                     if generated_state is not None:
                         before = generated_state
                         generated_state = None
-
                     if 'event' in self._symbolTable.get(current, 'type'):
                         actions = None
                         if trace['trace_steps'][i]['step_actions']:
@@ -691,6 +678,7 @@ class MonitorGenerator(object):
 
         return string
 
+
     @staticmethod
     def _removeParentheses(guard):
         if guard.startswith('(') and guard.endswith(')'):
@@ -706,6 +694,7 @@ class MonitorGenerator(object):
                 return guard
         else:
             return guard
+
 
     @staticmethod
     def _checkReferences(guard):
@@ -768,13 +757,15 @@ def main():
     parser.add_argument('--helper', help='Include header file for helper functions')
     parser.add_argument('-s', '--structs', help='Print internal data structures', action='store_true')
     parser.add_argument('-d', '--debug', help='Show debug output', action='store_true')
+    parser.add_argument('-c', '--console', help='Only output to console, no file output', action='store_true')
     parser.add_argument('--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
     # TODO: Add version flag
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="the name of the PEDL and SMEDL files to parse")
     parser.add_argument('--arch', type = str, metavar="a4smedl_filename", help="the name of architechture file to parse")
     args = parser.parse_args()
 
-    mgen = MonitorGenerator(structs=args.structs, debug=args.debug, implicit=args.noimplicit)
+    mgen = MonitorGenerator(structs=args.structs, debug=args.debug,
+        console=args.console, implicit=args.noimplicit)
     mgen.generate(args.pedlsmedl, args.arch, helper=args.helper)
 
 if __name__ == '__main__':

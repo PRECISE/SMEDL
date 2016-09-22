@@ -41,8 +41,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     config_t cfg;
     config_setting_t *setting;
     config_init(&cfg);
-    if(! config_read_file(&cfg, "{{ base_file_name }}_mon.cfg"))
-    {
+    if(!config_read_file(&cfg, "{{ base_file_name }}_mon.cfg")) {
         fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
             config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
@@ -54,7 +53,12 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     int port;
 
     if (setting != NULL) {
-        config_setting_lookup_string(setting, "hostname", &hostname);
+        if (!config_setting_lookup_string(setting, "hostname", &hostname)) {
+            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+                config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            exit(EXIT_FAILURE);
+        }
         config_setting_lookup_int(setting, "port", &port);
         config_setting_lookup_string(setting, "username", &username);
         config_setting_lookup_string(setting, "password", &password);
@@ -115,7 +119,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     // binding several binding keys
     char ** bindingkeys = (char**)malloc(bindingkeyNum*sizeof(char*));
     {{ b_keys }}
-    
+
     for(int i = 0; i < bindingkeyNum; i++){
         amqp_queue_bind(monitor->recv_conn, 1, queuename,
             amqp_cstring_bytes(monitor->amqp_exchange),
@@ -461,7 +465,6 @@ char* monitor_identities_str(MonitorIdentity** identities) {
     char* out = malloc(20*{{ obj|upper }}_MONITOR_IDENTITIES);
     out[0] = '\0';
     for(int i = 0; i < {{ obj|upper }}_MONITOR_IDENTITIES; i++) {
-        char* new_str;
         char* monid_str = monitor_identity_str(identities[i]);
         if (i == 0) {
             strcat(out, monid_str);
