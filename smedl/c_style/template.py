@@ -4,7 +4,7 @@ from .. import mgen
 
 class CTemplater(object):
     @staticmethod
-    def output(mg, allFSMs, filename, helper, pedlAST):
+    def output(mg, allFSMs, filename, helper, pedlAST, console_output=False):
         if mg._debug:
             if pedlAST:
                 print("Target Monitor Points: " + pedlAST.getTargetMonitorPoints())
@@ -215,40 +215,63 @@ class CTemplater(object):
         # Render the monitor templates and write to disk
         env = Environment(loader=PackageLoader('smedl.c_style','.'))
 
-        out_h = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
-        out_h.write(env.get_template('object_mon.h').render(values))
-        out_h.close()
+        out_h = env.get_template('object_mon.h').render(values)
+        if console_output:
+            print(out_h)
+        else:
+            out_h_file = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
+            out_h_file.write(out_h)
+            out_h_file.close()
 
-        out_c = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
-        out_c.write(env.get_template('object_mon.c').render(values))
-        out_c.close()
+        out_c = env.get_template('object_mon.c').render(values)
+        if console_output:
+            print(out_c)
+        else:
+            out_c_file = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
+            out_c_file.write(out_c)
+            out_c_file.close()
 
         # Copy pre-written static helper files to the output path
-        a_h = open(os.path.dirname(filename) + '/actions.h', 'w')
-        a_h.write(env.get_template('actions.h').render())
-        a_h.close()
+        a_h = env.get_template('actions.h').render()
+        if console_output:
+            print(a_h)
+        else:
+            a_h_file = open(os.path.dirname(filename) + '/actions.h', 'w')
+            a_h_file.write(a_h)
+            a_h_file.close()
 
-        a_c = open(os.path.dirname(filename) + '/actions.c', 'w')
-        a_c.write(env.get_template('actions.c').render())
-        a_c.close()
+        a_c = env.get_template('actions.c').render()
+        if console_output:
+            print(a_c)
+        else:
+            a_c_file = open(os.path.dirname(filename) + '/actions.c', 'w')
+            a_c_file.write(a_c)
+            a_c_file.close()
 
-        m_h = open(os.path.dirname(filename) + '/monitor_map.h', 'w')
-        m_h.write(env.get_template('monitor_map.h').render())
-        m_h.close()
+        m_h = env.get_template('monitor_map.h').render()
+        if console_output:
+            print(m_h)
+        else:
+            m_h_file = open(os.path.dirname(filename) + '/monitor_map.h', 'w')
+            m_h_file.write(m_h)
+            m_h_file.close()
 
-        m_c = open(os.path.dirname(filename) + '/monitor_map.c', 'w')
-        m_c.write(env.get_template('monitor_map.c').render())
-        m_c.close()
+        m_c = env.get_template('monitor_map.c').render()
+        if console_output:
+            print(m_c)
+        else:
+            m_c_file = open(os.path.dirname(filename) + '/monitor_map.c', 'w')
+            m_c_file.write(m_c)
+            m_c_file.close()
+
 
     def _getBindingKeys(mg):
         lst = []
         name = mg._symbolTable.getSymbolsByType('object')[0]
-        #print(name)
         k = 0
         for conn in mg.archSpec:
             b_str = 'bindingkeys['+str(k)+']'
             if name==conn.targetMachine:
-
                 p_str = b_str + '=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy('+b_str+',"'+conn.connName+'");\n'
                 sourceMachine = mg._getMachine(conn.sourceMachine)
                 if sourceMachine == None:
@@ -306,17 +329,16 @@ class CTemplater(object):
                             p_str += '\tstrcat('+b_str+',itoa(*(int*)('+eventIndexDic[machineIndex]+')));\n'
                         eventIndex = eventIndex + 1
                     lst.append(p_str)
-                    #print(p_str)
                     k = k + 1
         bindingkey = ''
         i = 0
-        #print(lst)
         for s in lst:
             bindingkey += s
             i = i+1
         if len(lst)==0:
             bindingkey+='bindingkeys[0]=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy(bindingkeys[0],"#");\n'
         return bindingkey
+
 
     # Translate a SMEDL type to a C type
     def convertTypeForC(smedlType):
