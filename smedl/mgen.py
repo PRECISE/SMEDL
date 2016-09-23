@@ -150,6 +150,7 @@ class MonitorGenerator(object):
 
 
     def _makeMonitor(self,object):
+        #print(object)
         if isinstance(object,list):
             for mon in object:
                 monId = None
@@ -163,13 +164,19 @@ class MonitorGenerator(object):
                     elif k == 'monitor_identifier':
                         monId = v
                     elif k == 'params':
+                        #print("v:"+v)
                         if not v == None:
-                            para = v
+                            if isinstance(v,list):
+                                para = v
+                            else:
+                                para = [v]
                     elif k == 'imported_events':
                         imported = self._makeEventList(v)
                     elif k == 'exported_events':
                         exported = self._makeEventList(v)
+                
                 interface = Interface(monType,monId,para,imported,exported)
+                print("para:"+str(len(para)))
                 self.monitorInterface.append(interface)
 
 

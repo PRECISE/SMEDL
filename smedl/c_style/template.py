@@ -464,6 +464,7 @@ class CTemplater(object):
             if name==conn.targetMachine:
                 p_str = b_str + '=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy('+b_str+',"'+conn.connName+'");\n'
                 sourceMachine = mg._getMachine(conn.sourceMachine)
+                print(sourceMachine)
                 if sourceMachine == None:
                     raise ValueError('source machine not exist')
                 sourceEvent = mg._getSourceEvent(conn.sourceMachine,conn.sourceEvent)
@@ -476,14 +477,19 @@ class CTemplater(object):
                     eventIndexDic = {}
                     #TODO: generate predicates on the machine and event, add corresponding filter, for each target event, union all predicates
                     for p_spec in conn.patternSpec:
+                        
                         leftterm = p_spec.getLeftTerm()
                         rightterm = p_spec.getRightTerm()
+                        print(leftterm)
+                        print(rightterm)
                         if leftterm == rightterm or (not leftterm == conn.targetMachine and not rightterm == conn.targetMachine) or (leftterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ) or (rightterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ):
 
                             raise ValueError('pattern expression syntax error')
                         else:
                             leftindex = p_spec.getLeftIndex()
                             rightindex = p_spec.getRightIndex()
+                            print(leftindex)
+                            print(rightindex)
                             if mg._checkBound(conn,leftterm,leftindex) and mg._checkBound(conn,rightterm,rightindex):
                                 if leftterm == conn.targetMachine:
                                     val = mg._getIdentityName(leftindex)
@@ -495,6 +501,7 @@ class CTemplater(object):
                                 elif rightterm == conn.targetMachine:
                                     #print("right index"+str(rightindex))
                                     val = mg._getIdentityName(rightindex)
+                                    print(val)
                                     if not val == None:
                                         if leftterm == conn.sourceEvent:
                                             eventIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
@@ -505,7 +512,7 @@ class CTemplater(object):
                     #build binding key and add it to lst
                     machineIndex = 0
                     eventIndex = 0
-
+                    print(len(sourceMachine.params))
                     while machineIndex < len(sourceMachine.params):
                         if not machineIndex in machineIndexDic.keys():
                             p_str += '\tstrcat('+b_str+',".*");\n'
