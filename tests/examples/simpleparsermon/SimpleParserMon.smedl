@@ -12,8 +12,8 @@ scenarios
         Ready -> getTime(ttime) when ttime >= currentTime {currentTime = ttime} -> getLat(lat) when lat >= -90 && lat <= 90 -> getLon(lon) when lon >= -180 && lon <= 180 -> Ready
               else { raise time_error(currentTime) } -> Error
    getDistance:
-        Ready -> getDist(dist) when dist >=0 -> Ready //intent 2
+        Ready -> getDist(dist) when dist >= 0 -> Ready //intent 2
              else -> Error
    getSpeed:
-        Ready -> getSpeed(speed) when speed <=6 -> Ready //intent 3
+        Ready -> getSpeed(speed) when speed <= 6 -> Ready //intent 3
               else -> Error
