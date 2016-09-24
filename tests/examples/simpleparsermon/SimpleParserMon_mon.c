@@ -49,7 +49,7 @@ void simpleparsermon_getTime(SimpleparsermonMonitor* monitor, int mon_var_ttime)
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_GEN0;
       }
       else {
-        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: time_error; Event parameters : "); }
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: time_error"); }
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_ERROR;
       }
       break;
@@ -80,7 +80,7 @@ void simpleparsermon_getLat(SimpleparsermonMonitor* monitor, float mon_var_lat) 
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_GEN1;
       }
       else {
-        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: time_error; Event parameters : "); }
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: time_error"); }
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_ERROR;
       }
       break;
@@ -110,7 +110,7 @@ void simpleparsermon_getLon(SimpleparsermonMonitor* monitor, float mon_var_lon) 
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_READY;
       }
       else {
-        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: time_error; Event parameters : "); }
+        { time_t action_time = time(NULL); fprintf(monitor->logFile, "%s    %s\n", ctime(&action_time), "ActionType: Raise; Event raised: time_error"); }
         monitor->state[SIMPLEPARSERMON_POINT_COUNTS_SCENARIO] = SIMPLEPARSERMON_POINT_COUNTS_ERROR;
       }
       break;
