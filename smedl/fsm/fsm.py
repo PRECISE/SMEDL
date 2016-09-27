@@ -80,7 +80,7 @@ class FSM(object):
     def groupTransitionsByStartState(self, transition_list):
         if not isinstance(transition_list, list):
             raise TypeError("Invalid type for transition_list argument.")
-        transition_dict = {}
+        transition_dict = collections.OrderedDict()
         for t in transition_list:
             if t.startState not in transition_dict:
                 transition_dict[t.startState] = []

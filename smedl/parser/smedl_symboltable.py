@@ -15,10 +15,9 @@ from collections import OrderedDict
 
 class SmedlSymbolTable(OrderedDict):
 
-    generated = 0
-
     def __init__(self):
         super(SmedlSymbolTable, self).__init__()
+        self.generated = 0
 
 
     def add(self, symbol, attributes=None):
@@ -86,7 +85,7 @@ class SmedlSymbolTable(OrderedDict):
         This method generates a new symbol representing an implicit state,
         ensuring that its name is unique.
         """
-        symbol = "Gen%d" % SmedlSymbolTable.generated
+        symbol = "Gen%d" % self.generated
         self.add(symbol, attributes)
-        SmedlSymbolTable.generated += 1
+        self.generated += 1
         return symbol
