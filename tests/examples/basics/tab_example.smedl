@@ -7,10 +7,10 @@ object TabMon
         Renderer rengine;
     events
         imported store(Tab, Cookie), render(Renderer, URL), displayUrl(Tab, URL);
-        exported error cookieIntegrityAlarm;
+        exported error cookieIntegrityAlarm();
     scenarios
         CookieIntegrity:
         Tab -> store(this, cookie) when isSubdomain(cookie.domain, currentUrl.getHost()) -> Tab
-            else { raise cookieIntegrityAlarm } -> Tab
+            else { raise cookieIntegrityAlarm(); } -> Tab
         PageRendering:
-        Tab -> displayUrl(this, url) -> render(rengine, url) { currentUrl = url } -> Tab
+        Tab -> displayUrl(this, url) -> render(rengine, url) { currentUrl = url; } -> Tab

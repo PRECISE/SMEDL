@@ -1,0 +1,722 @@
+--tests/examples/basics/action_update_mon.h--
+#include "monitor_map.h"
+#include "actions.h"
+#include <stdio.h> // For the log file
+#include <amqp_tcp_socket.h>
+#include <amqp.h>
+#include <amqp_framing.h>
+#include <pthread.h>
+
+#define ACTUP_MONITOR_MAP_SIZE 100 // number of buckets
+#define ACTUP_MONITOR_IDENTITIES 1
+
+typedef struct ActupData {
+  void* id;
+  int bar;
+} ActupData;
+
+typedef struct ActupMonitor {
+  pthread_mutex_t monitor_lock;
+  MonitorIdentity *identities[1];
+  int state[1];
+  int bar;
+  action *action_queue;
+  const char *amqp_exchange;
+  const char *ctrl_exchange;
+  amqp_socket_t *recv_socket;
+  amqp_connection_state_t recv_conn;
+  amqp_socket_t *send_socket;
+  amqp_connection_state_t send_conn;
+} ActupMonitor;
+
+typedef struct ActupMonitorRecord {
+  ActupMonitor *monitor;
+  struct ActupMonitorRecord *next;
+} ActupMonitorRecord;
+
+typedef struct ActupMonitorMap {
+  ActupMonitorRecord *list[ACTUP_MONITOR_MAP_SIZE];
+} ActupMonitorMap;
+
+ActupMonitorMap* actup_monitor_maps[ACTUP_MONITOR_IDENTITIES]; //a map for each identity
+pthread_mutex_t actup_monitor_maps_lock;
+
+ActupMonitor* init_actup_monitor(ActupData*);
+void start_monitor(ActupMonitor* monitor);
+void free_monitor(ActupMonitor*);
+
+/*
+ * Monitor Event Handlers
+ */
+void actup_foo(ActupMonitor* monitor, int x);
+void raise_actup_foo(ActupMonitor* monitor, int x);
+
+/*
+ * Monitor Utility Functions
+ */
+ActupMonitorRecord* get_actup_monitors();
+ActupMonitorRecord* get_actup_monitors_by_identity(int, int, void*);
+ActupMonitorRecord* filter_actup_monitors_by_identity(ActupMonitorRecord*, int, void*);
+int init_actup_monitor_maps();
+void free_actup_monitor_maps();
+int add_actup_monitor_to_map(ActupMonitor*, int);
+int put_actup_monitor(ActupMonitor*); //puts into all maps
+void raise_error(char*, const char*, char*, char*);
+char* monitor_identities_str(MonitorIdentity**);
+--tests/examples/basics/action_update_mon.c--
+//Compile: gcc -o action_update_mon -std=c99 actions.c monitor_map.c action_update_mon.c
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#include <stdint.h>
+#include <amqp_tcp_socket.h>
+#include <amqp.h>
+#include <amqp_framing.h>
+#include <libconfig.h>
+#include "utils.h"
+#include "action_update_mon.h"
+
+typedef enum { ACTUP_ID } actup_identity;
+const identity_type actup_identity_types[ACTUP_MONITOR_IDENTITIES] = { OPAQUE };
+
+typedef enum { ACTUP_SC1_SCENARIO } actup_scenario;
+typedef enum { ACTUP_SC1_MIN1 } actup_sc1_state;
+typedef enum { ACTUP_FOO_EVENT } actup_event;
+typedef enum { ACTUP_DEFAULT } actup_error;
+const char *actup_sc1_states[1] = { "Min1" };
+const char **actup_states_names[1] = { actup_sc1_states };
+
+#define bindingkeyNum 1
+
+ActupMonitor* init_actup_monitor( ActupData *d ) {
+    ActupMonitor* monitor = (ActupMonitor*)malloc(sizeof(ActupMonitor));
+    pthread_mutex_init(&monitor->monitor_lock, NULL);
+    monitor->identities[ACTUP_ID] = init_monitor_identity(OPAQUE, d->id);
+    monitor->bar = d->bar;
+    monitor->state[ACTUP_SC1_SCENARIO] = ACTUP_SC1_MIN1;
+    monitor->action_queue = NULL;
+
+    /* Read settings from config file */
+    config_t cfg;
+    config_setting_t *setting;
+    config_init(&cfg);
+    if(!config_read_file(&cfg, "action_update_mon.cfg")) {
+        fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+            config_error_line(&cfg), config_error_text(&cfg));
+        config_destroy(&cfg);
+        exit(EXIT_FAILURE);
+    }
+    setting = config_lookup(&cfg, "rabbitmq");
+
+    const char *hostname, *username, *password;
+    int port;
+
+    if (setting != NULL) {
+        if (!config_setting_lookup_string(setting, "hostname", &hostname)) {
+            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+                config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            exit(EXIT_FAILURE);
+        }
+        config_setting_lookup_int(setting, "port", &port);
+        config_setting_lookup_string(setting, "username", &username);
+        config_setting_lookup_string(setting, "password", &password);
+        config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange));
+        config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange));
+    }
+
+    /* RabbitMQ initialization */
+    amqp_bytes_t queuename;
+    monitor->recv_conn = amqp_new_connection();
+    monitor->recv_socket = amqp_tcp_socket_new(monitor->recv_conn);
+    if (!monitor->recv_socket) {
+        die("creating TCP socket");
+    }
+    int status = amqp_socket_open(monitor->recv_socket, hostname, port);
+    if (status) {
+        die("opening TCP socket");
+    }
+    die_on_amqp_error(amqp_login(monitor->recv_conn, "/", 0, 131072, 0,
+        AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
+    amqp_channel_open(monitor->recv_conn, 1);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Opening channel");
+    amqp_queue_declare_ok_t *r = amqp_queue_declare(monitor->recv_conn, 1,
+        amqp_empty_bytes, 0, 0, 0, 1, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Declaring queue");
+    queuename = amqp_bytes_malloc_dup(r->queue);
+    if (queuename.bytes == NULL) {
+        fprintf(stderr, "Out of memory while copying queue name");
+        exit(EXIT_FAILURE);
+    }
+
+    monitor->send_conn = amqp_new_connection();
+    monitor->send_socket = amqp_tcp_socket_new(monitor->send_conn);
+    if (!monitor->send_socket) {
+        die("creating TCP socket");
+    }
+    status = amqp_socket_open(monitor->send_socket, hostname, port);
+    if (status) {
+        die("opening TCP socket");
+    }
+    die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
+        AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
+    amqp_channel_open(monitor->send_conn, 1);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
+        "Opening channel");
+    amqp_exchange_declare(monitor->send_conn, 1,
+        amqp_cstring_bytes(monitor->amqp_exchange),
+        amqp_cstring_bytes("topic"), 0, 1, 0, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
+        "Declaring primary exchange");
+    amqp_exchange_declare(monitor->send_conn, 1,
+        amqp_cstring_bytes(monitor->ctrl_exchange),
+        amqp_cstring_bytes("fanout"), 0, 1, 0, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
+        "Declaring control exchange");
+
+    // binding several binding keys
+    char ** bindingkeys = (char**)malloc(bindingkeyNum*sizeof(char*));
+    bindingkeys[0]=(char*)malloc(255*sizeof(char));
+	strcpy(bindingkeys[0],"#");
+
+
+    for(int i = 0; i < bindingkeyNum; i++){
+        amqp_queue_bind(monitor->recv_conn, 1, queuename,
+            amqp_cstring_bytes(monitor->amqp_exchange),
+            amqp_cstring_bytes(bindingkeys[i]), amqp_empty_table);
+    }
+
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Binding queue");
+    amqp_basic_consume(monitor->recv_conn, 1, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Consuming");
+
+    put_actup_monitor(monitor);
+    return monitor;
+}
+
+// mallocs a string for the event name
+// returns null if the given string isn't a properly-terminated c string
+char *getEventName(char *str, size_t maxlen){
+    // make sure that str is really a cstring before trying to copy from it.
+    size_t len = strnlen(str, maxlen);
+    if (len >= maxlen) {
+        return NULL;
+    }
+    // find the first space or the end of the string
+    char* end = index(str, ' ');
+    // copylen is the length of the string with the terminator
+    size_t copylen;
+    if (NULL == end) {
+      copylen = maxlen - 1;
+    } else {
+      copylen = end - str;
+    }
+    char* eventName = malloc(copylen+1);
+    memcpy(eventName, str, copylen);
+    eventName[copylen] = '\0';
+    return eventName;
+}
+
+char *getConnName(char *str, size_t maxlen){
+    // make sure that str is really a cstring before trying to copy from it.
+    size_t len = strnlen(str, maxlen);
+    if (len >= maxlen) {
+        return NULL;
+    }
+    // find the first space or the end of the string
+    char* end = index(str, '.');
+    // copylen is the length of the string with the terminator
+    size_t copylen;
+    if (NULL == end) {
+        copylen = maxlen - 1;
+    } else {
+        copylen = end - str;
+    }
+    char* connName = malloc(copylen+1);
+    memcpy(connName, str, copylen);
+    connName[copylen] = '\0';
+    return connName;
+}
+
+
+void start_monitor(ActupMonitor* monitor) {
+    int received = 0;
+    amqp_frame_t frame;
+
+    // Announce that the monitor has started
+    char* ids = monitor_identities_str(monitor->identities);
+    char* ann = malloc(strlen(ids)+50);
+    sprintf(ann, "Actup monitor (%s) started.", ids);
+    free(ids);
+    die_on_error(amqp_basic_publish(monitor->send_conn,
+                                    1,
+                                    amqp_cstring_bytes(monitor->ctrl_exchange),
+                                    amqp_cstring_bytes("smedl.control"), // Ignored due to fanout exchange
+                                    0,
+                                    0,
+                                    NULL,
+                                    amqp_cstring_bytes(ann)),
+                "Publishing Actup monitor startup announcement");
+    free(ann);
+
+    while (1) {
+        amqp_rpc_reply_t ret;
+        amqp_envelope_t envelope;
+        amqp_maybe_release_buffers(monitor->recv_conn);
+        ret = amqp_consume_message(monitor->recv_conn, &envelope, NULL, 0);
+        amqp_message_t msg = envelope.message;
+        amqp_bytes_t bytes = msg.body;
+        amqp_bytes_t routing_key = envelope.routing_key;
+        char* rk = (char*)routing_key.bytes;
+        char* string = (char*)bytes.bytes;
+        //char* event[255] = {NULL};
+
+        if (string != NULL) {
+            char* eventName = getConnName(rk, bytes.len);
+            if (eventName != NULL) {
+                char e[255];
+
+                
+
+            }
+            free(eventName);
+        }
+
+        if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
+            if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type &&
+                AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
+                if (AMQP_STATUS_OK != amqp_simple_wait_frame(monitor->recv_conn, &frame)) {
+                    return;
+                }
+
+                if (AMQP_FRAME_METHOD == frame.frame_type) {
+                    switch (frame.payload.method.id) {
+                        case AMQP_BASIC_ACK_METHOD:
+                            /* if we've turned publisher confirms on, and we've published a message
+                             * here is a message being confirmed
+                             */
+                            printf("AMQP_BASIC_ACK_METHOD\n");
+                            break;
+                        case AMQP_BASIC_RETURN_METHOD:
+                            /* if a published message couldn't be routed and the mandatory flag was set
+                             * this is what would be returned. The message then needs to be read.
+                             */
+                            printf("AMQP_BASIC_RETURN_METHOD\n");
+                            amqp_message_t message;
+                            ret = amqp_read_message(monitor->recv_conn, frame.channel, &message, 0);
+                            if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
+                                return;
+                            }
+                            amqp_destroy_message(&message);
+                            break;
+
+                        case AMQP_CHANNEL_CLOSE_METHOD:
+                            /* a channel.close method happens when a channel exception occurs, this
+                             * can happen by publishing to an exchange that doesn't exist for example
+                             *
+                             * In this case you would need to open another channel redeclare any queues
+                             * that were declared auto-delete, and restart any consumers that were attached
+                             * to the previous channel
+                             */
+                            return;
+
+                        case AMQP_CONNECTION_CLOSE_METHOD:
+                            /* a connection.close method happens when a connection exception occurs,
+                             * this can happen by trying to use a channel that isn't open for example.
+                             *
+                             * In this case the whole connection must be restarted.
+                             */
+                            return;
+
+                        default:
+                            fprintf(stderr ,"An unexpected method was received %u\n", frame.payload.method.id);
+                            return;
+                    }
+                }
+            }
+        } else {
+            amqp_destroy_envelope(&envelope);
+        }
+        received++;
+    }
+}
+
+void send_message(ActupMonitor* monitor, char* message, char* routing_key) {
+    amqp_bytes_t message_bytes;
+    message_bytes.len = strlen(message)+1;
+    message_bytes.bytes = message;
+    die_on_error(amqp_basic_publish(monitor->send_conn,
+                                    1,
+                                    amqp_cstring_bytes(monitor->amqp_exchange),
+                                    amqp_cstring_bytes(routing_key),
+                                    0,
+                                    0,
+                                    NULL,
+                                    message_bytes),
+                "Publishing");
+
+}
+
+void free_monitor(ActupMonitor* monitor) {
+    die_on_amqp_error(amqp_channel_close(monitor->send_conn, 1, AMQP_REPLY_SUCCESS), "Closing channel");
+    die_on_amqp_error(amqp_connection_close(monitor->send_conn, AMQP_REPLY_SUCCESS), "Closing connection");
+    die_on_error(amqp_destroy_connection(monitor->send_conn), "Ending connection");
+    free(monitor);
+}
+
+/*
+ * Monitor Event Handlers
+ */
+
+void actup_foo(ActupMonitor* monitor, int x) {
+  switch (monitor->state[ACTUP_SC1_SCENARIO]) {
+    case ACTUP_SC1_MIN1:
+      if(monitor->bar == 1) {
+        monitor->bar = x;
+        monitor->state[ACTUP_SC1_SCENARIO] = ACTUP_SC1_MIN1;
+      }
+      else {
+        raise_error("sc1", actup_states_names[ACTUP_SC1_SCENARIO][monitor->state[ACTUP_SC1_SCENARIO]], "monitor->state[ACTUP_SC1_SCENARIO]", "DEFAULT");
+      }
+      break;
+
+    default:
+      raise_error("actup_sc1", actup_states_names[ACTUP_SC1_SCENARIO][monitor->state[ACTUP_SC1_SCENARIO]], "foo", "DEFAULT");
+      break;
+  }
+}
+
+void raise_actup_foo(ActupMonitor* monitor, int x) {
+  param *p_head = NULL;
+  push_param(&p_head, &x, NULL, NULL, NULL);
+  push_action(&monitor->action_queue, ACTUP_FOO_EVENT, p_head);
+}
+
+
+/*
+ * Monitor Utility Functions
+ */
+
+int init_actup_monitor_maps() {
+    if (pthread_mutex_init(&actup_monitor_maps_lock, NULL) != 0) {
+        printf("\nActup Monitor map mutex init failed\n");
+        return 0;
+    }
+    for(int i = 0; i < ACTUP_MONITOR_IDENTITIES; i++) {
+        actup_monitor_maps[i] = (ActupMonitorMap*)malloc(sizeof(ActupMonitorMap));
+    }
+    return 1;
+}
+
+void free_actup_monitor_maps() {
+    // TODO
+}
+
+int add_actup_monitor_to_map(ActupMonitor *monitor, int identity) {
+    ActupMonitorMap* map = actup_monitor_maps[identity];
+    int bucket = hash_monitor_identity(monitor->identities[identity]->type,
+        monitor->identities[identity]->value, ACTUP_MONITOR_MAP_SIZE);
+    ActupMonitorRecord* record = (ActupMonitorRecord*)malloc(sizeof(ActupMonitorRecord));
+    if(monitor == NULL || record == NULL) {
+        free(monitor);
+        free(record);
+        return 0;
+    }
+    record->monitor = monitor;
+    pthread_mutex_lock(&actup_monitor_maps_lock);
+    record->next = map->list[bucket];
+    map->list[bucket] = record;
+    pthread_mutex_unlock(&actup_monitor_maps_lock);
+    return 1;
+}
+
+int put_actup_monitor(ActupMonitor *monitor) {
+    return add_actup_monitor_to_map(monitor, ACTUP_ID);
+}
+
+ActupMonitorRecord* get_actup_monitors() {
+    ActupMonitorRecord* results = NULL;
+    ActupMonitorMap* map = actup_monitor_maps[0];
+    for(int i = 0; i < ACTUP_MONITOR_MAP_SIZE; i++) {
+        ActupMonitorRecord* current = map->list[i];
+        while(current != NULL) {
+            ActupMonitorRecord* record = (ActupMonitorRecord*)malloc(sizeof(ActupMonitorRecord));
+            record->monitor = current->monitor;
+            record->next = results;
+            results = record;
+            current = current->next;
+        }
+    }
+    return results;
+}
+
+ActupMonitorRecord* get_actup_monitors_by_identity(int identity, int type, void *value) {
+    ActupMonitorRecord* results = NULL;
+    ActupMonitorMap* map = actup_monitor_maps[identity];
+    int bucket = hash_monitor_identity(type, value, ACTUP_MONITOR_MAP_SIZE);
+    ActupMonitorRecord* current = map->list[bucket];
+    while(current != NULL) {
+        if(compare_monitor_identity(value, current->monitor->identities[identity])) {
+            ActupMonitorRecord* record = (ActupMonitorRecord*)malloc(sizeof(ActupMonitorRecord));
+            record->monitor = current->monitor;
+            record->next = results;
+            results = record;
+        }
+        current = current->next;
+    }
+    return results;
+}
+
+ActupMonitorRecord* filter_actup_monitors_by_identity(ActupMonitorRecord* before, int identity, void  *value) {
+    ActupMonitorRecord* results = NULL;
+    while(before != NULL) {
+        if(compare_monitor_identity(value, before->monitor->identities[identity])) {
+            ActupMonitorRecord* record = (ActupMonitorRecord*)malloc(sizeof(ActupMonitorRecord));
+            record->monitor = before->monitor;
+            record->next = results;
+            results = record;
+        }
+        before = before->next;
+    }
+    return results;
+}
+
+void raise_error(char *scen, const char *state, char *action, char *type) {
+    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
+}
+
+char* monitor_identities_str(MonitorIdentity** identities) {
+    char* out = malloc(20*ACTUP_MONITOR_IDENTITIES);
+    out[0] = '\0';
+    for(int i = 0; i < ACTUP_MONITOR_IDENTITIES; i++) {
+        char* monid_str = monitor_identity_str(identities[i]);
+        if (i == 0) {
+            strcat(out, monid_str);
+        }
+        else {
+            strcat(out, ", ");
+            strcat(out, monid_str);
+        }
+        free(monid_str);
+    }
+    return out;
+}
+--actions.h--
+#ifndef ACTIONS_H
+#define ACTIONS_H
+
+typedef struct Parameter param;
+struct Parameter {
+  int type;
+  int i;
+  char c;
+  double d;
+  const void *v;
+  param *next;
+};
+
+int push_param(param**, int*, char*, double*, const void**);
+void pop_param(param**);
+
+typedef struct Action action;
+struct Action {
+  int id;
+  param *params;
+  action *next;
+};
+
+int push_action(action**, int, param*);
+void pop_action(action**);
+
+#endif
+--actions.c--
+#include <stdlib.h>
+#include <stdio.h>
+#include "actions.h"
+
+int push_param(param **head, int *i, char *c, double *d, const void **v) {
+    param *new = (param*)malloc(sizeof(param));
+    if(new == NULL) {
+        free(new);
+        return 0;
+    }
+    if(i != NULL) {
+        new->i = *i;
+    }
+    if(c != NULL) {
+        new->c = *c;
+    }
+    if(d != NULL) {
+        new->d = *d;
+    }
+    if(v != NULL) {
+        new->v = *v;
+    }
+    new->next = NULL;
+    if(*head == NULL) {
+        *head = new;
+        return 1;
+    }
+    param *current = *head;
+    while(current->next != NULL) {
+        current = current->next;
+    }
+    current->next = new;
+    return 1;
+}
+
+void pop_param(param **head) {
+    if(head != NULL && *head != NULL) {
+        param *old = *head;
+        *head = (*head)->next;
+        free(old);
+    }
+}
+
+int push_action(action **head, int id, param *params) {
+    action *new = (action*)malloc(sizeof(action));
+    if(new == NULL) {
+        free(new);
+        return 0;
+    }
+    new->id = id;
+    new->params = params;
+    new->next = NULL;
+    if(*head == NULL) {
+        *head = new;
+        return 1;
+    }
+    action *current = *head;
+    while((current)->next != NULL) {
+        current = current->next;
+    }
+    current->next = new;
+    return 1;
+}
+
+void pop_action(action **head) {
+    if(head != NULL && *head != NULL) {
+        action *old = *head;
+        *head = (*head)->next;
+        free(old);
+    }
+}
+--monitor_map.h--
+#ifndef MONITOR_MAP_H
+#define MONITOR_MAP_H
+
+typedef enum { INT, POINTER, THREAD, OPAQUE } identity_type;
+
+typedef struct MonitorIdentity {
+  identity_type type;
+  void *value;
+} MonitorIdentity;
+
+MonitorIdentity* init_monitor_identity(identity_type, void*);
+int compare_monitor_identity(void*, MonitorIdentity*);
+int hash_monitor_identity(identity_type, void*, int);
+char* monitor_identity_str(MonitorIdentity*);
+
+#endif
+--monitor_map.c--
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <pthread.h>
+#include "monitor_map.h"
+
+MonitorIdentity* init_monitor_identity(identity_type type, void *value) {
+    MonitorIdentity* identity = (MonitorIdentity*)malloc(sizeof(MonitorIdentity));
+    int *i = (int*)malloc(sizeof(int));
+    uintptr_t *p = (uintptr_t*)malloc(sizeof(uintptr_t));
+    pthread_t *t = (pthread_t*)malloc(sizeof(pthread_t));
+
+    identity->type = type;
+
+    switch (type) {
+        case INT:
+        case OPAQUE:
+            *i = *(int*)value;
+            identity->value = i;
+            break;
+        case POINTER:
+            *p = (uintptr_t)value;
+            identity->value = p;
+            break;
+        case THREAD:
+            *t = *(pthread_t*)value;
+            identity->value = t;
+            break;
+        default:
+            break;
+    }
+
+    return identity;
+}
+
+int compare_monitor_identity(void *value, MonitorIdentity *other) {
+    int value_match = 0;
+    switch (other->type) {
+        case INT:
+        case OPAQUE:
+            if(*(int*)value == *(int*)other->value) {
+                value_match = 1;
+            }
+            break;
+        case POINTER:
+            if(*(uintptr_t*)value == *(uintptr_t*)other->value) {
+                value_match = 1;
+            }
+            break;
+        case THREAD:
+            if(*(pthread_t*)value == *(pthread_t*)other->value) {
+                value_match = 1;
+            }
+            break;
+        default:
+            break;
+    }
+    return value_match;
+}
+
+int hash_monitor_identity(identity_type type, void *value, int map_size) {
+    int bucket;
+    switch (type) {
+        case INT:
+        case OPAQUE:
+            bucket = *(int*)value % map_size;
+            break;
+        case POINTER:
+            bucket = (int)(*(uintptr_t*)value) % map_size;
+            break;
+        case THREAD:
+            bucket = (int)(*(pthread_t*)value) % map_size;
+            break;
+        default:
+            break;
+    }
+    return bucket;
+}
+
+char* monitor_identity_str(MonitorIdentity *id) {
+    char* out = malloc(20);
+    out[0] = '\0';
+    switch (id->type) {
+        case INT:
+        case OPAQUE:
+            sprintf(out, "%d", *(int*)id->value);
+            break;
+        case POINTER:
+            sprintf(out, "%02x", (int)*(uintptr_t*)id->value);
+            break;
+        case THREAD:
+            sprintf(out, "%02x", (int)*(pthread_t*)id->value);
+            break;
+        default:
+            out[0] = '\0';
+            break;
+    }
+    return out;
+}

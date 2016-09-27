@@ -9,4 +9,4 @@ object WebServerMon
     scenarios
         Authentication:
         WebServer -> request(url) when authRequired(url) -> response(code) when code == 401 -> WebServer
-            else { response(403) } -> WebServer
+            else { response(403); } -> WebServer

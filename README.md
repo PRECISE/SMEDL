@@ -58,10 +58,12 @@ used by the monitor during its generation steps and the '-d' flag for
 outputting various debug statements written in the monitor generator code.
 
 Other useful flags:
+  ```sh
   --helper <HEADER FILE> : Include the specified header file for providing helper functions
   --console : Forces output to only show in the console; no file output will be generated
   --noimplicit : Disables implicit error handling in the generated monitor
   --arch <ARCH FILE> : The name of architechture file to parse (Described further below)
+  ```
 
 
 ## Instrumenting the target
@@ -105,9 +107,17 @@ To parse a SMEDL file using the generated parser:
 ## Compile with architecture description
 --------------------------------------
 
-An architecture description file can be compiled with smedl specification using the command line
-`python -m smedl.mgen PEDL_SMEDL_FILENAME --arch=ARCH_SMEDL_FILENAME`. Note that `ARCH_SMEDL_FILENAME` does not contain '.a4smedl' suffix.
-Moreover, it is necessary to compile separately with corresponding smedl specifications. For more info readers can refer to the corresponding document 'Architecture_Description_Language_for_SMEDL'
+An architecture description file can be compiled with the SMEDL specification
+using the command `python -m smedl.mgen PEDL_SMEDL_FILENAME --arch=ARCH_SMEDL_FILENAME`.
+Note that `ARCH_SMEDL_FILENAME` does not contain '.a4smedl' suffix.
+
+Moreover, it is necessary to compile separately with corresponding SMEDL
+specifications. For more info, readers can refer to the document Architecture_Description_Language_for_SMEDL.
+
+## Running the test suite
+--------------------------------------
+You may run the tool's test suite by simply calling `nosetests` from the
+project's root directory.
 
 ## Updating from the repository
 ----------------------------

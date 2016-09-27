@@ -1,4 +1,3 @@
-from utils import setup_syspath; setup_syspath()
 from smedl.fsm import FSM, State, Transition
 import unittest
 

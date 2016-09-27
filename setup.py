@@ -76,7 +76,7 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'grako>=3.14',
+        'grako==3.14',
         'Jinja2>=2.8',
         'MarkupSafe>=0.23',
         'mccabe>=0.5',

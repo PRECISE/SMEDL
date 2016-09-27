@@ -1,4 +1,3 @@
-from utils import setup_syspath; setup_syspath()
 from smedl.parser.smedl_symboltable import SmedlSymbolTable
 import unittest
 
@@ -31,7 +30,7 @@ class TestSymbolTable(unittest.TestCase):
         self.assertEqual('a', two['type'])
         self.assertEqual('a', two_attr)
         self.assertEqual(None, self.symbolTable.get('five'))
-        self.assertEqual(None, self.symbolTable.get('one', 'datatype'))
+        self.assertRaises(ValueError, self.symbolTable.get, 'one', 'datatype')
 
     def test_getSymbolsByType(self):
         self.symbolTable.add('one')
@@ -63,9 +62,9 @@ class TestSymbolTable(unittest.TestCase):
         self.symbolTable.add('two', {'type': 'a'})
         self.assertEqual(2, len(list(self.symbolTable.keys())))
         self.symbolTable.delete('two', 'type')
-        self.assertFalse(self.symbolTable.get('two', 'type'))
+        self.assertRaises(ValueError, self.symbolTable.get, 'two', 'type')
         self.symbolTable.delete('one')
-        self.assertFalse(self.symbolTable.get('two', 'type'))
+        self.assertRaises(ValueError, self.symbolTable.get, 'two', 'type')
         # Would have expected self(symbol).pop and self[symbol](attribute).pop
         # to remove relative key, not just value
         # self.assertEqual(1, len(self.symbolTable.keys()))

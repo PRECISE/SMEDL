@@ -408,6 +408,7 @@ class CTemplater(object):
 
         out_h = env.get_template('object_mon.h').render(values)
         if console_output:
+            print("--" + filename + "_mon.h--")
             print(out_h)
         else:
             out_h_file = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
@@ -416,6 +417,7 @@ class CTemplater(object):
 
         out_c = env.get_template('object_mon.c').render(values)
         if console_output:
+            print("--" + filename + "_mon.c--")
             print(out_c)
         else:
             out_c_file = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
@@ -425,6 +427,7 @@ class CTemplater(object):
         # Copy pre-written static helper files to the output path
         a_h = env.get_template('actions.h').render()
         if console_output:
+            print("--actions.h--")
             print(a_h)
         else:
             a_h_file = open(os.path.dirname(filename) + '/actions.h', 'w')
@@ -433,6 +436,7 @@ class CTemplater(object):
 
         a_c = env.get_template('actions.c').render()
         if console_output:
+            print("--actions.c--")
             print(a_c)
         else:
             a_c_file = open(os.path.dirname(filename) + '/actions.c', 'w')
@@ -441,6 +445,7 @@ class CTemplater(object):
 
         m_h = env.get_template('monitor_map.h').render()
         if console_output:
+            print("--monitor_map.h--")
             print(m_h)
         else:
             m_h_file = open(os.path.dirname(filename) + '/monitor_map.h', 'w')
@@ -449,6 +454,7 @@ class CTemplater(object):
 
         m_c = env.get_template('monitor_map.c').render()
         if console_output:
+            print("--monitor_map.c--")
             print(m_c)
         else:
             m_c_file = open(os.path.dirname(filename) + '/monitor_map.c', 'w')
