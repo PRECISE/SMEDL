@@ -1,0 +1,6 @@
+object Test
+    events
+        imported foo();
+    scenarios
+        check:
+            Start -> foo { raise bar(); } -> Start

@@ -49,7 +49,7 @@ class MonitorGenerator(object):
         self.identities = []
 
 
-    def generate(self, pedlsmedlName, a4smedlName, helper=None):
+    def generate(self, pedlsmedlName, a4smedlName=None, helper=None):
         # Parse the PEDL, if it exists
         pedlPath = Path(pedlsmedlName + '.pedl')
         if pedlPath.exists():
@@ -86,7 +86,7 @@ class MonitorGenerator(object):
             raise ValueError('No matching SMEDL file found.')
 
         # Parser the architecture, it exists
-        if not a4smedlName == None:
+        if a4smedlName is not None:
             a4smedlPath = Path(a4smedlName + '.a4smedl')
             if a4smedlPath.exists():
                 with a4smedlPath.open() as a4smedlFile:
@@ -752,12 +752,12 @@ def main():
     parser.add_argument('--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
     # TODO: Add version flag
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="the name of the PEDL and SMEDL files to parse")
-    parser.add_argument('--arch', type = str, metavar="a4smedl_filename", help="the name of architechture file to parse")
+    parser.add_argument('--arch', type = str, metavar="a4smedl_filename", help="the name of architecture file to parse")
     args = parser.parse_args()
 
     mgen = MonitorGenerator(structs=args.structs, debug=args.debug,
         console=args.console, implicit=args.noimplicit)
-    mgen.generate(args.pedlsmedl, args.arch, helper=args.helper)
+    mgen.generate(args.pedlsmedl, a4smedlName=args.arch, helper=args.helper)
 
 if __name__ == '__main__':
     main()

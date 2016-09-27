@@ -1,4 +1,3 @@
-from utils import setup_syspath; setup_syspath()
 from smedl.parser.smedl_parser import smedlParser
 from smedl.parser.smedl_symboltable import SmedlSymbolTable
 from smedl.mgen import MonitorGenerator
@@ -41,7 +40,7 @@ class TestMGen(unittest.TestCase):
         updatePos = fsm.getTransitionsByEvent('updatePos')
         self.assertEqual(1, len(updatePos))
         self.assertEqual('SafeMon', updatePos[0].startState.name)
-        self.assertEqual('pos == this.upbound || pos == this.lobound', updatePos[0].guard)
+        self.assertEqual('pos == monitor->upbound || pos == monitor->lobound', updatePos[0].guard)
         changeDir = fsm.getTransitionsByEvent('changeDir')
         self.assertEqual(2, len(changeDir))
         # print(fsm)
