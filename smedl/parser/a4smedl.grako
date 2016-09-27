@@ -45,7 +45,7 @@ integer
 
 architectureSpec = conn_expr+:{connectionExpr}+;
 
-connectionExpr = [connection:identifier ':'] source_machine_identifier:identifier'.'source_event_identifier:identifier '=>' target_machine_identifier:identifier'.'target_event_identifier:identifier ['{'pattern_spec:patternSpec'}'];
+connectionExpr = [connection:identifier ':'] [source_machine_identifier:identifier '.'] source_event_identifier:identifier '=>' target_machine_identifier:identifier'.'target_event_identifier:identifier ['{'pattern_spec:patternSpec'}'];
 
 patternSpec = @:patternExpr {';' @:patternExpr}*;
 

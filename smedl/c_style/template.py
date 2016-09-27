@@ -166,8 +166,8 @@ class CTemplater(object):
 
             monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                 [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
-            for p in mg._symbolTable.get(m, 'params'):
-                print(p['name'])
+                #for p in mg._symbolTable.get(m, 'params'):
+                #print(p['name'])
             
             tmp_map = {
                 'int': 0,
@@ -299,6 +299,7 @@ class CTemplater(object):
             
                     if connName == None:
                         connName = obj+'_'+ m
+                            #print(mg.archSpec)
                 sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
                 # TODO: peter, write functions for printing and parsing monitor identities
                 # this cast is broken and wrong, but works as long as we have only one monitor process
@@ -464,12 +465,12 @@ class CTemplater(object):
             if name==conn.targetMachine:
                 p_str = b_str + '=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy('+b_str+',"'+conn.connName+'");\n'
                 sourceMachine = mg._getMachine(conn.sourceMachine)
-                print(sourceMachine)
-                if sourceMachine == None:
-                    raise ValueError('source machine not exist')
+                #print(sourceMachine)
+                #if sourceMachine == None:
+                #    raise ValueError('source machine not exist')
                 sourceEvent = mg._getSourceEvent(conn.sourceMachine,conn.sourceEvent)
-                if sourceEvent == None:
-                    raise ValueError('source event not exist')
+                    #if sourceEvent == None:
+                    #raise ValueError('source event not exist')
                 if conn.patternSpec == [] or conn.patternSpec == None:
                     lst.append(p_str+'strcat('+b_str+',".#");\n')
                 else:
@@ -480,16 +481,16 @@ class CTemplater(object):
                         
                         leftterm = p_spec.getLeftTerm()
                         rightterm = p_spec.getRightTerm()
-                        print(leftterm)
-                        print(rightterm)
+                        #print(leftterm)
+                        #print(rightterm)
                         if leftterm == rightterm or (not leftterm == conn.targetMachine and not rightterm == conn.targetMachine) or (leftterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ) or (rightterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ):
 
                             raise ValueError('pattern expression syntax error')
                         else:
                             leftindex = p_spec.getLeftIndex()
                             rightindex = p_spec.getRightIndex()
-                            print(leftindex)
-                            print(rightindex)
+                            #print(leftindex)
+                            #print(rightindex)
                             if mg._checkBound(conn,leftterm,leftindex) and mg._checkBound(conn,rightterm,rightindex):
                                 if leftterm == conn.targetMachine:
                                     val = mg._getIdentityName(leftindex)
@@ -501,7 +502,7 @@ class CTemplater(object):
                                 elif rightterm == conn.targetMachine:
                                     #print("right index"+str(rightindex))
                                     val = mg._getIdentityName(rightindex)
-                                    print(val)
+                                    #print(val)
                                     if not val == None:
                                         if leftterm == conn.sourceEvent:
                                             eventIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
@@ -512,8 +513,8 @@ class CTemplater(object):
                     #build binding key and add it to lst
                     machineIndex = 0
                     eventIndex = 0
-                    print(len(sourceMachine.params))
-                    while machineIndex < len(sourceMachine.params):
+#print(len(sourceMachine.params))
+                    while sourceMachine != None and machineIndex < len(sourceMachine.params):
                         if not machineIndex in machineIndexDic.keys():
                             p_str += '\tstrcat('+b_str+',".*");\n'
                         else:
@@ -530,7 +531,7 @@ class CTemplater(object):
                             p_str += '\tstrcat('+b_str+',monitor_identity_str('+eventIndexDic[machineIndex]+'));\n'
                         eventIndex = eventIndex + 1
                     lst.append(p_str)
-                    k = k + 1
+                k = k + 1
         bindingkey = ''
         i = 0
         for s in lst:

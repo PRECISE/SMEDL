@@ -70,6 +70,7 @@ class MonitorGenerator(object):
         if smedlPath.exists():
             with smedlPath.open() as smedlFile:
                 smedlText = smedlFile.read()
+        #print(smedlPath)
             smedlPar = smedlParser()
             self.smedlAST = smedlPar.parse(
                 smedlText,
@@ -87,6 +88,7 @@ class MonitorGenerator(object):
 
         # Parser the architecture, it exists
         if not a4smedlName == None:
+            
             a4smedlPath = Path(a4smedlName + '.a4smedl')
             if a4smedlPath.exists():
                 with a4smedlPath.open() as a4smedlFile:
@@ -146,6 +148,7 @@ class MonitorGenerator(object):
                 if k == 'monitor_declaration':
                     self._parseInter(v)
                 elif k == 'archSpec':
+                    #print(v)
                     self._parseSpec(v)
 
 
@@ -176,7 +179,7 @@ class MonitorGenerator(object):
                         exported = self._makeEventList(v)
                 
                 interface = Interface(monType,monId,para,imported,exported)
-                print("para:"+str(len(para)))
+                #print("para:"+str(len(para)))
                 self.monitorInterface.append(interface)
 
 
@@ -255,11 +258,15 @@ class MonitorGenerator(object):
                     t_e = v
                 elif k == 'pattern_spec':
                     pa_spec = self._makePatternSpec(v)
+            if s_i == None:
+                s_i = ''
             if conn_name == None:
                 conn_name = s_i + '_' + s_e
             if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                 raise ValueError('attributes of events do not match')
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
+            if connEx.sourceMachine == None:
+                print(connEx)
             self.archSpec.append(connEx)
         elif isinstance(object,list):
             conn_name = None
@@ -281,12 +288,16 @@ class MonitorGenerator(object):
                         t_e = v
                     elif k == 'pattern_spec':
                         pa_spec = self._makePatternSpec(v)
+                if s_i == None:
+                    s_i = ''
                 if conn_name == None:
                     conn_name = s_i + '_'+s_e
                 # TODO: match number of attributes of the source and target events
                 if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                     raise ValueError('attributes of events do not match')
                 connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
+                if connEx.sourceMachine == None:
+                    print(connEx)
                 self.archSpec.append(connEx)
 
 
@@ -352,6 +363,8 @@ class MonitorGenerator(object):
         left_ev = None
         right_mon = None
         right_ev = None
+        if si == '':
+            return True
         for mon in self.monitorInterface:
             if si == mon.id:
                 for ev in mon.exportedEvents:
@@ -366,6 +379,7 @@ class MonitorGenerator(object):
                         right_ev = ev.params
                         break
                 right_mon = mon
+        
         if left_mon == None or right_mon == None or not left_ev == right_ev:
             return False
         return True
