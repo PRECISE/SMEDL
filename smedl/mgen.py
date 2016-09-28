@@ -19,6 +19,7 @@ import shutil
 import string
 from pathlib import Path
 from .architecture import *
+import os
 
 # Turn a list of arguments into an argument string for using in a generated
 # method call. prefix determines whether a leading comma is prepended when the
@@ -66,7 +67,9 @@ class MonitorGenerator(object):
                 print(self.pedlAST)
 
         # Parse the SMEDL, if it exists
+        print(pedlsmedlName)
         smedlPath = Path(pedlsmedlName + '.smedl')
+        print(smedlPath)
         if smedlPath.exists():
             with smedlPath.open() as smedlFile:
                 smedlText = smedlFile.read()
@@ -87,7 +90,9 @@ class MonitorGenerator(object):
 
         # Parser the architecture, it exists
         if a4smedlName is not None:
+        
             a4smedlPath = Path(a4smedlName + '.a4smedl')
+            print(a4smedlPath)
             if a4smedlPath.exists():
                 with a4smedlPath.open() as a4smedlFile:
                     a4smedlText = a4smedlFile.read()
@@ -752,12 +757,12 @@ def main():
     parser.add_argument('--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
     # TODO: Add version flag
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="the name of the PEDL and SMEDL files to parse")
-    parser.add_argument('--arch', type = str, metavar="a4smedl_filename", help="the name of architecture file to parse")
+    parser.add_argument('--arch', metavar="a4smedl_filename", help="the name of architecture file to parse")
     args = parser.parse_args()
 
     mgen = MonitorGenerator(structs=args.structs, debug=args.debug,
         console=args.console, implicit=args.noimplicit)
-    mgen.generate(args.pedlsmedl, a4smedlName=args.arch, helper=args.helper)
+    mgen.generate(args.pedlsmedl, args.arch, helper=args.helper)
 
 if __name__ == '__main__':
     main()
