@@ -212,7 +212,7 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
         //char* event[255] = {NULL};
 
         if (string != NULL) {
-            char* eventName = getConnName(rk, bytes.len);
+            char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
                 char e[255];
 
