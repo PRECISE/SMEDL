@@ -89,7 +89,10 @@ class MonitorGenerator(object):
 
         # Parser the architecture, it exists
         if a4smedlName is not None:
+
+
             a4smedlPath = Path(os.path.expanduser(a4smedlName+ '.a4smedl'))
+            print(a4smedlPath)
             if a4smedlPath.exists():
                 with a4smedlPath.open() as a4smedlFile:
                     a4smedlText = a4smedlFile.read()

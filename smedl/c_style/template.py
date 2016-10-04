@@ -319,9 +319,9 @@ class CTemplater(object):
                 for v in mg.identities:
                     sprintf_routing += ', (long)(*(int*)(monitor->identities['
                     sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
-                    sprintf_routing += v.upper() +']))'
+                    sprintf_routing += v.upper() +']->value))'
 
-
+#(long)(*(int*)(monitor->identities[RATECOMPUTATION_ID]->value))
                 if len(evParams) > 0:
                     for p in evParams:
                 # attributes can only be int
