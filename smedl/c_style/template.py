@@ -354,7 +354,8 @@ class CTemplater(object):
             'double': 'double',
             'pointer': 'void*',
             'thread': 'pthread_t',
-            'opaque': 'void*'
+            'opaque': 'void*',
+            'string': 'char*'
         }
         if smedlType in typeMap:
             return typeMap[smedlType]
