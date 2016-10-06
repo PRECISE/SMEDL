@@ -186,6 +186,7 @@ class CTemplater(object):
             
             attrstring = ''
             
+            #print(type(mg._symbolTable.get(m,'params')))
             for p in mg._symbolTable.get(m,'params'):
                 tmp_map[p['type']] = tmp_map[p['type']]+1
                 if p['type'] == 'int':
@@ -203,21 +204,41 @@ class CTemplater(object):
             #print(attrstring)
  
             parastring = ''
-            for key,value in tmp_map.items():
-                k = 0
-                if value > 0:
-                    for kk in range(0,value):
-                        if key == 'int':
-                            parastring += '\t\ti'+str(kk)+ ' = ((params)->i);\n'
-                        
-                        elif key == 'double' or key == 'float':
-                            parastring += '\t\td'+str(kk)+ ' = ((params)->d);\n'
-                        elif key == 'pointer' or key == 'opaque':
-                            parastring += '\t\tv'+str(kk)+ ' = ((params)->v);\n'
-                        elif key == 'string':
-                            parastring += '\t\tc'+str(kk)+ ' = ((params)->c);\n'
-                        parastring += '\t\t(params) = (params)->next;\n'
-                    parastring += '\t\tpop_param(&p_head);\n'
+            ki = 0
+            kd = 0
+            kv = 0
+            kc = 0
+            for p in mg._symbolTable.get(m,'params'):
+                if p['type'] == 'int':
+                    parastring += '\t\ti'+str(ki)+ ' = ((params)->i);\n'
+                    ki = ki+1
+                elif p['type'] == 'double' or p['type'] == 'float':
+                    parastring += '\t\td'+str(kd)+ ' = ((params)->d);\n'
+                    kd = kd+1
+                elif p['type'] == 'pointer' or key == 'opaque':
+                    parastring += '\t\tv'+str(kv)+ ' = ((params)->v);\n'
+                    kv = kv + 1
+                elif p['type'] == 'string':
+                    parastring += '\t\tc'+str(kc)+ ' = ((params)->c);\n'
+                    kc = kc + 1
+                parastring += '\t\t(params) = (params)->next;\n'
+            parastring += '\t\tpop_param(&p_head);\n'
+
+            #for key,value in tmp_map.items():
+            #    k = 0
+            #    if value > 0:
+            #        for kk in range(0,value):
+            #            if key == 'int':
+            #                parastring += '\t\ti'+str(kk)+ ' = ((params)->i);\n'
+            #
+            #            elif key == 'double' or key == 'float':
+            #                parastring += '\t\td'+str(kk)+ ' = ((params)->d);\n'
+            #            elif key == 'pointer' or key == 'opaque':
+            #                parastring += '\t\tv'+str(kk)+ ' = ((params)->v);\n'
+            #            elif key == 'string':
+            #                parastring += '\t\tc'+str(kk)+ ' = ((params)->c);\n'
+            #            parastring += '\t\t(params) = (params)->next;\n'
+            #        parastring += '\t\tpop_param(&p_head);\n'
 
 
 
