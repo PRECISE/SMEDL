@@ -1,11 +1,14 @@
 image: python:3.5
 
 before_script:
-  - apt-get update -qq && apt-get install -y -qq python3-pip
   - python -V
+  - which python
 
 test:
   script:
   - pyvenv .env && source .env/bin/activate
+  - ls -la .env/bin
+  - python -V
+  - which python
   - pip install .
   - nosetests
