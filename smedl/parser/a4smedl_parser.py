@@ -17,7 +17,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 9, 1, 15, 48, 11, 3)
+__version__ = (2016, 9, 27, 2, 2, 36, 1)
 
 __all__ = [
     'a4smedlParser',
@@ -96,15 +96,18 @@ class a4smedlParser(Parser):
         self.name_last_node('params')
         self._token(')')
         self._token('{')
-        self._token('imported')
-        self._event_definition_list_()
-        self.add_last_node_to_name('imported_events')
 
-        def block5():
+        def block4():
+            self._token('imported')
+            self._event_definition_list_()
+            self.add_last_node_to_name('imported_events')
+        self._closure(block4)
+
+        def block6():
             self._token('exported')
             self._event_definition_list_()
             self.add_last_node_to_name('exported_events')
-        self._closure(block5)
+        self._closure(block6)
         self._token('}')
 
         self.ast._define(
@@ -189,9 +192,10 @@ class a4smedlParser(Parser):
             self._identifier_()
             self.name_last_node('connection')
             self._token(':')
-        self._identifier_()
-        self.name_last_node('source_machine_identifier')
-        self._token('.')
+        with self._optional():
+            self._identifier_()
+            self.name_last_node('source_machine_identifier')
+            self._token('.')
         self._identifier_()
         self.name_last_node('source_event_identifier')
         self._token('=>')

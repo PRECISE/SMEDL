@@ -19,6 +19,7 @@ import shutil
 import string
 from pathlib import Path
 from .architecture import *
+import os
 
 # Turn a list of arguments into an argument string for using in a generated
 # method call. prefix determines whether a leading comma is prepended when the
@@ -70,6 +71,7 @@ class MonitorGenerator(object):
         if smedlPath.exists():
             with smedlPath.open() as smedlFile:
                 smedlText = smedlFile.read()
+        #print(smedlPath)
             smedlPar = smedlParser()
             self.smedlAST = smedlPar.parse(
                 smedlText,
@@ -87,7 +89,10 @@ class MonitorGenerator(object):
 
         # Parser the architecture, it exists
         if a4smedlName is not None:
-            a4smedlPath = Path(a4smedlName + '.a4smedl')
+
+
+            a4smedlPath = Path(os.path.expanduser(a4smedlName+ '.a4smedl'))
+            print(a4smedlPath)
             if a4smedlPath.exists():
                 with a4smedlPath.open() as a4smedlFile:
                     a4smedlText = a4smedlFile.read()
@@ -146,10 +151,12 @@ class MonitorGenerator(object):
                 if k == 'monitor_declaration':
                     self._parseInter(v)
                 elif k == 'archSpec':
+                    #print(v)
                     self._parseSpec(v)
 
 
     def _makeMonitor(self,object):
+        #print(object)
         if isinstance(object,list):
             for mon in object:
                 monId = None
@@ -163,13 +170,19 @@ class MonitorGenerator(object):
                     elif k == 'monitor_identifier':
                         monId = v
                     elif k == 'params':
+                        #print("v:"+v)
                         if not v == None:
-                            para = v
+                            if isinstance(v,list):
+                                para = v
+                            else:
+                                para = [v]
                     elif k == 'imported_events':
                         imported = self._makeEventList(v)
                     elif k == 'exported_events':
                         exported = self._makeEventList(v)
+                
                 interface = Interface(monType,monId,para,imported,exported)
+                #print("para:"+str(len(para)))
                 self.monitorInterface.append(interface)
 
 
@@ -248,11 +261,15 @@ class MonitorGenerator(object):
                     t_e = v
                 elif k == 'pattern_spec':
                     pa_spec = self._makePatternSpec(v)
+            if s_i == None:
+                s_i = ''
             if conn_name == None:
                 conn_name = s_i + '_' + s_e
             if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                 raise ValueError('attributes of events do not match')
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
+            if connEx.sourceMachine == None:
+                print(connEx)
             self.archSpec.append(connEx)
         elif isinstance(object,list):
             conn_name = None
@@ -274,12 +291,16 @@ class MonitorGenerator(object):
                         t_e = v
                     elif k == 'pattern_spec':
                         pa_spec = self._makePatternSpec(v)
+                if s_i == None:
+                    s_i = ''
                 if conn_name == None:
                     conn_name = s_i + '_'+s_e
                 # TODO: match number of attributes of the source and target events
                 if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                     raise ValueError('attributes of events do not match')
                 connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
+                if connEx.sourceMachine == None:
+                    print(connEx)
                 self.archSpec.append(connEx)
 
 
@@ -345,6 +366,8 @@ class MonitorGenerator(object):
         left_ev = None
         right_mon = None
         right_ev = None
+        if si == '':
+            return True
         for mon in self.monitorInterface:
             if si == mon.id:
                 for ev in mon.exportedEvents:
@@ -354,10 +377,12 @@ class MonitorGenerator(object):
                 left_mon = mon
             elif ti == mon.id:
                 for ev in mon.importedEvents:
-                    if ev.event_id == se:
+                    if ev.event_id == te:
+
                         right_ev = ev.params
                         break
                 right_mon = mon
+        
         if left_mon == None or right_mon == None or not left_ev == right_ev:
             return False
         return True
@@ -421,11 +446,13 @@ class MonitorGenerator(object):
                 if k == 'object':
                     self._symbolTable.add(v, {'type': 'object'})
                 elif label == 'identity' and k == 'var':
+                    #print("object:"+str(object))
                     if isinstance(v, list):
                         for var in v:
                             self._symbolTable.add(var, {'type': 'identity', 'datatype': object['type']})
                             self.identities.append(var)
                     else:
+                        #print("v:"+v)
                         self._symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})
                         self.identities.append(v)
                 elif label == 'state' and k == 'var':
@@ -595,7 +622,6 @@ class MonitorGenerator(object):
             allFSMs[scenario['scenario_id']] = fsm
         return allFSMs
 
-
     def _findFunctionParams(self, function, params, ast):
         names = []
         types = None
@@ -652,22 +678,28 @@ class MonitorGenerator(object):
     def _formatExpression(self, expr):
         if expr is None:
             expr = ""
+    
         if isinstance(expr, AST):
             exprStr = AstToPython.expr(expr)
         else:
             exprStr = expr
+        #print('expr:'+exprStr)
         exprStr = self._addMonitorArrowToStateVariables(exprStr)
         # expr = checkReferences(expr) # TODO--------
         return MonitorGenerator._removeParentheses(exprStr)
 
 
     def _addMonitorArrowToStateVariables(self, string):
+        #print('before:'+string)
         for sv in self._symbolTable.getSymbolsByType('state'):
+            #print('sv:'+sv)
             indices = [t.start() for t in re.finditer(sv, string)]
             for index in indices:
+                #print('index:'+string[index])
                 if string[index-5:index] != 'this.' and string[index-9:index] != 'monitor->':  # Prevent duplicated 'this.'
                     if index == 0 or (not (string[index-1]).isalpha() and not string[index-1] == '_') :
                         string = string[:index] + 'monitor->' + string[index:]
+
         return string
 
 
@@ -699,6 +731,7 @@ class MonitorGenerator(object):
             if action.expression:
                 out += ' ' + self._formatExpression(action.expression)
             out += ';'
+            #print(out)
             return out
         elif action.type == ActionType.Raise:
             return 'raise_%s_%s(monitor%s);' % (obj.lower(), action.event, joinArgs([self._formatExpression(p) for p in action.params], ", "))
@@ -733,7 +766,7 @@ class MonitorGenerator(object):
     #         return '\n'.join(output)
 
 
-    def _getEventParams(paramString):
+    def _getEventParams(self,paramString):
         paramsList = []
         params = [str(s) for s in paramString.split(', ')]
         for p in params:
@@ -757,7 +790,7 @@ def main():
 
     mgen = MonitorGenerator(structs=args.structs, debug=args.debug,
         console=args.console, implicit=args.noimplicit)
-    mgen.generate(args.pedlsmedl, a4smedlName=args.arch, helper=args.helper)
+    mgen.generate(args.pedlsmedl, args.arch, helper=args.helper)
 
 if __name__ == '__main__':
     main()

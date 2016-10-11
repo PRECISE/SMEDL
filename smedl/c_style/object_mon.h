@@ -20,6 +20,7 @@ typedef struct {{ obj|title }}Monitor {
   int state[{{ scenario_names|length }}];
 {{ state_var_declarations }}
   action *action_queue;
+  action *export_queue;
   const char *amqp_exchange;
   const char *ctrl_exchange;
   amqp_socket_t *recv_socket;
@@ -61,3 +62,7 @@ int add_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor*, int);
 int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
+
+void executePendingEvents({{obj|title}}Monitor* monitor);
+void executeEvents({{obj|title}}Monitor* monitor);
+void executeExportedEvent({{obj|title}}Monitor* monitor);

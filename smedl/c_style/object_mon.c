@@ -23,7 +23,9 @@ typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
 {{ state_names }}
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
 
-#define bindingkeyNum {{ bindingkeys_num }}
+
+#define bindingkeyNum {{bindingkeys_num}}
+
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor( {{ obj|title }}Data *d ) {
     {{ obj|title }}Monitor* monitor = ({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
@@ -33,6 +35,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
 {% for v in state_vars %}    monitor->{{ v.name }} = d->{{ v.name }};
 {% endfor %}{{state_inits}}
     monitor->action_queue = NULL;
+    monitor->export_queue = NULL;
 
     /* Read settings from config file */
     config_t cfg;
@@ -99,6 +102,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
+
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
         "Opening channel");
     amqp_exchange_declare(monitor->send_conn, 1,
@@ -208,14 +212,14 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
         //char* event[255] = {NULL};
 
         if (string != NULL) {
-            char* eventName = getConnName(rk, bytes.len);
+            char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
                 char e[255];
 
                 {{ event_msg_handlers|join('\n') }}
 
             }
-            free(eventName);
+            //free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -281,16 +285,19 @@ void send_message({{ obj|title }}Monitor* monitor, char* message, char* routing_
     amqp_bytes_t message_bytes;
     message_bytes.len = strlen(message)+1;
     message_bytes.bytes = message;
+    amqp_bytes_t routingkey_bytes;
+    routingkey_bytes.len = strlen(routing_key)+1;
+    routingkey_bytes.bytes = routing_key;
     die_on_error(amqp_basic_publish(monitor->send_conn,
                                     1,
                                     amqp_cstring_bytes(monitor->amqp_exchange),
-                                    amqp_cstring_bytes(routing_key),
+                                    routingkey_bytes,
                                     0,
                                     0,
                                     NULL,
                                     message_bytes),
-                "Publishing");
-
+                 "Publishing");
+    
 }
 
 void free_monitor({{ obj|title }}Monitor* monitor) {
@@ -299,6 +306,57 @@ void free_monitor({{ obj|title }}Monitor* monitor) {
     die_on_error(amqp_destroy_connection(monitor->send_conn), "Ending connection");
     free(monitor);
 }
+
+//called at the end of each event handling function
+void executeEvents({{obj|title}}Monitor* monitor){
+    if(monitor->action_queue != NULL){
+        executePendingEvents(monitor);
+    }
+    
+    if(monitor->action_queue == NULL && monitor->export_queue != NULL){
+        executeExportedEvent(monitor);
+    }
+}
+
+void executePendingEvents({{obj|title}}Monitor* monitor){
+    action** head = &monitor->action_queue;
+    {{var_declaration}}
+    while(*head!=NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type){
+            {% for e in pending_event_case -%}
+            case {{ e.event_enum|join('\n') }}
+            {{e.callstring}}
+                break;
+            {% endfor -%}
+        }
+        pop_action(head);
+    }
+}
+
+//send export events one by one from export_queue
+void executeExportedEvent({{obj|title}}Monitor* monitor){
+    action** head = &monitor->export_queue;
+    {{var_declaration}}
+    while(*head != NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type) {
+            {% for e in export_event_case -%}
+            case {{ e.event_enum|join('\n') }}
+            {{e.callstring}}
+                break;
+            {% endfor -%}
+                
+        }
+        pop_action(head);
+    }
+    
+}
+
 
 /*
  * Monitor Event Handlers

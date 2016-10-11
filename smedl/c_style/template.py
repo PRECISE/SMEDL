@@ -73,7 +73,12 @@ class CTemplater(object):
         values['signatures']= []
         values['event_code'] = []
         values['event_msg_handlers'] = []
+
+        values['var_declaration'] = []
+        values['pending_event_case'] = []
+        values['export_event_case'] = []
         if mg._getBindingKeysNum() == 0:
+
             values['bindingkeys_num'] = 1 # TODO: Make these customizable
         else:
             values['bindingkeys_num'] = mg._getBindingKeysNum()# TODO: Make these customizable
@@ -121,13 +126,29 @@ class CTemplater(object):
 
                 values['event_msg_handlers'].append('\n'.join(msg_handler))
 
+
+
+        parameterTypeNumMap =  {
+            'int': 0,
+            'float': 0,
+            'double': 0,
+            'pointer': 0,
+            'thread': 0,
+            'opaque': 0
+        }
+        
+
         for m in methods:
             eventFunction = []
             probeFunction = []
             params = ''
             identityParams = []
+            callstring = ''
             pedlEvent = False
+
+
             if 'imported_events' == mg._symbolTable.get(m)['type'] and pedlAST is not None:
+
                 for e in pedlAST.event_defs:
                     if str(m) == e.event:
                         pedlEvent = True
@@ -145,31 +166,193 @@ class CTemplater(object):
 
             monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                 [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
-
-            if 'exported_events' != mg._symbolTable.get(m)['type']:
-                eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
-                values['signatures'].append(eventSignature)
-                eventFunction.append(eventSignature + ' {')
-                for key, fsm in allFSMs.items():
-                    trans_group = fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m)))
-
-                    # Jump to next FSM if this one contains no transitions for the current event
-                    if len(trans_group) == 0:
-                        continue
-
-                    reference = 'monitor->state[%s_%s_SCENARIO]' % (obj.upper(), key.upper())
-                    name_reference = "%s_states_names[%s_%s_SCENARIO][monitor->state[%s_%s_SCENARIO]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
-                    eventFunction.append('  switch (%s) {' % reference)
-                    for start_state, transitions in trans_group.items():
-                        eventFunction.append(CTemplater._writeCaseTransition(mg, obj, transitions, reference, name_reference, key))
-                    if mg._implicitErrors:
-                        eventFunction.append('    default:')
-                        eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");' % (obj.lower(), key, name_reference, m))
-                        eventFunction.append('      break;')
-                    eventFunction.append('  }')
-                eventFunction.append('}')
+                #for p in mg._symbolTable.get(m, 'params'):
+                #print(p['name'])
+            
+            tmp_map = {
+                'int': 0,
+                'float': 0,
+                'double': 0,
+                'pointer': 0,
+                'thread': 0,
+                'opaque': 0
+            }
 
 
+            i = 0
+            d = 0
+            v = 0
+            c = 0
+            
+            attrstring = ''
+            
+            #print(type(mg._symbolTable.get(m,'params')))
+            for p in mg._symbolTable.get(m,'params'):
+                tmp_map[p['type']] = tmp_map[p['type']]+1
+                if p['type'] == 'int':
+                    attrstring += ',i'+str(i)
+                    i = i+1
+                elif p['type'] == 'double' or p['type'] == 'float':
+                    attrstring += ',d'+str(d)
+                    d = d+1
+                elif p['type'] == 'pointer' or key == 'opaque':
+                    attrstring += ',v'+str(v)
+                    v = v+1
+                elif p['type'] == 'string':
+                    attrstring += ',c'+str(c)
+                    c = c+1
+            #print(attrstring)
+ 
+            parastring = ''
+            ki = 0
+            kd = 0
+            kv = 0
+            kc = 0
+            for p in mg._symbolTable.get(m,'params'):
+                if p['type'] == 'int':
+                    parastring += '\t\ti'+str(ki)+ ' = ((params)->i);\n'
+                    ki = ki+1
+                elif p['type'] == 'double' or p['type'] == 'float':
+                    parastring += '\t\td'+str(kd)+ ' = ((params)->d);\n'
+                    kd = kd+1
+                elif p['type'] == 'pointer' or key == 'opaque':
+                    parastring += '\t\tv'+str(kv)+ ' = ((params)->v);\n'
+                    kv = kv + 1
+                elif p['type'] == 'string':
+                    parastring += '\t\tc'+str(kc)+ ' = ((params)->c);\n'
+                    kc = kc + 1
+                parastring += '\t\t(params) = (params)->next;\n'
+            parastring += '\t\tpop_param(&p_head);\n'
+
+            #for key,value in tmp_map.items():
+            #    k = 0
+            #    if value > 0:
+            #        for kk in range(0,value):
+            #            if key == 'int':
+            #                parastring += '\t\ti'+str(kk)+ ' = ((params)->i);\n'
+            #
+            #            elif key == 'double' or key == 'float':
+            #                parastring += '\t\td'+str(kk)+ ' = ((params)->d);\n'
+            #            elif key == 'pointer' or key == 'opaque':
+            #                parastring += '\t\tv'+str(kk)+ ' = ((params)->v);\n'
+            #            elif key == 'string':
+            #                parastring += '\t\tc'+str(kk)+ ' = ((params)->c);\n'
+            #            parastring += '\t\t(params) = (params)->next;\n'
+            #        parastring += '\t\tpop_param(&p_head);\n'
+
+
+
+            callstring += parastring;
+            callstring += '\t\tpop_action(head);\n'
+            callstring_ex = callstring
+            callstring += '\t\t'+obj.lower()+'_'+m+'(monitor'+attrstring+');\n'
+            callstring_ex += '\t\texported_'+obj.lower()+'_'+m+'(monitor'+attrstring+');\n'
+
+            for key, value in parameterTypeNumMap.items():
+                if tmp_map[key] > value:
+                    parameterTypeNumMap[key] = tmp_map[key]
+
+#if 'exported_events' != mgen._symbolTable.get(m)['type']:
+            eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
+            #print(monitorParams)
+            values['signatures'].append(eventSignature)
+            eventFunction.append(eventSignature + ' {')
+            for key, fsm in allFSMs.items():
+                trans_group = fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m)))
+
+                # Jump to next FSM if this one contains no transitions for the current event
+                if len(trans_group) == 0:
+                    continue
+
+                reference = 'monitor->state[%s_%s_SCENARIO]' % (obj.upper(), key.upper())
+                name_reference = "%s_states_names[%s_%s_SCENARIO][monitor->state[%s_%s_SCENARIO]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
+                eventFunction.append('  switch (%s) {' % reference)
+                for start_state, transitions in trans_group.items():
+                    eventFunction.append(CTemplater._writeCaseTransition(mg, obj, transitions, reference, name_reference, key))
+                if mg._implicitErrors:
+                    eventFunction.append('    default:')
+                    eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");' % (obj.lower(), key, name_reference, m))
+                    eventFunction.append('      break;')
+                eventFunction.append('  }')
+            eventFunction.append('executeEvents(monitor);')
+            eventFunction.append('}\n\n')
+            
+            export_event_sig = None
+            if 'exported_events' == mg._symbolTable.get(m)['type']:
+                export_event_sig = 'void exported_%s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
+                values['signatures'].append(export_event_sig)
+                eventFunction.append(export_event_sig + ' {')
+                eventFunction.append('  char message[256];')
+                sprintf = '  sprintf(message, "%s_%s' % (obj.lower(), m)
+                paramString = ', '.join(['%s %s'%(CTemplater.convertTypeForC(p['type']), p['name']) for p in mg._symbolTable.get(m, 'params')])
+                if len(paramString) > 0:
+                    paramString = obj.title() + "Monitor* monitor, " + paramString
+                else:
+                    paramString = obj.title() + "Monitor* monitor"
+                evParams = mg._getEventParams(paramString)[1:]
+                if len(evParams) > 0:
+                    for p in evParams:
+                        # comparing SMEDL types not C types.
+                        if p[0] == 'int':
+                            sprintf += ' %d'
+                        elif p[0] == 'char':
+                            sprintf += ' %s'
+                        elif p[0] == 'double':
+                            sprintf += ' %lf'
+                        elif p[0] == 'float':
+                                exit("this should never happen. there is a missing float->double conversion.")
+                sprintf += '"'
+                if len(evParams) > 0:
+                    for p in evParams:
+                        sprintf += ', %s' % p[1]
+                sprintf += ');'
+                eventFunction.append(sprintf)
+                eventFunction.append('  char routing_key[256];')
+
+                #construct routing key
+                name = mg._symbolTable.getSymbolsByType('object')[0]
+                connName = None
+                #print(mgen.archSpec)
+                for conn in mg.archSpec:
+                    if conn.sourceMachine == name and conn.sourceEvent == m:
+                        connName = conn.connName
+                        break
+            
+                    if connName == None:
+                        connName = obj+'_'+ m
+                            #print(mg.archSpec)
+                sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
+                # TODO: peter, write functions for printing and parsing monitor identities
+                # this cast is broken and wrong, but works as long as we have only one monitor process
+                for v in mg.identities:
+                    sprintf_routing += '.%ld'
+                
+                    sprintf_routing += '.'+m
+                    if len(evParams) > 0:
+                        for p in evParams:
+                            # attributes can only be int
+                            if p[0] == 'int':
+                                sprintf_routing += '.%d'
+                            else:
+                                sprintf_routing += '.0'
+
+                sprintf_routing+='"'
+                for v in mg.identities:
+                    sprintf_routing += ', (long)(*(int*)(monitor->identities['
+                    sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
+                    sprintf_routing += v.upper() +']->value))'
+
+#(long)(*(int*)(monitor->identities[RATECOMPUTATION_ID]->value))
+                if len(evParams) > 0:
+                    for p in evParams:
+                # attributes can only be int
+                        if p[0] == 'int':
+                            sprintf_routing+=', %s' % p[1]
+                sprintf_routing += ');'
+                eventFunction.append(sprintf_routing)
+                eventFunction.append('  send_message(monitor, message, routing_key);')
+                eventFunction.append('}\n\n')
+            
 
             raiseFunction = CTemplater._writeRaiseFunction(mg, m, obj)
 
@@ -204,13 +387,42 @@ class CTemplater(object):
                 probeFunction.append('  }')
                 probeFunction.append('}')
                 values['signatures'].append(probeSignature)
+
                 values['event_code'].append(CTemplater._updateVarNames(mg, {'event':eventFunction, 'probe':probeFunction, 'raise':raiseFunction['code']}, m))
+                if 'imported_events' != mg._symbolTable.get(m)['type']:
+                    values['pending_event_case'].append({'event_enum':[obj.upper()+'_'+m.upper()+'_EVENT:'],'callstring':callstring})
+                if 'exported_events' == mg._symbolTable.get(m)['type']:
+                    values['export_event_case'].append({'event_enum':[obj.upper()+'_'+m.upper()+'_EVENT:'],'callstring':callstring_ex})
             else:
                 values['event_code'].append(CTemplater._updateVarNames(mg, {'event':eventFunction, 'raise':raiseFunction['code']}, m))
+                if 'imported_events' != mg._symbolTable.get(m)['type']:
+                    values['pending_event_case'].append({'event_enum':[obj.upper()+'_'+m.upper()+'_EVENT:'],'callstring':callstring})
+                if 'exported_events' == mg._symbolTable.get(m)['type']:
+                    values['export_event_case'].append({'event_enum':[obj.upper()+'_'+m.upper()+'_EVENT:'],'callstring':callstring_ex})
+
 
             values['signatures'].append(raiseFunction['signature'])
 
             callCases.append(CTemplater._writeCallCase(mg, m))
+
+
+        #construct var_declaration
+        
+        #print(parameterTypeNumMap)
+        t_str = ''
+        for key,value in parameterTypeNumMap.items():
+            
+            if value > 0:
+                t_str += CTemplater.convertTypeForC(key) + ' '
+                    #print('value:'+str(value))
+            for k in range(0,value):
+                #print(CTemplater.convertTypeForC(key))
+                #print(CTemplater.convertTypeForC(key)[0])
+                if k != value-1:
+                    t_str += CTemplater.convertTypeForC(key)[0]  + str(k) + ','
+                else:
+                    t_str += CTemplater.convertTypeForC(key)[0] + str(k) + ';'
+        values['var_declaration']=t_str
 
         # Render the monitor templates and write to disk
         env = Environment(loader=PackageLoader('smedl.c_style','.'))
@@ -280,11 +492,12 @@ class CTemplater(object):
             if name==conn.targetMachine:
                 p_str = b_str + '=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy('+b_str+',"'+conn.connName+'");\n'
                 sourceMachine = mg._getMachine(conn.sourceMachine)
-                if sourceMachine == None:
-                    raise ValueError('source machine not exist')
+                #print(sourceMachine)
+                #if sourceMachine == None:
+                #    raise ValueError('source machine not exist')
                 sourceEvent = mg._getSourceEvent(conn.sourceMachine,conn.sourceEvent)
-                if sourceEvent == None:
-                    raise ValueError('source event not exist')
+                    #if sourceEvent == None:
+                    #raise ValueError('source event not exist')
                 if conn.patternSpec == [] or conn.patternSpec == None:
                     lst.append(p_str+'strcat('+b_str+',".#");\n')
                 else:
@@ -292,38 +505,48 @@ class CTemplater(object):
                     eventIndexDic = {}
                     #TODO: generate predicates on the machine and event, add corresponding filter, for each target event, union all predicates
                     for p_spec in conn.patternSpec:
+                        
                         leftterm = p_spec.getLeftTerm()
                         rightterm = p_spec.getRightTerm()
-                        if leftterm == rightterm or (not leftterm == conn.targetMachine and not rightterm == conn.targetsMachine) or (leftterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ) or (rightterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ):
+                        #print(leftterm)
+                        #print(rightterm)
+                        if leftterm == rightterm or (not leftterm == conn.targetMachine and not rightterm == conn.targetMachine) or (leftterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ) or (rightterm == conn.targetEvent and not conn.sourceEvent == conn.targetEvent ):
+
                             raise ValueError('pattern expression syntax error')
                         else:
                             leftindex = p_spec.getLeftIndex()
                             rightindex = p_spec.getRightIndex()
+                            #print(leftindex)
+                            #print(rightindex)
                             if mg._checkBound(conn,leftterm,leftindex) and mg._checkBound(conn,rightterm,rightindex):
                                 if leftterm == conn.targetMachine:
                                     val = mg._getIdentityName(leftindex)
-                                    if rightterm == conn.sourceEvent:
-                                        eventIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
-                                    elif rightterm == conn.sourceMachine:
-                                        machineIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                    if not val == None:
+                                        if rightterm == conn.sourceEvent:
+                                            eventIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                        elif rightterm == conn.sourceMachine:
+                                            machineIndexDic[rightindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
                                 elif rightterm == conn.targetMachine:
-                                    #val = self._getIdentityName(rightindex)
-                                    if leftterm == conn.sourceEvent:
-                                        eventIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
-                                    elif leftterm == conn.sourceMachine:
-                                        machineIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                    #print("right index"+str(rightindex))
+                                    val = mg._getIdentityName(rightindex)
+                                    #print(val)
+                                    if not val == None:
+                                        if leftterm == conn.sourceEvent:
+                                            eventIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
+                                        elif leftterm == conn.sourceMachine:
+                                            machineIndexDic[leftindex] = 'monitor->identities['+name.upper()+'_'+val.upper()+']'
                             else:
                                 raise ValueError('out of bound in pattern expression')
                     #build binding key and add it to lst
                     machineIndex = 0
                     eventIndex = 0
-
-                    while machineIndex < len(sourceMachine.params):
+#print(len(sourceMachine.params))
+                    while sourceMachine != None and machineIndex < len(sourceMachine.params):
                         if not machineIndex in machineIndexDic.keys():
                             p_str += '\tstrcat('+b_str+',".*");\n'
                         else:
                             p_str += '\tstrcat('+b_str+',".");\n'
-                            p_str += '\tstrcat('+b_str+',itoa(*(int*)('+machineIndexDic[machineIndex]+'));\n'
+                            p_str += '\tstrcat('+b_str+',monitor_identity_str('+machineIndexDic[machineIndex]+'));\n'
                         machineIndex = machineIndex + 1
 
                     p_str +='\tstrcat('+b_str+',".'+sourceEvent.event_id+'");\n'
@@ -332,10 +555,10 @@ class CTemplater(object):
                             p_str += '\tstrcat('+b_str+',".*");\n'
                         else:
                             p_str += '\tstrcat('+b_str+',".");\n'
-                            p_str += '\tstrcat('+b_str+',itoa(*(int*)('+eventIndexDic[machineIndex]+')));\n'
+                            p_str += '\tstrcat('+b_str+',monitor_identity_str('+eventIndexDic[machineIndex]+'));\n'
                         eventIndex = eventIndex + 1
                     lst.append(p_str)
-                    k = k + 1
+                k = k + 1
         bindingkey = ''
         i = 0
         for s in lst:
@@ -436,7 +659,7 @@ class CTemplater(object):
         if paramString == '':
             output.append('      %s(monitor);' % event)
         else:
-            params = mgen.MonitorGenerator._getEventParams(paramString)
+            params = mg._getEventParams(paramString)
             for p in params:
                 output.append('      %s %s_%s = monitor->action_queue->params->%c;' % (p[0], p[1], event, p[0][0]))
                 output.append('      pop_param(&monitor->action_queue->params);')
@@ -456,86 +679,101 @@ class CTemplater(object):
         signature = 'void raise_%s_%s(%s)' % (obj.lower(), event, paramString)
         output.append(signature + ' {')
         output.append('  param *p_head = NULL;')
+        # another param for exported event
+        if 'exported_events' == mg._symbolTable.get(event)['type']:
+            output.append(' param *ep_head = NULL;')
         if len(paramString) > 0:
-            for p in mgen.MonitorGenerator._getEventParams(paramString):
+            for p in mg._getEventParams(paramString):
                 # comparing SMEDL types not C types.
                 if p[0] == 'int':
                     output.append('  push_param(&p_head, &%s, NULL, NULL, NULL);' % p[1])
+                    if 'exported_events' == mg._symbolTable.get(event)['type']:
+                        output.append('  push_param(&ep_head, &%s, NULL, NULL, NULL);' % p[1])
                 elif p[0] == 'char':
                     output.append('  push_param(&p_head, NULL, &%s, NULL, NULL);' % p[1])
+                    if 'exported_events' == mg._symbolTable.get(event)['type']:
+                        output.append('  push_param(&ep_head, NULL, &%s, NULL, NULL);' % p[1])
                 elif p[0] == 'float':
                     exit("this should never happen. there is a missing float->double conversion.")
                 elif p[0] == 'double':
                     output.append('  push_param(&p_head, NULL, NULL, &%s, NULL);' % p[1])
+                    if 'exported_events' == mg._symbolTable.get(event)['type']:
+                        output.append('  push_param(&ep_head, NULL, NULL, &%s, NULL);' % p[1])
                 elif p[0] == 'pointer':
                     output.append('  push_param(&p_head, NULL, NULL, NULL, &%s);' % p[1])
+                    if 'exported_events' == mg._symbolTable.get(event)['type']:
+                        output.append('  push_param(&ep_head, NULL, NULL, NULL, &%s);' % p[1])
         output.append('  push_action(&monitor->action_queue, %s_%s_EVENT, p_head);' % (obj.upper(), event.upper()))
-
         if 'exported_events' == mg._symbolTable.get(event)['type']:
-            output.append('  char message[256];')
-            sprintf = '  sprintf(message, "%s_%s' % (obj.lower(), event)
-            evParams = mgen.MonitorGenerator._getEventParams(paramString)[1:]
-            if len(evParams) > 0:
-                for p in evParams:
+            output.append('  push_action(&monitor->export_queue, %s_%s_EVENT, ep_head);' % (obj.upper(), event.upper()))
+
+#       if 'exported_events' == mgen._symbolTable.get(event)['type']:
+#            output.append('  char message[256];')
+#            sprintf = '  sprintf(message, "%s_%s' % (obj.lower(), event)
+#            evParams = MonitorGenerator._getEventParams(paramString)[1:]
+#            if len(evParams) > 0:
+#                for p in evParams:
+
                     # comparing SMEDL types not C types.
-                    if p[0] == 'int':
-                        sprintf += ' %d'
-                    elif p[0] == 'char':
-                        sprintf += ' %s'
-                    elif p[0] == 'double':
-                        sprintf += ' %lf'
-                    elif p[0] == 'float':
-                        exit("this should never happen. there is a missing float->double conversion.")
-            sprintf += '"'
-            if len(evParams) > 0:
-                for p in evParams:
-                    sprintf += ', %s' % p[1]
-            sprintf += ');'
-            output.append(sprintf)
-            output.append('  char routing_key[256];')
+#                    if p[0] == 'int':
+#                        sprintf += ' %d'
+#                    elif p[0] == 'char':
+#                        sprintf += ' %s'
+#                    elif p[0] == 'double':
+#                        sprintf += ' %lf'
+#                    elif p[0] == 'float':
+#                        exit("this should never happen. there is a missing float->double conversion.")
+#            sprintf += '"'
+#            if len(evParams) > 0:
+#                for p in evParams:
+#                    sprintf += ', %s' % p[1]
+#            sprintf += ');'
+#            output.append(sprintf)
+#            output.append('  char routing_key[256];')
 
             #construct routing key
-            name = mg._symbolTable.getSymbolsByType('object')[0]
-            #print(name)
-            connName = None
-            #print(mg.archSpec)
-            for conn in mg.archSpec:
-                if conn.sourceMachine == name and conn.sourceEvent == event:
-                    connName = conn.connName
-                    break
 
-                if connName == None:
-                        connName = obj+'_'+ event
-            sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
+#            name = mgen._symbolTable.getSymbolsByType('object')[0]
+            #print(name)
+#            connName = None
+            #print(mgen.archSpec)
+#            for conn in mgen.archSpec:
+#                if conn.sourceMachine == name and conn.sourceEvent == event:
+#                    connName = conn.connName
+#                    break
+        
+#                if connName == None:
+#                        connName = obj+'_'+ event
+#            sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
             # TODO: peter, write functions for printing and parsing monitor identities
             # this cast is broken and wrong, but works as long as we have only one monitor process
-            for v in mg.identities:
-                sprintf_routing += '.%ld'
-
-                sprintf_routing += '.'+event
-                if len(evParams) > 0:
-                    for p in evParams:
+#            for v in mgen.identities:
+#                sprintf_routing += '.%ld'
+            
+#                sprintf_routing += '.'+event
+#                if len(evParams) > 0:
+#                    for p in evParams:
                         # attributes can only be int
-                        if p[0] == 'int':
-                            sprintf_routing += '.%d'
-                        else:
-                            sprintf_routing += '.0'
+#                        if p[0] == 'int':
+#                            sprintf_routing += '.%d'
+#                        else:
+#                            sprintf_routing += '.0'
+#
+#            sprintf_routing+='"'
+#            for v in mgen.identities:
+#                sprintf_routing += ', (long)(*(int*)(monitor->identities['
+#                sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
+#                sprintf_routing += v.upper() +']))'
 
-            sprintf_routing+='"'
-            for v in mg.identities:
-                sprintf_routing += ', (long)(*(int*)(monitor->identities['
-                sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
-                sprintf_routing += v.upper() +']))'
-
-            if len(evParams) > 0:
-                for p in evParams:
+#            if len(evParams) > 0:
+#                for p in evParams:
                 # attributes can only be int
-                    if p[0] == 'int':
-                        sprintf_routing+=', %s' % p[1]
-
-
-            sprintf_routing += ');'
-            output.append(sprintf_routing)
-            output.append('  send_message(monitor, message, routing_key);')
+#                    if p[0] == 'int':
+#                        sprintf_routing+=', %s' % p[1]
+#
+#
+#            sprintf_routing += ');'
+#            output.append(sprintf_routing)
+#            output.append('  send_message(monitor, message, routing_key);')
         output.append('}\n\n')
         return {'code':output, 'signature':signature}
