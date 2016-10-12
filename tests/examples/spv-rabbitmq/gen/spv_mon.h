@@ -20,6 +20,7 @@ typedef struct SpvMonitor {
   int state[5];
   int last_time;
   action *action_queue;
+  action *export_queue;
   const char *amqp_exchange;
   const char *ctrl_exchange;
   amqp_socket_t *recv_socket;
@@ -47,15 +48,25 @@ void free_monitor(SpvMonitor*);
 /*
  * Monitor Event Handlers
  */
-void spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, double mon_var_lon, int mon_var_ret);
-void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, double mon_var_lon, int mon_var_ret);
-void spv_total_distance(SpvMonitor* monitor, double mon_var_dist);
-void raise_spv_total_distance(SpvMonitor* monitor, double mon_var_dist);
-void raise_spv_timestep_error(SpvMonitor* monitor, int mon_var_tm, int mon_var_last_time);
+void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret);
+void raise_spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret);
+void spv_total_distance(SpvMonitor* monitor, double dist);
+void raise_spv_total_distance(SpvMonitor* monitor, double dist);
+void spv_timestep_error(SpvMonitor* monitor, int tm, int last_time);
+void exported_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time);
+void raise_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time);
+void spv_after_end_error(SpvMonitor* monitor);
+void exported_spv_after_end_error(SpvMonitor* monitor);
 void raise_spv_after_end_error(SpvMonitor* monitor);
-void raise_spv_latitude_range_error(SpvMonitor* monitor, double mon_var_lat);
-void raise_spv_longitude_range_error(SpvMonitor* monitor, double mon_var_lon);
-void raise_spv_total_distance_error(SpvMonitor* monitor, double mon_var_dist);
+void spv_latitude_range_error(SpvMonitor* monitor, double lat);
+void exported_spv_latitude_range_error(SpvMonitor* monitor, double lat);
+void raise_spv_latitude_range_error(SpvMonitor* monitor, double lat);
+void spv_longitude_range_error(SpvMonitor* monitor, double lon);
+void exported_spv_longitude_range_error(SpvMonitor* monitor, double lon);
+void raise_spv_longitude_range_error(SpvMonitor* monitor, double lon);
+void spv_total_distance_error(SpvMonitor* monitor, double dist);
+void exported_spv_total_distance_error(SpvMonitor* monitor, double dist);
+void raise_spv_total_distance_error(SpvMonitor* monitor, double dist);
 
 /*
  * Monitor Utility Functions
@@ -69,3 +80,7 @@ int add_spv_monitor_to_map(SpvMonitor*, int);
 int put_spv_monitor(SpvMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
+
+void executePendingEvents(SpvMonitor* monitor);
+void executeEvents(SpvMonitor* monitor);
+void executeExportedEvent(SpvMonitor* monitor);

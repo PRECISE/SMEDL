@@ -4,7 +4,7 @@ from .. import mgen
 
 class CTemplater(object):
     @staticmethod
-    def output(mg, allFSMs, filename, helper, pedlAST, console_output=False):
+    def output(mg, allFSMs, filename, helper, pedlAST, console_output=False, output_dir=''):
         if mg._debug:
             if pedlAST:
                 print("Target Monitor Points: " + pedlAST.getTargetMonitorPoints())
@@ -136,7 +136,7 @@ class CTemplater(object):
             'thread': 0,
             'opaque': 0
         }
-        
+
 
         for m in methods:
             eventFunction = []
@@ -168,7 +168,7 @@ class CTemplater(object):
                 [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
                 #for p in mg._symbolTable.get(m, 'params'):
                 #print(p['name'])
-            
+
             tmp_map = {
                 'int': 0,
                 'float': 0,
@@ -183,9 +183,9 @@ class CTemplater(object):
             d = 0
             v = 0
             c = 0
-            
+
             attrstring = ''
-            
+
             #print(type(mg._symbolTable.get(m,'params')))
             for p in mg._symbolTable.get(m,'params'):
                 tmp_map[p['type']] = tmp_map[p['type']]+1
@@ -202,7 +202,7 @@ class CTemplater(object):
                     attrstring += ',c'+str(c)
                     c = c+1
             #print(attrstring)
- 
+
             parastring = ''
             ki = 0
             kd = 0
@@ -276,7 +276,7 @@ class CTemplater(object):
                 eventFunction.append('  }')
             eventFunction.append('executeEvents(monitor);')
             eventFunction.append('}\n\n')
-            
+
             export_event_sig = None
             if 'exported_events' == mg._symbolTable.get(m)['type']:
                 export_event_sig = 'void exported_%s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
@@ -317,7 +317,7 @@ class CTemplater(object):
                     if conn.sourceMachine == name and conn.sourceEvent == m:
                         connName = conn.connName
                         break
-            
+
                     if connName == None:
                         connName = obj+'_'+ m
                             #print(mg.archSpec)
@@ -326,7 +326,7 @@ class CTemplater(object):
                 # this cast is broken and wrong, but works as long as we have only one monitor process
                 for v in mg.identities:
                     sprintf_routing += '.%ld'
-                
+
                     sprintf_routing += '.'+m
                     if len(evParams) > 0:
                         for p in evParams:
@@ -352,7 +352,7 @@ class CTemplater(object):
                 eventFunction.append(sprintf_routing)
                 eventFunction.append('  send_message(monitor, message, routing_key);')
                 eventFunction.append('}\n\n')
-            
+
 
             raiseFunction = CTemplater._writeRaiseFunction(mg, m, obj)
 
@@ -407,11 +407,11 @@ class CTemplater(object):
 
 
         #construct var_declaration
-        
+
         #print(parameterTypeNumMap)
         t_str = ''
         for key,value in parameterTypeNumMap.items():
-            
+
             if value > 0:
                 t_str += CTemplater.convertTypeForC(key) + ' '
                     #print('value:'+str(value))
@@ -426,13 +426,18 @@ class CTemplater(object):
 
         # Render the monitor templates and write to disk
         env = Environment(loader=PackageLoader('smedl.c_style','.'))
+        basename = os.path.basename(filename)
+        dirname = os.path.dirname(filename)
+        if output_dir is None:
+            output_dir = ''
+        os.makedirs(os.path.join(dirname, output_dir), exist_ok=True)
 
         out_h = env.get_template('object_mon.h').render(values)
         if console_output:
             print("--" + filename + "_mon.h--")
             print(out_h)
         else:
-            out_h_file = open(os.path.splitext(filename)[0] + '_mon.h', 'w')
+            out_h_file = open(os.path.join(dirname, output_dir, basename + '_mon.h'), 'w')
             out_h_file.write(out_h)
             out_h_file.close()
 
@@ -441,7 +446,7 @@ class CTemplater(object):
             print("--" + filename + "_mon.c--")
             print(out_c)
         else:
-            out_c_file = open(os.path.splitext(filename)[0] + '_mon.c', 'w')
+            out_c_file = open(os.path.join(dirname, output_dir, basename + '_mon.c'), 'w')
             out_c_file.write(out_c)
             out_c_file.close()
 
@@ -451,7 +456,7 @@ class CTemplater(object):
             print("--actions.h--")
             print(a_h)
         else:
-            a_h_file = open(os.path.dirname(filename) + '/actions.h', 'w')
+            a_h_file = open(os.path.join(dirname, output_dir, 'actions.h'), 'w')
             a_h_file.write(a_h)
             a_h_file.close()
 
@@ -460,7 +465,7 @@ class CTemplater(object):
             print("--actions.c--")
             print(a_c)
         else:
-            a_c_file = open(os.path.dirname(filename) + '/actions.c', 'w')
+            a_c_file = open(os.path.join(dirname, output_dir, 'actions.c'), 'w')
             a_c_file.write(a_c)
             a_c_file.close()
 
@@ -469,7 +474,7 @@ class CTemplater(object):
             print("--monitor_map.h--")
             print(m_h)
         else:
-            m_h_file = open(os.path.dirname(filename) + '/monitor_map.h', 'w')
+            m_h_file = open(os.path.join(dirname, output_dir, 'monitor_map.h'), 'w')
             m_h_file.write(m_h)
             m_h_file.close()
 
@@ -478,7 +483,7 @@ class CTemplater(object):
             print("--monitor_map.c--")
             print(m_c)
         else:
-            m_c_file = open(os.path.dirname(filename) + '/monitor_map.c', 'w')
+            m_c_file = open(os.path.join(dirname, output_dir, 'monitor_map.c'), 'w')
             m_c_file.write(m_c)
             m_c_file.close()
 
@@ -505,7 +510,7 @@ class CTemplater(object):
                     eventIndexDic = {}
                     #TODO: generate predicates on the machine and event, add corresponding filter, for each target event, union all predicates
                     for p_spec in conn.patternSpec:
-                        
+
                         leftterm = p_spec.getLeftTerm()
                         rightterm = p_spec.getRightTerm()
                         #print(leftterm)
@@ -741,7 +746,7 @@ class CTemplater(object):
 #                if conn.sourceMachine == name and conn.sourceEvent == event:
 #                    connName = conn.connName
 #                    break
-        
+
 #                if connName == None:
 #                        connName = obj+'_'+ event
 #            sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
@@ -749,7 +754,7 @@ class CTemplater(object):
             # this cast is broken and wrong, but works as long as we have only one monitor process
 #            for v in mgen.identities:
 #                sprintf_routing += '.%ld'
-            
+
 #                sprintf_routing += '.'+event
 #                if len(evParams) > 0:
 #                    for p in evParams:

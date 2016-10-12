@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "spv_mon.h"
+#include "gen/spv_mon.h"
 
 int spv_mon_id=0;
 int main()
@@ -19,7 +19,7 @@ int main()
     int ret;
 
     start_monitor(mon);
-    
+
     // In the header but not implemented?
     // free_spv_monitor();
     // free_spv_monitor_maps();

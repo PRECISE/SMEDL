@@ -30,8 +30,9 @@ const char *spv_check_distance_states[1] = { "Start" };
 const char *spv_after_end_states[2] = { "Start", "End" };
 const char **spv_states_names[5] = { spv_check_time_states, spv_check_latitude_states, spv_check_longitude_states, spv_check_distance_states, spv_after_end_states };
 
+
 #define bindingkeyNum 1
-const char *bindingkeys[bindingkeyNum] = { "#" };
+
 
 SpvMonitor* init_spv_monitor( SpvData *d ) {
     SpvMonitor* monitor = (SpvMonitor*)malloc(sizeof(SpvMonitor));
@@ -44,13 +45,13 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     monitor->state[SPV_CHECK_DISTANCE_SCENARIO] = SPV_CHECK_DISTANCE_START;
     monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_START;
     monitor->action_queue = NULL;
+    monitor->export_queue = NULL;
 
     /* Read settings from config file */
     config_t cfg;
     config_setting_t *setting;
     config_init(&cfg);
-    if(! config_read_file(&cfg, "spv_mon.cfg"))
-    {
+    if(!config_read_file(&cfg, "spv_mon.cfg")) {
         fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
             config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
@@ -62,7 +63,12 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     int port;
 
     if (setting != NULL) {
-        config_setting_lookup_string(setting, "hostname", &hostname);
+        if (!config_setting_lookup_string(setting, "hostname", &hostname)) {
+            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+                config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            exit(EXIT_FAILURE);
+        }
         config_setting_lookup_int(setting, "port", &port);
         config_setting_lookup_string(setting, "username", &username);
         config_setting_lookup_string(setting, "password", &password);
@@ -106,6 +112,7 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
+
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
         "Opening channel");
     amqp_exchange_declare(monitor->send_conn, 1,
@@ -120,6 +127,11 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
         "Declaring control exchange");
 
     // binding several binding keys
+    char ** bindingkeys = (char**)malloc(bindingkeyNum*sizeof(char*));
+    bindingkeys[0]=(char*)malloc(255*sizeof(char));
+	strcpy(bindingkeys[0],"#");
+
+
     for(int i = 0; i < bindingkeyNum; i++){
         amqp_queue_bind(monitor->recv_conn, 1, queuename,
             amqp_cstring_bytes(monitor->amqp_exchange),
@@ -157,6 +169,28 @@ char *getEventName(char *str, size_t maxlen){
     return eventName;
 }
 
+char *getConnName(char *str, size_t maxlen){
+    // make sure that str is really a cstring before trying to copy from it.
+    size_t len = strnlen(str, maxlen);
+    if (len >= maxlen) {
+        return NULL;
+    }
+    // find the first space or the end of the string
+    char* end = index(str, '.');
+    // copylen is the length of the string with the terminator
+    size_t copylen;
+    if (NULL == end) {
+        copylen = maxlen - 1;
+    } else {
+        copylen = end - str;
+    }
+    char* connName = malloc(copylen+1);
+    memcpy(connName, str, copylen);
+    connName[copylen] = '\0';
+    return connName;
+}
+
+
 void start_monitor(SpvMonitor* monitor) {
     int received = 0;
     amqp_frame_t frame;
@@ -184,41 +218,20 @@ void start_monitor(SpvMonitor* monitor) {
         ret = amqp_consume_message(monitor->recv_conn, &envelope, NULL, 0);
         amqp_message_t msg = envelope.message;
         amqp_bytes_t bytes = msg.body;
-        //amqp_bytes_t routing_key = envelope.routing_key;
-        //char* rk = (char*)routing_key.bytes;
+        amqp_bytes_t routing_key = envelope.routing_key;
+        char* rk = (char*)routing_key.bytes;
         char* string = (char*)bytes.bytes;
         //char* event[255] = {NULL};
 
         if (string != NULL) {
-            char* eventName = getEventName(string, bytes.len);
+            char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
                 char e[255];
 
-                if (!strcmp(eventName,"spv_parse_record")) {
-                    int mon_var_tm = 0;
-                    double mon_var_lat = 0;
-                    double mon_var_lon = 0;
-                    int mon_var_ret = 0;
-                    int ret = sscanf(string, "%s %d %lf %lf %d", e, &mon_var_tm, &mon_var_lat, &mon_var_lon, &mon_var_ret);
-                    if (ret == 5) {
-                        spv_parse_record(monitor, mon_var_tm, mon_var_lat, mon_var_lon, mon_var_ret);
-                        printf("spv_parse_record called.\n");
-                    }
-                }
-                else if (!strcmp(eventName,"spv_total_distance")) {
-                    double mon_var_dist = 0;
-                    int ret = sscanf(string, "%s %lf", e, &mon_var_dist);
-                    if (ret == 2) {
-                        spv_total_distance(monitor, mon_var_dist);
-                        printf("spv_total_distance called.\n");
-                    }
-                }
+                
 
-                else {
-                    printf("error_called\n");
-                }
             }
-            free(eventName);
+            //free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -284,16 +297,19 @@ void send_message(SpvMonitor* monitor, char* message, char* routing_key) {
     amqp_bytes_t message_bytes;
     message_bytes.len = strlen(message)+1;
     message_bytes.bytes = message;
+    amqp_bytes_t routingkey_bytes;
+    routingkey_bytes.len = strlen(routing_key)+1;
+    routingkey_bytes.bytes = routing_key;
     die_on_error(amqp_basic_publish(monitor->send_conn,
                                     1,
                                     amqp_cstring_bytes(monitor->amqp_exchange),
-                                    amqp_cstring_bytes(routing_key),
+                                    routingkey_bytes,
                                     0,
                                     0,
                                     NULL,
                                     message_bytes),
-                "Publishing");
-
+                 "Publishing");
+    
 }
 
 void free_monitor(SpvMonitor* monitor) {
@@ -303,19 +319,139 @@ void free_monitor(SpvMonitor* monitor) {
     free(monitor);
 }
 
+//called at the end of each event handling function
+void executeEvents(SpvMonitor* monitor){
+    if(monitor->action_queue != NULL){
+        executePendingEvents(monitor);
+    }
+    
+    if(monitor->action_queue == NULL && monitor->export_queue != NULL){
+        executeExportedEvent(monitor);
+    }
+}
+
+void executePendingEvents(SpvMonitor* monitor){
+    action** head = &monitor->action_queue;
+    int i0,i1;double d0,d1;
+    while(*head!=NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type){
+            case SPV_TIMESTEP_ERROR_EVENT:
+            		i0 = ((params)->i);
+		(params) = (params)->next;
+		i1 = ((params)->i);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		spv_timestep_error(monitor,i0,i1);
+
+                break;
+            case SPV_AFTER_END_ERROR_EVENT:
+            		pop_param(&p_head);
+		pop_action(head);
+		spv_after_end_error(monitor);
+
+                break;
+            case SPV_LATITUDE_RANGE_ERROR_EVENT:
+            		d0 = ((params)->d);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		spv_latitude_range_error(monitor,d0);
+
+                break;
+            case SPV_LONGITUDE_RANGE_ERROR_EVENT:
+            		d0 = ((params)->d);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		spv_longitude_range_error(monitor,d0);
+
+                break;
+            case SPV_TOTAL_DISTANCE_ERROR_EVENT:
+            		d0 = ((params)->d);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		spv_total_distance_error(monitor,d0);
+
+                break;
+            }
+        pop_action(head);
+    }
+}
+
+//send export events one by one from export_queue
+void executeExportedEvent(SpvMonitor* monitor){
+    action** head = &monitor->export_queue;
+    int i0,i1;double d0,d1;
+    while(*head != NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type) {
+            case SPV_TIMESTEP_ERROR_EVENT:
+            		i0 = ((params)->i);
+		(params) = (params)->next;
+		i1 = ((params)->i);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		exported_spv_timestep_error(monitor,i0,i1);
+
+                break;
+            case SPV_AFTER_END_ERROR_EVENT:
+            		pop_param(&p_head);
+		pop_action(head);
+		exported_spv_after_end_error(monitor);
+
+                break;
+            case SPV_LATITUDE_RANGE_ERROR_EVENT:
+            		d0 = ((params)->d);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		exported_spv_latitude_range_error(monitor,d0);
+
+                break;
+            case SPV_LONGITUDE_RANGE_ERROR_EVENT:
+            		d0 = ((params)->d);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		exported_spv_longitude_range_error(monitor,d0);
+
+                break;
+            case SPV_TOTAL_DISTANCE_ERROR_EVENT:
+            		d0 = ((params)->d);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		exported_spv_total_distance_error(monitor,d0);
+
+                break;
+            }
+        pop_action(head);
+    }
+    
+}
+
+
 /*
  * Monitor Event Handlers
  */
 
-void spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, double mon_var_lon, int mon_var_ret) {
+void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret) {
   switch (monitor->state[SPV_CHECK_TIME_SCENARIO]) {
     case SPV_CHECK_TIME_START:
-      if(mon_var_ret == -1 || mon_var_tm > monitor->last_time) {
-        monitor->last_time = mon_var_tm;
+      if(ret == -1 || tm > monitor->last_time) {
+        monitor->last_time = tm;
         monitor->state[SPV_CHECK_TIME_SCENARIO] = SPV_CHECK_TIME_START;
       }
       else {
-        raise_spv_timestep_error(monitor, mon_var_tm, monitor->last_time);
+        raise_spv_timestep_error(monitor, tm, monitor->last_time);
         monitor->state[SPV_CHECK_TIME_SCENARIO] = SPV_CHECK_TIME_START;
       }
       break;
@@ -326,11 +462,11 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, d
   }
   switch (monitor->state[SPV_CHECK_LATITUDE_SCENARIO]) {
     case SPV_CHECK_LATITUDE_START:
-      if(mon_var_lat >= -90 && mon_var_lat <= 90) {
+      if(lat >= -90 && lat <= 90) {
         monitor->state[SPV_CHECK_LATITUDE_SCENARIO] = SPV_CHECK_LATITUDE_START;
       }
       else {
-        raise_spv_latitude_range_error(monitor, mon_var_lat);
+        raise_spv_latitude_range_error(monitor, lat);
         monitor->state[SPV_CHECK_LATITUDE_SCENARIO] = SPV_CHECK_LATITUDE_START;
       }
       break;
@@ -341,11 +477,11 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, d
   }
   switch (monitor->state[SPV_CHECK_LONGITUDE_SCENARIO]) {
     case SPV_CHECK_LONGITUDE_START:
-      if(mon_var_lon >= -180 && mon_var_lon <= +180) {
+      if(lon >= -180 && lon <= +180) {
         monitor->state[SPV_CHECK_LONGITUDE_SCENARIO] = SPV_CHECK_LONGITUDE_START;
       }
       else {
-        raise_spv_longitude_range_error(monitor, mon_var_lon);
+        raise_spv_longitude_range_error(monitor, lon);
         monitor->state[SPV_CHECK_LONGITUDE_SCENARIO] = SPV_CHECK_LONGITUDE_START;
       }
       break;
@@ -355,13 +491,8 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, d
       break;
   }
   switch (monitor->state[SPV_AFTER_END_SCENARIO]) {
-    case SPV_AFTER_END_END:
-        raise_spv_after_end_error(monitor);
-      monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
-      break;
-
     case SPV_AFTER_END_START:
-      if(mon_var_ret == -1) {
+      if(ret == -1) {
         monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
       }
       else {
@@ -369,30 +500,38 @@ void spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, d
       }
       break;
 
+    case SPV_AFTER_END_END:
+        raise_spv_after_end_error(monitor);
+      monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
+      break;
+
     default:
       raise_error("spv_after_end", spv_states_names[SPV_AFTER_END_SCENARIO][monitor->state[SPV_AFTER_END_SCENARIO]], "parse_record", "DEFAULT");
       break;
   }
+executeEvents(monitor);
 }
 
-void raise_spv_parse_record(SpvMonitor* monitor, int mon_var_tm, double mon_var_lat, double mon_var_lon, int mon_var_ret) {
+
+
+void raise_spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret) {
   param *p_head = NULL;
-  push_param(&p_head, &mon_var_tm, NULL, NULL, NULL);
-  push_param(&p_head, NULL, NULL, &mon_var_lat, NULL);
-  push_param(&p_head, NULL, NULL, &mon_var_lon, NULL);
-  push_param(&p_head, &mon_var_ret, NULL, NULL, NULL);
+  push_param(&p_head, &tm, NULL, NULL, NULL);
+  push_param(&p_head, NULL, NULL, &lat, NULL);
+  push_param(&p_head, NULL, NULL, &lon, NULL);
+  push_param(&p_head, &ret, NULL, NULL, NULL);
   push_action(&monitor->action_queue, SPV_PARSE_RECORD_EVENT, p_head);
 }
 
 
-void spv_total_distance(SpvMonitor* monitor, double mon_var_dist) {
+void spv_total_distance(SpvMonitor* monitor, double dist) {
   switch (monitor->state[SPV_CHECK_DISTANCE_SCENARIO]) {
     case SPV_CHECK_DISTANCE_START:
-      if(mon_var_dist > 0 && mon_var_dist < 1) {
+      if(dist > 0 && dist < 1) {
         monitor->state[SPV_CHECK_DISTANCE_SCENARIO] = SPV_CHECK_DISTANCE_START;
       }
       else {
-        raise_spv_total_distance_error(monitor, mon_var_dist);
+        raise_spv_total_distance_error(monitor, dist);
         monitor->state[SPV_CHECK_DISTANCE_SCENARIO] = SPV_CHECK_DISTANCE_START;
       }
       break;
@@ -401,82 +540,140 @@ void spv_total_distance(SpvMonitor* monitor, double mon_var_dist) {
       raise_error("spv_check_distance", spv_states_names[SPV_CHECK_DISTANCE_SCENARIO][monitor->state[SPV_CHECK_DISTANCE_SCENARIO]], "total_distance", "DEFAULT");
       break;
   }
+executeEvents(monitor);
 }
 
-void raise_spv_total_distance(SpvMonitor* monitor, double mon_var_dist) {
+
+
+void raise_spv_total_distance(SpvMonitor* monitor, double dist) {
   param *p_head = NULL;
-  push_param(&p_head, NULL, NULL, &mon_var_dist, NULL);
+  push_param(&p_head, NULL, NULL, &dist, NULL);
   push_action(&monitor->action_queue, SPV_TOTAL_DISTANCE_EVENT, p_head);
 }
 
 
+void spv_timestep_error(SpvMonitor* monitor, int tm, int last_time) {
+executeEvents(monitor);
+}
 
 
-void raise_spv_timestep_error(SpvMonitor* monitor, int mon_var_tm, int mon_var_last_time) {
-  param *p_head = NULL;
-  push_param(&p_head, &mon_var_tm, NULL, NULL, NULL);
-  push_param(&p_head, &mon_var_last_time, NULL, NULL, NULL);
-  push_action(&monitor->action_queue, SPV_TIMESTEP_ERROR_EVENT, p_head);
+void exported_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time) {
   char message[256];
-  sprintf(message, "spv_timestep_error %d %d", mon_var_tm, mon_var_last_time);
+  sprintf(message, "spv_timestep_error %d %d", tm, last_time);
   char routing_key[256];
-  sprintf(routing_key, "spv-spv_timestep_error.%ld", (long)monitor->identities[SPV_ID]);
+  sprintf(routing_key, "None", tm, last_time);
   send_message(monitor, message, routing_key);
 }
 
+
+
+void raise_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time) {
+  param *p_head = NULL;
+ param *ep_head = NULL;
+  push_param(&p_head, &tm, NULL, NULL, NULL);
+  push_param(&ep_head, &tm, NULL, NULL, NULL);
+  push_param(&p_head, &last_time, NULL, NULL, NULL);
+  push_param(&ep_head, &last_time, NULL, NULL, NULL);
+  push_action(&monitor->action_queue, SPV_TIMESTEP_ERROR_EVENT, p_head);
+  push_action(&monitor->export_queue, SPV_TIMESTEP_ERROR_EVENT, ep_head);
+}
+
+
+void spv_after_end_error(SpvMonitor* monitor) {
+executeEvents(monitor);
+}
+
+
+void exported_spv_after_end_error(SpvMonitor* monitor) {
+  char message[256];
+  sprintf(message, "spv_after_end_error");
+  char routing_key[256];
+  sprintf(routing_key, "None");
+  send_message(monitor, message, routing_key);
+}
 
 
 
 void raise_spv_after_end_error(SpvMonitor* monitor) {
   param *p_head = NULL;
+ param *ep_head = NULL;
   push_action(&monitor->action_queue, SPV_AFTER_END_ERROR_EVENT, p_head);
+  push_action(&monitor->export_queue, SPV_AFTER_END_ERROR_EVENT, ep_head);
+}
+
+
+void spv_latitude_range_error(SpvMonitor* monitor, double lat) {
+executeEvents(monitor);
+}
+
+
+void exported_spv_latitude_range_error(SpvMonitor* monitor, double lat) {
   char message[256];
-  sprintf(message, "spv_after_end_error");
+  sprintf(message, "spv_latitude_range_error %lf", lat);
   char routing_key[256];
-  sprintf(routing_key, "spv-spv_after_end_error.%ld", (long)monitor->identities[SPV_ID]);
+  sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
 }
 
 
 
-
-void raise_spv_latitude_range_error(SpvMonitor* monitor, double mon_var_lat) {
+void raise_spv_latitude_range_error(SpvMonitor* monitor, double lat) {
   param *p_head = NULL;
-  push_param(&p_head, NULL, NULL, &mon_var_lat, NULL);
+ param *ep_head = NULL;
+  push_param(&p_head, NULL, NULL, &lat, NULL);
+  push_param(&ep_head, NULL, NULL, &lat, NULL);
   push_action(&monitor->action_queue, SPV_LATITUDE_RANGE_ERROR_EVENT, p_head);
+  push_action(&monitor->export_queue, SPV_LATITUDE_RANGE_ERROR_EVENT, ep_head);
+}
+
+
+void spv_longitude_range_error(SpvMonitor* monitor, double lon) {
+executeEvents(monitor);
+}
+
+
+void exported_spv_longitude_range_error(SpvMonitor* monitor, double lon) {
   char message[256];
-  sprintf(message, "spv_latitude_range_error %lf", mon_var_lat);
+  sprintf(message, "spv_longitude_range_error %lf", lon);
   char routing_key[256];
-  sprintf(routing_key, "spv-spv_latitude_range_error.%ld", (long)monitor->identities[SPV_ID]);
+  sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
 }
 
 
 
-
-void raise_spv_longitude_range_error(SpvMonitor* monitor, double mon_var_lon) {
+void raise_spv_longitude_range_error(SpvMonitor* monitor, double lon) {
   param *p_head = NULL;
-  push_param(&p_head, NULL, NULL, &mon_var_lon, NULL);
+ param *ep_head = NULL;
+  push_param(&p_head, NULL, NULL, &lon, NULL);
+  push_param(&ep_head, NULL, NULL, &lon, NULL);
   push_action(&monitor->action_queue, SPV_LONGITUDE_RANGE_ERROR_EVENT, p_head);
+  push_action(&monitor->export_queue, SPV_LONGITUDE_RANGE_ERROR_EVENT, ep_head);
+}
+
+
+void spv_total_distance_error(SpvMonitor* monitor, double dist) {
+executeEvents(monitor);
+}
+
+
+void exported_spv_total_distance_error(SpvMonitor* monitor, double dist) {
   char message[256];
-  sprintf(message, "spv_longitude_range_error %lf", mon_var_lon);
+  sprintf(message, "spv_total_distance_error %lf", dist);
   char routing_key[256];
-  sprintf(routing_key, "spv-spv_longitude_range_error.%ld", (long)monitor->identities[SPV_ID]);
+  sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
 }
 
 
 
-
-void raise_spv_total_distance_error(SpvMonitor* monitor, double mon_var_dist) {
+void raise_spv_total_distance_error(SpvMonitor* monitor, double dist) {
   param *p_head = NULL;
-  push_param(&p_head, NULL, NULL, &mon_var_dist, NULL);
+ param *ep_head = NULL;
+  push_param(&p_head, NULL, NULL, &dist, NULL);
+  push_param(&ep_head, NULL, NULL, &dist, NULL);
   push_action(&monitor->action_queue, SPV_TOTAL_DISTANCE_ERROR_EVENT, p_head);
-  char message[256];
-  sprintf(message, "spv_total_distance_error %lf", mon_var_dist);
-  char routing_key[256];
-  sprintf(routing_key, "spv-spv_total_distance_error.%ld", (long)monitor->identities[SPV_ID]);
-  send_message(monitor, message, routing_key);
+  push_action(&monitor->export_queue, SPV_TOTAL_DISTANCE_ERROR_EVENT, ep_head);
 }
 
 
@@ -576,7 +773,6 @@ char* monitor_identities_str(MonitorIdentity** identities) {
     char* out = malloc(20*SPV_MONITOR_IDENTITIES);
     out[0] = '\0';
     for(int i = 0; i < SPV_MONITOR_IDENTITIES; i++) {
-        char* new_str;
         char* monid_str = monitor_identity_str(identities[i]);
         if (i == 0) {
             strcat(out, monid_str);

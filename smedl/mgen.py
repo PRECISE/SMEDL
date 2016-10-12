@@ -50,7 +50,7 @@ class MonitorGenerator(object):
         self.identities = []
 
 
-    def generate(self, pedlsmedlName, a4smedlName=None, helper=None):
+    def generate(self, pedlsmedlName, a4smedlName=None, helper=None, output_dir=''):
         # Parse the PEDL, if it exists
         pedlPath = Path(pedlsmedlName + '.pedl')
         if pedlPath.exists():
@@ -133,7 +133,7 @@ class MonitorGenerator(object):
                 print('\nFSM: %s\n' % key)
                 print('%s\n' % fsm)
 
-        CTemplater.output(self, allFSMs, pedlsmedlName, helper, self.pedlAST, console_output=self._console)
+        CTemplater.output(self, allFSMs, pedlsmedlName, helper, self.pedlAST, console_output=self._console, output_dir=output_dir)
 
 
     def _parseInter(self,object):
@@ -180,7 +180,7 @@ class MonitorGenerator(object):
                         imported = self._makeEventList(v)
                     elif k == 'exported_events':
                         exported = self._makeEventList(v)
-                
+
                 interface = Interface(monType,monId,para,imported,exported)
                 #print("para:"+str(len(para)))
                 self.monitorInterface.append(interface)
@@ -382,7 +382,7 @@ class MonitorGenerator(object):
                         right_ev = ev.params
                         break
                 right_mon = mon
-        
+
         if left_mon == None or right_mon == None or not left_ev == right_ev:
             return False
         return True
@@ -678,7 +678,7 @@ class MonitorGenerator(object):
     def _formatExpression(self, expr):
         if expr is None:
             expr = ""
-    
+
         if isinstance(expr, AST):
             exprStr = AstToPython.expr(expr)
         else:
@@ -784,13 +784,14 @@ def main():
     parser.add_argument('-c', '--console', help='Only output to console, no file output', action='store_true')
     parser.add_argument('--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
     # TODO: Add version flag
-    parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="the name of the PEDL and SMEDL files to parse")
-    parser.add_argument('--arch', metavar="a4smedl_filename", help="the name of architecture file to parse")
+    parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="The name of the PEDL and SMEDL files to parse")
+    parser.add_argument('--arch', metavar="a4smedl_filename", help="The name of architecture file to parse")
+    parser.add_argument('--dir', metavar="output_dir", help="Output the generated files to this directory relative to the input files")
     args = parser.parse_args()
 
     mgen = MonitorGenerator(structs=args.structs, debug=args.debug,
         console=args.console, implicit=args.noimplicit)
-    mgen.generate(args.pedlsmedl, args.arch, helper=args.helper)
+    mgen.generate(args.pedlsmedl, args.arch, helper=args.helper, output_dir=args.dir)
 
 if __name__ == '__main__':
     main()

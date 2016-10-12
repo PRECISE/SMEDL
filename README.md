@@ -63,6 +63,7 @@ Other useful flags:
   --console : Forces output to only show in the console; no file output will be generated
   --noimplicit : Disables implicit error handling in the generated monitor
   --arch <ARCH FILE> : The name of architechture file to parse (Described further below)
+  --dir <DIRECTORY> : Output the generated files to this directory relative to the input files
   ```
 
 
