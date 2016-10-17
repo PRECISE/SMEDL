@@ -3,7 +3,7 @@
 
 ## Requirements
 --------------
-1. [Python 3](https://docs.python.org/3/)
+1. [Python 3.5](https://docs.python.org/3/)
 2. [pip](https://pip.pypa.io/en/stable/)
     - [Grako 3.14](https://pythonhosted.org/grako/)
     - [Jinja2 2.8](http://jinja.pocoo.org/)
@@ -11,14 +11,14 @@
 ## Getting started
 ---------------
 A [Python virtual environment](https://docs.python.org/3/library/venv.html)
-including [Python 3](https://docs.python.org/3/) and all required Python
+including [Python 3.5](https://docs.python.org/3/) and all required Python
 packages has been defined to simplify the process of getting started with the
 tool.
 
 If you want to use a virtual environment (recommended), set it up by running
 the following command from the project's root directory:
 ```sh
-pyvenv .env && source .env/bin/activate
+pyvenv-3.5 .env && source .env/bin/activate
 ```
 
 To install all of the required dependencies from PyPi and install the monitor
@@ -41,7 +41,7 @@ The 'mgen' script is the primary interface for generating software monitors
 from SMEDL and PEDL definitions. This script can be run with the following
 command (from the project root directory):
 
-`python -m smedl.mgen PEDL_SMEDL_FILENAME`
+`mgen PEDL_SMEDL_FILENAME`
 
 This script will generate C source code representing a runtime monitor as
 specified by the PEDL and SMEDL definitions, along with necessary monitor

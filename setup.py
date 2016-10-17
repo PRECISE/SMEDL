@@ -97,7 +97,7 @@ setup(
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data={
-        'smedl': ['c_style/*'],
+        'smedl': ['c_style/*.c', 'c_style/*.h', 'c_style/*.cfg'],
     },
 
     # Although 'package_data' is the preferred approach, in some case you may

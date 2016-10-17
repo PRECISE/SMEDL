@@ -21,6 +21,7 @@ typedef struct ActupMonitor {
   int state[1];
   int bar;
   action *action_queue;
+  action *export_queue;
   const char *amqp_exchange;
   const char *ctrl_exchange;
   amqp_socket_t *recv_socket;
@@ -63,6 +64,10 @@ int add_actup_monitor_to_map(ActupMonitor*, int);
 int put_actup_monitor(ActupMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
+
+void executePendingEvents(ActupMonitor* monitor);
+void executeEvents(ActupMonitor* monitor);
+void executeExportedEvent(ActupMonitor* monitor);
 --tests/examples/basics/action_update_mon.c--
 //Compile: gcc -o action_update_mon -std=c99 actions.c monitor_map.c action_update_mon.c
 
@@ -88,7 +93,9 @@ typedef enum { ACTUP_DEFAULT } actup_error;
 const char *actup_sc1_states[1] = { "Min1" };
 const char **actup_states_names[1] = { actup_sc1_states };
 
+
 #define bindingkeyNum 1
+
 
 ActupMonitor* init_actup_monitor( ActupData *d ) {
     ActupMonitor* monitor = (ActupMonitor*)malloc(sizeof(ActupMonitor));
@@ -97,6 +104,7 @@ ActupMonitor* init_actup_monitor( ActupData *d ) {
     monitor->bar = d->bar;
     monitor->state[ACTUP_SC1_SCENARIO] = ACTUP_SC1_MIN1;
     monitor->action_queue = NULL;
+    monitor->export_queue = NULL;
 
     /* Read settings from config file */
     config_t cfg;
@@ -163,6 +171,7 @@ ActupMonitor* init_actup_monitor( ActupData *d ) {
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
+
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
         "Opening channel");
     amqp_exchange_declare(monitor->send_conn, 1,
@@ -274,14 +283,14 @@ void start_monitor(ActupMonitor* monitor) {
         //char* event[255] = {NULL};
 
         if (string != NULL) {
-            char* eventName = getConnName(rk, bytes.len);
+            char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
                 char e[255];
 
                 
 
             }
-            free(eventName);
+            //free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -347,16 +356,19 @@ void send_message(ActupMonitor* monitor, char* message, char* routing_key) {
     amqp_bytes_t message_bytes;
     message_bytes.len = strlen(message)+1;
     message_bytes.bytes = message;
+    amqp_bytes_t routingkey_bytes;
+    routingkey_bytes.len = strlen(routing_key)+1;
+    routingkey_bytes.bytes = routing_key;
     die_on_error(amqp_basic_publish(monitor->send_conn,
                                     1,
                                     amqp_cstring_bytes(monitor->amqp_exchange),
-                                    amqp_cstring_bytes(routing_key),
+                                    routingkey_bytes,
                                     0,
                                     0,
                                     NULL,
                                     message_bytes),
-                "Publishing");
-
+                 "Publishing");
+    
 }
 
 void free_monitor(ActupMonitor* monitor) {
@@ -365,6 +377,46 @@ void free_monitor(ActupMonitor* monitor) {
     die_on_error(amqp_destroy_connection(monitor->send_conn), "Ending connection");
     free(monitor);
 }
+
+//called at the end of each event handling function
+void executeEvents(ActupMonitor* monitor){
+    if(monitor->action_queue != NULL){
+        executePendingEvents(monitor);
+    }
+    
+    if(monitor->action_queue == NULL && monitor->export_queue != NULL){
+        executeExportedEvent(monitor);
+    }
+}
+
+void executePendingEvents(ActupMonitor* monitor){
+    action** head = &monitor->action_queue;
+    int i0;
+    while(*head!=NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type){
+            }
+        pop_action(head);
+    }
+}
+
+//send export events one by one from export_queue
+void executeExportedEvent(ActupMonitor* monitor){
+    action** head = &monitor->export_queue;
+    int i0;
+    while(*head != NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type) {
+            }
+        pop_action(head);
+    }
+    
+}
+
 
 /*
  * Monitor Event Handlers
@@ -386,7 +438,10 @@ void actup_foo(ActupMonitor* monitor, int x) {
       raise_error("actup_sc1", actup_states_names[ACTUP_SC1_SCENARIO][monitor->state[ACTUP_SC1_SCENARIO]], "foo", "DEFAULT");
       break;
   }
+executeEvents(monitor);
 }
+
+
 
 void raise_actup_foo(ActupMonitor* monitor, int x) {
   param *p_head = NULL;
@@ -632,27 +687,33 @@ MonitorIdentity* init_monitor_identity(identity_type type, void *value) {
     int *i = (int*)malloc(sizeof(int));
     uintptr_t *p = (uintptr_t*)malloc(sizeof(uintptr_t));
     pthread_t *t = (pthread_t*)malloc(sizeof(pthread_t));
-
     identity->type = type;
-
     switch (type) {
         case INT:
         case OPAQUE:
             *i = *(int*)value;
             identity->value = i;
+            free(p);
+            free(t);
             break;
         case POINTER:
             *p = (uintptr_t)value;
             identity->value = p;
+            free(i);
+            free(t);
             break;
         case THREAD:
             *t = *(pthread_t*)value;
             identity->value = t;
+            free(i);
+            free(p);
             break;
         default:
+            free(i);
+            free(p);
+            free(t);
             break;
     }
-
     return identity;
 }
 
