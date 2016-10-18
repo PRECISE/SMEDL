@@ -128,19 +128,15 @@ class CTemplater(object):
 
                 values['event_msg_handlers'].append('\n'.join(msg_handler))
 
-
-
-        parameterTypeNumMap =  {
-            'int': 0,
-            'float': 0,
-            'double': 0,
-            'pointer': 0,
-            'thread': 0,
-            'string': 0,
-            'opaque': 0,
-            'char': 0
-        }
-
+        parameterTypeNumMap = collections.OrderedDict()
+        parameterTypeNumMap['int'] = 0
+        parameterTypeNumMap['float'] = 0
+        parameterTypeNumMap['double'] = 0
+        parameterTypeNumMap['pointer'] = 0
+        parameterTypeNumMap['thread'] = 0
+        parameterTypeNumMap['string'] = 0
+        parameterTypeNumMap['opaque'] = 0
+        parameterTypeNumMap['char'] = 0
 
         for m in methods:
             eventFunction = []
@@ -150,9 +146,7 @@ class CTemplater(object):
             callstring = ''
             pedlEvent = False
 
-
             if 'imported_events' == mg._symbolTable.get(m)['type'] and pedlAST is not None:
-
                 for e in pedlAST.event_defs:
                     if str(m) == e.event:
                         pedlEvent = True
@@ -368,7 +362,6 @@ class CTemplater(object):
                 eventFunction.append('  send_message(monitor, message, routing_key);')
                 eventFunction.append('}\n\n')
 
-
             raiseFunction = CTemplater._writeRaiseFunction(mg, m, obj)
 
             # Build the event handler function
@@ -415,7 +408,6 @@ class CTemplater(object):
                 if 'exported_events' == mg._symbolTable.get(m)['type']:
                     values['export_event_case'].append({'event_enum':[obj.upper()+'_'+m.upper()+'_EVENT:'],'callstring':callstring_ex})
 
-
             values['signatures'].append(raiseFunction['signature'])
 
             callCases.append(CTemplater._writeCallCase(mg, m))
@@ -426,7 +418,6 @@ class CTemplater(object):
         #print(parameterTypeNumMap)
         t_str = ''
         for key,value in parameterTypeNumMap.items():
-
             if value > 0:
                 t_str += CTemplater.convertTypeForC(key) + ' '
                     #print('value:'+str(value))
@@ -435,15 +426,15 @@ class CTemplater(object):
                 #print(CTemplater.convertTypeForC(key)[0])
                 if k != value-1:
                     if key == 'string':
-                        t_str += 'v' + str(k) + ','
+                        t_str += 'v' + str(k) + ', '
                     else:
-                        t_str += CTemplater.convertTypeForC(key)[0]  + str(k) + ','
+                        t_str += CTemplater.convertTypeForC(key)[0] + str(k) + ', '
                 else:
                     if key == 'string':
-                        t_str += 'v' + str(k) + ';'
+                        t_str += 'v' + str(k) + '; '
                     else:
-                        t_str += CTemplater.convertTypeForC(key)[0] + str(k) + ';'
-        values['var_declaration']=t_str
+                        t_str += CTemplater.convertTypeForC(key)[0] + str(k) + '; '
+        values['var_declaration'] = t_str
 
         # Render the monitor templates and write to disk
         env = Environment(loader=PackageLoader('smedl.c_style','.'))

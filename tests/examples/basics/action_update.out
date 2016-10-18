@@ -391,7 +391,7 @@ void executeEvents(ActupMonitor* monitor){
 
 void executePendingEvents(ActupMonitor* monitor){
     action** head = &monitor->action_queue;
-    int i0;
+    int i0; 
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -405,7 +405,7 @@ void executePendingEvents(ActupMonitor* monitor){
 //send export events one by one from export_queue
 void executeExportedEvent(ActupMonitor* monitor){
     action** head = &monitor->export_queue;
-    int i0;
+    int i0; 
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
