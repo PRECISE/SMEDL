@@ -134,6 +134,7 @@ class CTemplater(object):
             'double': 0,
             'pointer': 0,
             'thread': 0,
+            'string': 0,
             'opaque': 0
         }
 
@@ -175,6 +176,7 @@ class CTemplater(object):
                 'double': 0,
                 'pointer': 0,
                 'thread': 0,
+                'string':0,
                 'opaque': 0
             }
 
@@ -292,15 +294,18 @@ class CTemplater(object):
                 evParams = mg._getEventParams(paramString)[1:]
                 if len(evParams) > 0:
                     for p in evParams:
+                        #print(p[0])
                         # comparing SMEDL types not C types.
                         if p[0] == 'int':
                             sprintf += ' %d'
                         elif p[0] == 'char':
-                            sprintf += ' %s'
+                            sprintf += ' %c'
                         elif p[0] == 'double':
                             sprintf += ' %lf'
                         elif p[0] == 'float':
                                 exit("this should never happen. there is a missing float->double conversion.")
+                        elif p[0] == 'char*':
+                            sprintf += ' %s'
                 sprintf += '"'
                 if len(evParams) > 0:
                     for p in evParams:
