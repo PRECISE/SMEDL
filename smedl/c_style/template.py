@@ -108,11 +108,13 @@ class CTemplater(object):
                     if p['c_type'] == 'int':
                         sscanfStr += ' %d'
                     elif p['c_type'] == 'char':
-                        sscanfStr += ' %s'
+                        sscanfStr += ' %c'
                     elif p['c_type'] == 'float':
                         exit("this should never happen. there is a missing float->double conversion.")
                     elif p['c_type'] == 'double':
                         sscanfStr += ' %lf'
+                    elif p['c_type'] == 'char*':
+                        sscanfStr += ' %s'
                     sscanfAttrs += ', &' + p['name']
                     retAttrs += ', ' + p['name']
 
@@ -135,7 +137,8 @@ class CTemplater(object):
             'pointer': 0,
             'thread': 0,
             'string': 0,
-            'opaque': 0
+            'opaque': 0,
+            'char': 0
         }
 
 
@@ -177,7 +180,8 @@ class CTemplater(object):
                 'pointer': 0,
                 'thread': 0,
                 'string':0,
-                'opaque': 0
+                'opaque': 0,
+                'char': 0
             }
 
 
@@ -194,6 +198,9 @@ class CTemplater(object):
                 if p['type'] == 'int':
                     attrstring += ',i'+str(i)
                     i = i+1
+                elif p['type'] == 'char':
+                    attrstring += ',c'+str(i)
+                    c = c+1
                 elif p['type'] == 'double' or p['type'] == 'float':
                     attrstring += ',d'+str(d)
                     d = d+1
@@ -201,8 +208,8 @@ class CTemplater(object):
                     attrstring += ',v'+str(v)
                     v = v+1
                 elif p['type'] == 'string':
-                    attrstring += ',c'+str(c)
-                    c = c+1
+                    attrstring += ',v'+str(v)
+                    v = v+1
             #print(attrstring)
 
             parastring = ''
@@ -214,6 +221,9 @@ class CTemplater(object):
                 if p['type'] == 'int':
                     parastring += '\t\ti'+str(ki)+ ' = ((params)->i);\n'
                     ki = ki+1
+                elif p['type'] == 'char':
+                    parastring += '\t\tc'+str(kc)+ ' = ((params)->c);\n'
+                    kc = kc+1
                 elif p['type'] == 'double' or p['type'] == 'float':
                     parastring += '\t\td'+str(kd)+ ' = ((params)->d);\n'
                     kd = kd+1
@@ -221,8 +231,8 @@ class CTemplater(object):
                     parastring += '\t\tv'+str(kv)+ ' = ((params)->v);\n'
                     kv = kv + 1
                 elif p['type'] == 'string':
-                    parastring += '\t\tc'+str(kc)+ ' = ((params)->c);\n'
-                    kc = kc + 1
+                    parastring += '\t\tv'+str(kv)+ ' = ((params)->v);\n'
+                    kv = kv + 1
                 parastring += '\t\t(params) = (params)->next;\n'
             parastring += '\t\tpop_param(&p_head);\n'
 
@@ -424,9 +434,15 @@ class CTemplater(object):
                 #print(CTemplater.convertTypeForC(key))
                 #print(CTemplater.convertTypeForC(key)[0])
                 if k != value-1:
-                    t_str += CTemplater.convertTypeForC(key)[0]  + str(k) + ','
+                    if key == 'string':
+                        t_str += 'v' + str(k) + ','
+                    else:
+                        t_str += CTemplater.convertTypeForC(key)[0]  + str(k) + ','
                 else:
-                    t_str += CTemplater.convertTypeForC(key)[0] + str(k) + ';'
+                    if key == 'string':
+                        t_str += 'v' + str(k) + ';'
+                    else:
+                        t_str += CTemplater.convertTypeForC(key)[0] + str(k) + ';'
         values['var_declaration']=t_str
 
         # Render the monitor templates and write to disk
@@ -588,7 +604,8 @@ class CTemplater(object):
             'pointer': 'void*',
             'thread': 'pthread_t',
             'opaque': 'void*',
-            'string': 'char*'
+            'string': 'char*',
+            'char': 'char'
         }
         if smedlType in typeMap:
             return typeMap[smedlType]
@@ -709,7 +726,7 @@ class CTemplater(object):
                     output.append('  push_param(&p_head, NULL, NULL, &%s, NULL);' % p[1])
                     if 'exported_events' == mg._symbolTable.get(event)['type']:
                         output.append('  push_param(&ep_head, NULL, NULL, &%s, NULL);' % p[1])
-                elif p[0] == 'pointer':
+                elif p[0] == 'pointer' or p[0] == 'char*':
                     output.append('  push_param(&p_head, NULL, NULL, NULL, &%s);' % p[1])
                     if 'exported_events' == mg._symbolTable.get(event)['type']:
                         output.append('  push_param(&ep_head, NULL, NULL, NULL, &%s);' % p[1])
