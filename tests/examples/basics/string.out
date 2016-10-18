@@ -1,4 +1,4 @@
---tests/examples/basics/tab_example_mon.h--
+--tests/examples/basics/string_mon.h--
 #include "monitor_map.h"
 #include "actions.h"
 #include <stdio.h> // For the log file
@@ -7,74 +7,69 @@
 #include <amqp_framing.h>
 #include <pthread.h>
 
-#define TABMON_MONITOR_MAP_SIZE 100 // number of buckets
-#define TABMON_MONITOR_IDENTITIES 2
+#define STRINGTEST_MONITOR_MAP_SIZE 100 // number of buckets
+#define STRINGTEST_MONITOR_IDENTITIES 1
 
-typedef struct TabmonData {
+typedef struct StringtestData {
   void* id;
-  void* test;
-  URL currentUrl;
-  URL testUrl;
-  Renderer rengine;
-} TabmonData;
 
-typedef struct TabmonMonitor {
+} StringtestData;
+
+typedef struct StringtestMonitor {
   pthread_mutex_t monitor_lock;
-  MonitorIdentity *identities[2];
-  int state[2];
-  URL currentUrl;
-  URL testUrl;
-  Renderer rengine;
+  MonitorIdentity *identities[1];
+  int state[1];
+
   action *action_queue;
+  action *export_queue;
   const char *amqp_exchange;
   const char *ctrl_exchange;
   amqp_socket_t *recv_socket;
   amqp_connection_state_t recv_conn;
   amqp_socket_t *send_socket;
   amqp_connection_state_t send_conn;
-} TabmonMonitor;
+} StringtestMonitor;
 
-typedef struct TabmonMonitorRecord {
-  TabmonMonitor *monitor;
-  struct TabmonMonitorRecord *next;
-} TabmonMonitorRecord;
+typedef struct StringtestMonitorRecord {
+  StringtestMonitor *monitor;
+  struct StringtestMonitorRecord *next;
+} StringtestMonitorRecord;
 
-typedef struct TabmonMonitorMap {
-  TabmonMonitorRecord *list[TABMON_MONITOR_MAP_SIZE];
-} TabmonMonitorMap;
+typedef struct StringtestMonitorMap {
+  StringtestMonitorRecord *list[STRINGTEST_MONITOR_MAP_SIZE];
+} StringtestMonitorMap;
 
-TabmonMonitorMap* tabmon_monitor_maps[TABMON_MONITOR_IDENTITIES]; //a map for each identity
-pthread_mutex_t tabmon_monitor_maps_lock;
+StringtestMonitorMap* stringtest_monitor_maps[STRINGTEST_MONITOR_IDENTITIES]; //a map for each identity
+pthread_mutex_t stringtest_monitor_maps_lock;
 
-TabmonMonitor* init_tabmon_monitor(TabmonData*);
-void start_monitor(TabmonMonitor* monitor);
-void free_monitor(TabmonMonitor*);
+StringtestMonitor* init_stringtest_monitor(StringtestData*);
+void start_monitor(StringtestMonitor* monitor);
+void free_monitor(StringtestMonitor*);
 
 /*
  * Monitor Event Handlers
  */
-void tabmon_store(TabmonMonitor* monitor, Tab this, Cookie cookie);
-void raise_tabmon_store(TabmonMonitor* monitor, Tab this, Cookie cookie);
-void tabmon_render(TabmonMonitor* monitor, Renderer rengine, URL url);
-void raise_tabmon_render(TabmonMonitor* monitor, Renderer rengine, URL url);
-void tabmon_displayUrl(TabmonMonitor* monitor, Tab this, URL url);
-void raise_tabmon_displayUrl(TabmonMonitor* monitor, Tab this, URL url);
-void raise_tabmon_cookieIntegrityAlarm(TabmonMonitor* monitor);
+void stringtest_ping(StringtestMonitor* monitor, char* st, int x);
+void raise_stringtest_ping(StringtestMonitor* monitor, char* st, int x);
 
 /*
  * Monitor Utility Functions
  */
-TabmonMonitorRecord* get_tabmon_monitors();
-TabmonMonitorRecord* get_tabmon_monitors_by_identity(int, int, void*);
-TabmonMonitorRecord* filter_tabmon_monitors_by_identity(TabmonMonitorRecord*, int, void*);
-int init_tabmon_monitor_maps();
-void free_tabmon_monitor_maps();
-int add_tabmon_monitor_to_map(TabmonMonitor*, int);
-int put_tabmon_monitor(TabmonMonitor*); //puts into all maps
+StringtestMonitorRecord* get_stringtest_monitors();
+StringtestMonitorRecord* get_stringtest_monitors_by_identity(int, int, void*);
+StringtestMonitorRecord* filter_stringtest_monitors_by_identity(StringtestMonitorRecord*, int, void*);
+int init_stringtest_monitor_maps();
+void free_stringtest_monitor_maps();
+int add_stringtest_monitor_to_map(StringtestMonitor*, int);
+int put_stringtest_monitor(StringtestMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
---tests/examples/basics/tab_example_mon.c--
-//Compile: gcc -o tab_example_mon -std=c99 actions.c monitor_map.c tab_example_mon.c
+
+void executePendingEvents(StringtestMonitor* monitor);
+void executeEvents(StringtestMonitor* monitor);
+void executeExportedEvent(StringtestMonitor* monitor);
+--tests/examples/basics/string_mon.c--
+//Compile: gcc -o string_mon -std=c99 actions.c monitor_map.c string_mon.c
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -86,39 +81,35 @@ char* monitor_identities_str(MonitorIdentity**);
 #include <amqp_framing.h>
 #include <libconfig.h>
 #include "utils.h"
-#include "tab_example_mon.h"
+#include "string_mon.h"
 
-typedef enum { TABMON_ID, TABMON_TEST } tabmon_identity;
-const identity_type tabmon_identity_types[TABMON_MONITOR_IDENTITIES] = { OPAQUE, OPAQUE };
+typedef enum { STRINGTEST_ID } stringtest_identity;
+const identity_type stringtest_identity_types[STRINGTEST_MONITOR_IDENTITIES] = { OPAQUE };
 
-typedef enum { TABMON_COOKIEINTEGRITY_SCENARIO, TABMON_PAGERENDERING_SCENARIO } tabmon_scenario;
-typedef enum { TABMON_COOKIEINTEGRITY_TAB } tabmon_cookieintegrity_state;
-typedef enum { TABMON_PAGERENDERING_TAB, TABMON_PAGERENDERING_GEN0 } tabmon_pagerendering_state;
-typedef enum { TABMON_STORE_EVENT, TABMON_RENDER_EVENT, TABMON_DISPLAYURL_EVENT, TABMON_COOKIEINTEGRITYALARM_EVENT } tabmon_event;
-typedef enum { TABMON_DEFAULT } tabmon_error;
-const char *tabmon_cookieintegrity_states[1] = { "Tab" };
-const char *tabmon_pagerendering_states[2] = { "Tab", "Gen0" };
-const char **tabmon_states_names[2] = { tabmon_cookieintegrity_states, tabmon_pagerendering_states };
+typedef enum { STRINGTEST_SC1_SCENARIO } stringtest_scenario;
+typedef enum { STRINGTEST_SC1_START, STRINGTEST_SC1_END } stringtest_sc1_state;
+typedef enum { STRINGTEST_PING_EVENT } stringtest_event;
+typedef enum { STRINGTEST_DEFAULT } stringtest_error;
+const char *stringtest_sc1_states[2] = { "Start", "End" };
+const char **stringtest_states_names[1] = { stringtest_sc1_states };
+
 
 #define bindingkeyNum 1
 
-TabmonMonitor* init_tabmon_monitor( TabmonData *d ) {
-    TabmonMonitor* monitor = (TabmonMonitor*)malloc(sizeof(TabmonMonitor));
+
+StringtestMonitor* init_stringtest_monitor( StringtestData *d ) {
+    StringtestMonitor* monitor = (StringtestMonitor*)malloc(sizeof(StringtestMonitor));
     pthread_mutex_init(&monitor->monitor_lock, NULL);
-    monitor->identities[TABMON_ID] = init_monitor_identity(OPAQUE, d->id);
-    monitor->identities[TABMON_TEST] = init_monitor_identity(OPAQUE, d->test);
-    monitor->currentUrl = d->currentUrl;
-    monitor->testUrl = d->testUrl;
-    monitor->rengine = d->rengine;
-    monitor->state[TABMON_COOKIEINTEGRITY_SCENARIO] = TABMON_COOKIEINTEGRITY_TAB;
-    monitor->state[TABMON_PAGERENDERING_SCENARIO] = TABMON_PAGERENDERING_TAB;
+    monitor->identities[STRINGTEST_ID] = init_monitor_identity(OPAQUE, d->id);
+    monitor->state[STRINGTEST_SC1_SCENARIO] = STRINGTEST_SC1_START;
     monitor->action_queue = NULL;
+    monitor->export_queue = NULL;
 
     /* Read settings from config file */
     config_t cfg;
     config_setting_t *setting;
     config_init(&cfg);
-    if(!config_read_file(&cfg, "tab_example_mon.cfg")) {
+    if(!config_read_file(&cfg, "string_mon.cfg")) {
         fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
             config_error_line(&cfg), config_error_text(&cfg));
         config_destroy(&cfg);
@@ -179,6 +170,7 @@ TabmonMonitor* init_tabmon_monitor( TabmonData *d ) {
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
+
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
         "Opening channel");
     amqp_exchange_declare(monitor->send_conn, 1,
@@ -208,7 +200,7 @@ TabmonMonitor* init_tabmon_monitor( TabmonData *d ) {
     amqp_basic_consume(monitor->recv_conn, 1, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
     die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Consuming");
 
-    put_tabmon_monitor(monitor);
+    put_stringtest_monitor(monitor);
     return monitor;
 }
 
@@ -257,14 +249,14 @@ char *getConnName(char *str, size_t maxlen){
 }
 
 
-void start_monitor(TabmonMonitor* monitor) {
+void start_monitor(StringtestMonitor* monitor) {
     int received = 0;
     amqp_frame_t frame;
 
     // Announce that the monitor has started
     char* ids = monitor_identities_str(monitor->identities);
     char* ann = malloc(strlen(ids)+50);
-    sprintf(ann, "Tabmon monitor (%s) started.", ids);
+    sprintf(ann, "Stringtest monitor (%s) started.", ids);
     free(ids);
     die_on_error(amqp_basic_publish(monitor->send_conn,
                                     1,
@@ -274,7 +266,7 @@ void start_monitor(TabmonMonitor* monitor) {
                                     0,
                                     NULL,
                                     amqp_cstring_bytes(ann)),
-                "Publishing Tabmon monitor startup announcement");
+                "Publishing Stringtest monitor startup announcement");
     free(ann);
 
     while (1) {
@@ -290,14 +282,14 @@ void start_monitor(TabmonMonitor* monitor) {
         //char* event[255] = {NULL};
 
         if (string != NULL) {
-            char* eventName = getConnName(rk, bytes.len);
+            char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
                 char e[255];
 
                 
 
             }
-            free(eventName);
+            //free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -359,104 +351,101 @@ void start_monitor(TabmonMonitor* monitor) {
     }
 }
 
-void send_message(TabmonMonitor* monitor, char* message, char* routing_key) {
+void send_message(StringtestMonitor* monitor, char* message, char* routing_key) {
     amqp_bytes_t message_bytes;
     message_bytes.len = strlen(message)+1;
     message_bytes.bytes = message;
+    amqp_bytes_t routingkey_bytes;
+    routingkey_bytes.len = strlen(routing_key)+1;
+    routingkey_bytes.bytes = routing_key;
     die_on_error(amqp_basic_publish(monitor->send_conn,
                                     1,
                                     amqp_cstring_bytes(monitor->amqp_exchange),
-                                    amqp_cstring_bytes(routing_key),
+                                    routingkey_bytes,
                                     0,
                                     0,
                                     NULL,
                                     message_bytes),
-                "Publishing");
-
+                 "Publishing");
+    
 }
 
-void free_monitor(TabmonMonitor* monitor) {
+void free_monitor(StringtestMonitor* monitor) {
     die_on_amqp_error(amqp_channel_close(monitor->send_conn, 1, AMQP_REPLY_SUCCESS), "Closing channel");
     die_on_amqp_error(amqp_connection_close(monitor->send_conn, AMQP_REPLY_SUCCESS), "Closing connection");
     die_on_error(amqp_destroy_connection(monitor->send_conn), "Ending connection");
     free(monitor);
 }
 
+//called at the end of each event handling function
+void executeEvents(StringtestMonitor* monitor){
+    if(monitor->action_queue != NULL){
+        executePendingEvents(monitor);
+    }
+    
+    if(monitor->action_queue == NULL && monitor->export_queue != NULL){
+        executeExportedEvent(monitor);
+    }
+}
+
+void executePendingEvents(StringtestMonitor* monitor){
+    action** head = &monitor->action_queue;
+    int i0;char* v0;
+    while(*head!=NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type){
+            }
+        pop_action(head);
+    }
+}
+
+//send export events one by one from export_queue
+void executeExportedEvent(StringtestMonitor* monitor){
+    action** head = &monitor->export_queue;
+    int i0;char* v0;
+    while(*head != NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type) {
+            }
+        pop_action(head);
+    }
+    
+}
+
+
 /*
  * Monitor Event Handlers
  */
 
-void tabmon_store(TabmonMonitor* monitor, Tab this, Cookie cookie) {
-  switch (monitor->state[TABMON_COOKIEINTEGRITY_SCENARIO]) {
-    case TABMON_COOKIEINTEGRITY_TAB:
-      if(isSubdomain(cookie.domain, monitor->currentUrl.getHost(None))) {
-        monitor->state[TABMON_COOKIEINTEGRITY_SCENARIO] = TABMON_COOKIEINTEGRITY_TAB;
+void stringtest_ping(StringtestMonitor* monitor, char* st, int x) {
+  switch (monitor->state[STRINGTEST_SC1_SCENARIO]) {
+    case STRINGTEST_SC1_START:
+      if(x == 1) {
+        monitor->state[STRINGTEST_SC1_SCENARIO] = STRINGTEST_SC1_END;
       }
       else {
-        raise_tabmon_cookieIntegrityAlarm(monitor);
-        monitor->state[TABMON_COOKIEINTEGRITY_SCENARIO] = TABMON_COOKIEINTEGRITY_TAB;
+        raise_error("sc1", stringtest_states_names[STRINGTEST_SC1_SCENARIO][monitor->state[STRINGTEST_SC1_SCENARIO]], "monitor->state[STRINGTEST_SC1_SCENARIO]", "DEFAULT");
       }
       break;
 
     default:
-      raise_error("tabmon_CookieIntegrity", tabmon_states_names[TABMON_COOKIEINTEGRITY_SCENARIO][monitor->state[TABMON_COOKIEINTEGRITY_SCENARIO]], "store", "DEFAULT");
+      raise_error("stringtest_sc1", stringtest_states_names[STRINGTEST_SC1_SCENARIO][monitor->state[STRINGTEST_SC1_SCENARIO]], "ping", "DEFAULT");
       break;
   }
+executeEvents(monitor);
 }
 
-void raise_tabmon_store(TabmonMonitor* monitor, Tab this, Cookie cookie) {
+
+
+void raise_stringtest_ping(StringtestMonitor* monitor, char* st, int x) {
   param *p_head = NULL;
-  push_action(&monitor->action_queue, TABMON_STORE_EVENT, p_head);
-}
-
-
-void tabmon_render(TabmonMonitor* monitor, Renderer rengine, URL url) {
-  switch (monitor->state[TABMON_PAGERENDERING_SCENARIO]) {
-    case TABMON_PAGERENDERING_GEN0:
-        monitor->currentUrl = url;
-      monitor->state[TABMON_PAGERENDERING_SCENARIO] = TABMON_PAGERENDERING_TAB;
-      break;
-
-    default:
-      raise_error("tabmon_PageRendering", tabmon_states_names[TABMON_PAGERENDERING_SCENARIO][monitor->state[TABMON_PAGERENDERING_SCENARIO]], "render", "DEFAULT");
-      break;
-  }
-}
-
-void raise_tabmon_render(TabmonMonitor* monitor, Renderer rengine, URL url) {
-  param *p_head = NULL;
-  push_action(&monitor->action_queue, TABMON_RENDER_EVENT, p_head);
-}
-
-
-void tabmon_displayUrl(TabmonMonitor* monitor, Tab this, URL url) {
-  switch (monitor->state[TABMON_PAGERENDERING_SCENARIO]) {
-    case TABMON_PAGERENDERING_TAB:
-      monitor->state[TABMON_PAGERENDERING_SCENARIO] = TABMON_PAGERENDERING_GEN0;
-      break;
-
-    default:
-      raise_error("tabmon_PageRendering", tabmon_states_names[TABMON_PAGERENDERING_SCENARIO][monitor->state[TABMON_PAGERENDERING_SCENARIO]], "displayUrl", "DEFAULT");
-      break;
-  }
-}
-
-void raise_tabmon_displayUrl(TabmonMonitor* monitor, Tab this, URL url) {
-  param *p_head = NULL;
-  push_action(&monitor->action_queue, TABMON_DISPLAYURL_EVENT, p_head);
-}
-
-
-
-
-void raise_tabmon_cookieIntegrityAlarm(TabmonMonitor* monitor) {
-  param *p_head = NULL;
-  push_action(&monitor->action_queue, TABMON_COOKIEINTEGRITYALARM_EVENT, p_head);
-  char message[256];
-  sprintf(message, "tabmon_cookieIntegrityAlarm");
-  char routing_key[256];
-  sprintf(routing_key, "None.%ld.cookieIntegrityAlarm.%ld.cookieIntegrityAlarm", (long)(*(int*)(monitor->identities[TABMON_ID])), (long)(*(int*)(monitor->identities[TABMON_TEST])));
-  send_message(monitor, message, routing_key);
+  push_param(&p_head, NULL, NULL, NULL, &st);
+  push_param(&p_head, &x, NULL, NULL, NULL);
+  push_action(&monitor->action_queue, STRINGTEST_PING_EVENT, p_head);
 }
 
 
@@ -464,51 +453,50 @@ void raise_tabmon_cookieIntegrityAlarm(TabmonMonitor* monitor) {
  * Monitor Utility Functions
  */
 
-int init_tabmon_monitor_maps() {
-    if (pthread_mutex_init(&tabmon_monitor_maps_lock, NULL) != 0) {
-        printf("\nTabmon Monitor map mutex init failed\n");
+int init_stringtest_monitor_maps() {
+    if (pthread_mutex_init(&stringtest_monitor_maps_lock, NULL) != 0) {
+        printf("\nStringtest Monitor map mutex init failed\n");
         return 0;
     }
-    for(int i = 0; i < TABMON_MONITOR_IDENTITIES; i++) {
-        tabmon_monitor_maps[i] = (TabmonMonitorMap*)malloc(sizeof(TabmonMonitorMap));
+    for(int i = 0; i < STRINGTEST_MONITOR_IDENTITIES; i++) {
+        stringtest_monitor_maps[i] = (StringtestMonitorMap*)malloc(sizeof(StringtestMonitorMap));
     }
     return 1;
 }
 
-void free_tabmon_monitor_maps() {
+void free_stringtest_monitor_maps() {
     // TODO
 }
 
-int add_tabmon_monitor_to_map(TabmonMonitor *monitor, int identity) {
-    TabmonMonitorMap* map = tabmon_monitor_maps[identity];
+int add_stringtest_monitor_to_map(StringtestMonitor *monitor, int identity) {
+    StringtestMonitorMap* map = stringtest_monitor_maps[identity];
     int bucket = hash_monitor_identity(monitor->identities[identity]->type,
-        monitor->identities[identity]->value, TABMON_MONITOR_MAP_SIZE);
-    TabmonMonitorRecord* record = (TabmonMonitorRecord*)malloc(sizeof(TabmonMonitorRecord));
+        monitor->identities[identity]->value, STRINGTEST_MONITOR_MAP_SIZE);
+    StringtestMonitorRecord* record = (StringtestMonitorRecord*)malloc(sizeof(StringtestMonitorRecord));
     if(monitor == NULL || record == NULL) {
         free(monitor);
         free(record);
         return 0;
     }
     record->monitor = monitor;
-    pthread_mutex_lock(&tabmon_monitor_maps_lock);
+    pthread_mutex_lock(&stringtest_monitor_maps_lock);
     record->next = map->list[bucket];
     map->list[bucket] = record;
-    pthread_mutex_unlock(&tabmon_monitor_maps_lock);
+    pthread_mutex_unlock(&stringtest_monitor_maps_lock);
     return 1;
 }
 
-int put_tabmon_monitor(TabmonMonitor *monitor) {
-    return add_tabmon_monitor_to_map(monitor, TABMON_ID) &&
-      add_tabmon_monitor_to_map(monitor, TABMON_TEST);
+int put_stringtest_monitor(StringtestMonitor *monitor) {
+    return add_stringtest_monitor_to_map(monitor, STRINGTEST_ID);
 }
 
-TabmonMonitorRecord* get_tabmon_monitors() {
-    TabmonMonitorRecord* results = NULL;
-    TabmonMonitorMap* map = tabmon_monitor_maps[0];
-    for(int i = 0; i < TABMON_MONITOR_MAP_SIZE; i++) {
-        TabmonMonitorRecord* current = map->list[i];
+StringtestMonitorRecord* get_stringtest_monitors() {
+    StringtestMonitorRecord* results = NULL;
+    StringtestMonitorMap* map = stringtest_monitor_maps[0];
+    for(int i = 0; i < STRINGTEST_MONITOR_MAP_SIZE; i++) {
+        StringtestMonitorRecord* current = map->list[i];
         while(current != NULL) {
-            TabmonMonitorRecord* record = (TabmonMonitorRecord*)malloc(sizeof(TabmonMonitorRecord));
+            StringtestMonitorRecord* record = (StringtestMonitorRecord*)malloc(sizeof(StringtestMonitorRecord));
             record->monitor = current->monitor;
             record->next = results;
             results = record;
@@ -518,14 +506,14 @@ TabmonMonitorRecord* get_tabmon_monitors() {
     return results;
 }
 
-TabmonMonitorRecord* get_tabmon_monitors_by_identity(int identity, int type, void *value) {
-    TabmonMonitorRecord* results = NULL;
-    TabmonMonitorMap* map = tabmon_monitor_maps[identity];
-    int bucket = hash_monitor_identity(type, value, TABMON_MONITOR_MAP_SIZE);
-    TabmonMonitorRecord* current = map->list[bucket];
+StringtestMonitorRecord* get_stringtest_monitors_by_identity(int identity, int type, void *value) {
+    StringtestMonitorRecord* results = NULL;
+    StringtestMonitorMap* map = stringtest_monitor_maps[identity];
+    int bucket = hash_monitor_identity(type, value, STRINGTEST_MONITOR_MAP_SIZE);
+    StringtestMonitorRecord* current = map->list[bucket];
     while(current != NULL) {
         if(compare_monitor_identity(value, current->monitor->identities[identity])) {
-            TabmonMonitorRecord* record = (TabmonMonitorRecord*)malloc(sizeof(TabmonMonitorRecord));
+            StringtestMonitorRecord* record = (StringtestMonitorRecord*)malloc(sizeof(StringtestMonitorRecord));
             record->monitor = current->monitor;
             record->next = results;
             results = record;
@@ -535,11 +523,11 @@ TabmonMonitorRecord* get_tabmon_monitors_by_identity(int identity, int type, voi
     return results;
 }
 
-TabmonMonitorRecord* filter_tabmon_monitors_by_identity(TabmonMonitorRecord* before, int identity, void  *value) {
-    TabmonMonitorRecord* results = NULL;
+StringtestMonitorRecord* filter_stringtest_monitors_by_identity(StringtestMonitorRecord* before, int identity, void  *value) {
+    StringtestMonitorRecord* results = NULL;
     while(before != NULL) {
         if(compare_monitor_identity(value, before->monitor->identities[identity])) {
-            TabmonMonitorRecord* record = (TabmonMonitorRecord*)malloc(sizeof(TabmonMonitorRecord));
+            StringtestMonitorRecord* record = (StringtestMonitorRecord*)malloc(sizeof(StringtestMonitorRecord));
             record->monitor = before->monitor;
             record->next = results;
             results = record;
@@ -554,9 +542,9 @@ void raise_error(char *scen, const char *state, char *action, char *type) {
 }
 
 char* monitor_identities_str(MonitorIdentity** identities) {
-    char* out = malloc(20*TABMON_MONITOR_IDENTITIES);
+    char* out = malloc(20*STRINGTEST_MONITOR_IDENTITIES);
     out[0] = '\0';
-    for(int i = 0; i < TABMON_MONITOR_IDENTITIES; i++) {
+    for(int i = 0; i < STRINGTEST_MONITOR_IDENTITIES; i++) {
         char* monid_str = monitor_identity_str(identities[i]);
         if (i == 0) {
             strcat(out, monid_str);
@@ -698,27 +686,33 @@ MonitorIdentity* init_monitor_identity(identity_type type, void *value) {
     int *i = (int*)malloc(sizeof(int));
     uintptr_t *p = (uintptr_t*)malloc(sizeof(uintptr_t));
     pthread_t *t = (pthread_t*)malloc(sizeof(pthread_t));
-
     identity->type = type;
-
     switch (type) {
         case INT:
         case OPAQUE:
             *i = *(int*)value;
             identity->value = i;
+            free(p);
+            free(t);
             break;
         case POINTER:
             *p = (uintptr_t)value;
             identity->value = p;
+            free(i);
+            free(t);
             break;
         case THREAD:
             *t = *(pthread_t*)value;
             identity->value = t;
+            free(i);
+            free(p);
             break;
         default:
+            free(i);
+            free(p);
+            free(t);
             break;
     }
-
     return identity;
 }
 

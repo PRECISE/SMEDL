@@ -21,6 +21,7 @@ typedef struct OnetwotwoMonitor {
   int state[1];
 
   action *action_queue;
+  action *export_queue;
   const char *amqp_exchange;
   const char *ctrl_exchange;
   amqp_socket_t *recv_socket;
@@ -65,6 +66,10 @@ int add_onetwotwo_monitor_to_map(OnetwotwoMonitor*, int);
 int put_onetwotwo_monitor(OnetwotwoMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
+
+void executePendingEvents(OnetwotwoMonitor* monitor);
+void executeEvents(OnetwotwoMonitor* monitor);
+void executeExportedEvent(OnetwotwoMonitor* monitor);
 --tests/examples/basics/onetwo-two_mon.c--
 //Compile: gcc -o onetwo-two_mon -std=c99 actions.c monitor_map.c onetwo-two_mon.c
 
@@ -90,7 +95,9 @@ typedef enum { ONETWOTWO_DEFAULT } onetwotwo_error;
 const char *onetwotwo_sc1_states[2] = { "OneTwo", "Gen0" };
 const char **onetwotwo_states_names[1] = { onetwotwo_sc1_states };
 
+
 #define bindingkeyNum 1
+
 
 OnetwotwoMonitor* init_onetwotwo_monitor( OnetwotwoData *d ) {
     OnetwotwoMonitor* monitor = (OnetwotwoMonitor*)malloc(sizeof(OnetwotwoMonitor));
@@ -98,6 +105,7 @@ OnetwotwoMonitor* init_onetwotwo_monitor( OnetwotwoData *d ) {
     monitor->identities[ONETWOTWO_ID] = init_monitor_identity(OPAQUE, d->id);
     monitor->state[ONETWOTWO_SC1_SCENARIO] = ONETWOTWO_SC1_ONETWO;
     monitor->action_queue = NULL;
+    monitor->export_queue = NULL;
 
     /* Read settings from config file */
     config_t cfg;
@@ -164,6 +172,7 @@ OnetwotwoMonitor* init_onetwotwo_monitor( OnetwotwoData *d ) {
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
+
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
         "Opening channel");
     amqp_exchange_declare(monitor->send_conn, 1,
@@ -275,14 +284,14 @@ void start_monitor(OnetwotwoMonitor* monitor) {
         //char* event[255] = {NULL};
 
         if (string != NULL) {
-            char* eventName = getConnName(rk, bytes.len);
+            char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
                 char e[255];
 
                 
 
             }
-            free(eventName);
+            //free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -348,16 +357,19 @@ void send_message(OnetwotwoMonitor* monitor, char* message, char* routing_key) {
     amqp_bytes_t message_bytes;
     message_bytes.len = strlen(message)+1;
     message_bytes.bytes = message;
+    amqp_bytes_t routingkey_bytes;
+    routingkey_bytes.len = strlen(routing_key)+1;
+    routingkey_bytes.bytes = routing_key;
     die_on_error(amqp_basic_publish(monitor->send_conn,
                                     1,
                                     amqp_cstring_bytes(monitor->amqp_exchange),
-                                    amqp_cstring_bytes(routing_key),
+                                    routingkey_bytes,
                                     0,
                                     0,
                                     NULL,
                                     message_bytes),
-                "Publishing");
-
+                 "Publishing");
+    
 }
 
 void free_monitor(OnetwotwoMonitor* monitor) {
@@ -366,6 +378,46 @@ void free_monitor(OnetwotwoMonitor* monitor) {
     die_on_error(amqp_destroy_connection(monitor->send_conn), "Ending connection");
     free(monitor);
 }
+
+//called at the end of each event handling function
+void executeEvents(OnetwotwoMonitor* monitor){
+    if(monitor->action_queue != NULL){
+        executePendingEvents(monitor);
+    }
+    
+    if(monitor->action_queue == NULL && monitor->export_queue != NULL){
+        executeExportedEvent(monitor);
+    }
+}
+
+void executePendingEvents(OnetwotwoMonitor* monitor){
+    action** head = &monitor->action_queue;
+    
+    while(*head!=NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type){
+            }
+        pop_action(head);
+    }
+}
+
+//send export events one by one from export_queue
+void executeExportedEvent(OnetwotwoMonitor* monitor){
+    action** head = &monitor->export_queue;
+    
+    while(*head != NULL){
+        int type = (*head)->id;
+        param *params = (*head)->params;
+        param *p_head = params;
+        switch (type) {
+            }
+        pop_action(head);
+    }
+    
+}
+
 
 /*
  * Monitor Event Handlers
@@ -381,7 +433,10 @@ void onetwotwo_foo(OnetwotwoMonitor* monitor) {
       raise_error("onetwotwo_sc1", onetwotwo_states_names[ONETWOTWO_SC1_SCENARIO][monitor->state[ONETWOTWO_SC1_SCENARIO]], "foo", "DEFAULT");
       break;
   }
+executeEvents(monitor);
 }
+
+
 
 void raise_onetwotwo_foo(OnetwotwoMonitor* monitor) {
   param *p_head = NULL;
@@ -399,7 +454,10 @@ void onetwotwo_bar(OnetwotwoMonitor* monitor) {
       raise_error("onetwotwo_sc1", onetwotwo_states_names[ONETWOTWO_SC1_SCENARIO][monitor->state[ONETWOTWO_SC1_SCENARIO]], "bar", "DEFAULT");
       break;
   }
+executeEvents(monitor);
 }
+
+
 
 void raise_onetwotwo_bar(OnetwotwoMonitor* monitor) {
   param *p_head = NULL;
@@ -644,27 +702,33 @@ MonitorIdentity* init_monitor_identity(identity_type type, void *value) {
     int *i = (int*)malloc(sizeof(int));
     uintptr_t *p = (uintptr_t*)malloc(sizeof(uintptr_t));
     pthread_t *t = (pthread_t*)malloc(sizeof(pthread_t));
-
     identity->type = type;
-
     switch (type) {
         case INT:
         case OPAQUE:
             *i = *(int*)value;
             identity->value = i;
+            free(p);
+            free(t);
             break;
         case POINTER:
             *p = (uintptr_t)value;
             identity->value = p;
+            free(i);
+            free(t);
             break;
         case THREAD:
             *t = *(pthread_t*)value;
             identity->value = t;
+            free(i);
+            free(p);
             break;
         default:
+            free(i);
+            free(p);
+            free(t);
             break;
     }
-
     return identity;
 }
 
