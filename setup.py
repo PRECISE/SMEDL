@@ -81,7 +81,9 @@ setup(
         'MarkupSafe>=0.23',
         'mccabe>=0.5',
         'nose>=1.3.7',
-        'pyelftools'
+        'pyelftools',
+        'pika',
+        'pylibconfig2==0.2.5'
     ],
 
     # List additional groups of dependencies here (e.g. development
