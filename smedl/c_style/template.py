@@ -499,6 +499,24 @@ class CTemplater(object):
             m_c_file.write(m_c)
             m_c_file.close()
 
+        u_h = env.get_template('utils.h').render()
+        if console_output:
+            print("--utils.h--")
+            print(u_h)
+        else:
+            u_h_file = open(os.path.join(dirname, output_dir, 'utils.h'), 'w')
+            u_h_file.write(u_h)
+            u_h_file.close()
+
+        u_c = env.get_template('utils.c').render()
+        if console_output:
+            print("--utils.c--")
+            print(u_c)
+        else:
+            u_c_file = open(os.path.join(dirname, output_dir, 'utils.c'), 'w')
+            u_c_file.write(u_c)
+            u_c_file.close()
+
 
     def _getBindingKeys(mg):
         lst = []
