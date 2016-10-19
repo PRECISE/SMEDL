@@ -37,8 +37,13 @@ class Object(ModelBase):
             **kwargs
         )
 
-    def getTargetMonitorPoints(self):
-        return ','.join([e.getMonitorPoint() for e in self.event_defs])
+    def getMonitorPoints(self):
+        return [e.getMonitorPoint() for e in self.event_defs]
+
+    def getMonitorPointForEvent(self, ev):
+        for ed in self.event_defs:
+            if ed.event == ev:
+                return ed.getMonitorPoint()
 
 
 class MonitorConstructor(ModelBase):

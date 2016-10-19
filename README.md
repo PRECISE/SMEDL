@@ -3,7 +3,7 @@
 
 ## Requirements
 --------------
-1. [Python 3.5](https://docs.python.org/3/)
+1. [Python 3.5](https://docs.python.org/3.5/index.html)
 2. [pip](https://pip.pypa.io/en/stable/)
     - [Grako 3.14](https://pythonhosted.org/grako/)
     - [Jinja2 2.8](http://jinja.pocoo.org/)
@@ -11,7 +11,7 @@
 ## Getting started
 ---------------
 A [Python virtual environment](https://docs.python.org/3/library/venv.html)
-including [Python 3.5](https://docs.python.org/3/) and all required Python
+including [Python 3.5](https://docs.python.org/3.5/index.html) and all required Python
 packages has been defined to simplify the process of getting started with the
 tool.
 

@@ -605,6 +605,7 @@ class CTemplater(object):
 
 
     # Translate a SMEDL type to a C type
+    @staticmethod
     def convertTypeForC(smedlType):
         typeMap =  {
             'int': 'int',
@@ -622,6 +623,7 @@ class CTemplater(object):
             return smedlType
 
 
+    @staticmethod
     def _updateVarNames(mg, funcs, method):
         out = {}
         for name, func in funcs.items():
@@ -636,6 +638,7 @@ class CTemplater(object):
 
 
     # Write out the switch statement case for a SMEDL trace transition
+    @staticmethod
     def _writeCaseTransition(mg, obj, transitions, currentState, stateName, scenario):
         output = ['    case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), transitions[0].startState.name.upper())]
 
