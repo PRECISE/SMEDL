@@ -33,14 +33,11 @@ class TestSpvRabbitMQ(unittest.TestCase):
         except pika.exceptions.ConnectionClosed:
             self.fail("Could not connect to RabbitMQ server. Is it down?")
         channel = connection.channel()
-
-        # channel.exchange_declare(exchange='logs',
-        #                          type='fanout')
-        # result = channel.queue_declare(exclusive=True)
-        # queue_name = result.method.queue
-        # channel.queue_bind(exchange='logs',
-        #                    queue=queue_name)
-        #
+        channel.exchange_declare(exchange=c.rabbitmq.ctrl_exchange, type='fanout')
+        result = channel.queue_declare(exclusive=True)
+        queue_name = result.method.queue
+        channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name)
+        
         # def callback(ch, method, properties, body):
         #     print(" [x] %r" % body)
         #
