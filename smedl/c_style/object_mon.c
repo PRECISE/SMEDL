@@ -134,48 +134,24 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     return monitor;
 }
 
-// mallocs a string for the event name
 // returns null if the given string isn't a properly-terminated c string
-char *getEventName(char *str, size_t maxlen){
+char *getEventName(char *str, size_t maxlen) {
     // make sure that str is really a cstring before trying to copy from it.
     size_t len = strnlen(str, maxlen);
     if (len >= maxlen) {
         return NULL;
     }
-    // find the first space or the end of the string
-    char* end = index(str, ' ');
-    // copylen is the length of the string with the terminator
-    size_t copylen;
-    if (NULL == end) {
-      copylen = maxlen - 1;
-    } else {
-      copylen = end - str;
-    }
-    char* eventName = malloc(copylen+1);
-    memcpy(eventName, str, copylen);
-    eventName[copylen] = '\0';
-    return eventName;
+    return strtok(str, ' ');
 }
 
-char *getConnName(char *str, size_t maxlen){
+// returns null if the given string isn't a properly-terminated c string
+char *getConnName(char *str, size_t maxlen) {
     // make sure that str is really a cstring before trying to copy from it.
     size_t len = strnlen(str, maxlen);
     if (len >= maxlen) {
         return NULL;
     }
-    // find the first space or the end of the string
-    char* end = index(str, '.');
-    // copylen is the length of the string with the terminator
-    size_t copylen;
-    if (NULL == end) {
-        copylen = maxlen - 1;
-    } else {
-        copylen = end - str;
-    }
-    char* connName = malloc(copylen+1);
-    memcpy(connName, str, copylen);
-    connName[copylen] = '\0';
-    return connName;
+    return strtok(str, '.');
 }
 
 
@@ -297,7 +273,7 @@ void send_message({{ obj|title }}Monitor* monitor, char* message, char* routing_
                                     NULL,
                                     message_bytes),
                  "Publishing");
-    
+
 }
 
 void free_monitor({{ obj|title }}Monitor* monitor) {
@@ -312,7 +288,7 @@ void executeEvents({{obj|title}}Monitor* monitor){
     if(monitor->action_queue != NULL){
         executePendingEvents(monitor);
     }
-    
+
     if(monitor->action_queue == NULL && monitor->export_queue != NULL){
         executeExportedEvent(monitor);
     }
@@ -350,11 +326,11 @@ void executeExportedEvent({{obj|title}}Monitor* monitor){
             {{e.callstring}}
                 break;
             {% endfor -%}
-                
+
         }
         pop_action(head);
     }
-    
+
 }
 
 
