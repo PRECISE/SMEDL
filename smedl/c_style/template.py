@@ -104,7 +104,10 @@ class CTemplater(object):
                 sscanfAttrs = 'e'
                 retAttrs = ''
                 for p in monitorParams[1:]:
-                    msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
+                    if p['c_type'] == 'char*':
+                        msg_handler.append('                    char %s[255];' % (p['name']))
+                    else:
+                        msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
                     if p['c_type'] == 'int':
                         sscanfStr += ' %d'
                     elif p['c_type'] == 'char':
@@ -115,7 +118,10 @@ class CTemplater(object):
                         sscanfStr += ' %lf'
                     elif p['c_type'] == 'char*':
                         sscanfStr += ' %s'
-                    sscanfAttrs += ', &' + p['name']
+                    if p['c_type'] == 'char*':
+                        sscanfAttrs += ', ' + p['name']
+                    else:
+                        sscanfAttrs += ', &' + p['name']
                     retAttrs += ', ' + p['name']
 
 
