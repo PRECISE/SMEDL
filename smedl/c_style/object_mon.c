@@ -23,9 +23,7 @@ typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
 {{ state_names }}
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
 
-
-#define bindingkeyNum {{bindingkeys_num}}
-
+#define bindingkeyNum {{ bindingkeys_num }}
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor( {{ obj|title }}Data *d ) {
     {{ obj|title }}Monitor* monitor = ({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
@@ -42,10 +40,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     config_setting_t *setting;
     config_init(&cfg);
     if(!config_read_file(&cfg, "{{ base_file_name }}_mon.cfg")) {
-        fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-            config_error_line(&cfg), config_error_text(&cfg));
-        config_destroy(&cfg);
-        exit(EXIT_FAILURE);
+        output_config_error(cfg);
     }
     setting = config_lookup(&cfg, "rabbitmq");
 
@@ -53,41 +48,13 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     int port;
 
     if (setting != NULL) {
-        if (!config_setting_lookup_string(setting, "hostname", &hostname)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_int(setting, "port", &port)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "username", &username)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "password", &password)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange))) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange))) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
+        if (!config_setting_lookup_string(setting, "hostname", &hostname) ||
+            !config_setting_lookup_int(setting, "port", &port) ||
+            !config_setting_lookup_string(setting, "username", &username) ||
+            !config_setting_lookup_string(setting, "password", &password) ||
+            !config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange)) ||
+            !config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange))) {
+                output_config_error(cfg);
         }
     }
 
@@ -127,7 +94,6 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
-
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
         "Opening channel");
     amqp_exchange_declare(monitor->send_conn, 1,
@@ -477,4 +443,11 @@ char* monitor_identities_str(MonitorIdentity** identities) {
         free(monid_str);
     }
     return out;
+}
+
+void output_config_error(config_t cfg) {
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+        config_error_line(&cfg), config_error_text(&cfg));
+    config_destroy(&cfg);
+    exit(EXIT_FAILURE);
 }

@@ -1,5 +1,7 @@
 # This grammar defines PEDL in the Grako-variation of EBNF.
 #  written by Peter Gebhard
+#
+# Compile using: grako pedl.grako -o pedl_parser.py -G pedl_model.py
 
 # Grako-specific directives
 @@grammar :: pedl

@@ -30,9 +30,7 @@ const char *spv_check_distance_states[1] = { "Start" };
 const char *spv_after_end_states[2] = { "Start", "End" };
 const char **spv_states_names[5] = { spv_check_time_states, spv_check_latitude_states, spv_check_longitude_states, spv_check_distance_states, spv_after_end_states };
 
-
 #define bindingkeyNum 1
-
 
 SpvMonitor* init_spv_monitor( SpvData *d ) {
     SpvMonitor* monitor = (SpvMonitor*)malloc(sizeof(SpvMonitor));
@@ -52,10 +50,7 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     config_setting_t *setting;
     config_init(&cfg);
     if(!config_read_file(&cfg, "spv_mon.cfg")) {
-        fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-            config_error_line(&cfg), config_error_text(&cfg));
-        config_destroy(&cfg);
-        exit(EXIT_FAILURE);
+        output_config_error(cfg);
     }
     setting = config_lookup(&cfg, "rabbitmq");
 
@@ -63,17 +58,14 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     int port;
 
     if (setting != NULL) {
-        if (!config_setting_lookup_string(setting, "hostname", &hostname)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
+        if (!config_setting_lookup_string(setting, "hostname", &hostname) ||
+            !config_setting_lookup_int(setting, "port", &port) ||
+            !config_setting_lookup_string(setting, "username", &username) ||
+            !config_setting_lookup_string(setting, "password", &password) ||
+            !config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange)) ||
+            !config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange))) {
+                output_config_error(cfg);
         }
-        config_setting_lookup_int(setting, "port", &port);
-        config_setting_lookup_string(setting, "username", &username);
-        config_setting_lookup_string(setting, "password", &password);
-        config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange));
-        config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange));
     }
 
     /* RabbitMQ initialization */
@@ -112,7 +104,6 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
-
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
         "Opening channel");
     amqp_exchange_declare(monitor->send_conn, 1,
@@ -760,4 +751,11 @@ char* monitor_identities_str(MonitorIdentity** identities) {
         free(monid_str);
     }
     return out;
+}
+
+void output_config_error(config_t cfg) {
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+        config_error_line(&cfg), config_error_text(&cfg));
+    config_destroy(&cfg);
+    exit(EXIT_FAILURE);
 }
