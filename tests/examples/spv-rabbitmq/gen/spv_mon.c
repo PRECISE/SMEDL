@@ -69,11 +69,36 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
             config_destroy(&cfg);
             exit(EXIT_FAILURE);
         }
-        config_setting_lookup_int(setting, "port", &port);
-        config_setting_lookup_string(setting, "username", &username);
-        config_setting_lookup_string(setting, "password", &password);
-        config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange));
-        config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange));
+        if (!config_setting_lookup_int(setting, "port", &port)) {
+            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+                config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            exit(EXIT_FAILURE);
+        }
+        if (!config_setting_lookup_string(setting, "username", &username)) {
+            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+                config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            exit(EXIT_FAILURE);
+        }
+        if (!config_setting_lookup_string(setting, "password", &password)) {
+            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+                config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            exit(EXIT_FAILURE);
+        }
+        if (!config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange))) {
+            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+                config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            exit(EXIT_FAILURE);
+        }
+        if (!config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange))) {
+            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+                config_error_line(&cfg), config_error_text(&cfg));
+            config_destroy(&cfg);
+            exit(EXIT_FAILURE);
+        }
     }
 
     /* RabbitMQ initialization */

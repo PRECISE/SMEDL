@@ -33,11 +33,11 @@ class TestSpvRabbitMQ(unittest.TestCase):
         except pika.exceptions.ConnectionClosed:
             self.fail("Could not connect to RabbitMQ server. Is it down?")
         channel = connection.channel()
-        channel.exchange_declare(exchange=c.rabbitmq.ctrl_exchange, type='fanout')
+        channel.exchange_declare(exchange=c.rabbitmq.ctrl_exchange, exchange_type='fanout', durable=True)
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
         channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name)
-        
+
         # def callback(ch, method, properties, body):
         #     print(" [x] %r" % body)
         #
@@ -49,8 +49,8 @@ class TestSpvRabbitMQ(unittest.TestCase):
 
         if connection is None:
             self.fail()
-        call = subprocess.Popen("./monitor")
-        #if channel.received("smedl.control") startswith "Spv monitor" and endswith "started."
+        call = subprocess.Popen("bin/monitor")
+        #TODO if channel.received("smedl.control") startswith "Spv monitor" and endswith "started."
         call.terminate()
 
 

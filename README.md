@@ -1,15 +1,13 @@
 # SMEDL/PEDL Monitor Generator
-### Version 1.0
+### Version 1.0.0
 
 ## Requirements
---------------
 1. [Python 3.5](https://docs.python.org/3.5/index.html)
 2. [pip](https://pip.pypa.io/en/stable/)
     - [Grako 3.14](https://pythonhosted.org/grako/)
     - [Jinja2 2.8](http://jinja.pocoo.org/)
 
 ## Getting started
----------------
 A [Python virtual environment](https://docs.python.org/3/library/venv.html)
 including [Python 3.5](https://docs.python.org/3.5/index.html) and all required Python
 packages has been defined to simplify the process of getting started with the
@@ -36,7 +34,6 @@ pip install .
 
 
 ## Generating the monitor
-----------------------
 The 'mgen' script is the primary interface for generating software monitors
 from SMEDL and PEDL definitions. This script can be run with the following
 command (from the project root directory):
@@ -68,7 +65,6 @@ Other useful flags:
 
 
 ## Instrumenting the target
-------------------------
 At the moment, instrumentation of the target program must be performed
 manually. The generated event handling functions, or 'probes', can be found in
 the {object}\_mon.h file. The probe naming convention uses the monitor object
@@ -80,7 +76,6 @@ code files.
 
 
 ## Compiling the generated output
-------------------------------
 Before executing the instrumented version of the target program, the generated
 runtime monitor must be compiled along with the target program using the
 following command:
@@ -89,7 +84,6 @@ following command:
 
 
 ## Manually run intermediate generation steps
-------------------------------------------
 [Grako](https://pythonhosted.org/grako/), a PEG parser generator, is used to
 generate the SMEDL and PEDL parsers for their EBNF-defined grammars.
 
@@ -106,8 +100,6 @@ To parse a SMEDL file using the generated parser:
 (Use '-t' command-line option to enable debug tracing)
 
 ## Compile with architecture description
---------------------------------------
-
 An architecture description file can be compiled with the SMEDL specification
 using the command `python -m smedl.mgen PEDL_SMEDL_FILENAME --arch=ARCH_SMEDL_FILENAME`.
 Note that `ARCH_SMEDL_FILENAME` does not contain '.a4smedl' suffix.
@@ -116,12 +108,10 @@ Moreover, it is necessary to compile separately with corresponding SMEDL
 specifications. For more info, readers can refer to the document Architecture_Description_Language_for_SMEDL.
 
 ## Running the test suite
---------------------------------------
 You may run the tool's test suite by simply calling `nosetests` from the
 project's root directory.
 
 ## Updating from the repository
-----------------------------
 The canonical repository for this project is located on the
 [PRECISE GitLab](https://gitlab.precise.seas.upenn.edu/pgebhard/smedl).
 
