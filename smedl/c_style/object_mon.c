@@ -10,6 +10,7 @@
 #include <amqp_framing.h>
 #include <libconfig.h>
 #include "utils.h"
+#include "cJSON.h"
 #include "{{ base_file_name }}_mon.h"
 {%- if helper %}{{ '\n' }}#include "{{ helper }}"{% endif %}
 
