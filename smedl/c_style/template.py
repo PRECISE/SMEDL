@@ -99,31 +99,43 @@ class CTemplater(object):
                     cond = '                else if'
 
                 msg_handler.append(cond + ' (!strcmp(eventName,"%s")) {' % conn.connName)
-
-                sscanfStr = '%s'
-                sscanfAttrs = 'e'
+                json_string = ''
+                if len(monitorParams[1:])>0:
+                    json_string+= '\t\tcJSON * root = cJSON_Parse(string);\n\tcJSON * fmt = cJSON_GetObjectItem(root,"params");\n'
                 retAttrs = ''
+                sscanfStr = ''
+                index = 1
                 for p in monitorParams[1:]:
-                    msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
+                    if p['c_type'] == 'char*':
+                        msg_handler.append('                    char *%s;' % (p['name']))
+                    else:
+                        msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
                     if p['c_type'] == 'int':
-                        sscanfStr += ' %d'
+                        
+                        sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valueint;\n\t') %index
                     elif p['c_type'] == 'char':
-                        sscanfStr += ' %c'
+                        sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valueint;\n\t') %index
                     elif p['c_type'] == 'float':
                         exit("this should never happen. there is a missing float->double conversion.")
                     elif p['c_type'] == 'double':
-                        sscanfStr += ' %lf'
+                        sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valuedouble;\n\t') %index
                     elif p['c_type'] == 'char*':
-                        sscanfStr += ' %s'
-                    sscanfAttrs += ', &' + p['name']
+                        sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valuestring;\n\t') %index
+                        #if p['c_type'] == 'char*':
+                        #    sscanfAttrs += ', ' + p['name']
+                        #else:
+                        #    sscanfAttrs += ', &' + p['name']
+                        #retAttrs += ', ' + p['name']
+                    index = index + 1
                     retAttrs += ', ' + p['name']
 
-
-                msg_handler.append('                    int ret = sscanf(string, "' + sscanfStr + '", ' + sscanfAttrs + ');')
-                msg_handler.append('                    if (ret == ' + str(len(monitorParams)) + ') {')
+                msg_handler.append(json_string)
+                msg_handler.append(sscanfStr)
+#msg_handler.append('                    int ret = sscanf(string, "' + sscanfStr + '", ' + sscanfAttrs + ');')
+#  msg_handler.append('                    if (ret == ' + str(len(monitorParams)) + ') {')
                 msg_handler.append('                        ' + obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');')
                 msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), conn.targetEvent))
-                msg_handler.append('                    }')
+                #  msg_handler.append('                    }')
                 msg_handler.append('                }')
 
                 values['event_msg_handlers'].append('\n'.join(msg_handler))
@@ -284,37 +296,49 @@ class CTemplater(object):
             eventFunction.append('}\n\n')
 
             export_event_sig = None
+            cjson_str = '\tcJSON *root; cJSON* fmt;\n\t root = cJSON_CreateObject();\n'
             if 'exported_events' == mg._symbolTable.get(m)['type']:
                 export_event_sig = 'void exported_%s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
                 values['signatures'].append(export_event_sig)
                 eventFunction.append(export_event_sig + ' {')
-                eventFunction.append('  char message[256];')
-                sprintf = '  sprintf(message, "%s_%s' % (obj.lower(), m)
+                #eventFunction.append('  char message[256];')
+                eventFunction.append('  char* message;')
+                #sprintf = '  sprintf(message, "%s_%s' % (obj.lower(), m)
                 paramString = ', '.join(['%s %s'%(CTemplater.convertTypeForC(p['type']), p['name']) for p in mg._symbolTable.get(m, 'params')])
                 if len(paramString) > 0:
                     paramString = obj.title() + "Monitor* monitor, " + paramString
                 else:
                     paramString = obj.title() + "Monitor* monitor"
                 evParams = mg._getEventParams(paramString)[1:]
+                cjson_str+=('\tcJSON_AddItemToObject(root, "name", cJSON_CreateString("%s_%s"));\n') % (obj.lower(), m)
+                cjson_str+=('\tcJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());\n')
+                sprintf = ''
+                index = 1
                 if len(evParams) > 0:
                     for p in evParams:
                         #print(p[0])
                         # comparing SMEDL types not C types.
                         if p[0] == 'int':
-                            sprintf += ' %d'
+                            sprintf+='cJSON_AddNumberToObject(fmt, "v%d",%s);\n' % (index,p[1])
+                        #sprintf += ' %d'
                         elif p[0] == 'char':
-                            sprintf += ' %c'
+                            sprintf+='cJSON_AddNumberToObject(fmt, "v%d",%s);\n' % (index,p[1])
+                        #sprintf += ' %c'
                         elif p[0] == 'double':
-                            sprintf += ' %lf'
+                            sprintf+='cJSON_AddNumberToObject(fmt, "v%d",%s);\n' % (index,p[1])
+                        #sprintf += ' %lf'
                         elif p[0] == 'float':
                                 exit("this should never happen. there is a missing float->double conversion.")
                         elif p[0] == 'char*':
-                            sprintf += ' %s'
-                sprintf += '"'
-                if len(evParams) > 0:
-                    for p in evParams:
-                        sprintf += ', %s' % p[1]
-                sprintf += ');'
+                            sprintf+='cJSON_AddStringToObject(fmt, "v%d",%s);\n' % (index,p[1])
+                            #sprintf += ' %s'
+                        index = index + 1
+                sprintf += 'message = cJSON_Print(root);\n'
+                    #if len(evParams) > 0:
+                    #for p in evParams:
+                    #    sprintf += ', %s' % p[1]
+                    #    #sprintf += ');'
+                eventFunction.append(cjson_str)
                 eventFunction.append(sprintf)
                 eventFunction.append('  char routing_key[256];')
 

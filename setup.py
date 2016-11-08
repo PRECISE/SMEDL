@@ -84,7 +84,8 @@ setup(
         'nose>=1.3.7',
         'pyelftools',
         'pika',
-        'pylibconfig2==0.2.5'
+        'pylibconfig2==0.2.5',
+        'pyparsing'
     ],
 
     # List additional groups of dependencies here (e.g. development
