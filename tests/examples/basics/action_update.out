@@ -1,7 +1,7 @@
 --tests/examples/basics/action_update_mon.h--
 #include "monitor_map.h"
 #include "actions.h"
-#include <stdio.h> // For the log file
+#include <libconfig.h>
 #include <amqp_tcp_socket.h>
 #include <amqp.h>
 #include <amqp_framing.h>
@@ -64,7 +64,7 @@ int add_actup_monitor_to_map(ActupMonitor*, int);
 int put_actup_monitor(ActupMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
-
+void output_config_error(config_t cfg);
 void executePendingEvents(ActupMonitor* monitor);
 void executeEvents(ActupMonitor* monitor);
 void executeExportedEvent(ActupMonitor* monitor);
@@ -81,6 +81,7 @@ void executeExportedEvent(ActupMonitor* monitor);
 #include <amqp_framing.h>
 #include <libconfig.h>
 #include "utils.h"
+#include "cJSON.h"
 #include "action_update_mon.h"
 
 typedef enum { ACTUP_ID } actup_identity;
@@ -93,9 +94,7 @@ typedef enum { ACTUP_DEFAULT } actup_error;
 const char *actup_sc1_states[1] = { "Min1" };
 const char **actup_states_names[1] = { actup_sc1_states };
 
-
 #define bindingkeyNum 1
-
 
 ActupMonitor* init_actup_monitor( ActupData *d ) {
     ActupMonitor* monitor = (ActupMonitor*)malloc(sizeof(ActupMonitor));
@@ -111,10 +110,7 @@ ActupMonitor* init_actup_monitor( ActupData *d ) {
     config_setting_t *setting;
     config_init(&cfg);
     if(!config_read_file(&cfg, "action_update_mon.cfg")) {
-        fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-            config_error_line(&cfg), config_error_text(&cfg));
-        config_destroy(&cfg);
-        exit(EXIT_FAILURE);
+        output_config_error(cfg);
     }
     setting = config_lookup(&cfg, "rabbitmq");
 
@@ -122,41 +118,13 @@ ActupMonitor* init_actup_monitor( ActupData *d ) {
     int port;
 
     if (setting != NULL) {
-        if (!config_setting_lookup_string(setting, "hostname", &hostname)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_int(setting, "port", &port)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "username", &username)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "password", &password)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange))) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange))) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
+        if (!config_setting_lookup_string(setting, "hostname", &hostname) ||
+            !config_setting_lookup_int(setting, "port", &port) ||
+            !config_setting_lookup_string(setting, "username", &username) ||
+            !config_setting_lookup_string(setting, "password", &password) ||
+            !config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange)) ||
+            !config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange))) {
+                output_config_error(cfg);
         }
     }
 
@@ -196,7 +164,6 @@ ActupMonitor* init_actup_monitor( ActupData *d ) {
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
-
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
         "Opening channel");
     amqp_exchange_declare(monitor->send_conn, 1,
@@ -558,6 +525,13 @@ char* monitor_identities_str(MonitorIdentity** identities) {
         free(monid_str);
     }
     return out;
+}
+
+void output_config_error(config_t cfg) {
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+        config_error_line(&cfg), config_error_text(&cfg));
+    config_destroy(&cfg);
+    exit(EXIT_FAILURE);
 }
 --actions.h--
 #ifndef ACTIONS_H

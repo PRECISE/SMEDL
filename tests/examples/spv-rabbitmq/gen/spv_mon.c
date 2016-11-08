@@ -10,6 +10,7 @@
 #include <amqp_framing.h>
 #include <libconfig.h>
 #include "utils.h"
+#include "cJSON.h"
 #include "spv_mon.h"
 
 typedef enum { SPV_ID } spv_identity;
@@ -525,8 +526,16 @@ executeEvents(monitor);
 
 
 void exported_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time) {
-  char message[256];
-  sprintf(message, "spv_timestep_error %d %d", tm, last_time);
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_timestep_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+cJSON_AddNumberToObject(fmt, "v1",tm);
+cJSON_AddNumberToObject(fmt, "v2",last_time);
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None", tm, last_time);
   send_message(monitor, message, routing_key);
@@ -552,8 +561,14 @@ executeEvents(monitor);
 
 
 void exported_spv_after_end_error(SpvMonitor* monitor) {
-  char message[256];
-  sprintf(message, "spv_after_end_error");
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_after_end_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
@@ -575,8 +590,15 @@ executeEvents(monitor);
 
 
 void exported_spv_latitude_range_error(SpvMonitor* monitor, double lat) {
-  char message[256];
-  sprintf(message, "spv_latitude_range_error %lf", lat);
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_latitude_range_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+cJSON_AddNumberToObject(fmt, "v1",lat);
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
@@ -600,8 +622,15 @@ executeEvents(monitor);
 
 
 void exported_spv_longitude_range_error(SpvMonitor* monitor, double lon) {
-  char message[256];
-  sprintf(message, "spv_longitude_range_error %lf", lon);
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_longitude_range_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+cJSON_AddNumberToObject(fmt, "v1",lon);
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
@@ -625,8 +654,15 @@ executeEvents(monitor);
 
 
 void exported_spv_total_distance_error(SpvMonitor* monitor, double dist) {
-  char message[256];
-  sprintf(message, "spv_total_distance_error %lf", dist);
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_total_distance_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+cJSON_AddNumberToObject(fmt, "v1",dist);
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
