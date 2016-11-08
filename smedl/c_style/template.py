@@ -1,6 +1,6 @@
 import re, os, collections
 from jinja2 import Environment, PackageLoader
-from .. import mgen
+import smedl.mgen
 
 class CTemplater(object):
     @staticmethod
