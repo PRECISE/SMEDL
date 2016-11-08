@@ -23,6 +23,7 @@ typedef enum { {{ event_enums }} } {{ obj|lower }}_event;
 typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
 {{ state_names }}
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
+int executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
 
 
 #define bindingkeyNum {{bindingkeys_num}}
@@ -318,6 +319,10 @@ void executeEvents({{obj|title}}Monitor* monitor){
     if(monitor->action_queue == NULL && monitor->export_queue != NULL){
         executeExportedEvent(monitor);
     }
+    if(monitor->action_queue == NULL && monitor->export_queue == NULL){
+        memset(executed_scenarios, 0, sizeof(executed_scenarios));
+    }
+
 }
 
 void executePendingEvents({{obj|title}}Monitor* monitor){

@@ -33,6 +33,19 @@ class CTemplater(object):
         values['base_file_name'] = os.path.splitext(os.path.basename(filename))[0]
         values['identities_names'] = ['%s_%s' % (obj.upper(), i['name'].upper()) for i in identities]
         values['identities_types'] = [i['type'].upper() for i in identities]
+        
+        #construct array executed_sceanrios
+        values['num_scenarios'] = len(list(allFSMs.keys()))
+        zeroString = ''
+        fk_num = len(list(allFSMs.keys()))
+        while (fk_num > 0):
+            if fk_num == len(list(allFSMs.keys())):
+                zeroString+='0'
+            else:
+                zeroString+=',0'
+            fk_num = fk_num - 1
+        values['zeros']=zeroString
+
 
         statesets = collections.OrderedDict()
         state_enums = []
@@ -284,6 +297,8 @@ class CTemplater(object):
 
                 reference = 'monitor->state[%s_%s_SCENARIO]' % (obj.upper(), key.upper())
                 name_reference = "%s_states_names[%s_%s_SCENARIO][monitor->state[%s_%s_SCENARIO]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
+                eventFunction.append('if (executed_scenarios[%s_%s_SCENARIO]==0) {' % (obj.upper(), key.upper()))
+
                 eventFunction.append('  switch (%s) {' % reference)
                 for start_state, transitions in trans_group.items():
                     eventFunction.append(CTemplater._writeCaseTransition(mg, obj, transitions, reference, name_reference, key))
@@ -292,6 +307,9 @@ class CTemplater(object):
                     eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");' % (obj.lower(), key, name_reference, m))
                     eventFunction.append('      break;')
                 eventFunction.append('  }')
+                eventFunction.append('executed_scenarios[%s_%s_SCENARIO]=1;' % (obj.upper(), key.upper()))
+                eventFunction.append('  }')
+
             eventFunction.append('executeEvents(monitor);')
             eventFunction.append('}\n\n')
 
