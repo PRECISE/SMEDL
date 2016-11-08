@@ -1,5 +1,7 @@
 # This grammar defines SMEDL in the Grako-variation of EBNF.
 #  written by Peter Gebhard
+#
+# Compile using: grako smedl.grako -o smedl_parser.py -G smedl_model.py
 
 # Grako-specific directives
 @@grammar :: smedl

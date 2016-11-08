@@ -6,6 +6,10 @@
 2. [pip](https://pip.pypa.io/en/stable/)
     - [Grako 3.14](https://pythonhosted.org/grako/)
     - [Jinja2 2.8](http://jinja.pocoo.org/)
+    - [nose 1.3.7](https://nose.readthedocs.io/en/latest/)
+    - [pika 0.10.0](https://pika.readthedocs.io/en/0.10.0/index.html)
+    - [pylibconfig2 0.2.5](https://pypi.python.org/pypi/pylibconfig2/0.2.5)
+    - [pyparsing](https://pypi.python.org/pypi/pyparsing/2.1.10)
 
 ## Getting started
 A [Python virtual environment](https://docs.python.org/3/library/venv.html)
@@ -15,22 +19,19 @@ tool.
 
 If you want to use a virtual environment (recommended), set it up by running
 the following command from the project's root directory:
-```sh
-pyvenv-3.5 .env && source .env/bin/activate
-```
+
+    pyvenv-3.5 .env && source .env/bin/activate
 
 To install all of the required dependencies from PyPi and install the monitor
 generator `mgen` as an executable on your path, run the following command in
 the root of the repository:
-```sh
-pip install .
-```
+
+    pip install .
 
 To update the installation of `mgen` without updating its dependencies, run
-```sh
-pip uninstall smedl
-pip install .
-```
+
+    pip uninstall smedl
+    pip install .
 
 
 ## Generating the monitor
@@ -38,7 +39,7 @@ The 'mgen' script is the primary interface for generating software monitors
 from SMEDL and PEDL definitions. This script can be run with the following
 command (from the project root directory):
 
-`mgen PEDL_SMEDL_FILENAME`
+    mgen PEDL_SMEDL_FILENAME
 
 This script will generate C source code representing a runtime monitor as
 specified by the PEDL and SMEDL definitions, along with necessary monitor
@@ -55,13 +56,13 @@ used by the monitor during its generation steps and the '-d' flag for
 outputting various debug statements written in the monitor generator code.
 
 Other useful flags:
-  ```sh
-  --helper <HEADER FILE> : Include the specified header file for providing helper functions
-  --console : Forces output to only show in the console; no file output will be generated
-  --noimplicit : Disables implicit error handling in the generated monitor
-  --arch <ARCH FILE> : The name of architechture file to parse (Described further below)
-  --dir <DIRECTORY> : Output the generated files to this directory relative to the input files
-  ```
+
+      --helper <HEADER FILE> : Include the specified header file for providing helper functions
+      --console : Forces output to only show in the console; no file output will be generated
+      --noimplicit : Disables implicit error handling in the generated monitor
+      --arch <ARCH FILE> : The name of architechture file to parse (Described further below)
+      --dir <DIRECTORY> : Output the generated files to this directory relative to the input files
+
 
 
 ## Instrumenting the target
@@ -80,7 +81,7 @@ Before executing the instrumented version of the target program, the generated
 runtime monitor must be compiled along with the target program using the
 following command:
 
-`gcc -o {{base_file_name}}_mon -std=c99 actions.c monitor_map.c {{base_file_name}}_mon.c`
+    gcc -o {{base_file_name}}_mon -std=c99 actions.c monitor_map.c {{base_file_name}}_mon.c
 
 
 ## Manually run intermediate generation steps
@@ -97,15 +98,45 @@ To parse a SMEDL file using the generated parser:
       python smedl/parser/smedl_parser.py example.smedl object
     ( python      PARSER                   INPUT_FILE   START_RULE )
 
-(Use '-t' command-line option to enable debug tracing)
+(Use the `-t` command-line option to enable debug tracing)
 
-## Compile with architecture description
+## RabbitMQ
+Asynchronous monitoring of events has been implemented using the [Advanced Message Queuing Protocol](http://www.amqp.org/) by the [RabbitMQ](https://www.rabbitmq.com/) message broker.
+
+### Configuring a RabbitMQ-enabled monitor
+**Hostname**: The host address of your RabbitMQ broker.
+
+**Port**: Keep this value as `5672` if your broker is using the default port, or set it to the custom port you have already configured for your broker.
+
+**Username**: Your username for the broker.
+
+**Password**: Your password for the broker.
+
+**Exchange**: The main event-handling message exchange.
+
+**Control Exchange (ctrl_exchange)**: The message exchange for passing control-related messages. 
+
+###### Example SMEDL RabbitMQ configuration file
+	rabbitmq =
+	{
+		hostname = "example.com";
+		port = 5672;
+		username = "test-user";
+		password = "test-password";
+		exchange = "example.topic";
+		ctrl_exchange = "example.control";
+	};
+
+## Compiling with an architecture description
 An architecture description file can be compiled with the SMEDL specification
-using the command `python -m smedl.mgen PEDL_SMEDL_FILENAME --arch=ARCH_SMEDL_FILENAME`.
-Note that `ARCH_SMEDL_FILENAME` does not contain '.a4smedl' suffix.
+using the following command:
+    
+    mgen PEDL_SMEDL_FILENAME --arch=ARCH_SMEDL_FILENAME
+    
+Note that `ARCH_SMEDL_FILENAME` does not contain the `.a4smedl` suffix.
 
 Moreover, it is necessary to compile separately with corresponding SMEDL
-specifications. For more info, readers can refer to the document Architecture_Description_Language_for_SMEDL.
+specifications. For more info, readers can refer to the document ``Architecture_Description_Language_for_SMEDL``.
 
 ## Running the test suite
 You may run the tool's test suite by simply calling `nosetests` from the

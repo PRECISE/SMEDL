@@ -1,6 +1,6 @@
 #include "monitor_map.h"
 #include "actions.h"
-#include <stdio.h> // For the log file
+#include <libconfig.h>
 #include <amqp_tcp_socket.h>
 #include <amqp.h>
 #include <amqp_framing.h>
@@ -80,7 +80,7 @@ int add_spv_monitor_to_map(SpvMonitor*, int);
 int put_spv_monitor(SpvMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
-
+void output_config_error(config_t cfg);
 void executePendingEvents(SpvMonitor* monitor);
 void executeEvents(SpvMonitor* monitor);
 void executeExportedEvent(SpvMonitor* monitor);

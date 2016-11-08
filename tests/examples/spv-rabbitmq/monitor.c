@@ -12,11 +12,11 @@ int main()
     data->last_time = 0;
     SpvMonitor* mon = init_spv_monitor(data);
     printf("after init\n");
-    int time;
-    float lat;
-    float lon;
-    float distance;
-    int ret;
+    // int time;
+    // float lat;
+    // float lon;
+    // float distance;
+    // int ret;
 
     start_monitor(mon);
 
@@ -28,5 +28,3 @@ int main()
 
     return 0;
 }
-
-

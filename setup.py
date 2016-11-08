@@ -25,7 +25,8 @@ setup(
     # https://packaging.python.org/en/latest/single_source_version.html
     version='1.0.0.dev4',
 
-    description='A tool for generating software monitors from SMEDL and PEDL definitions',
+    description='A tool for generating software monitors from SMEDL and PEDL \
+        definitions',
     long_description=long_description,
 
     # The project's main homepage.
@@ -102,12 +103,6 @@ setup(
     package_data={
         'smedl': ['c_style/*.c', 'c_style/*.h', 'c_style/*.cfg'],
     },
-
-    # Although 'package_data' is the preferred approach, in some case you may
-    # need to place data files outside of your packages. See:
-    # http://docs.python.org/3.4/distutils/setupscript.html#installing-additional-files # noqa
-    # In this case, 'data_file' will be installed into '<sys.prefix>/my_data'
-    #data_files=[('my_data', ['data/data_file'])],
 
     # To provide executable scripts, use entry points in preference to the
     # "scripts" keyword. Entry points provide cross-platform support and allow

@@ -10,6 +10,7 @@
 #include <amqp_framing.h>
 #include <libconfig.h>
 #include "utils.h"
+#include "cJSON.h"
 #include "spv_mon.h"
 
 typedef enum { SPV_ID } spv_identity;
@@ -30,9 +31,7 @@ const char *spv_check_distance_states[1] = { "Start" };
 const char *spv_after_end_states[2] = { "Start", "End" };
 const char **spv_states_names[5] = { spv_check_time_states, spv_check_latitude_states, spv_check_longitude_states, spv_check_distance_states, spv_after_end_states };
 
-
 #define bindingkeyNum 1
-
 
 SpvMonitor* init_spv_monitor( SpvData *d ) {
     SpvMonitor* monitor = (SpvMonitor*)malloc(sizeof(SpvMonitor));
@@ -52,52 +51,21 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     config_setting_t *setting;
     config_init(&cfg);
     if(!config_read_file(&cfg, "spv_mon.cfg")) {
-        fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-            config_error_line(&cfg), config_error_text(&cfg));
-        config_destroy(&cfg);
-        exit(EXIT_FAILURE);
+        output_config_error(cfg);
     }
     setting = config_lookup(&cfg, "rabbitmq");
 
     const char *hostname, *username, *password;
-    int port;
+    int port = 0;
 
     if (setting != NULL) {
-        if (!config_setting_lookup_string(setting, "hostname", &hostname)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_int(setting, "port", &port)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "username", &username)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "password", &password)) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange))) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
-        }
-        if (!config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange))) {
-            fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-                config_error_line(&cfg), config_error_text(&cfg));
-            config_destroy(&cfg);
-            exit(EXIT_FAILURE);
+        if (!config_setting_lookup_string(setting, "hostname", &hostname) ||
+            !config_setting_lookup_int(setting, "port", &port) ||
+            !config_setting_lookup_string(setting, "username", &username) ||
+            !config_setting_lookup_string(setting, "password", &password) ||
+            !config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange)) ||
+            !config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange))) {
+                output_config_error(cfg);
         }
     }
 
@@ -137,7 +105,6 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
         AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
     amqp_channel_open(monitor->send_conn, 1);
-
     die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
         "Opening channel");
     amqp_exchange_declare(monitor->send_conn, 1,
@@ -559,8 +526,16 @@ executeEvents(monitor);
 
 
 void exported_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time) {
-  char message[256];
-  sprintf(message, "spv_timestep_error %d %d", tm, last_time);
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_timestep_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+cJSON_AddNumberToObject(fmt, "v1",tm);
+cJSON_AddNumberToObject(fmt, "v2",last_time);
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None", tm, last_time);
   send_message(monitor, message, routing_key);
@@ -586,8 +561,14 @@ executeEvents(monitor);
 
 
 void exported_spv_after_end_error(SpvMonitor* monitor) {
-  char message[256];
-  sprintf(message, "spv_after_end_error");
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_after_end_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
@@ -609,8 +590,15 @@ executeEvents(monitor);
 
 
 void exported_spv_latitude_range_error(SpvMonitor* monitor, double lat) {
-  char message[256];
-  sprintf(message, "spv_latitude_range_error %lf", lat);
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_latitude_range_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+cJSON_AddNumberToObject(fmt, "v1",lat);
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
@@ -634,8 +622,15 @@ executeEvents(monitor);
 
 
 void exported_spv_longitude_range_error(SpvMonitor* monitor, double lon) {
-  char message[256];
-  sprintf(message, "spv_longitude_range_error %lf", lon);
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_longitude_range_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+cJSON_AddNumberToObject(fmt, "v1",lon);
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
@@ -659,8 +654,15 @@ executeEvents(monitor);
 
 
 void exported_spv_total_distance_error(SpvMonitor* monitor, double dist) {
-  char message[256];
-  sprintf(message, "spv_total_distance_error %lf", dist);
+  char* message;
+	cJSON *root; cJSON* fmt;
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_total_distance_error"));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+
+cJSON_AddNumberToObject(fmt, "v1",dist);
+message = cJSON_Print(root);
+
   char routing_key[256];
   sprintf(routing_key, "None");
   send_message(monitor, message, routing_key);
@@ -785,4 +787,11 @@ char* monitor_identities_str(MonitorIdentity** identities) {
         free(monid_str);
     }
     return out;
+}
+
+void output_config_error(config_t cfg) {
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+        config_error_line(&cfg), config_error_text(&cfg));
+    config_destroy(&cfg);
+    exit(EXIT_FAILURE);
 }
