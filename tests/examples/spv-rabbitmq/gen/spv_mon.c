@@ -56,7 +56,7 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     setting = config_lookup(&cfg, "rabbitmq");
 
     const char *hostname, *username, *password;
-    int port;
+    int port = 0;
 
     if (setting != NULL) {
         if (!config_setting_lookup_string(setting, "hostname", &hostname) ||
@@ -196,7 +196,7 @@ void start_monitor(SpvMonitor* monitor) {
             if (eventName != NULL) {
                 char e[255];
 
-                
+
 
             }
             //free(eventName);
@@ -300,7 +300,7 @@ void executeEvents(SpvMonitor* monitor){
 
 void executePendingEvents(SpvMonitor* monitor){
     action** head = &monitor->action_queue;
-    int i0, i1; double d0, d1; 
+    int i0, i1; double d0, d1;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -354,7 +354,7 @@ void executePendingEvents(SpvMonitor* monitor){
 //send export events one by one from export_queue
 void executeExportedEvent(SpvMonitor* monitor){
     action** head = &monitor->export_queue;
-    int i0, i1; double d0, d1; 
+    int i0, i1; double d0, d1;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;

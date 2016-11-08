@@ -46,7 +46,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
     setting = config_lookup(&cfg, "rabbitmq");
 
     const char *hostname, *username, *password;
-    int port;
+    int port = 0;
 
     if (setting != NULL) {
         if (!config_setting_lookup_string(setting, "hostname", &hostname) ||

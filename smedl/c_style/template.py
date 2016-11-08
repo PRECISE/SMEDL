@@ -111,7 +111,7 @@ class CTemplater(object):
                     else:
                         msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
                     if p['c_type'] == 'int':
-                        
+
                         sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valueint;\n\t') %index
                     elif p['c_type'] == 'char':
                         sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valueint;\n\t') %index
@@ -504,6 +504,24 @@ class CTemplater(object):
             a_c_file = open(os.path.join(dirname, output_dir, 'actions.c'), 'w')
             a_c_file.write(a_c)
             a_c_file.close()
+
+        cjson_h = env.get_template('cJSON.h').render()
+        if console_output:
+            print("--cJSON.h--")
+            print(cjson_h)
+        else:
+            cjson_h_file = open(os.path.join(dirname, output_dir, 'cJSON.h'), 'w')
+            cjson_h_file.write(cjson_h)
+            cjson_h_file.close()
+
+        cjson_c = env.get_template('cJSON.c').render()
+        if console_output:
+            print("--cJSON.c--")
+            print(cjson_c)
+        else:
+            cjson_c_file = open(os.path.join(dirname, output_dir, 'cJSON.c'), 'w')
+            cjson_c_file.write(cjson_c)
+            cjson_c_file.close()
 
         m_h = env.get_template('monitor_map.h').render()
         if console_output:
