@@ -1,0 +1,15 @@
+System SPV_Arch :=
+
+Async SPV()
+{
+        imported parse_record(int, float, float, int);
+        imported total_distance(float);
+        exported timestep_error(int, int);
+        exported after_end_error();
+        exported latitude_range_error(float);
+        exported longitude_range_error(float);
+        exported total_distance_error(float);
+}
+
+ch1: parse_record => SPV.parse_record
+ch2: total_distance => SPV.total_distance

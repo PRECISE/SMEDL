@@ -14,7 +14,7 @@ class TestSpvRabbitMQ(unittest.TestCase):
         os.chdir(self.origPath)
 
     def test_spvrabbitmq_mgen(self):
-        call = subprocess.run(["python3", "-m", "smedl.mgen", "--dir", "gen", "tests/examples/spv-rabbitmq/spv"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        call = subprocess.run(["python3", "-m", "smedl.mgen", "--dir", "gen", "tests/examples/spv-rabbitmq/spv","--arch=tests/examples/spv-rabbitmq/spv_architecture"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     def test_spvrabbitmq_compile(self):
         os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'spv-rabbitmq')))
