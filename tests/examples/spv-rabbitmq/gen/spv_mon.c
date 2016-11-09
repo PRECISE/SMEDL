@@ -9,8 +9,9 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <libconfig.h>
-#include "utils.h"
+#include "amqp_utils.h"
 #include "cJSON.h"
+#include "mon_utils.h"
 #include "spv_mon.h"
 
 typedef enum { SPV_ID } spv_identity;
@@ -137,27 +138,6 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     put_spv_monitor(monitor);
     return monitor;
 }
-
-// returns null if the given string isn't a properly-terminated c string
-char *getEventName(char *str, size_t maxlen) {
-    // make sure that str is really a cstring before trying to copy from it.
-    size_t len = strnlen(str, maxlen);
-    if (len >= maxlen) {
-        return NULL;
-    }
-    return strtok(str, ' ');
-}
-
-// returns null if the given string isn't a properly-terminated c string
-char *getConnName(char *str, size_t maxlen) {
-    // make sure that str is really a cstring before trying to copy from it.
-    size_t len = strnlen(str, maxlen);
-    if (len >= maxlen) {
-        return NULL;
-    }
-    return strtok(str, '.');
-}
-
 
 void start_monitor(SpvMonitor* monitor) {
     int received = 0;
@@ -768,10 +748,6 @@ SpvMonitorRecord* filter_spv_monitors_by_identity(SpvMonitorRecord* before, int 
     return results;
 }
 
-void raise_error(char *scen, const char *state, char *action, char *type) {
-    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
-}
-
 char* monitor_identities_str(MonitorIdentity** identities) {
     char* out = malloc(20*SPV_MONITOR_IDENTITIES);
     out[0] = '\0';
@@ -787,11 +763,4 @@ char* monitor_identities_str(MonitorIdentity** identities) {
         free(monid_str);
     }
     return out;
-}
-
-void output_config_error(config_t cfg) {
-    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-        config_error_line(&cfg), config_error_text(&cfg));
-    config_destroy(&cfg);
-    exit(EXIT_FAILURE);
 }

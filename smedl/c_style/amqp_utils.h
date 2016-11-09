@@ -1,6 +1,9 @@
 /* vim:set ft=c ts=2 sw=2 sts=2 et cindent: */
-#ifndef librabbitmq_examples_utils_h
-#define librabbitmq_examples_utils_h
+#ifndef librabbitmq_utils_h
+#define librabbitmq_utils_h
+
+#include <stdint.h>
+#include <amqp.h>
 
 /*
  * ***** BEGIN LICENSE BLOCK *****

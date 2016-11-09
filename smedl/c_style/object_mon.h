@@ -1,6 +1,5 @@
 #include "monitor_map.h"
 #include "actions.h"
-#include <libconfig.h>
 #include <amqp_tcp_socket.h>
 #include <amqp.h>
 #include <amqp_framing.h>
@@ -62,7 +61,6 @@ int add_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor*, int);
 int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
-void output_config_error(config_t cfg);
 void executePendingEvents({{obj|title}}Monitor* monitor);
 void executeEvents({{obj|title}}Monitor* monitor);
 void executeExportedEvent({{obj|title}}Monitor* monitor);
