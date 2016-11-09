@@ -47,8 +47,8 @@ management infrastructure.
 
 To allow the script to properly locate the PEDL and SMEDL files, the script's
 single parameter should be the name used by the PEDL and SMEDL files, and that
-name should be identical for both files except for their file extensions, .pedl
-and .smedl.
+name should be identical for both files except for their file extensions,
+`.pedl` and `.smedl`.
 
 Note: There are two debug flags that can be specified at the command-line.
 These are the '-s' flag for displaying the contents of internal data structures
@@ -114,7 +114,7 @@ Asynchronous monitoring of events has been implemented using the [Advanced Messa
 
 **Exchange**: The main event-handling message exchange.
 
-**Control Exchange (ctrl_exchange)**: The message exchange for passing control-related messages. 
+**Control Exchange (ctrl_exchange)**: The message exchange for passing control-related messages.
 
 ###### Example SMEDL RabbitMQ configuration file
 	rabbitmq =
@@ -130,9 +130,9 @@ Asynchronous monitoring of events has been implemented using the [Advanced Messa
 ## Compiling with an architecture description
 An architecture description file can be compiled with the SMEDL specification
 using the following command:
-    
+
     mgen PEDL_SMEDL_FILENAME --arch=ARCH_SMEDL_FILENAME
-    
+
 Note that `ARCH_SMEDL_FILENAME` does not contain the `.a4smedl` suffix.
 
 Moreover, it is necessary to compile separately with corresponding SMEDL
