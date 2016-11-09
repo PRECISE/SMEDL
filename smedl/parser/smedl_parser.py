@@ -18,7 +18,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 8, 29, 15, 31, 5, 0)
+__version__ = (2016, 11, 9, 16, 51, 18, 2)
 
 __all__ = [
     'smedlParser',
@@ -380,6 +380,10 @@ class smedlParser(Parser):
         self._pattern(r'[a-zA-Z][A-Za-z0-9_]*')
 
     @graken()
+    def _string_(self):
+        self._pattern(r'"[^"\\]*(?:\\.[^"\\]*)*"')
+
+    @graken()
     def _integer_(self):
         self._pattern(r'[-+]?[0-9]+')
 
@@ -594,6 +598,8 @@ class smedlParser(Parser):
             with self._option():
                 self._identifier_()
             with self._option():
+                self._string_()
+            with self._option():
                 self._token('true')
             with self._option():
                 self._token('false')
@@ -771,6 +777,9 @@ class smedlSemantics(object):
         return ast
 
     def identifier(self, ast):
+        return ast
+
+    def string(self, ast):
         return ast
 
     def integer(self, ast):

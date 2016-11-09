@@ -104,6 +104,11 @@ identifier
     ?/[a-zA-Z][A-Za-z0-9_]*/?
     ;
 
+string
+    =
+    ?/"[^"\\]*(?:\\.[^"\\]*)*"/?
+    ;
+
 integer
     =
     ?/[-+]?[0-9]+/?
@@ -157,6 +162,7 @@ atom
       integer
     | float
     | identifier
+    | string
     | 'true'
     | 'false'
     | 'null'
