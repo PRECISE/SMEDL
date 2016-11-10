@@ -164,6 +164,7 @@ class CTemplater(object):
         parameterTypeNumMap['char'] = 0
 
         for m in methods:
+            print(m)
             eventFunction = []
             probeFunction = []
             params = ''
@@ -187,11 +188,22 @@ class CTemplater(object):
                 print(m)
                 print(mg._symbolTable.get(m, 'params'))
 
-            monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
-                [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
+            monitorParams=[]
+            # if m is an exported event and there is no transition triggered by it, we need to generate a signature with new names
+            if CTemplater._checkParametersLiteral(mg,m):
+                monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}]
+                index = 0
+                for p in mg._symbolTable.get(m, 'params'):
+                    monitorParams += [{'name':'v'+str(index),'c_type': CTemplater.convertTypeForC(p['type'])}]
+                    index = index + 1
+            else:
+                monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
+                    [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
+
+            #print(monitorParams)
                 #for p in mg._symbolTable.get(m, 'params'):
                 #print(p['name'])
-
+                #print(mg._symbolTable.get(m, 'params'))
             tmp_map = {
                 'int': 0,
                 'float': 0,
@@ -284,7 +296,11 @@ class CTemplater(object):
                     parameterTypeNumMap[key] = tmp_map[key]
 
 #if 'exported_events' != mgen._symbolTable.get(m)['type']:
+            #paraMonString = obj.title()+"Monitor* monitor "+ CTemplater._generateEventParams(mg,m)
+            #print(paraMonString)
+            #eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, paraMonString)
             eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
+            #print(eventSignature)
             #print(monitorParams)
             values['signatures'].append(eventSignature)
             eventFunction.append(eventSignature + ' {')
@@ -316,17 +332,19 @@ class CTemplater(object):
             export_event_sig = None
             cjson_str = '\tcJSON *root; cJSON* fmt;\n\t root = cJSON_CreateObject();\n'
             if 'exported_events' == mg._symbolTable.get(m)['type']:
-                export_event_sig = 'void exported_%s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
+                paramString = obj.title() + "Monitor* monitor " + CTemplater._generateEventParams(mg,m)
+                export_event_sig = 'void exported_%s_%s(%s)' % (obj.lower(), m, paramString)
                 values['signatures'].append(export_event_sig)
                 eventFunction.append(export_event_sig + ' {')
                 #eventFunction.append('  char message[256];')
                 eventFunction.append('  char* message;')
                 #sprintf = '  sprintf(message, "%s_%s' % (obj.lower(), m)
-                paramString = ', '.join(['%s %s'%(CTemplater.convertTypeForC(p['type']), p['name']) for p in mg._symbolTable.get(m, 'params')])
-                if len(paramString) > 0:
-                    paramString = obj.title() + "Monitor* monitor, " + paramString
-                else:
-                    paramString = obj.title() + "Monitor* monitor"
+                #paramString = ', '.join(['%s %s'%(CTemplater.convertTypeForC(p['type']), p['name']) for p in mg._symbolTable.get(m, 'params')])
+                #paramString =
+                    #if len(paramString) > 0:
+                    #paramString = obj.title() + "Monitor* monitor " + paramString
+                    #else:
+                    #paramString = obj.title() + "Monitor* monitor"
                 evParams = mg._getEventParams(paramString)[1:]
                 cjson_str+=('\tcJSON_AddItemToObject(root, "name", cJSON_CreateString("%s_%s"));\n') % (obj.lower(), m)
                 cjson_str+=('\tcJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());\n')
@@ -596,6 +614,16 @@ class CTemplater(object):
             mu_c_file.close()
 
 
+    def _checkParametersLiteral(mg,m):
+        for p in mg._symbolTable.get(m, 'params'):
+            if len(p['name'])>0:
+                if p['name'][0]=='\"' or p['name'][0]== '-' or p['name'][0]=='+' or p['name'].isdigit():
+                    return True
+            #check p['name'] is an literal value
+        return False
+
+
+
     def _getBindingKeys(mg):
         lst = []
         name = mg._symbolTable.getSymbolsByType('object')[0]
@@ -707,6 +735,7 @@ class CTemplater(object):
         for name, func in funcs.items():
             tmp = func
             for p in mg._symbolTable.get(method, 'params'):
+                #print(p)
                 out_s = []
                 for s in tmp:
                     out_s.append(re.sub(r'\b' + p['true_name'] + r'\b', p['name'], s))
@@ -785,11 +814,29 @@ class CTemplater(object):
         output.append('      break;')
         return '\n'.join(output)
 
+    def _generateEventParams(mg,event):
+        paramString = ''
+        index = 0
+        for p in mg._symbolTable.get(event, 'params'):
+            paramString+=','+ CTemplater.convertTypeForC(p['type'])+' v'+str(index)
+            index += 1
+        return paramString
+
 
     def _writeRaiseFunction(mg, event, obj):
-        paramString = ', '.join(['%s %s'%(CTemplater.convertTypeForC(p['type']), p['name']) for p in mg._symbolTable.get(event, 'params')])
+        #paramString = ', '.join(['%s %s'%(CTemplater.convertTypeForC(p['type']), p['name']) for p in mg._symbolTable.get(event, 'params')])
+        paramString = CTemplater._generateEventParams(mg,event)
+        #print(mg._symbolTable.get(event, 'params'))
+        #paramString = ''
+        index = 0
+            #for p in mg._symbolTable.get(event, 'params'):
+            #print('name:'+p['name']+'\n')
+            #if len(paramString) >0 :
+            #for p in mg._getEventParams(paramString):
+            #   print('name2:'+p[1]+'\n')
+        
         if len(paramString) > 0:
-            paramString = obj.title() + "Monitor* monitor, " + paramString
+            paramString = obj.title() + "Monitor* monitor " + paramString
         else:
             paramString = obj.title() + "Monitor* monitor"
         output = []
@@ -801,6 +848,8 @@ class CTemplater(object):
             output.append(' param *ep_head = NULL;')
         if len(paramString) > 0:
             for p in mg._getEventParams(paramString):
+                #print(p)
+                #print(p[0])
                 # comparing SMEDL types not C types.
                 if p[0] == 'int':
                     output.append('  push_param(&p_head, &%s, NULL, NULL, NULL);' % p[1])
