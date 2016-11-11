@@ -55,9 +55,9 @@ class TestSpvRabbitMQ(unittest.TestCase):
             body = str(body, 'utf-8')
             if test_step == 0 and body.startswith("Spv monitor") and body.endswith("started."):
                 test_step += 1
-                channel.basic_publish(exchange=c.rabbitmq.ctrl_exchange,
-                    routing_key='', body='Hello World!')
-                time.sleep(1)
+                # channel.basic_publish(exchange=c.rabbitmq.ctrl_exchange,
+                #     routing_key='', body='Hello World!')
+                # time.sleep(1)
 
         channel.basic_consume(callback, queue=queue_name, no_ack=True)
         recieve_thread = threading.Thread(target=channel.start_consuming)
