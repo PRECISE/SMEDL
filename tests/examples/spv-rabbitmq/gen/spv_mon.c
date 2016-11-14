@@ -31,8 +31,9 @@ const char *spv_check_longitude_states[1] = { "Start" };
 const char *spv_check_distance_states[1] = { "Start" };
 const char *spv_after_end_states[2] = { "Start", "End" };
 const char **spv_states_names[5] = { spv_check_time_states, spv_check_latitude_states, spv_check_longitude_states, spv_check_distance_states, spv_after_end_states };
+int executed_scenarios[5]={ 0,0,0,0,0 };
 
-#define bindingkeyNum 1
+#define bindingkeyNum 2
 
 SpvMonitor* init_spv_monitor( SpvData *d ) {
     SpvMonitor* monitor = (SpvMonitor*)malloc(sizeof(SpvMonitor));
@@ -122,7 +123,11 @@ SpvMonitor* init_spv_monitor( SpvData *d ) {
     // binding several binding keys
     char ** bindingkeys = (char**)malloc(bindingkeyNum*sizeof(char*));
     bindingkeys[0]=(char*)malloc(255*sizeof(char));
-	strcpy(bindingkeys[0],"#");
+	strcpy(bindingkeys[0],"ch1");
+strcat(bindingkeys[0],".#");
+bindingkeys[1]=(char*)malloc(255*sizeof(char));
+	strcpy(bindingkeys[1],"ch2");
+strcat(bindingkeys[1],".#");
 
 
     for(int i = 0; i < bindingkeyNum; i++){
@@ -176,7 +181,32 @@ void start_monitor(SpvMonitor* monitor) {
             if (eventName != NULL) {
                 char e[255];
 
-                
+                if (!strcmp(eventName,"ch1")) {
+                    int tm = 0;
+                    double lat = 0;
+                    double lon = 0;
+                    int ret = 0;
+		cJSON * root = cJSON_Parse(string);
+	cJSON * fmt = cJSON_GetObjectItem(root,"params");
+
+tm= cJSON_GetObjectItem(fmt,"v1")->valueint;
+	lat= cJSON_GetObjectItem(fmt,"v2")->valuedouble;
+	lon= cJSON_GetObjectItem(fmt,"v3")->valuedouble;
+	ret= cJSON_GetObjectItem(fmt,"v4")->valueint;
+	
+                        spv_parse_record(monitor, tm, lat, lon, ret);
+                        printf("spv_parse_record called.\n");
+                }
+                else if (!strcmp(eventName,"ch2")) {
+                    double dist = 0;
+		cJSON * root = cJSON_Parse(string);
+	cJSON * fmt = cJSON_GetObjectItem(root,"params");
+
+dist= cJSON_GetObjectItem(fmt,"v1")->valuedouble;
+	
+                        spv_total_distance(monitor, dist);
+                        printf("spv_total_distance called.\n");
+                }
 
             }
             //free(eventName);
@@ -276,6 +306,10 @@ void executeEvents(SpvMonitor* monitor){
     if(monitor->action_queue == NULL && monitor->export_queue != NULL){
         executeExportedEvent(monitor);
     }
+    if(monitor->action_queue == NULL && monitor->export_queue == NULL){
+        memset(executed_scenarios, 0, sizeof(executed_scenarios));
+    }
+
 }
 
 void executePendingEvents(SpvMonitor* monitor){
@@ -392,6 +426,7 @@ void executeExportedEvent(SpvMonitor* monitor){
  */
 
 void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret) {
+if (executed_scenarios[SPV_CHECK_TIME_SCENARIO]==0) {
   switch (monitor->state[SPV_CHECK_TIME_SCENARIO]) {
     case SPV_CHECK_TIME_START:
       if(ret == -1 || tm > monitor->last_time) {
@@ -408,6 +443,9 @@ void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int r
       raise_error("spv_check_time", spv_states_names[SPV_CHECK_TIME_SCENARIO][monitor->state[SPV_CHECK_TIME_SCENARIO]], "parse_record", "DEFAULT");
       break;
   }
+executed_scenarios[SPV_CHECK_TIME_SCENARIO]=1;
+  }
+if (executed_scenarios[SPV_CHECK_LATITUDE_SCENARIO]==0) {
   switch (monitor->state[SPV_CHECK_LATITUDE_SCENARIO]) {
     case SPV_CHECK_LATITUDE_START:
       if(lat >= -90 && lat <= 90) {
@@ -423,6 +461,9 @@ void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int r
       raise_error("spv_check_latitude", spv_states_names[SPV_CHECK_LATITUDE_SCENARIO][monitor->state[SPV_CHECK_LATITUDE_SCENARIO]], "parse_record", "DEFAULT");
       break;
   }
+executed_scenarios[SPV_CHECK_LATITUDE_SCENARIO]=1;
+  }
+if (executed_scenarios[SPV_CHECK_LONGITUDE_SCENARIO]==0) {
   switch (monitor->state[SPV_CHECK_LONGITUDE_SCENARIO]) {
     case SPV_CHECK_LONGITUDE_START:
       if(lon >= -180 && lon <= +180) {
@@ -438,6 +479,9 @@ void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int r
       raise_error("spv_check_longitude", spv_states_names[SPV_CHECK_LONGITUDE_SCENARIO][monitor->state[SPV_CHECK_LONGITUDE_SCENARIO]], "parse_record", "DEFAULT");
       break;
   }
+executed_scenarios[SPV_CHECK_LONGITUDE_SCENARIO]=1;
+  }
+if (executed_scenarios[SPV_AFTER_END_SCENARIO]==0) {
   switch (monitor->state[SPV_AFTER_END_SCENARIO]) {
     case SPV_AFTER_END_START:
       if(ret == -1) {
@@ -457,6 +501,8 @@ void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int r
       raise_error("spv_after_end", spv_states_names[SPV_AFTER_END_SCENARIO][monitor->state[SPV_AFTER_END_SCENARIO]], "parse_record", "DEFAULT");
       break;
   }
+executed_scenarios[SPV_AFTER_END_SCENARIO]=1;
+  }
 executeEvents(monitor);
 }
 
@@ -473,6 +519,7 @@ void raise_spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon,
 
 
 void spv_total_distance(SpvMonitor* monitor, double dist) {
+if (executed_scenarios[SPV_CHECK_DISTANCE_SCENARIO]==0) {
   switch (monitor->state[SPV_CHECK_DISTANCE_SCENARIO]) {
     case SPV_CHECK_DISTANCE_START:
       if(dist > 0 && dist < 1) {
@@ -487,6 +534,8 @@ void spv_total_distance(SpvMonitor* monitor, double dist) {
     default:
       raise_error("spv_check_distance", spv_states_names[SPV_CHECK_DISTANCE_SCENARIO][monitor->state[SPV_CHECK_DISTANCE_SCENARIO]], "total_distance", "DEFAULT");
       break;
+  }
+executed_scenarios[SPV_CHECK_DISTANCE_SCENARIO]=1;
   }
 executeEvents(monitor);
 }
@@ -517,7 +566,7 @@ cJSON_AddNumberToObject(fmt, "v2",last_time);
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "None", tm, last_time);
+  sprintf(routing_key, "SPV_timestep_error", tm, last_time);
   send_message(monitor, message, routing_key);
 }
 
@@ -550,7 +599,7 @@ void exported_spv_after_end_error(SpvMonitor* monitor) {
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "None");
+  sprintf(routing_key, "SPV_after_end_error");
   send_message(monitor, message, routing_key);
 }
 
@@ -580,7 +629,7 @@ cJSON_AddNumberToObject(fmt, "v1",lat);
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "None");
+  sprintf(routing_key, "SPV_latitude_range_error");
   send_message(monitor, message, routing_key);
 }
 
@@ -612,7 +661,7 @@ cJSON_AddNumberToObject(fmt, "v1",lon);
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "None");
+  sprintf(routing_key, "SPV_longitude_range_error");
   send_message(monitor, message, routing_key);
 }
 
@@ -644,7 +693,7 @@ cJSON_AddNumberToObject(fmt, "v1",dist);
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "None");
+  sprintf(routing_key, "SPV_total_distance_error");
   send_message(monitor, message, routing_key);
 }
 
