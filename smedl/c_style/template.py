@@ -393,17 +393,18 @@ class CTemplater(object):
                 sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
                 # TODO: peter, write functions for printing and parsing monitor identities
                 # this cast is broken and wrong, but works as long as we have only one monitor process
+                
                 for v in mg.identities:
                     sprintf_routing += '.%ld'
 
-                    sprintf_routing += '.'+m
-                    if len(evParams) > 0:
-                        for p in evParams:
-                            # attributes can only be int
-                            if p[0] == 'int':
-                                sprintf_routing += '.%d'
-                            else:
-                                sprintf_routing += '.0'
+                sprintf_routing += '.'+m
+                if len(evParams) > 0:
+                    for p in evParams:
+                        # attributes can only be int
+                        if p[0] == 'int':
+                            sprintf_routing += '.%d'
+                        else:
+                            sprintf_routing += '.0'
 
                 sprintf_routing+='"'
                 for v in mg.identities:
