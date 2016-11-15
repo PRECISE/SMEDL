@@ -164,7 +164,7 @@ class CTemplater(object):
         parameterTypeNumMap['char'] = 0
 
         for m in methods:
-            print(m)
+            #print(m)
             eventFunction = []
             probeFunction = []
             params = ''
