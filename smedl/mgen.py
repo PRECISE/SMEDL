@@ -7,6 +7,7 @@
 # Peter Gebhard (pgeb@seas.upenn.edu)
 #-------------------------------------------------------------------------------
 
+from smedl.__about__ import *
 from .parser import *
 from .fsm import *
 from .c_style import *
@@ -786,7 +787,7 @@ def main():
     parser.add_argument('-d', '--debug', help='Show debug output', action='store_true')
     parser.add_argument('-c', '--console', help='Only output to console, no file output', action='store_true')
     parser.add_argument('--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
-    # TODO: Add version flag
+    parser.add_argument('--version', action='version', version=__version__)
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="The name of the PEDL and SMEDL files to parse")
     parser.add_argument('--arch', metavar="a4smedl_filename", help="The name of architecture file to parse")
     parser.add_argument('--dir', metavar="output_dir", help="Output the generated files to this directory relative to the input files")

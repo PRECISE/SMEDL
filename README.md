@@ -56,7 +56,7 @@ used by the monitor during its generation steps and the '-d' flag for
 outputting various debug statements written in the monitor generator code.
 
 Other useful flags:
-
+      --version : The current mgen version number
       --helper <HEADER FILE> : Include the specified header file for providing helper functions
       --console : Forces output to only show in the console; no file output will be generated
       --noimplicit : Disables implicit error handling in the generated monitor

@@ -11,33 +11,40 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
+from smedl.__about__ import *
+
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+# Get the dependencies from the requirements file
+with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
+    reqs = [line.rstrip('\n') for line in f]
+
+print(reqs)
+
 setup(
-    name='smedl',
+    name=__title__,
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.0.0.dev4',
+    version=__version__,
 
-    description='A tool for generating software monitors from SMEDL and PEDL \
-        definitions',
+    description=__summary__,
     long_description=long_description,
 
     # The project's main homepage.
-    url='TBD',
+    url=__uri__,
 
     # Author details
-    author='PRECISE Center at the University of Pennsylvania',
-    author_email='pgeb@seas.upenn.edu',
+    author=__author__,
+    author_email=__email__,
 
     # Choose your license
-    license='TBD',
+    license=__license__,
 
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
@@ -76,26 +83,16 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=[
-        'grako==3.14',
-        'Jinja2>=2.8',
-        'MarkupSafe>=0.23',
-        'mccabe>=0.5',
-        'nose>=1.3.7',
-        'pyelftools',
-        'pika',
-        'pylibconfig2==0.2.5',
-        'pyparsing'
-    ],
+    install_requires=reqs,
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
     # for example:
     # $ pip install -e .[dev,test]
-#     extras_require={
-#         'dev': ['check-manifest'],
-#         'test': ['coverage'],
-#     },
+    #     extras_require={
+    #         'dev': ['check-manifest'],
+    #         'test': ['coverage'],
+    #     },
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.  If using Python 2.6 or less, then these
