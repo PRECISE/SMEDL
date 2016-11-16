@@ -27,6 +27,7 @@ const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{
 int executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
 
 #define bindingkeyNum {{ bindingkeys_num }}
+#define msg_format_version {{ msg_format_version }}
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor( {{ obj|title }}Data *d ) {
     {{ obj|title }}Monitor* monitor = ({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));

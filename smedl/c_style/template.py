@@ -1,6 +1,7 @@
 import re, os, collections
 from jinja2 import Environment, PackageLoader
 import smedl.mgen
+from smedl.__about__ import *
 
 class CTemplater(object):
     @staticmethod
@@ -22,6 +23,7 @@ class CTemplater(object):
             id['c_type'] = CTemplater.convertTypeForC(id['type'])
 
         values = dict()
+        values['msg_format_version'] = __msg_format_version__
         values['multithreaded'] = True # command line arg for this?
         values['identities'] = identities
         values['obj'] = obj
@@ -33,7 +35,7 @@ class CTemplater(object):
         values['base_file_name'] = os.path.splitext(os.path.basename(filename))[0]
         values['identities_names'] = ['%s_%s' % (obj.upper(), i['name'].upper()) for i in identities]
         values['identities_types'] = [i['type'].upper() for i in identities]
-        
+
         #construct array executed_sceanrios
         values['num_scenarios'] = len(list(allFSMs.keys()))
         zeroString = ''
@@ -393,7 +395,7 @@ class CTemplater(object):
                 sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
                 # TODO: peter, write functions for printing and parsing monitor identities
                 # this cast is broken and wrong, but works as long as we have only one monitor process
-                
+
                 for v in mg.identities:
                     sprintf_routing += '.%ld'
 
@@ -835,7 +837,7 @@ class CTemplater(object):
             #if len(paramString) >0 :
             #for p in mg._getEventParams(paramString):
             #   print('name2:'+p[1]+'\n')
-        
+
         if len(paramString) > 0:
             paramString = obj.title() + "Monitor* monitor " + paramString
         else:
