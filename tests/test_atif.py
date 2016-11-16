@@ -48,15 +48,41 @@ class TestAtif(unittest.TestCase):
         channel.exchange_declare(exchange=c.rabbitmq.ctrl_exchange, exchange_type='fanout', durable=True)
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
-        channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name)
+        channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name,routing_key='#')
         
+        
+        channel1 = connection.channel()
+        channel1.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
+        result1 = channel1.queue_declare(exclusive=True)
+        queue_name1 = result1.method.queue
+        channel1.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='ch2.#')
+        
+        
+
         def callback(ch, method, properties, body):
             global test_step
             body = str(body, 'utf-8')
-            if test_step == 0 and body.startswith("Ratecomputation monitor") and body.endswith("started."):
+            print(body)
+            if test_step == 0:
                 test_step += 1
-        # channel.basic_publish(exchange=c.rabbitmq.ctrl_exchange,
-        #     routing_key='', body='Hello World!')
+            if test_step == 1:
+                test_step += 1
+                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                routing_key='ch3.foo', body="{\"name\":\"0\", \"params\":{\"v1\": \"0\", \"v2\":1.0, \"v3\":0}}")
+                #sleep(1)
+                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                routing_key='ch3.foo', body="{\"name\":\"0\", \"params\":{\"v1\": \"0\", \"v2\":2.0, \"v3\":1000}}")
+                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                routing_key='ch3.foo', body="{\"name\":\"0\", \"params\":{\"v1\": \"0\", \"v2\":3.0, \"v3\":2000}}")
+                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                routing_key='ch4.foo', body="{\"name\":\"timeout\"}")
+            #elif test_step == 2 and "\"v1\":	\"0\"" in body and "\"v2\":	3" in body and "\"v3\":	1500" in body:
+            elif test_step == 2:
+                #print(body)
+                test_step += 1
+            elif test_step == 3 and "thresholdcrossdetection_thresholdWarning" in body:
+                test_step += 1
+                
         # time.sleep(1)
         # def callback(ch, method, properties, body):
         #     print(" [x] %r" % body)
@@ -69,14 +95,37 @@ class TestAtif(unittest.TestCase):
         channel.basic_consume(callback, queue=queue_name, no_ack=True)
         recieve_thread = threading.Thread(target=channel.start_consuming)
         recieve_thread.start()
+
+        channel1.basic_consume(callback, queue=queue_name1, no_ack=True)
+        recieve_thread1 = threading.Thread(target=channel1.start_consuming)
+        recieve_thread1.start()
+
         if connection is None:
             self.fail()
+
         call = subprocess.Popen("../bin/stringRate", shell=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        call2 = subprocess.Popen("../bin/stringThresh", shell=True,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        call3 = subprocess.Popen("../bin/adaptationTrigger", shell=True,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+#self.terminate_thread(recieve_thread)
+
+
         time.sleep(1)
+        
+
+
         call.terminate()
+        call2.terminate()
+        call3.terminate()
         self.terminate_thread(recieve_thread)
-        self.assertEqual(1, test_step)
+        self.terminate_thread(recieve_thread1)
+        self.assertEqual(4, test_step)
 
     def terminate_thread(self, thread):
         """Terminates a python thread from another thread.
