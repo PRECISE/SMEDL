@@ -1,7 +1,6 @@
 --tests/examples/basics/state_mon.h--
 #include "monitor_map.h"
 #include "actions.h"
-#include <libconfig.h>
 #include <amqp_tcp_socket.h>
 #include <amqp.h>
 #include <amqp_framing.h>
@@ -50,7 +49,7 @@ void free_monitor(StateMonitor*);
  * Monitor Event Handlers
  */
 void state_foo(StateMonitor* monitor, int x);
-void raise_state_foo(StateMonitor* monitor, int x);
+void raise_state_foo(StateMonitor* monitor, int v0);
 
 /*
  * Monitor Utility Functions
@@ -64,7 +63,6 @@ int add_state_monitor_to_map(StateMonitor*, int);
 int put_state_monitor(StateMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
-void output_config_error(config_t cfg);
 void executePendingEvents(StateMonitor* monitor);
 void executeEvents(StateMonitor* monitor);
 void executeExportedEvent(StateMonitor* monitor);
@@ -80,8 +78,9 @@ void executeExportedEvent(StateMonitor* monitor);
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <libconfig.h>
-#include "utils.h"
+#include "amqp_utils.h"
 #include "cJSON.h"
+#include "mon_utils.h"
 #include "state_mon.h"
 
 typedef enum { STATE_ID } state_identity;
@@ -93,8 +92,10 @@ typedef enum { STATE_FOO_EVENT } state_event;
 typedef enum { STATE_DEFAULT } state_error;
 const char *state_sc1_states[1] = { "Min1" };
 const char **state_states_names[1] = { state_sc1_states };
+int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 1
+#define msg_format_version 1
 
 StateMonitor* init_state_monitor( StateData *d ) {
     StateMonitor* monitor = (StateMonitor*)malloc(sizeof(StateMonitor));
@@ -196,27 +197,6 @@ StateMonitor* init_state_monitor( StateData *d ) {
     put_state_monitor(monitor);
     return monitor;
 }
-
-// returns null if the given string isn't a properly-terminated c string
-char *getEventName(char *str, size_t maxlen) {
-    // make sure that str is really a cstring before trying to copy from it.
-    size_t len = strnlen(str, maxlen);
-    if (len >= maxlen) {
-        return NULL;
-    }
-    return strtok(str, ' ');
-}
-
-// returns null if the given string isn't a properly-terminated c string
-char *getConnName(char *str, size_t maxlen) {
-    // make sure that str is really a cstring before trying to copy from it.
-    size_t len = strnlen(str, maxlen);
-    if (len >= maxlen) {
-        return NULL;
-    }
-    return strtok(str, '.');
-}
-
 
 void start_monitor(StateMonitor* monitor) {
     int received = 0;
@@ -355,6 +335,10 @@ void executeEvents(StateMonitor* monitor){
     if(monitor->action_queue == NULL && monitor->export_queue != NULL){
         executeExportedEvent(monitor);
     }
+    if(monitor->action_queue == NULL && monitor->export_queue == NULL){
+        memset(executed_scenarios, 0, sizeof(executed_scenarios));
+    }
+
 }
 
 void executePendingEvents(StateMonitor* monitor){
@@ -391,6 +375,7 @@ void executeExportedEvent(StateMonitor* monitor){
  */
 
 void state_foo(StateMonitor* monitor, int x) {
+if (executed_scenarios[STATE_SC1_SCENARIO]==0) {
   switch (monitor->state[STATE_SC1_SCENARIO]) {
     case STATE_SC1_MIN1:
       monitor->state[STATE_SC1_SCENARIO] = STATE_SC1_MIN1;
@@ -400,14 +385,16 @@ void state_foo(StateMonitor* monitor, int x) {
       raise_error("state_sc1", state_states_names[STATE_SC1_SCENARIO][monitor->state[STATE_SC1_SCENARIO]], "foo", "DEFAULT");
       break;
   }
+executed_scenarios[STATE_SC1_SCENARIO]=1;
+  }
 executeEvents(monitor);
 }
 
 
 
-void raise_state_foo(StateMonitor* monitor, int x) {
+void raise_state_foo(StateMonitor* monitor, int v0) {
   param *p_head = NULL;
-  push_param(&p_head, &x, NULL, NULL, NULL);
+  push_param(&p_head, &v0, NULL, NULL, NULL);
   push_action(&monitor->action_queue, STATE_FOO_EVENT, p_head);
 }
 
@@ -500,10 +487,6 @@ StateMonitorRecord* filter_state_monitors_by_identity(StateMonitorRecord* before
     return results;
 }
 
-void raise_error(char *scen, const char *state, char *action, char *type) {
-    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
-}
-
 char* monitor_identities_str(MonitorIdentity** identities) {
     char* out = malloc(20*STATE_MONITOR_IDENTITIES);
     out[0] = '\0';
@@ -519,13 +502,6 @@ char* monitor_identities_str(MonitorIdentity** identities) {
         free(monid_str);
     }
     return out;
-}
-
-void output_config_error(config_t cfg) {
-    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-        config_error_line(&cfg), config_error_text(&cfg));
-    config_destroy(&cfg);
-    exit(EXIT_FAILURE);
 }
 --actions.h--
 #ifndef ACTIONS_H
@@ -3109,10 +3085,13 @@ char* monitor_identity_str(MonitorIdentity *id) {
     }
     return out;
 }
---utils.h--
+--amqp_utils.h--
 /* vim:set ft=c ts=2 sw=2 sts=2 et cindent: */
-#ifndef librabbitmq_examples_utils_h
-#define librabbitmq_examples_utils_h
+#ifndef librabbitmq_utils_h
+#define librabbitmq_utils_h
+
+#include <stdint.h>
+#include <amqp.h>
 
 /*
  * ***** BEGIN LICENSE BLOCK *****
@@ -3159,7 +3138,7 @@ extern uint64_t now_microseconds(void);
 extern void microsleep(int usec);
 
 #endif
---utils.c--
+--amqp_utils.c--
 /* vim:set ft=c ts=2 sw=2 sts=2 et cindent: */
 /*
  * ***** BEGIN LICENSE BLOCK *****
@@ -3203,7 +3182,7 @@ extern void microsleep(int usec);
 #include <ctype.h>
 
 #include <stdint.h>
-#include <amqp.h>
+#include <amqp.h> 
 #include <amqp_framing.h>
 
 #include <time.h>
@@ -3370,4 +3349,31 @@ void amqp_dump(void const *buffer, size_t len)
   if (numinrow != 0) {
     printf("%08lX:\n", count);
   }
+}
+--mon_utils.h--
+#ifndef MON_UTILS_H
+#define MON_UTILS_H
+
+#include <libconfig.h>
+#include "cJSON.h"
+
+void output_config_error(config_t cfg);
+void raise_error(char*, const char*, char*, char*);
+
+#endif
+--mon_utils.c--
+#include <stdio.h>
+#include <stdlib.h>
+#include "mon_utils.h"
+#include "cJSON.h"
+
+void output_config_error(config_t cfg) {
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+        config_error_line(&cfg), config_error_text(&cfg));
+    config_destroy(&cfg);
+    exit(EXIT_FAILURE);
+}
+
+void raise_error(char *scen, const char *state, char *action, char *type) {
+    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
 }

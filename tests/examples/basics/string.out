@@ -1,7 +1,6 @@
 --tests/examples/basics/string_mon.h--
 #include "monitor_map.h"
 #include "actions.h"
-#include <libconfig.h>
 #include <amqp_tcp_socket.h>
 #include <amqp.h>
 #include <amqp_framing.h>
@@ -50,7 +49,7 @@ void free_monitor(StringtestMonitor*);
  * Monitor Event Handlers
  */
 void stringtest_ping(StringtestMonitor* monitor, char* st, int x);
-void raise_stringtest_ping(StringtestMonitor* monitor, char* st, int x);
+void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1);
 
 /*
  * Monitor Utility Functions
@@ -64,7 +63,6 @@ int add_stringtest_monitor_to_map(StringtestMonitor*, int);
 int put_stringtest_monitor(StringtestMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
-void output_config_error(config_t cfg);
 void executePendingEvents(StringtestMonitor* monitor);
 void executeEvents(StringtestMonitor* monitor);
 void executeExportedEvent(StringtestMonitor* monitor);
@@ -80,8 +78,9 @@ void executeExportedEvent(StringtestMonitor* monitor);
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <libconfig.h>
-#include "utils.h"
+#include "amqp_utils.h"
 #include "cJSON.h"
+#include "mon_utils.h"
 #include "string_mon.h"
 
 typedef enum { STRINGTEST_ID } stringtest_identity;
@@ -93,8 +92,10 @@ typedef enum { STRINGTEST_PING_EVENT } stringtest_event;
 typedef enum { STRINGTEST_DEFAULT } stringtest_error;
 const char *stringtest_sc1_states[2] = { "Start", "End" };
 const char **stringtest_states_names[1] = { stringtest_sc1_states };
+int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 1
+#define msg_format_version 1
 
 StringtestMonitor* init_stringtest_monitor( StringtestData *d ) {
     StringtestMonitor* monitor = (StringtestMonitor*)malloc(sizeof(StringtestMonitor));
@@ -195,27 +196,6 @@ StringtestMonitor* init_stringtest_monitor( StringtestData *d ) {
     put_stringtest_monitor(monitor);
     return monitor;
 }
-
-// returns null if the given string isn't a properly-terminated c string
-char *getEventName(char *str, size_t maxlen) {
-    // make sure that str is really a cstring before trying to copy from it.
-    size_t len = strnlen(str, maxlen);
-    if (len >= maxlen) {
-        return NULL;
-    }
-    return strtok(str, ' ');
-}
-
-// returns null if the given string isn't a properly-terminated c string
-char *getConnName(char *str, size_t maxlen) {
-    // make sure that str is really a cstring before trying to copy from it.
-    size_t len = strnlen(str, maxlen);
-    if (len >= maxlen) {
-        return NULL;
-    }
-    return strtok(str, '.');
-}
-
 
 void start_monitor(StringtestMonitor* monitor) {
     int received = 0;
@@ -354,6 +334,10 @@ void executeEvents(StringtestMonitor* monitor){
     if(monitor->action_queue == NULL && monitor->export_queue != NULL){
         executeExportedEvent(monitor);
     }
+    if(monitor->action_queue == NULL && monitor->export_queue == NULL){
+        memset(executed_scenarios, 0, sizeof(executed_scenarios));
+    }
+
 }
 
 void executePendingEvents(StringtestMonitor* monitor){
@@ -390,6 +374,7 @@ void executeExportedEvent(StringtestMonitor* monitor){
  */
 
 void stringtest_ping(StringtestMonitor* monitor, char* st, int x) {
+if (executed_scenarios[STRINGTEST_SC1_SCENARIO]==0) {
   switch (monitor->state[STRINGTEST_SC1_SCENARIO]) {
     case STRINGTEST_SC1_START:
       if(x == 1) {
@@ -404,15 +389,17 @@ void stringtest_ping(StringtestMonitor* monitor, char* st, int x) {
       raise_error("stringtest_sc1", stringtest_states_names[STRINGTEST_SC1_SCENARIO][monitor->state[STRINGTEST_SC1_SCENARIO]], "ping", "DEFAULT");
       break;
   }
+executed_scenarios[STRINGTEST_SC1_SCENARIO]=1;
+  }
 executeEvents(monitor);
 }
 
 
 
-void raise_stringtest_ping(StringtestMonitor* monitor, char* st, int x) {
+void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1) {
   param *p_head = NULL;
-  push_param(&p_head, NULL, NULL, NULL, &st);
-  push_param(&p_head, &x, NULL, NULL, NULL);
+  push_param(&p_head, NULL, NULL, NULL, &v0);
+  push_param(&p_head, &v1, NULL, NULL, NULL);
   push_action(&monitor->action_queue, STRINGTEST_PING_EVENT, p_head);
 }
 
@@ -505,10 +492,6 @@ StringtestMonitorRecord* filter_stringtest_monitors_by_identity(StringtestMonito
     return results;
 }
 
-void raise_error(char *scen, const char *state, char *action, char *type) {
-    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
-}
-
 char* monitor_identities_str(MonitorIdentity** identities) {
     char* out = malloc(20*STRINGTEST_MONITOR_IDENTITIES);
     out[0] = '\0';
@@ -524,13 +507,6 @@ char* monitor_identities_str(MonitorIdentity** identities) {
         free(monid_str);
     }
     return out;
-}
-
-void output_config_error(config_t cfg) {
-    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-        config_error_line(&cfg), config_error_text(&cfg));
-    config_destroy(&cfg);
-    exit(EXIT_FAILURE);
 }
 --actions.h--
 #ifndef ACTIONS_H
@@ -3114,10 +3090,13 @@ char* monitor_identity_str(MonitorIdentity *id) {
     }
     return out;
 }
---utils.h--
+--amqp_utils.h--
 /* vim:set ft=c ts=2 sw=2 sts=2 et cindent: */
-#ifndef librabbitmq_examples_utils_h
-#define librabbitmq_examples_utils_h
+#ifndef librabbitmq_utils_h
+#define librabbitmq_utils_h
+
+#include <stdint.h>
+#include <amqp.h>
 
 /*
  * ***** BEGIN LICENSE BLOCK *****
@@ -3164,7 +3143,7 @@ extern uint64_t now_microseconds(void);
 extern void microsleep(int usec);
 
 #endif
---utils.c--
+--amqp_utils.c--
 /* vim:set ft=c ts=2 sw=2 sts=2 et cindent: */
 /*
  * ***** BEGIN LICENSE BLOCK *****
@@ -3208,7 +3187,7 @@ extern void microsleep(int usec);
 #include <ctype.h>
 
 #include <stdint.h>
-#include <amqp.h>
+#include <amqp.h> 
 #include <amqp_framing.h>
 
 #include <time.h>
@@ -3375,4 +3354,31 @@ void amqp_dump(void const *buffer, size_t len)
   if (numinrow != 0) {
     printf("%08lX:\n", count);
   }
+}
+--mon_utils.h--
+#ifndef MON_UTILS_H
+#define MON_UTILS_H
+
+#include <libconfig.h>
+#include "cJSON.h"
+
+void output_config_error(config_t cfg);
+void raise_error(char*, const char*, char*, char*);
+
+#endif
+--mon_utils.c--
+#include <stdio.h>
+#include <stdlib.h>
+#include "mon_utils.h"
+#include "cJSON.h"
+
+void output_config_error(config_t cfg) {
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+        config_error_line(&cfg), config_error_text(&cfg));
+    config_destroy(&cfg);
+    exit(EXIT_FAILURE);
+}
+
+void raise_error(char *scen, const char *state, char *action, char *type) {
+    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
 }

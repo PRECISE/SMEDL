@@ -56,14 +56,14 @@ void free_monitor(RatecomputationMonitor*);
  * Monitor Event Handlers
  */
 void ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* metric, double ts, double val);
-void raise_ratecomputation_dataUpdate(RatecomputationMonitor* monitor ,char* v0,double v1,double v2);
+void raise_ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* v0, double v1, double v2);
 void ratecomputation_timeout(RatecomputationMonitor* monitor);
 void raise_ratecomputation_timeout(RatecomputationMonitor* monitor);
 void ratecomputation_end(RatecomputationMonitor* monitor);
 void raise_ratecomputation_end(RatecomputationMonitor* monitor);
 void ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* name, double curTime, double rate);
-void exported_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor ,char* v0,double v1,double v2);
-void raise_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor ,char* v0,double v1,double v2);
+void exported_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor , char* v0, double v1, double v2);
+void raise_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* v0, double v1, double v2);
 
 /*
  * Monitor Utility Functions

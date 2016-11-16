@@ -48,24 +48,24 @@ void free_monitor(SpvMonitor*);
  * Monitor Event Handlers
  */
 void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret);
-void raise_spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret);
+void raise_spv_parse_record(SpvMonitor* monitor, int v0, double v1, double v2, int v3);
 void spv_total_distance(SpvMonitor* monitor, double dist);
-void raise_spv_total_distance(SpvMonitor* monitor, double dist);
+void raise_spv_total_distance(SpvMonitor* monitor, double v0);
 void spv_timestep_error(SpvMonitor* monitor, int tm, int last_time);
-void exported_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time);
-void raise_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time);
+void exported_spv_timestep_error(SpvMonitor* monitor , int v0, int v1);
+void raise_spv_timestep_error(SpvMonitor* monitor, int v0, int v1);
 void spv_after_end_error(SpvMonitor* monitor);
-void exported_spv_after_end_error(SpvMonitor* monitor);
+void exported_spv_after_end_error(SpvMonitor* monitor );
 void raise_spv_after_end_error(SpvMonitor* monitor);
 void spv_latitude_range_error(SpvMonitor* monitor, double lat);
-void exported_spv_latitude_range_error(SpvMonitor* monitor, double lat);
-void raise_spv_latitude_range_error(SpvMonitor* monitor, double lat);
+void exported_spv_latitude_range_error(SpvMonitor* monitor , double v0);
+void raise_spv_latitude_range_error(SpvMonitor* monitor, double v0);
 void spv_longitude_range_error(SpvMonitor* monitor, double lon);
-void exported_spv_longitude_range_error(SpvMonitor* monitor, double lon);
-void raise_spv_longitude_range_error(SpvMonitor* monitor, double lon);
+void exported_spv_longitude_range_error(SpvMonitor* monitor , double v0);
+void raise_spv_longitude_range_error(SpvMonitor* monitor, double v0);
 void spv_total_distance_error(SpvMonitor* monitor, double dist);
-void exported_spv_total_distance_error(SpvMonitor* monitor, double dist);
-void raise_spv_total_distance_error(SpvMonitor* monitor, double dist);
+void exported_spv_total_distance_error(SpvMonitor* monitor , double v0);
+void raise_spv_total_distance_error(SpvMonitor* monitor, double v0);
 
 /*
  * Monitor Utility Functions

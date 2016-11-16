@@ -27,6 +27,7 @@ const char **thresholdcrossdetection_states_names[1] = { thresholdcrossdetection
 int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 1
+#define msg_format_version 1
 
 ThresholdcrossdetectionMonitor* init_thresholdcrossdetection_monitor( ThresholdcrossdetectionData *d ) {
     ThresholdcrossdetectionMonitor* monitor = (ThresholdcrossdetectionMonitor*)malloc(sizeof(ThresholdcrossdetectionMonitor));
@@ -310,7 +311,7 @@ void executePendingEvents(ThresholdcrossdetectionMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		thresholdcrossdetection_thresholdWarning(monitor,v0,i0);
+		thresholdcrossdetection_thresholdWarning(monitor, v0, i0);
 
                 break;
             }
@@ -334,7 +335,7 @@ void executeExportedEvent(ThresholdcrossdetectionMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_thresholdcrossdetection_thresholdWarning(monitor,v0,i0);
+		exported_thresholdcrossdetection_thresholdWarning(monitor, v0, i0);
 
                 break;
             }
@@ -399,7 +400,7 @@ executeEvents(monitor);
 
 
 
-void raise_thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor ,char* v0,double v1,double v2) {
+void raise_thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* v0, double v1, double v2) {
   param *p_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0);
   push_param(&p_head, NULL, NULL, &v1, NULL);
@@ -444,7 +445,7 @@ executeEvents(monitor);
 }
 
 
-void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor ,char* v0,int v1) {
+void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor , char* v0, int v1) {
   char* message;
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
@@ -462,7 +463,7 @@ message = cJSON_Print(root);
 
 
 
-void raise_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor ,char* v0,int v1) {
+void raise_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* v0, int v1) {
   param *p_head = NULL;
  param *ep_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0);

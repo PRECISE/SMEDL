@@ -56,12 +56,12 @@ void free_monitor(ThresholdcrossdetectionMonitor*);
  * Monitor Event Handlers
  */
 void thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* n, double ts, double val);
-void raise_thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor ,char* v0,double v1,double v2);
+void raise_thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* v0, double v1, double v2);
 void thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor);
 void raise_thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor);
 void thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* name, int trigger);
-void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor ,char* v0,int v1);
-void raise_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor ,char* v0,int v1);
+void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor , char* v0, int v1);
+void raise_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* v0, int v1);
 
 /*
  * Monitor Utility Functions

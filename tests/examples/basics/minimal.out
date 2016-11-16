@@ -1,7 +1,6 @@
 --tests/examples/basics/minimal_mon.h--
 #include "monitor_map.h"
 #include "actions.h"
-#include <libconfig.h>
 #include <amqp_tcp_socket.h>
 #include <amqp.h>
 #include <amqp_framing.h>
@@ -64,7 +63,6 @@ int add_minimal_monitor_to_map(MinimalMonitor*, int);
 int put_minimal_monitor(MinimalMonitor*); //puts into all maps
 void raise_error(char*, const char*, char*, char*);
 char* monitor_identities_str(MonitorIdentity**);
-void output_config_error(config_t cfg);
 void executePendingEvents(MinimalMonitor* monitor);
 void executeEvents(MinimalMonitor* monitor);
 void executeExportedEvent(MinimalMonitor* monitor);
@@ -80,8 +78,9 @@ void executeExportedEvent(MinimalMonitor* monitor);
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <libconfig.h>
-#include "utils.h"
+#include "amqp_utils.h"
 #include "cJSON.h"
+#include "mon_utils.h"
 #include "minimal_mon.h"
 
 typedef enum { MINIMAL_ID } minimal_identity;
@@ -93,8 +92,10 @@ typedef enum { MINIMAL_FOO_EVENT } minimal_event;
 typedef enum { MINIMAL_DEFAULT } minimal_error;
 const char *minimal_sc1_states[1] = { "Min" };
 const char **minimal_states_names[1] = { minimal_sc1_states };
+int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 1
+#define msg_format_version 1
 
 MinimalMonitor* init_minimal_monitor( MinimalData *d ) {
     MinimalMonitor* monitor = (MinimalMonitor*)malloc(sizeof(MinimalMonitor));
@@ -195,27 +196,6 @@ MinimalMonitor* init_minimal_monitor( MinimalData *d ) {
     put_minimal_monitor(monitor);
     return monitor;
 }
-
-// returns null if the given string isn't a properly-terminated c string
-char *getEventName(char *str, size_t maxlen) {
-    // make sure that str is really a cstring before trying to copy from it.
-    size_t len = strnlen(str, maxlen);
-    if (len >= maxlen) {
-        return NULL;
-    }
-    return strtok(str, ' ');
-}
-
-// returns null if the given string isn't a properly-terminated c string
-char *getConnName(char *str, size_t maxlen) {
-    // make sure that str is really a cstring before trying to copy from it.
-    size_t len = strnlen(str, maxlen);
-    if (len >= maxlen) {
-        return NULL;
-    }
-    return strtok(str, '.');
-}
-
 
 void start_monitor(MinimalMonitor* monitor) {
     int received = 0;
@@ -354,6 +334,10 @@ void executeEvents(MinimalMonitor* monitor){
     if(monitor->action_queue == NULL && monitor->export_queue != NULL){
         executeExportedEvent(monitor);
     }
+    if(monitor->action_queue == NULL && monitor->export_queue == NULL){
+        memset(executed_scenarios, 0, sizeof(executed_scenarios));
+    }
+
 }
 
 void executePendingEvents(MinimalMonitor* monitor){
@@ -390,6 +374,7 @@ void executeExportedEvent(MinimalMonitor* monitor){
  */
 
 void minimal_foo(MinimalMonitor* monitor) {
+if (executed_scenarios[MINIMAL_SC1_SCENARIO]==0) {
   switch (monitor->state[MINIMAL_SC1_SCENARIO]) {
     case MINIMAL_SC1_MIN:
       monitor->state[MINIMAL_SC1_SCENARIO] = MINIMAL_SC1_MIN;
@@ -398,6 +383,8 @@ void minimal_foo(MinimalMonitor* monitor) {
     default:
       raise_error("minimal_sc1", minimal_states_names[MINIMAL_SC1_SCENARIO][monitor->state[MINIMAL_SC1_SCENARIO]], "foo", "DEFAULT");
       break;
+  }
+executed_scenarios[MINIMAL_SC1_SCENARIO]=1;
   }
 executeEvents(monitor);
 }
@@ -498,10 +485,6 @@ MinimalMonitorRecord* filter_minimal_monitors_by_identity(MinimalMonitorRecord* 
     return results;
 }
 
-void raise_error(char *scen, const char *state, char *action, char *type) {
-    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
-}
-
 char* monitor_identities_str(MonitorIdentity** identities) {
     char* out = malloc(20*MINIMAL_MONITOR_IDENTITIES);
     out[0] = '\0';
@@ -517,13 +500,6 @@ char* monitor_identities_str(MonitorIdentity** identities) {
         free(monid_str);
     }
     return out;
-}
-
-void output_config_error(config_t cfg) {
-    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
-        config_error_line(&cfg), config_error_text(&cfg));
-    config_destroy(&cfg);
-    exit(EXIT_FAILURE);
 }
 --actions.h--
 #ifndef ACTIONS_H
@@ -3107,10 +3083,13 @@ char* monitor_identity_str(MonitorIdentity *id) {
     }
     return out;
 }
---utils.h--
+--amqp_utils.h--
 /* vim:set ft=c ts=2 sw=2 sts=2 et cindent: */
-#ifndef librabbitmq_examples_utils_h
-#define librabbitmq_examples_utils_h
+#ifndef librabbitmq_utils_h
+#define librabbitmq_utils_h
+
+#include <stdint.h>
+#include <amqp.h>
 
 /*
  * ***** BEGIN LICENSE BLOCK *****
@@ -3157,7 +3136,7 @@ extern uint64_t now_microseconds(void);
 extern void microsleep(int usec);
 
 #endif
---utils.c--
+--amqp_utils.c--
 /* vim:set ft=c ts=2 sw=2 sts=2 et cindent: */
 /*
  * ***** BEGIN LICENSE BLOCK *****
@@ -3201,7 +3180,7 @@ extern void microsleep(int usec);
 #include <ctype.h>
 
 #include <stdint.h>
-#include <amqp.h>
+#include <amqp.h> 
 #include <amqp_framing.h>
 
 #include <time.h>
@@ -3368,4 +3347,31 @@ void amqp_dump(void const *buffer, size_t len)
   if (numinrow != 0) {
     printf("%08lX:\n", count);
   }
+}
+--mon_utils.h--
+#ifndef MON_UTILS_H
+#define MON_UTILS_H
+
+#include <libconfig.h>
+#include "cJSON.h"
+
+void output_config_error(config_t cfg);
+void raise_error(char*, const char*, char*, char*);
+
+#endif
+--mon_utils.c--
+#include <stdio.h>
+#include <stdlib.h>
+#include "mon_utils.h"
+#include "cJSON.h"
+
+void output_config_error(config_t cfg) {
+    fprintf(stderr, "%s:%d - %s\n", config_error_file(&cfg),
+        config_error_line(&cfg), config_error_text(&cfg));
+    config_destroy(&cfg);
+    exit(EXIT_FAILURE);
+}
+
+void raise_error(char *scen, const char *state, char *action, char *type) {
+    printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
 }

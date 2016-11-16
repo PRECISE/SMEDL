@@ -27,6 +27,7 @@ const char **ratecomputation_states_names[1] = { ratecomputation_computation_sta
 int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 3
+#define msg_format_version 1
 
 RatecomputationMonitor* init_ratecomputation_monitor( RatecomputationData *d ) {
     RatecomputationMonitor* monitor = (RatecomputationMonitor*)malloc(sizeof(RatecomputationMonitor));
@@ -325,7 +326,7 @@ void executePendingEvents(RatecomputationMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		ratecomputation_dataUpdate2(monitor,v0,d0,d1);
+		ratecomputation_dataUpdate2(monitor, v0, d0, d1);
 
                 break;
             }
@@ -351,7 +352,7 @@ void executeExportedEvent(RatecomputationMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_ratecomputation_dataUpdate2(monitor,v0,d0,d1);
+		exported_ratecomputation_dataUpdate2(monitor, v0, d0, d1);
 
                 break;
             }
@@ -402,7 +403,7 @@ executeEvents(monitor);
 
 
 
-void raise_ratecomputation_dataUpdate(RatecomputationMonitor* monitor ,char* v0,double v1,double v2) {
+void raise_ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* v0, double v1, double v2) {
   param *p_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0);
   push_param(&p_head, NULL, NULL, &v1, NULL);
@@ -481,7 +482,7 @@ executeEvents(monitor);
 }
 
 
-void exported_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor ,char* v0,double v1,double v2) {
+void exported_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor , char* v0, double v1, double v2) {
   char* message;
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
@@ -500,7 +501,7 @@ message = cJSON_Print(root);
 
 
 
-void raise_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor ,char* v0,double v1,double v2) {
+void raise_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* v0, double v1, double v2) {
   param *p_head = NULL;
  param *ep_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0);

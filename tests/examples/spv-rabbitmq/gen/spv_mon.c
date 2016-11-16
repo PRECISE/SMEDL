@@ -34,6 +34,7 @@ const char **spv_states_names[5] = { spv_check_time_states, spv_check_latitude_s
 int executed_scenarios[5]={ 0,0,0,0,0 };
 
 #define bindingkeyNum 2
+#define msg_format_version 1
 
 SpvMonitor* init_spv_monitor( SpvData *d ) {
     SpvMonitor* monitor = (SpvMonitor*)malloc(sizeof(SpvMonitor));
@@ -327,7 +328,7 @@ void executePendingEvents(SpvMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		spv_timestep_error(monitor,i0,i1);
+		spv_timestep_error(monitor, i0, i1);
 
                 break;
             case SPV_AFTER_END_ERROR_EVENT:
@@ -341,7 +342,7 @@ void executePendingEvents(SpvMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		spv_latitude_range_error(monitor,d0);
+		spv_latitude_range_error(monitor, d0);
 
                 break;
             case SPV_LONGITUDE_RANGE_ERROR_EVENT:
@@ -349,7 +350,7 @@ void executePendingEvents(SpvMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		spv_longitude_range_error(monitor,d0);
+		spv_longitude_range_error(monitor, d0);
 
                 break;
             case SPV_TOTAL_DISTANCE_ERROR_EVENT:
@@ -357,7 +358,7 @@ void executePendingEvents(SpvMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		spv_total_distance_error(monitor,d0);
+		spv_total_distance_error(monitor, d0);
 
                 break;
             }
@@ -381,7 +382,7 @@ void executeExportedEvent(SpvMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_spv_timestep_error(monitor,i0,i1);
+		exported_spv_timestep_error(monitor, i0, i1);
 
                 break;
             case SPV_AFTER_END_ERROR_EVENT:
@@ -395,7 +396,7 @@ void executeExportedEvent(SpvMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_spv_latitude_range_error(monitor,d0);
+		exported_spv_latitude_range_error(monitor, d0);
 
                 break;
             case SPV_LONGITUDE_RANGE_ERROR_EVENT:
@@ -403,7 +404,7 @@ void executeExportedEvent(SpvMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_spv_longitude_range_error(monitor,d0);
+		exported_spv_longitude_range_error(monitor, d0);
 
                 break;
             case SPV_TOTAL_DISTANCE_ERROR_EVENT:
@@ -411,7 +412,7 @@ void executeExportedEvent(SpvMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_spv_total_distance_error(monitor,d0);
+		exported_spv_total_distance_error(monitor, d0);
 
                 break;
             }
@@ -508,12 +509,12 @@ executeEvents(monitor);
 
 
 
-void raise_spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret) {
+void raise_spv_parse_record(SpvMonitor* monitor, int v0, double v1, double v2, int v3) {
   param *p_head = NULL;
-  push_param(&p_head, &tm, NULL, NULL, NULL);
-  push_param(&p_head, NULL, NULL, &lat, NULL);
-  push_param(&p_head, NULL, NULL, &lon, NULL);
-  push_param(&p_head, &ret, NULL, NULL, NULL);
+  push_param(&p_head, &v0, NULL, NULL, NULL);
+  push_param(&p_head, NULL, NULL, &v1, NULL);
+  push_param(&p_head, NULL, NULL, &v2, NULL);
+  push_param(&p_head, &v3, NULL, NULL, NULL);
   push_action(&monitor->action_queue, SPV_PARSE_RECORD_EVENT, p_head);
 }
 
@@ -542,9 +543,9 @@ executeEvents(monitor);
 
 
 
-void raise_spv_total_distance(SpvMonitor* monitor, double dist) {
+void raise_spv_total_distance(SpvMonitor* monitor, double v0) {
   param *p_head = NULL;
-  push_param(&p_head, NULL, NULL, &dist, NULL);
+  push_param(&p_head, NULL, NULL, &v0, NULL);
   push_action(&monitor->action_queue, SPV_TOTAL_DISTANCE_EVENT, p_head);
 }
 
@@ -554,31 +555,31 @@ executeEvents(monitor);
 }
 
 
-void exported_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time) {
+void exported_spv_timestep_error(SpvMonitor* monitor , int v0, int v1) {
   char* message;
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_timestep_error"));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
-cJSON_AddNumberToObject(fmt, "v1",tm);
-cJSON_AddNumberToObject(fmt, "v2",last_time);
+cJSON_AddNumberToObject(fmt, "v1",v0);
+cJSON_AddNumberToObject(fmt, "v2",v1);
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "SPV_timestep_error", tm, last_time);
+  sprintf(routing_key, "SPV_timestep_error.timestep_error.%d.%d", v0, v1);
   send_message(monitor, message, routing_key);
 }
 
 
 
-void raise_spv_timestep_error(SpvMonitor* monitor, int tm, int last_time) {
+void raise_spv_timestep_error(SpvMonitor* monitor, int v0, int v1) {
   param *p_head = NULL;
  param *ep_head = NULL;
-  push_param(&p_head, &tm, NULL, NULL, NULL);
-  push_param(&ep_head, &tm, NULL, NULL, NULL);
-  push_param(&p_head, &last_time, NULL, NULL, NULL);
-  push_param(&ep_head, &last_time, NULL, NULL, NULL);
+  push_param(&p_head, &v0, NULL, NULL, NULL);
+  push_param(&ep_head, &v0, NULL, NULL, NULL);
+  push_param(&p_head, &v1, NULL, NULL, NULL);
+  push_param(&ep_head, &v1, NULL, NULL, NULL);
   push_action(&monitor->action_queue, SPV_TIMESTEP_ERROR_EVENT, p_head);
   push_action(&monitor->export_queue, SPV_TIMESTEP_ERROR_EVENT, ep_head);
 }
@@ -589,7 +590,7 @@ executeEvents(monitor);
 }
 
 
-void exported_spv_after_end_error(SpvMonitor* monitor) {
+void exported_spv_after_end_error(SpvMonitor* monitor ) {
   char* message;
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
@@ -599,7 +600,7 @@ void exported_spv_after_end_error(SpvMonitor* monitor) {
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "SPV_after_end_error");
+  sprintf(routing_key, "SPV_after_end_error.after_end_error");
   send_message(monitor, message, routing_key);
 }
 
@@ -618,28 +619,28 @@ executeEvents(monitor);
 }
 
 
-void exported_spv_latitude_range_error(SpvMonitor* monitor, double lat) {
+void exported_spv_latitude_range_error(SpvMonitor* monitor , double v0) {
   char* message;
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_latitude_range_error"));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
-cJSON_AddNumberToObject(fmt, "v1",lat);
+cJSON_AddNumberToObject(fmt, "v1",v0);
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "SPV_latitude_range_error");
+  sprintf(routing_key, "SPV_latitude_range_error.latitude_range_error.0");
   send_message(monitor, message, routing_key);
 }
 
 
 
-void raise_spv_latitude_range_error(SpvMonitor* monitor, double lat) {
+void raise_spv_latitude_range_error(SpvMonitor* monitor, double v0) {
   param *p_head = NULL;
  param *ep_head = NULL;
-  push_param(&p_head, NULL, NULL, &lat, NULL);
-  push_param(&ep_head, NULL, NULL, &lat, NULL);
+  push_param(&p_head, NULL, NULL, &v0, NULL);
+  push_param(&ep_head, NULL, NULL, &v0, NULL);
   push_action(&monitor->action_queue, SPV_LATITUDE_RANGE_ERROR_EVENT, p_head);
   push_action(&monitor->export_queue, SPV_LATITUDE_RANGE_ERROR_EVENT, ep_head);
 }
@@ -650,28 +651,28 @@ executeEvents(monitor);
 }
 
 
-void exported_spv_longitude_range_error(SpvMonitor* monitor, double lon) {
+void exported_spv_longitude_range_error(SpvMonitor* monitor , double v0) {
   char* message;
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_longitude_range_error"));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
-cJSON_AddNumberToObject(fmt, "v1",lon);
+cJSON_AddNumberToObject(fmt, "v1",v0);
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "SPV_longitude_range_error");
+  sprintf(routing_key, "SPV_longitude_range_error.longitude_range_error.0");
   send_message(monitor, message, routing_key);
 }
 
 
 
-void raise_spv_longitude_range_error(SpvMonitor* monitor, double lon) {
+void raise_spv_longitude_range_error(SpvMonitor* monitor, double v0) {
   param *p_head = NULL;
  param *ep_head = NULL;
-  push_param(&p_head, NULL, NULL, &lon, NULL);
-  push_param(&ep_head, NULL, NULL, &lon, NULL);
+  push_param(&p_head, NULL, NULL, &v0, NULL);
+  push_param(&ep_head, NULL, NULL, &v0, NULL);
   push_action(&monitor->action_queue, SPV_LONGITUDE_RANGE_ERROR_EVENT, p_head);
   push_action(&monitor->export_queue, SPV_LONGITUDE_RANGE_ERROR_EVENT, ep_head);
 }
@@ -682,28 +683,28 @@ executeEvents(monitor);
 }
 
 
-void exported_spv_total_distance_error(SpvMonitor* monitor, double dist) {
+void exported_spv_total_distance_error(SpvMonitor* monitor , double v0) {
   char* message;
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_total_distance_error"));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
-cJSON_AddNumberToObject(fmt, "v1",dist);
+cJSON_AddNumberToObject(fmt, "v1",v0);
 message = cJSON_Print(root);
 
   char routing_key[256];
-  sprintf(routing_key, "SPV_total_distance_error");
+  sprintf(routing_key, "SPV_total_distance_error.total_distance_error.0");
   send_message(monitor, message, routing_key);
 }
 
 
 
-void raise_spv_total_distance_error(SpvMonitor* monitor, double dist) {
+void raise_spv_total_distance_error(SpvMonitor* monitor, double v0) {
   param *p_head = NULL;
  param *ep_head = NULL;
-  push_param(&p_head, NULL, NULL, &dist, NULL);
-  push_param(&ep_head, NULL, NULL, &dist, NULL);
+  push_param(&p_head, NULL, NULL, &v0, NULL);
+  push_param(&ep_head, NULL, NULL, &v0, NULL);
   push_action(&monitor->action_queue, SPV_TOTAL_DISTANCE_ERROR_EVENT, p_head);
   push_action(&monitor->export_queue, SPV_TOTAL_DISTANCE_ERROR_EVENT, ep_head);
 }

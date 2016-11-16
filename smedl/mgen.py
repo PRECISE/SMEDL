@@ -770,9 +770,9 @@ class MonitorGenerator(object):
     #         return '\n'.join(output)
 
 
-    def _getEventParams(self,paramString):
+    def _getEventParams(self, paramString):
         paramsList = []
-        params = [str(s) for s in paramString.split(',')]
+        params = [str(s).strip() for s in paramString.split(',')]
         for p in params:
             paramsList.append([str(s) for s in p.split(' ')])
         return paramsList

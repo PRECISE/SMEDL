@@ -27,6 +27,7 @@ const char **adaptationtrigger_states_names[1] = { adaptationtrigger_computation
 int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 2
+#define msg_format_version 1
 
 AdaptationtriggerMonitor* init_adaptationtrigger_monitor( AdaptationtriggerData *d ) {
     AdaptationtriggerMonitor* monitor = (AdaptationtriggerMonitor*)malloc(sizeof(AdaptationtriggerMonitor));
@@ -385,7 +386,7 @@ executeEvents(monitor);
 
 
 
-void raise_adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor ,char* v0,int v1) {
+void raise_adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* v0, int v1) {
   param *p_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0);
   push_param(&p_head, &v1, NULL, NULL, NULL);
@@ -413,7 +414,7 @@ executeEvents(monitor);
 
 
 
-void raise_adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor ,int v0) {
+void raise_adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int v0) {
   param *p_head = NULL;
   push_param(&p_head, &v0, NULL, NULL, NULL);
   push_action(&monitor->action_queue, ADAPTATIONTRIGGER_ACTIVETRACKSTHRESHOLD_EVENT, p_head);
@@ -440,7 +441,7 @@ executeEvents(monitor);
 
 
 
-void raise_adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor ,int v0) {
+void raise_adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int v0) {
   param *p_head = NULL;
   push_param(&p_head, &v0, NULL, NULL, NULL);
   push_action(&monitor->action_queue, ADAPTATIONTRIGGER_INPUTBYTESTHRESHOLD_EVENT, p_head);

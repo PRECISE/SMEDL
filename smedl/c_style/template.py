@@ -229,20 +229,20 @@ class CTemplater(object):
             for p in mg._symbolTable.get(m,'params'):
                 tmp_map[p['type']] = tmp_map[p['type']]+1
                 if p['type'] == 'int':
-                    attrstring += ',i'+str(i)
-                    i = i+1
+                    attrstring += ', i'+str(i)
+                    i += 1
                 elif p['type'] == 'char':
-                    attrstring += ',c'+str(i)
-                    c = c+1
+                    attrstring += ', c'+str(i)
+                    c += 1
                 elif p['type'] == 'double' or p['type'] == 'float':
-                    attrstring += ',d'+str(d)
-                    d = d+1
+                    attrstring += ', d'+str(d)
+                    d += 1
                 elif p['type'] == 'pointer' or key == 'opaque':
-                    attrstring += ',v'+str(v)
-                    v = v+1
+                    attrstring += ', v'+str(v)
+                    v += 1
                 elif p['type'] == 'string':
-                    attrstring += ',v'+str(v)
-                    v = v+1
+                    attrstring += ', v'+str(v)
+                    v += 1
             #print(attrstring)
 
             parastring = ''
@@ -252,20 +252,20 @@ class CTemplater(object):
             kc = 0
             for p in mg._symbolTable.get(m,'params'):
                 if p['type'] == 'int':
-                    parastring += '\t\ti'+str(ki)+ ' = ((params)->i);\n'
-                    ki = ki+1
+                    parastring += '\t\ti' + str(ki) + ' = ((params)->i);\n'
+                    ki += 1
                 elif p['type'] == 'char':
-                    parastring += '\t\tc'+str(kc)+ ' = ((params)->c);\n'
-                    kc = kc+1
+                    parastring += '\t\tc' + str(kc) + ' = ((params)->c);\n'
+                    kc += 1
                 elif p['type'] == 'double' or p['type'] == 'float':
-                    parastring += '\t\td'+str(kd)+ ' = ((params)->d);\n'
-                    kd = kd+1
+                    parastring += '\t\td' + str(kd) + ' = ((params)->d);\n'
+                    kd += 1
                 elif p['type'] == 'pointer' or key == 'opaque':
-                    parastring += '\t\tv'+str(kv)+ ' = ((params)->v);\n'
-                    kv = kv + 1
+                    parastring += '\t\tv' + str(kv) + ' = ((params)->v);\n'
+                    kv += 1
                 elif p['type'] == 'string':
-                    parastring += '\t\tv'+str(kv)+ ' = ((params)->v);\n'
-                    kv = kv + 1
+                    parastring += '\t\tv' + str(kv) + ' = ((params)->v);\n'
+                    kv += 1
                 parastring += '\t\t(params) = (params)->next;\n'
             parastring += '\t\tpop_param(&p_head);\n'
 
@@ -285,13 +285,11 @@ class CTemplater(object):
             #            parastring += '\t\t(params) = (params)->next;\n'
             #        parastring += '\t\tpop_param(&p_head);\n'
 
-
-
             callstring += parastring;
             callstring += '\t\tpop_action(head);\n'
             callstring_ex = callstring
-            callstring += '\t\t'+obj.lower()+'_'+m+'(monitor'+attrstring+');\n'
-            callstring_ex += '\t\texported_'+obj.lower()+'_'+m+'(monitor'+attrstring+');\n'
+            callstring += '\t\t' + obj.lower() + '_' + m + '(monitor'+attrstring+');\n'
+            callstring_ex += '\t\texported_' + obj.lower() + '_' + m + '(monitor'+attrstring+');\n'
 
             for key, value in parameterTypeNumMap.items():
                 if tmp_map[key] > value:
@@ -357,18 +355,18 @@ class CTemplater(object):
                         #print(p[0])
                         # comparing SMEDL types not C types.
                         if p[0] == 'int':
-                            sprintf+='cJSON_AddNumberToObject(fmt, "v%d",%s);\n' % (index,p[1])
+                            sprintf += 'cJSON_AddNumberToObject(fmt, "v%d",%s);\n' % (index,p[1])
                         #sprintf += ' %d'
                         elif p[0] == 'char':
-                            sprintf+='cJSON_AddNumberToObject(fmt, "v%d",%s);\n' % (index,p[1])
+                            sprintf += 'cJSON_AddNumberToObject(fmt, "v%d",%s);\n' % (index,p[1])
                         #sprintf += ' %c'
                         elif p[0] == 'double':
-                            sprintf+='cJSON_AddNumberToObject(fmt, "v%d",%s);\n' % (index,p[1])
+                            sprintf += 'cJSON_AddNumberToObject(fmt, "v%d",%s);\n' % (index,p[1])
                         #sprintf += ' %lf'
                         elif p[0] == 'float':
                                 exit("this should never happen. there is a missing float->double conversion.")
                         elif p[0] == 'char*':
-                            sprintf+='cJSON_AddStringToObject(fmt, "v%d",%s);\n' % (index,p[1])
+                            sprintf += 'cJSON_AddStringToObject(fmt, "v%d",%s);\n' % (index,p[1])
                             #sprintf += ' %s'
                         index = index + 1
                 sprintf += 'message = cJSON_Print(root);\n'
@@ -817,32 +815,19 @@ class CTemplater(object):
         output.append('      break;')
         return '\n'.join(output)
 
+
     def _generateEventParams(mg,event):
         paramString = ''
         index = 0
         for p in mg._symbolTable.get(event, 'params'):
-            paramString+=','+ CTemplater.convertTypeForC(p['type'])+' v'+str(index)
+            paramString+=', '+ CTemplater.convertTypeForC(p['type'])+' v'+str(index)
             index += 1
         return paramString
 
 
     def _writeRaiseFunction(mg, event, obj):
-        #paramString = ', '.join(['%s %s'%(CTemplater.convertTypeForC(p['type']), p['name']) for p in mg._symbolTable.get(event, 'params')])
-        paramString = CTemplater._generateEventParams(mg,event)
-        #print(mg._symbolTable.get(event, 'params'))
-        #paramString = ''
-        index = 0
-            #for p in mg._symbolTable.get(event, 'params'):
-            #print('name:'+p['name']+'\n')
-            #if len(paramString) >0 :
-            #for p in mg._getEventParams(paramString):
-            #   print('name2:'+p[1]+'\n')
-
-        if len(paramString) > 0:
-            paramString = obj.title() + "Monitor* monitor " + paramString
-        else:
-            paramString = obj.title() + "Monitor* monitor"
         output = []
+        paramString = obj.title() + "Monitor* monitor" + CTemplater._generateEventParams(mg,event)
         signature = 'void raise_%s_%s(%s)' % (obj.lower(), event, paramString)
         output.append(signature + ' {')
         output.append('  param *p_head = NULL;')

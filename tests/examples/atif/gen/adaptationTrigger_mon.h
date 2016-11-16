@@ -60,11 +60,11 @@ void free_monitor(AdaptationtriggerMonitor*);
  * Monitor Event Handlers
  */
 void adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* id, int val);
-void raise_adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor ,char* v0,int v1);
+void raise_adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* v0, int v1);
 void adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int val);
-void raise_adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor ,int v0);
+void raise_adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int v0);
 void adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int val);
-void raise_adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor ,int v0);
+void raise_adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int v0);
 void adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor);
 void raise_adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor);
 void adaptationtrigger_eval(AdaptationtriggerMonitor* monitor);
