@@ -116,7 +116,7 @@ class TestAtif(unittest.TestCase):
 #self.terminate_thread(recieve_thread)
 
 
-        time.sleep(1)
+        time.sleep(5)
         
 
 
