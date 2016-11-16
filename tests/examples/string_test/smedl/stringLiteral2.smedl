@@ -1,0 +1,12 @@
+//for each input event with string, output same event 
+//test assignment of string type
+object stringLiteralTest
+ state
+   string name;
+   int value;
+ events
+   imported ping();
+   exported pong(string,int);
+ scenarios
+   sc1:
+     Start -> ping(){name = "pong"; value = 1; raise pong(name, value);} -> End

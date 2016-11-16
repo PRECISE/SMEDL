@@ -387,8 +387,8 @@ class CTemplater(object):
                         connName = conn.connName
                         break
 
-                    if connName == None:
-                        connName = obj+'_'+ m
+                if connName == None:
+                    connName = obj+'_'+ m
                             #print(mg.archSpec)
                 sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
                 # TODO: peter, write functions for printing and parsing monitor identities

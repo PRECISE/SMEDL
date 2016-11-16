@@ -1,0 +1,9 @@
+System jsonTest:=
+
+Async jsontest(){
+ imported ping(string,int,float);
+ exported pong(float,int,string);
+}
+
+ch1: ping => jsontest.ping
+

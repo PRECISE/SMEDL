@@ -1,0 +1,14 @@
+System stringTest:=
+
+Async stringtest(){
+ imported ping(string,int);
+ exported pong(string,int);
+}
+
+Async stringLiteralTest(){
+  imported ping();
+  exported pont(string, int);
+}
+
+ch1: ping => stringtest.ping
+ch2: ping => stringLiteralTest.ping

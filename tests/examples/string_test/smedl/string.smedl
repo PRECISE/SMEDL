@@ -1,0 +1,9 @@
+//for each input event with string, output same event 
+//test state variables of string type
+object stringtest
+ events
+   imported ping(string, int);
+   exported pong(string,int);
+ scenarios
+   sc1:
+     Start -> ping(st, x){raise pong(st,x);} -> End
