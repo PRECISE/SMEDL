@@ -13,11 +13,3 @@ void output_config_error(config_t cfg) {
 void raise_error(char *scen, const char *state, char *action, char *type) {
     printf("{\"scenario\":\"%s\", \"state\":\"%s\", \"action\":\"%s\", \"type\":\"%s\"}\n", scen, state, action, type);
 }
-
-cJSON* buildFrameCheck(char* filename, int linenum, cJSON* frame) {
-  cJSON *root; cJSON* fmt;
-  root = cJSON_CreateObject();
-  cJSON_AddItemToObject(root, "filename", cJSON_CreateString(filename));
-  cJSON_AddItemToObject(root, "line", cJSON_CreateString(linenum));
-  return root;
-}

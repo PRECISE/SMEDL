@@ -52,8 +52,8 @@ void free_monitor(StringliteraltestMonitor*);
 void stringliteraltest_ping(StringliteraltestMonitor* monitor);
 void raise_stringliteraltest_ping(StringliteraltestMonitor* monitor);
 void stringliteraltest_pong(StringliteraltestMonitor* monitor, char* v0, int v1);
-void exported_stringliteraltest_pong(StringliteraltestMonitor* monitor ,char* v0,int v1);
-void raise_stringliteraltest_pong(StringliteraltestMonitor* monitor ,char* v0,int v1);
+void exported_stringliteraltest_pong(StringliteraltestMonitor* monitor , char* v0, int v1);
+void raise_stringliteraltest_pong(StringliteraltestMonitor* monitor, char* v0, int v1);
 
 /*
  * Monitor Utility Functions

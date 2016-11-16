@@ -26,6 +26,7 @@ const char **stringliteraltest_states_names[1] = { stringliteraltest_sc1_states 
 int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 1
+#define msg_format_version 1
 
 StringliteraltestMonitor* init_stringliteraltest_monitor( StringliteraltestData *d ) {
     StringliteraltestMonitor* monitor = (StringliteraltestMonitor*)malloc(sizeof(StringliteraltestMonitor));
@@ -293,7 +294,7 @@ void executePendingEvents(StringliteraltestMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		stringliteraltest_pong(monitor,v0,i0);
+		stringliteraltest_pong(monitor, v0, i0);
 
                 break;
             }
@@ -317,7 +318,7 @@ void executeExportedEvent(StringliteraltestMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_stringliteraltest_pong(monitor,v0,i0);
+		exported_stringliteraltest_pong(monitor, v0, i0);
 
                 break;
             }
@@ -361,7 +362,7 @@ executeEvents(monitor);
 }
 
 
-void exported_stringliteraltest_pong(StringliteraltestMonitor* monitor ,char* v0,int v1) {
+void exported_stringliteraltest_pong(StringliteraltestMonitor* monitor , char* v0, int v1) {
   char* message;
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
@@ -379,7 +380,7 @@ message = cJSON_Print(root);
 
 
 
-void raise_stringliteraltest_pong(StringliteraltestMonitor* monitor ,char* v0,int v1) {
+void raise_stringliteraltest_pong(StringliteraltestMonitor* monitor, char* v0, int v1) {
   param *p_head = NULL;
  param *ep_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0);

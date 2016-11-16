@@ -50,12 +50,12 @@ void free_monitor(StringtestMonitor*);
  * Monitor Event Handlers
  */
 void stringtest_ping(StringtestMonitor* monitor, char* st, int x);
-void raise_stringtest_ping(StringtestMonitor* monitor ,char* v0,int v1);
+void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1);
 void stringtest_trans(StringtestMonitor* monitor);
 void raise_stringtest_trans(StringtestMonitor* monitor);
 void stringtest_pong(StringtestMonitor* monitor, char* name, int value);
-void exported_stringtest_pong(StringtestMonitor* monitor ,char* v0,int v1);
-void raise_stringtest_pong(StringtestMonitor* monitor ,char* v0,int v1);
+void exported_stringtest_pong(StringtestMonitor* monitor , char* v0, int v1);
+void raise_stringtest_pong(StringtestMonitor* monitor, char* v0, int v1);
 
 /*
  * Monitor Utility Functions

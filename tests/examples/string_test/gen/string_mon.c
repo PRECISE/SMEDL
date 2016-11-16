@@ -26,6 +26,7 @@ const char **stringtest_states_names[1] = { stringtest_sc1_states };
 int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 1
+#define msg_format_version 1
 
 StringtestMonitor* init_stringtest_monitor( StringtestData *d ) {
     StringtestMonitor* monitor = (StringtestMonitor*)malloc(sizeof(StringtestMonitor));
@@ -297,7 +298,7 @@ void executePendingEvents(StringtestMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		stringtest_pong(monitor,v0,i0);
+		stringtest_pong(monitor, v0, i0);
 
                 break;
             }
@@ -321,7 +322,7 @@ void executeExportedEvent(StringtestMonitor* monitor){
 		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_stringtest_pong(monitor,v0,i0);
+		exported_stringtest_pong(monitor, v0, i0);
 
                 break;
             }
@@ -354,7 +355,7 @@ executeEvents(monitor);
 
 
 
-void raise_stringtest_ping(StringtestMonitor* monitor ,char* v0,int v1) {
+void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1) {
   param *p_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0);
   push_param(&p_head, &v1, NULL, NULL, NULL);
@@ -367,7 +368,7 @@ executeEvents(monitor);
 }
 
 
-void exported_stringtest_pong(StringtestMonitor* monitor ,char* v0,int v1) {
+void exported_stringtest_pong(StringtestMonitor* monitor , char* v0, int v1) {
   char* message;
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
@@ -385,7 +386,7 @@ message = cJSON_Print(root);
 
 
 
-void raise_stringtest_pong(StringtestMonitor* monitor ,char* v0,int v1) {
+void raise_stringtest_pong(StringtestMonitor* monitor, char* v0, int v1) {
   param *p_head = NULL;
  param *ep_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0);
