@@ -27,7 +27,7 @@ const char **thresholdcrossdetection_states_names[1] = { thresholdcrossdetection
 int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 1
-#define msg_format_version 1
+#define msg_format_version "1.0.0"
 
 ThresholdcrossdetectionMonitor* init_thresholdcrossdetection_monitor( ThresholdcrossdetectionData *d ) {
     ThresholdcrossdetectionMonitor* monitor = (ThresholdcrossdetectionMonitor*)malloc(sizeof(ThresholdcrossdetectionMonitor));
@@ -182,7 +182,9 @@ void start_monitor(ThresholdcrossdetectionMonitor* monitor) {
                     double ts = 0;
                     double val = 0;
 		cJSON * root = cJSON_Parse(string);
-	cJSON * fmt = cJSON_GetObjectItem(root,"params");
+	char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;
+	 if(!strcmp(msg_ver,msg_format_version)){ 
+		 cJSON * fmt = cJSON_GetObjectItem(root,"params");
 
 n= cJSON_GetObjectItem(fmt,"v1")->valuestring;
 	ts= cJSON_GetObjectItem(fmt,"v2")->valuedouble;
@@ -190,6 +192,10 @@ n= cJSON_GetObjectItem(fmt,"v1")->valuestring;
 	
                         thresholdcrossdetection_dataUpdate(monitor, n, ts, val);
                         printf("thresholdcrossdetection_dataUpdate called.\n");
+                    }
+	 else {
+	 printf("format version not matched\n");
+	}
                 }
 
             }
@@ -450,6 +456,7 @@ void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMo
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("thresholdcrossdetection_thresholdWarning"));
+	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
 cJSON_AddStringToObject(fmt, "v1",v0);

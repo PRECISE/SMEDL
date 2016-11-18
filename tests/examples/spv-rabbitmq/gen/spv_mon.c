@@ -34,7 +34,7 @@ const char **spv_states_names[5] = { spv_check_time_states, spv_check_latitude_s
 int executed_scenarios[5]={ 0,0,0,0,0 };
 
 #define bindingkeyNum 2
-#define msg_format_version 1
+#define msg_format_version "1.0.0"
 
 SpvMonitor* init_spv_monitor( SpvData *d ) {
     SpvMonitor* monitor = (SpvMonitor*)malloc(sizeof(SpvMonitor));
@@ -188,7 +188,9 @@ void start_monitor(SpvMonitor* monitor) {
                     double lon = 0;
                     int ret = 0;
 		cJSON * root = cJSON_Parse(string);
-	cJSON * fmt = cJSON_GetObjectItem(root,"params");
+	char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;
+	 if(!strcmp(msg_ver,msg_format_version)){ 
+		 cJSON * fmt = cJSON_GetObjectItem(root,"params");
 
 tm= cJSON_GetObjectItem(fmt,"v1")->valueint;
 	lat= cJSON_GetObjectItem(fmt,"v2")->valuedouble;
@@ -197,16 +199,26 @@ tm= cJSON_GetObjectItem(fmt,"v1")->valueint;
 	
                         spv_parse_record(monitor, tm, lat, lon, ret);
                         printf("spv_parse_record called.\n");
+                    }
+	 else {
+	 printf("format version not matched\n");
+	}
                 }
                 else if (!strcmp(eventName,"ch2")) {
                     double dist = 0;
 		cJSON * root = cJSON_Parse(string);
-	cJSON * fmt = cJSON_GetObjectItem(root,"params");
+	char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;
+	 if(!strcmp(msg_ver,msg_format_version)){ 
+		 cJSON * fmt = cJSON_GetObjectItem(root,"params");
 
 dist= cJSON_GetObjectItem(fmt,"v1")->valuedouble;
 	
                         spv_total_distance(monitor, dist);
                         printf("spv_total_distance called.\n");
+                    }
+	 else {
+	 printf("format version not matched\n");
+	}
                 }
 
             }
@@ -560,6 +572,7 @@ void exported_spv_timestep_error(SpvMonitor* monitor , int v0, int v1) {
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_timestep_error"));
+	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
 cJSON_AddNumberToObject(fmt, "v1",v0);
@@ -595,6 +608,7 @@ void exported_spv_after_end_error(SpvMonitor* monitor ) {
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_after_end_error"));
+	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
 message = cJSON_Print(root);
@@ -624,6 +638,7 @@ void exported_spv_latitude_range_error(SpvMonitor* monitor , double v0) {
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_latitude_range_error"));
+	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
 cJSON_AddNumberToObject(fmt, "v1",v0);
@@ -656,6 +671,7 @@ void exported_spv_longitude_range_error(SpvMonitor* monitor , double v0) {
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_longitude_range_error"));
+	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
 cJSON_AddNumberToObject(fmt, "v1",v0);
@@ -688,6 +704,7 @@ void exported_spv_total_distance_error(SpvMonitor* monitor , double v0) {
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_total_distance_error"));
+	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
 cJSON_AddNumberToObject(fmt, "v1",v0);

@@ -23,7 +23,7 @@ class CTemplater(object):
             id['c_type'] = CTemplater.convertTypeForC(id['type'])
 
         values = dict()
-        values['msg_format_version'] = __msg_format_version__
+        values['msg_format_version'] = '\"'+__msg_format_version__+'\"'
         values['multithreaded'] = True # command line arg for this?
         values['identities'] = identities
         values['obj'] = obj
@@ -114,9 +114,11 @@ class CTemplater(object):
                     cond = '                else if'
 
                 msg_handler.append(cond + ' (!strcmp(eventName,"%s")) {' % conn.connName)
-                json_string = ''
+                json_string = '\t\tcJSON * root = cJSON_Parse(string);\n\t'
+                json_string += 'char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;\n\t if(!strcmp(msg_ver,msg_format_version)){ \n\t'
                 if len(monitorParams[1:])>0:
-                    json_string+= '\t\tcJSON * root = cJSON_Parse(string);\n\tcJSON * fmt = cJSON_GetObjectItem(root,"params");\n'
+                    json_string+= '\t cJSON * fmt = cJSON_GetObjectItem(root,"params");\n'
+                
                 retAttrs = ''
                 sscanfStr = ''
                 index = 1
@@ -150,9 +152,8 @@ class CTemplater(object):
 #  msg_handler.append('                    if (ret == ' + str(len(monitorParams)) + ') {')
                 msg_handler.append('                        ' + obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');')
                 msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), conn.targetEvent))
-                #  msg_handler.append('                    }')
+                msg_handler.append('                    }\n\t else {\n\t printf("format version not matched\\n");\n\t}')
                 msg_handler.append('                }')
-
                 values['event_msg_handlers'].append('\n'.join(msg_handler))
 
         parameterTypeNumMap = collections.OrderedDict()
@@ -347,6 +348,7 @@ class CTemplater(object):
                     #paramString = obj.title() + "Monitor* monitor"
                 evParams = mg._getEventParams(paramString)[1:]
                 cjson_str+=('\tcJSON_AddItemToObject(root, "name", cJSON_CreateString("%s_%s"));\n') % (obj.lower(), m)
+                cjson_str+=('\tcJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));\n')
                 cjson_str+=('\tcJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());\n')
                 sprintf = ''
                 index = 1

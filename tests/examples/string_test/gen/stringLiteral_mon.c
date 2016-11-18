@@ -26,7 +26,7 @@ const char **stringliteraltest_states_names[1] = { stringliteraltest_sc1_states 
 int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 1
-#define msg_format_version 1
+#define msg_format_version "1.0.0"
 
 StringliteraltestMonitor* init_stringliteraltest_monitor( StringliteraltestData *d ) {
     StringliteraltestMonitor* monitor = (StringliteraltestMonitor*)malloc(sizeof(StringliteraltestMonitor));
@@ -169,10 +169,17 @@ void start_monitor(StringliteraltestMonitor* monitor) {
                 char e[255];
 
                 if (!strcmp(eventName,"ch2")) {
-
+		cJSON * root = cJSON_Parse(string);
+	char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;
+	 if(!strcmp(msg_ver,msg_format_version)){ 
+	
 
                         stringliteraltest_ping(monitor);
                         printf("stringliteraltest_ping called.\n");
+                    }
+	 else {
+	 printf("format version not matched\n");
+	}
                 }
 
             }
@@ -367,6 +374,7 @@ void exported_stringliteraltest_pong(StringliteraltestMonitor* monitor , char* v
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("stringliteraltest_pong"));
+	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
 cJSON_AddStringToObject(fmt, "v1",v0);

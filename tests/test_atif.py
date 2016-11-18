@@ -68,14 +68,14 @@ class TestAtif(unittest.TestCase):
             if test_step == 1:
                 test_step += 1
                 channel.basic_publish(exchange=c.rabbitmq.exchange,
-                routing_key='ch3.foo', body="{\"name\":\"0\", \"params\":{\"v1\": \"0\", \"v2\":1.0, \"v3\":0}}")
+                routing_key='ch3.foo', body="{\"name\":\"0\", \"fmt_version\":\"1.0.0\", \"params\":{\"v1\": \"0\", \"v2\":1.0, \"v3\":0}}")
                 #sleep(1)
                 channel.basic_publish(exchange=c.rabbitmq.exchange,
-                routing_key='ch3.foo', body="{\"name\":\"0\", \"params\":{\"v1\": \"0\", \"v2\":2.0, \"v3\":1000}}")
+                routing_key='ch3.foo', body="{\"name\":\"0\", \"fmt_version\":\"1.0.0\",\"params\":{\"v1\": \"0\", \"v2\":2.0, \"v3\":1000}}")
                 channel.basic_publish(exchange=c.rabbitmq.exchange,
-                routing_key='ch3.foo', body="{\"name\":\"0\", \"params\":{\"v1\": \"0\", \"v2\":3.0, \"v3\":2000}}")
+                routing_key='ch3.foo', body="{\"name\":\"0\",\"fmt_version\":\"1.0.0\", \"params\":{\"v1\": \"0\", \"v2\":3.0, \"v3\":2000}}")
                 channel.basic_publish(exchange=c.rabbitmq.exchange,
-                routing_key='ch4.foo', body="{\"name\":\"timeout\"}")
+                routing_key='ch4.foo', body="{\"name\":\"timeout\",\"fmt_version\":\"1.0.0\"}")
             #elif test_step == 2 and "\"v1\":	\"0\"" in body and "\"v2\":	3" in body and "\"v3\":	1500" in body:
             elif test_step == 2:
                 #print(body)

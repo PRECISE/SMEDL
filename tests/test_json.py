@@ -64,7 +64,7 @@ class TestJson(unittest.TestCase):
             if test_step == 1:
                 test_step += 1
                 channel.basic_publish(exchange=c.rabbitmq.exchange,
-                routing_key='ch1.foo', body="{\"name\":\"0\", \"params\":{\"v1\": \"0\", \"v2\":2, \"v3\":2.1}}")
+                routing_key='ch1.foo', body="{\"name\":\"0\",\"fmt_version\":\"1.0.0\", \"params\":{\"v1\": \"0\", \"v2\":2, \"v3\":2.1}}")
                 #sleep(1)
             #elif test_step == 2 and "\"v1\":	\"0\"" in body and "\"v2\":	3" in body and "\"v3\":	1500" in body:
             elif test_step == 2 and "\"v1\":	2.100000" in body:

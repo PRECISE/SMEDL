@@ -28,7 +28,7 @@ const char **stringtest_states_names[2] = { stringtest_sc1_states, stringtest_sc
 int executed_scenarios[2]={ 0,0 };
 
 #define bindingkeyNum 1
-#define msg_format_version 1
+#define msg_format_version "1.0.0"
 
 StringtestMonitor* init_stringtest_monitor( StringtestData *d ) {
     StringtestMonitor* monitor = (StringtestMonitor*)malloc(sizeof(StringtestMonitor));
@@ -175,13 +175,19 @@ void start_monitor(StringtestMonitor* monitor) {
                     char *st;
                     int x = 0;
 		cJSON * root = cJSON_Parse(string);
-	cJSON * fmt = cJSON_GetObjectItem(root,"params");
+	char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;
+	 if(!strcmp(msg_ver,msg_format_version)){ 
+		 cJSON * fmt = cJSON_GetObjectItem(root,"params");
 
 st= cJSON_GetObjectItem(fmt,"v1")->valuestring;
 	x= cJSON_GetObjectItem(fmt,"v2")->valueint;
 	
                         stringtest_ping(monitor, st, x);
                         printf("stringtest_ping called.\n");
+                    }
+	 else {
+	 printf("format version not matched\n");
+	}
                 }
 
             }
@@ -411,6 +417,7 @@ void exported_stringtest_pong(StringtestMonitor* monitor , char* v0, int v1) {
 	cJSON *root; cJSON* fmt;
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("stringtest_pong"));
+	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 
 cJSON_AddStringToObject(fmt, "v1",v0);
