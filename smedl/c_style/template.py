@@ -748,12 +748,12 @@ class CTemplater(object):
         signature = 'void raise_%s_%s(%s, struct event cause)' % (obj.lower(), event, paramString)
         output.append(signature + ' {')
         output.append('  param *p_head = NULL;')
-        # another param for exported event
+        # Another param for exported event
         if 'exported_events' == mg._symbolTable.get(event)['type']:
             output.append(' param *ep_head = NULL;')
         if len(paramString) > 0:
             for p in mg._getEventParams(paramString):
-                # comparing SMEDL types not C types.
+                # Comparing SMEDL types not C types.
                 if p[0] == 'int':
                     output.append('  push_param(&p_head, &%s, NULL, NULL, NULL);' % p[1])
                     if 'exported_events' == mg._symbolTable.get(event)['type']:
@@ -775,74 +775,5 @@ class CTemplater(object):
         output.append('  push_action(&monitor->action_queue, %s_%s_EVENT, p_head);' % (obj.upper(), event.upper()))
         if 'exported_events' == mg._symbolTable.get(event)['type']:
             output.append('  push_action(&monitor->export_queue, %s_%s_EVENT, ep_head);' % (obj.upper(), event.upper()))
-
-#       if 'exported_events' == mgen._symbolTable.get(event)['type']:
-#            output.append('  char message[256];')
-#            sprintf = '  sprintf(message, "%s_%s' % (obj.lower(), event)
-#            evParams = MonitorGenerator._getEventParams(paramString)[1:]
-#            if len(evParams) > 0:
-#                for p in evParams:
-
-                    # comparing SMEDL types not C types.
-#                    if p[0] == 'int':
-#                        sprintf += ' %d'
-#                    elif p[0] == 'char':
-#                        sprintf += ' %s'
-#                    elif p[0] == 'double':
-#                        sprintf += ' %lf'
-#                    elif p[0] == 'float':
-#                        exit("this should never happen. there is a missing float->double conversion.")
-#            sprintf += '"'
-#            if len(evParams) > 0:
-#                for p in evParams:
-#                    sprintf += ', %s' % p[1]
-#            sprintf += ');'
-#            output.append(sprintf)
-#            output.append('  char routing_key[256];')
-
-            #construct routing key
-
-#            name = mgen._symbolTable.getSymbolsByType('object')[0]
-            #print(name)
-#            connName = None
-            #print(mgen.archSpec)
-#            for conn in mgen.archSpec:
-#                if conn.sourceMachine == name and conn.sourceEvent == event:
-#                    connName = conn.connName
-#                    break
-
-#                if connName == None:
-#                        connName = obj+'_'+ event
-#            sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
-            # TODO: peter, write functions for printing and parsing monitor identities
-            # this cast is broken and wrong, but works as long as we have only one monitor process
-#            for v in mgen.identities:
-#                sprintf_routing += '.%ld'
-
-#                sprintf_routing += '.'+event
-#                if len(evParams) > 0:
-#                    for p in evParams:
-                        # attributes can only be int
-#                        if p[0] == 'int':
-#                            sprintf_routing += '.%d'
-#                        else:
-#                            sprintf_routing += '.0'
-#
-#            sprintf_routing+='"'
-#            for v in mgen.identities:
-#                sprintf_routing += ', (long)(*(int*)(monitor->identities['
-#                sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
-#                sprintf_routing += v.upper() +']))'
-
-#            if len(evParams) > 0:
-#                for p in evParams:
-                # attributes can only be int
-#                    if p[0] == 'int':
-#                        sprintf_routing+=', %s' % p[1]
-#
-#
-#            sprintf_routing += ');'
-#            output.append(sprintf_routing)
-#            output.append('  send_message(monitor, message, routing_key);')
         output.append('}\n\n')
         return {'code':output, 'signature':signature}
