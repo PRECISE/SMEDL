@@ -159,17 +159,15 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
         amqp_bytes_t routing_key = envelope.routing_key;
         char* rk = (char*)routing_key.bytes;
         char* string = (char*)bytes.bytes;
-        //char* event[255] = {NULL};
 
         if (string != NULL) {
             char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
-                char e[255];
 
                 {{ event_msg_handlers|join('\n') }}
 
             }
-            //free(eventName);
+            free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
