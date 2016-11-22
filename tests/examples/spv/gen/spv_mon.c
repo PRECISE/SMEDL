@@ -220,7 +220,6 @@ dist= cJSON_GetObjectItem(fmt,"v1")->valuedouble;
                 }
 
             }
-            free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {

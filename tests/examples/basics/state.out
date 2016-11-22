@@ -236,7 +236,6 @@ void start_monitor(StateMonitor* monitor) {
                 
 
             }
-            free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {

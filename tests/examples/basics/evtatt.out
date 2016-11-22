@@ -235,7 +235,6 @@ void start_monitor(EvtattMonitor* monitor) {
                 
 
             }
-            free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {

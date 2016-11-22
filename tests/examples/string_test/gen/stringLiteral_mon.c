@@ -161,12 +161,10 @@ void start_monitor(StringliteraltestMonitor* monitor) {
         amqp_bytes_t routing_key = envelope.routing_key;
         char* rk = (char*)routing_key.bytes;
         char* string = (char*)bytes.bytes;
-        //char* event[255] = {NULL};
 
         if (string != NULL) {
             char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
-                char e[255];
 
                 if (!strcmp(eventName,"ch2")) {
 		cJSON * root = cJSON_Parse(string);
@@ -183,7 +181,6 @@ void start_monitor(StringliteraltestMonitor* monitor) {
                 }
 
             }
-            //free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
