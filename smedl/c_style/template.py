@@ -36,17 +36,15 @@ class CTemplater(object):
         values['identities_names'] = ['%s_%s' % (obj.upper(), i['name'].upper()) for i in identities]
         values['identities_types'] = [i['type'].upper() for i in identities]
 
-        #construct array executed_sceanrios
-        values['num_scenarios'] = len(list(allFSMs.keys()))
+        # Construct array executed_sceanrios
+        values['num_scenarios'] = len(allFSMs.keys())
         zeroString = ''
-        fk_num = len(list(allFSMs.keys()))
-        while (fk_num > 0):
-            if fk_num == len(list(allFSMs.keys())):
-                zeroString+='0'
+        for i in range(len(allFSMs.keys())):
+            if i == 0:
+                zeroString += '0'
             else:
-                zeroString+=',0'
-            fk_num = fk_num - 1
-        values['zeros']=zeroString
+                zeroString += ',0'
+        values['zeros'] = zeroString
 
         statesets = collections.OrderedDict()
         state_enums = []
@@ -78,7 +76,6 @@ class CTemplater(object):
             if mg._symbolTable[e]['error']:
                 errors.append('%s_%s_EVENT' % (obj.upper, e.upper()))
         values['error_enums'] = ', '.join(errors)
-
         values['add_to_map_calls'] = ['add_%s_monitor_to_map(monitor, %s)' % (obj.lower(), i) for i in values['identities_names']]
 
         # Output a method for each event (switch statement to handle FSM transitions)
@@ -255,10 +252,6 @@ class CTemplater(object):
                 if tmp_map[key] > value:
                     parameterTypeNumMap[key] = tmp_map[key]
 
-#if 'exported_events' != mgen._symbolTable.get(m)['type']:
-            #paraMonString = obj.title()+"Monitor* monitor "+ CTemplater._generateEventParams(mg,m)
-            #print(paraMonString)
-            #eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, paraMonString)
             eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
             values['signatures'].append(eventSignature)
             eventFunction.append(eventSignature + ' {')
@@ -745,7 +738,7 @@ class CTemplater(object):
     def _writeRaiseFunction(mg, event, obj):
         output = []
         paramString = obj.title() + "Monitor* monitor" + CTemplater._generateEventParams(mg,event)
-        signature = 'void raise_%s_%s(%s, struct event cause)' % (obj.lower(), event, paramString)
+        signature = 'void raise_%s_%s(%s)' % (obj.lower(), event, paramString)
         output.append(signature + ' {')
         output.append('  param *p_head = NULL;')
         # Another param for exported event
