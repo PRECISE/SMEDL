@@ -21,7 +21,6 @@ class TestJson(unittest.TestCase):
     def test_json_mgen(self):
         call = subprocess.run(["python3", "-m", "smedl.mgen", "--dir", "../gen", "tests/examples/json_test/smedl/json","--arch=tests/examples/json_test/smedl/jsonArch"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-
     def test_json_compile(self):
         os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'json_test')))
         os.makedirs('bin', exist_ok=True)
@@ -40,21 +39,18 @@ class TestJson(unittest.TestCase):
                 c.rabbitmq.hostname, c.rabbitmq.port, '/', credentials))
         except pika.exceptions.ConnectionClosed:
             self.fail("Could not connect to RabbitMQ server. Is it down?")
+
         channel = connection.channel()
         channel.exchange_declare(exchange=c.rabbitmq.ctrl_exchange, exchange_type='fanout', durable=True)
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
         channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name,routing_key='#')
 
-
         channel1 = connection.channel()
         channel1.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
         result1 = channel1.queue_declare(exclusive=True)
         queue_name1 = result1.method.queue
         channel1.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='jsontest_pong.#')
-
-
-
 
         def callback(ch, method, properties, body):
             global test_step
@@ -66,12 +62,9 @@ class TestJson(unittest.TestCase):
                 test_step += 1
                 channel.basic_publish(exchange=c.rabbitmq.exchange,
                 routing_key='ch1.foo', body="{\"name\":\"0\",\"fmt_version\":\"1.0.0\", \"params\":{\"v1\": \"0\", \"v2\":2, \"v3\":2.1}}")
-                #sleep(1)
             #elif test_step == 2 and "\"v1\":	\"0\"" in body and "\"v2\":	3" in body and "\"v3\":	1500" in body:
             elif test_step == 2 and "\"v1\":	2.100000" in body:
-                #print(body)
                 test_step += 1
-
 
         channel.basic_consume(callback, queue=queue_name, no_ack=True)
         recieve_thread = threading.Thread(target=channel.start_consuming)
@@ -83,21 +76,13 @@ class TestJson(unittest.TestCase):
 
         if connection is None:
             self.fail()
-
         call = subprocess.Popen("./bin/json", shell=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
         time.sleep(5)
-
         call.terminate()
-
-
         self.terminate_thread(recieve_thread)
         self.terminate_thread(recieve_thread1)
         self.assertEqual(3, test_step)
-
-
-
 
 
     def terminate_thread(self, thread):

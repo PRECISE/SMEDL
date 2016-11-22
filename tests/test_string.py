@@ -48,12 +48,12 @@ class TestString(unittest.TestCase):
                 c.rabbitmq.hostname, c.rabbitmq.port, '/', credentials))
         except pika.exceptions.ConnectionClosed:
             self.fail("Could not connect to RabbitMQ server. Is it down?")
+
         channel = connection.channel()
         channel.exchange_declare(exchange=c.rabbitmq.ctrl_exchange, exchange_type='fanout', durable=True)
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
         channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name,routing_key='#')
-
 
         channel1 = connection.channel()
         channel1.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
@@ -67,8 +67,6 @@ class TestString(unittest.TestCase):
         queue_name2 = result2.method.queue
         channel2.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='stringLiteralTest_pong.#')
 
-
-
         def callback(ch, method, properties, body):
             global test_step
             body = str(body, 'utf-8')
@@ -79,25 +77,14 @@ class TestString(unittest.TestCase):
                 test_step += 1
                 channel.basic_publish(exchange=c.rabbitmq.exchange,
                 routing_key='ch1.foo', body="{\"name\":\"0\", \"fmt_version\":\"1.0.0\", \"params\":{\"v1\": \"0\", \"v2\":2}}")
-                #sleep(1)
                 channel.basic_publish(exchange=c.rabbitmq.exchange,
                 routing_key='ch2.foo', body="{\"name\":\"0\", \"fmt_version\":\"1.0.0\" }")
             #elif test_step == 2 and "\"v1\":	\"0\"" in body and "\"v2\":	3" in body and "\"v3\":	1500" in body:
             elif test_step == 3 and "pong" in body or "\"0\"" in body:
-                #print(body)
                 test_step += 1
             elif test_step == 4 and "pong" in body or "\"0\"" in body:
                 test_step += 1
 
-        # time.sleep(1)
-        # def callback(ch, method, properties, body):
-        #     print(" [x] %r" % body)
-        #
-        # channel.basic_consume(callback,
-        #                       queue=queue_name,
-        #                       no_ack=True)
-        #
-        # channel.start_consuming()
         channel.basic_consume(callback, queue=queue_name, no_ack=True)
         recieve_thread = threading.Thread(target=channel.start_consuming)
         recieve_thread.start()
@@ -112,41 +99,26 @@ class TestString(unittest.TestCase):
 
         if connection is None:
             self.fail()
-
         call = subprocess.Popen("./bin/string_test", shell=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
         call2 = subprocess.Popen("./bin/stringLiteral_test", shell=True,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-
-
-#self.terminate_thread(recieve_thread)
-
-
         time.sleep(1)
         self.assertEqual(5, test_step)
         test_step = 0
         call.terminate()
         call2.terminate()
-
         call3 = subprocess.Popen("./bin/string_test2", shell=True,
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         call4 = subprocess.Popen("./bin/stringLiteral_test2", shell=True,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
         time.sleep(1)
-
-
         call3.terminate()
         call4.terminate()
         self.terminate_thread(recieve_thread)
         self.terminate_thread(recieve_thread1)
         self.terminate_thread(recieve_thread2)
         self.assertEqual(5, test_step)
-
-
-
 
 
     def terminate_thread(self, thread):
