@@ -163,5 +163,19 @@ project's root directory.
 The canonical repository for this project is located on the
 [PRECISE GitLab](https://gitlab.precise.seas.upenn.edu/pgebhard/smedl).
 
+## JSON format of the message
+
+{
+  "name" : "messageId",
+  "fmt_version" : "format version",
+  "params": {
+              "v1" : value1,
+	      "v2" : value2,
+	      ...
+  }
+}
+
+Field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index.
+
 At the moment, this is an internal repository, so please contact
 [Peter Gebhard](pgeb@seas.upenn.edu) for access.
