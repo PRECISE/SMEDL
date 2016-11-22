@@ -167,7 +167,6 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                 {{ event_msg_handlers|join('\n') }}
 
             }
-            free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
