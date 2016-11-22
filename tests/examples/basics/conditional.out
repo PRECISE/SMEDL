@@ -95,7 +95,7 @@ const char **conditional_states_names[1] = { conditional_sc1_states };
 int executed_scenarios[1]={ 0 };
 
 #define bindingkeyNum 1
-#define msg_format_version 1
+#define msg_format_version "1.0.0"
 
 ConditionalMonitor* init_conditional_monitor( ConditionalData *d ) {
     ConditionalMonitor* monitor = (ConditionalMonitor*)malloc(sizeof(ConditionalMonitor));
@@ -228,17 +228,15 @@ void start_monitor(ConditionalMonitor* monitor) {
         amqp_bytes_t routing_key = envelope.routing_key;
         char* rk = (char*)routing_key.bytes;
         char* string = (char*)bytes.bytes;
-        //char* event[255] = {NULL};
 
         if (string != NULL) {
             char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
-                char e[255];
 
                 
 
             }
-            //free(eventName);
+            free(eventName);
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
