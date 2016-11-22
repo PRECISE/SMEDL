@@ -624,7 +624,6 @@ class MonitorGenerator(object):
         return allFSMs
 
     def _findFunctionParams(self, function, params, ast):
-        #print(params)
         names = []
         types = None
         if isinstance(params, AST):
@@ -752,22 +751,6 @@ class MonitorGenerator(object):
                     out += ','
             out += ');'
             return out
-
-    # ALTERNATIVE ACTION QUEUE CODE
-    #         output = []
-    #         output.append('    case %s: ;' % event.upper())
-    #         paramString = ','.join(['%s %s'%(p['type'], p['name']) for p in self._symbolTable.get(event, 'params')])
-    #         if paramString == '':
-    #             output.append('      %s(monitor);' % event)
-    #         else:
-    #             params = self._getEventParams(paramString)
-    #             for p in params:
-    #                 output.append('      %s %s_%s = monitor->action_queue->params->%c;' % (p[0], p[1], event, p[0][0]))
-    #                 output.append('      pop_param(&monitor->action_queue->params);')
-    #             callParams = ", ".join('%s_%s' % (p[1], event) for p in params)
-    #             output.append('      %s(%s);' % (event, ", ".join(['monitor', callParams])))
-    #         output.append('      break;')
-    #         return '\n'.join(output)
 
 
     def _getEventParams(self, paramString):
