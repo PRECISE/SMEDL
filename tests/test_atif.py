@@ -26,9 +26,10 @@ class TestAtif(unittest.TestCase):
 
     def test_atif_mgen2(self):
         call = subprocess.run(["python3", "-m", "smedl.mgen", "--dir", "../gen", "tests/examples/atif/smedl/adaptationTrigger","--arch=tests/examples/atif/smedl/atifMonitorArchString","--helper","helper.h"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
+
     def test_atif_compile(self):
         os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'atif')))
+        os.makedirs('bin', exist_ok=True)
         call = subprocess.run("make all", shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.assertEqual(0, call.returncode)
 
@@ -49,15 +50,15 @@ class TestAtif(unittest.TestCase):
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
         channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name,routing_key='#')
-        
-        
+
+
         channel1 = connection.channel()
         channel1.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
         result1 = channel1.queue_declare(exclusive=True)
         queue_name1 = result1.method.queue
         channel1.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='ch2.#')
-        
-        
+
+
 
         def callback(ch, method, properties, body):
             global test_step
@@ -82,7 +83,7 @@ class TestAtif(unittest.TestCase):
                 test_step += 1
             elif test_step == 3 and "thresholdcrossdetection_thresholdWarning" in body:
                 test_step += 1
-                
+
         # time.sleep(1)
         # def callback(ch, method, properties, body):
         #     print(" [x] %r" % body)
@@ -117,7 +118,7 @@ class TestAtif(unittest.TestCase):
 
 
         time.sleep(5)
-        
+
 
 
         call.terminate()
@@ -129,12 +130,12 @@ class TestAtif(unittest.TestCase):
 
     def terminate_thread(self, thread):
         """Terminates a python thread from another thread.
-            
+
         :param thread: a threading.Thread instance
         """
         if not thread.isAlive():
             return
-                
+
         exc = ctypes.py_object(SystemExit)
         res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread.ident), exc)
         if res == 0:

@@ -21,9 +21,10 @@ class TestJson(unittest.TestCase):
     def test_json_mgen(self):
         call = subprocess.run(["python3", "-m", "smedl.mgen", "--dir", "../gen", "tests/examples/json_test/smedl/json","--arch=tests/examples/json_test/smedl/jsonArch"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    
+
     def test_json_compile(self):
         os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'json_test')))
+        os.makedirs('bin', exist_ok=True)
         call = subprocess.run("make all", shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.assertEqual(0, call.returncode)
 
@@ -44,16 +45,16 @@ class TestJson(unittest.TestCase):
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
         channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name,routing_key='#')
-        
-        
+
+
         channel1 = connection.channel()
         channel1.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
         result1 = channel1.queue_declare(exclusive=True)
         queue_name1 = result1.method.queue
         channel1.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='jsontest_pong.#')
-        
-        
-        
+
+
+
 
         def callback(ch, method, properties, body):
             global test_step
@@ -79,7 +80,7 @@ class TestJson(unittest.TestCase):
         channel1.basic_consume(callback, queue=queue_name1, no_ack=True)
         recieve_thread1 = threading.Thread(target=channel1.start_consuming)
         recieve_thread1.start()
-    
+
         if connection is None:
             self.fail()
 
@@ -96,17 +97,17 @@ class TestJson(unittest.TestCase):
         self.assertEqual(3, test_step)
 
 
-            
-        
+
+
 
     def terminate_thread(self, thread):
         """Terminates a python thread from another thread.
-            
+
         :param thread: a threading.Thread instance
         """
         if not thread.isAlive():
             return
-                
+
         exc = ctypes.py_object(SystemExit)
         res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread.ident), exc)
         if res == 0:

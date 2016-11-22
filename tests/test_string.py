@@ -26,12 +26,13 @@ class TestString(unittest.TestCase):
 
     def test_string_mgen2(self):
         call = subprocess.run(["python3", "-m", "smedl.mgen", "--dir", "../gen", "tests/examples/string_test/smedl/stringLiteral","--arch=tests/examples/string_test/smedl/stringArch"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
+
     def test_string_mgen3(self):
         call = subprocess.run(["python3", "-m", "smedl.mgen", "--dir", "../gen", "tests/examples/string_test/smedl/stringLiteral2","--arch=tests/examples/string_test/smedl/stringArch"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
+
     def test_string_compile(self):
         os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'string_test')))
+        os.makedirs('bin', exist_ok=True)
         call = subprocess.run("make all", shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.assertEqual(0, call.returncode)
 
@@ -52,21 +53,21 @@ class TestString(unittest.TestCase):
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
         channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name,routing_key='#')
-        
-        
+
+
         channel1 = connection.channel()
         channel1.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
         result1 = channel1.queue_declare(exclusive=True)
         queue_name1 = result1.method.queue
         channel1.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='stringtest_pong.#')
-        
+
         channel2 = connection.channel()
         channel2.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
         result2 = channel2.queue_declare(exclusive=True)
         queue_name2 = result2.method.queue
         channel2.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='stringLiteralTest_pong.#')
-        
-        
+
+
 
         def callback(ch, method, properties, body):
             global test_step
@@ -87,7 +88,7 @@ class TestString(unittest.TestCase):
                 test_step += 1
             elif test_step == 4 and "pong" in body or "\"0\"" in body:
                 test_step += 1
-                
+
         # time.sleep(1)
         # def callback(ch, method, properties, body):
         #     print(" [x] %r" % body)
@@ -104,7 +105,7 @@ class TestString(unittest.TestCase):
         channel1.basic_consume(callback, queue=queue_name1, no_ack=True)
         recieve_thread1 = threading.Thread(target=channel1.start_consuming)
         recieve_thread1.start()
-        
+
         channel2.basic_consume(callback, queue=queue_name1, no_ack=True)
         recieve_thread2 = threading.Thread(target=channel2.start_consuming)
         recieve_thread2.start()
@@ -145,17 +146,17 @@ class TestString(unittest.TestCase):
         self.assertEqual(5, test_step)
 
 
-            
-        
+
+
 
     def terminate_thread(self, thread):
         """Terminates a python thread from another thread.
-            
+
         :param thread: a threading.Thread instance
         """
         if not thread.isAlive():
             return
-                
+
         exc = ctypes.py_object(SystemExit)
         res = ctypes.pythonapi.PyThreadState_SetAsyncExc(ctypes.c_long(thread.ident), exc)
         if res == 0:
