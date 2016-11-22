@@ -3,18 +3,26 @@ object SPV
         int last_time;
     events
         imported parse_record(int, float, float, int);
-        internal test();
+        imported total_distance(float);
         exported timestep_error(int, int);
         exported after_end_error();
-
+        exported latitude_range_error(float);
+        exported longitude_range_error(float);
+        exported total_distance_error(float);
     scenarios
-        parse_record:
-           Start -> parse_record(ttime,lat,lon,ret) when ttime > last_time { raise test(); last_time = ttime; } -> Start
-                                                   else { raise timestep_error(ttime, last_time); } -> Start
+        check_time:
+           Start -> parse_record(tm,lat,lon,ret) when ret == -1 || tm > last_time { last_time = tm; } -> Start
+                                                   else { raise timestep_error(tm, last_time); } -> Start
+        check_latitude:
+          Start -> parse_record(tm,lat,lon,ret) when lat >= -90 && lat <= 90 -> Start
+                                                   else { raise latitude_range_error(lat); } -> Start
+        check_longitude:
+          Start -> parse_record(tm,lat,lon,ret) when lon >= -180 && lon <= +180 -> Start
+                                                   else { raise longitude_range_error(lon); } -> Start
+        check_distance:
+          Start -> total_distance(dist) when dist > 0 && dist < 1 -> Start
+                                        else { raise total_distance_error(dist); } -> Start
         after_end:
-           Start -> parse_record(ttime,lat,lon,ret) when ret == -1 { raise test(); } -> End
+           Start -> parse_record(tm,lat,lon,ret) when ret == -1 -> End
                                                    else -> Start
-           End -> parse_record(ttime,lat,lon,ret) { raise after_end_error(); } -> End
-
-        test_se:
-           Start -> test() -> Start
+           End -> parse_record(tm,lat,lon,ret) { raise after_end_error(); } -> End

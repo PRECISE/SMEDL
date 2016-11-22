@@ -10,7 +10,7 @@ import pylibconfig2 as cfg
 
 test_step = 0
 
-class TestSpvRabbitMQ(unittest.TestCase):
+class TestSpv(unittest.TestCase):
 
     def setUp(self):
         self.origPath = os.getcwd()
@@ -18,22 +18,22 @@ class TestSpvRabbitMQ(unittest.TestCase):
     def tearDown(self):
         os.chdir(self.origPath)
 
-    def test_spvrabbitmq_mgen(self):
+    def test_spv_mgen(self):
         call = subprocess.run(["python3", "-m", "smedl.mgen", "--dir", "gen",
-            "tests/examples/spv-rabbitmq/spv",
-            "--arch=tests/examples/spv-rabbitmq/spv_architecture"],
+            "tests/examples/spv/spv",
+            "--arch=tests/examples/spv/spv_architecture"],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    def test_spvrabbitmq_compile(self):
-        os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'spv-rabbitmq')))
+    def test_spv_compile(self):
+        os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'spv')))
         os.makedirs('bin', exist_ok=True)
         call = subprocess.run("make all", shell=True, check=True,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.assertEqual(0, call.returncode)
 
-    def test_spvrabbitmq_run(self):
+    def test_spv_run(self):
         global test_step
-        os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'spv-rabbitmq')))
+        os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'spv')))
         with open('spv_mon.cfg', 'r') as cfgfile:
             cfgdata = cfgfile.read()
         c = cfg.Config(cfgdata)
