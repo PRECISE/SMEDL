@@ -66,6 +66,7 @@ class TestString(unittest.TestCase):
         queue_name2 = result2.method.queue
         channel2.queue_bind(exchange=cfg['rabbitmq']['exchange'], queue=queue_name1,routing_key='stringLiteralTest_pong.#')
 
+
         def callback(ch, method, properties, body):
             global test_step
             body = str(body, 'utf-8')
