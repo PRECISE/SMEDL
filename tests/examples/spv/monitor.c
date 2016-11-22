@@ -7,7 +7,7 @@
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <libconfig.h>
-#include "spv_mon.h"
+#include "gen/spv_mon.h"
 
 int main()
 {
@@ -16,7 +16,7 @@ int main()
     int id = 0;
     data->id = &id;
     data->last_time = 0;
-    
+
     init_spv_monitor_maps();
     SpvMonitor* mon = init_spv_monitor(data);
 
