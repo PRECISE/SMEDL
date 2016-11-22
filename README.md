@@ -166,7 +166,7 @@ The canonical repository for this project is located on the
 ## JSON format of the message
 
 {
-  "name" : "messageId",
+  "name" : "eventName",
   "fmt_version" : "format version",
   "params": {
               "v1" : value1,
@@ -175,7 +175,7 @@ The canonical repository for this project is located on the
   }
 }
 
-Field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index.
+Only the message is encoded in JSON string and the routing key still follows the format of the rabbitmq. As a result, the  field "name" in the JSON string is not used for now. Moreover, the field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index where index is from 1. Types and order of the data in "params" follows the definition of the event.
 
 At the moment, this is an internal repository, so please contact
 [Peter Gebhard](pgeb@seas.upenn.edu) for access.
