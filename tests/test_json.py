@@ -51,7 +51,6 @@ class TestJson(unittest.TestCase):
         queue_name1 = result1.method.queue
         channel1.queue_bind(exchange=cfg['rabbitmq']['exchange'], queue=queue_name1,routing_key='jsontest_pong.#')
 
-
         def callback(ch, method, properties, body):
             global test_step
             body = str(body, 'utf-8')
