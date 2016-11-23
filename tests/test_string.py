@@ -6,7 +6,7 @@ import threading
 import ctypes
 import pathlib
 import pika
-import pylibconfig2 as cfg
+import libconf
 
 test_step = 0
 
@@ -40,32 +40,31 @@ class TestString(unittest.TestCase):
         global test_step
         os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'string_test')))
         with open('string_mon.cfg', 'r') as cfgfile:
-            cfgdata = cfgfile.read()
-        c = cfg.Config(cfgdata)
-        credentials = pika.PlainCredentials(c.rabbitmq.username, c.rabbitmq.password)
+            cfg = libconf.load(cfgfile)
+        credentials = pika.PlainCredentials(cfg['rabbitmq']['username'], cfg['rabbitmq']['password'])
         try:
             connection = pika.BlockingConnection(pika.ConnectionParameters(
-                c.rabbitmq.hostname, c.rabbitmq.port, '/', credentials))
+                cfg['rabbitmq']['hostname'], cfg['rabbitmq']['port'], '/', credentials))
         except pika.exceptions.ConnectionClosed:
             self.fail("Could not connect to RabbitMQ server. Is it down?")
 
         channel = connection.channel()
-        channel.exchange_declare(exchange=c.rabbitmq.ctrl_exchange, exchange_type='fanout', durable=True)
+        channel.exchange_declare(exchange=cfg['rabbitmq']['ctrl_exchange'], exchange_type='fanout', durable=True)
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
-        channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name,routing_key='#')
+        channel.queue_bind(exchange=cfg['rabbitmq']['ctrl_exchange'], queue=queue_name,routing_key='#')
 
         channel1 = connection.channel()
-        channel1.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
+        channel1.exchange_declare(exchange=cfg['rabbitmq']['exchange'], exchange_type='topic', durable=True)
         result1 = channel1.queue_declare(exclusive=True)
         queue_name1 = result1.method.queue
-        channel1.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='stringtest_pong.#')
+        channel1.queue_bind(exchange=cfg['rabbitmq']['exchange'], queue=queue_name1,routing_key='stringtest_pong.#')
 
         channel2 = connection.channel()
-        channel2.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
+        channel2.exchange_declare(exchange=cfg['rabbitmq']['exchange'], exchange_type='topic', durable=True)
         result2 = channel2.queue_declare(exclusive=True)
         queue_name2 = result2.method.queue
-        channel2.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='stringLiteralTest_pong.#')
+        channel2.queue_bind(exchange=cfg['rabbitmq']['exchange'], queue=queue_name1,routing_key='stringLiteralTest_pong.#')
 
         def callback(ch, method, properties, body):
             global test_step
@@ -75,9 +74,9 @@ class TestString(unittest.TestCase):
                 test_step += 1
             if test_step == 2:
                 test_step += 1
-                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                channel.basic_publish(exchange=cfg['rabbitmq']['exchange'],
                 routing_key='ch1.foo', body="{\"name\":\"0\", \"fmt_version\":\"1.0.0\", \"params\":{\"v1\": \"0\", \"v2\":2}}")
-                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                channel.basic_publish(exchange=cfg['rabbitmq']['exchange'],
                 routing_key='ch2.foo', body="{\"name\":\"0\", \"fmt_version\":\"1.0.0\" }")
             #elif test_step == 2 and "\"v1\":	\"0\"" in body and "\"v2\":	3" in body and "\"v3\":	1500" in body:
             elif test_step == 3 and "pong" in body or "\"0\"" in body:
@@ -109,9 +108,9 @@ class TestString(unittest.TestCase):
         call.terminate()
         call2.terminate()
         call3 = subprocess.Popen("./bin/string_test2", shell=True,
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         call4 = subprocess.Popen("./bin/stringLiteral_test2", shell=True,
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         time.sleep(1)
         call3.terminate()
         call4.terminate()
