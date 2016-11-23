@@ -6,7 +6,7 @@ import threading
 import ctypes
 import pathlib
 import pika
-import pylibconfig2 as cfg
+import libconf
 
 test_step = 0
 
@@ -37,26 +37,25 @@ class TestAtif(unittest.TestCase):
         global test_step
         os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'atif','cfg')))
         with open('stringRate_mon.cfg', 'r') as cfgfile:
-            cfgdata = cfgfile.read()
-        c = cfg.Config(cfgdata)
-        credentials = pika.PlainCredentials(c.rabbitmq.username, c.rabbitmq.password)
+            cfg = libconf.load(cfgfile)
+        credentials = pika.PlainCredentials(cfg['rabbitmq']['username'], cfg['rabbitmq']['password'])
         try:
             connection = pika.BlockingConnection(pika.ConnectionParameters(
-                c.rabbitmq.hostname, c.rabbitmq.port, '/', credentials))
+                cfg['rabbitmq']['hostname'], cfg['rabbitmq']['port'], '/', credentials))
         except pika.exceptions.ConnectionClosed:
             self.fail("Could not connect to RabbitMQ server. Is it down?")
 
         channel = connection.channel()
-        channel.exchange_declare(exchange=c.rabbitmq.ctrl_exchange, exchange_type='fanout', durable=True)
+        channel.exchange_declare(exchange=cfg['rabbitmq']['ctrl_exchange'], exchange_type='fanout', durable=True)
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
-        channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name,routing_key='#')
+        channel.queue_bind(exchange=cfg['rabbitmq']['ctrl_exchange'], queue=queue_name,routing_key='#')
 
         channel1 = connection.channel()
-        channel1.exchange_declare(exchange=c.rabbitmq.exchange, exchange_type='topic', durable=True)
+        channel1.exchange_declare(exchange=cfg['rabbitmq']['exchange'], exchange_type='topic', durable=True)
         result1 = channel1.queue_declare(exclusive=True)
         queue_name1 = result1.method.queue
-        channel1.queue_bind(exchange=c.rabbitmq.exchange, queue=queue_name1,routing_key='ch2.#')
+        channel1.queue_bind(exchange=cfg['rabbitmq']['exchange'], queue=queue_name1,routing_key='ch2.#')
 
         def callback(ch, method, properties, body):
             global test_step
@@ -66,13 +65,13 @@ class TestAtif(unittest.TestCase):
                 test_step += 1
             if test_step == 1:
                 test_step += 1
-                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                channel.basic_publish(exchange=cfg['rabbitmq']['exchange'],
                 routing_key='ch3.foo', body="{\"name\":\"0\", \"fmt_version\":\"1.0.0\", \"params\":{\"v1\": \"0\", \"v2\":1.0, \"v3\":0}}")
-                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                channel.basic_publish(exchange=cfg['rabbitmq']['exchange'],
                 routing_key='ch3.foo', body="{\"name\":\"0\", \"fmt_version\":\"1.0.0\",\"params\":{\"v1\": \"0\", \"v2\":2.0, \"v3\":1000}}")
-                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                channel.basic_publish(exchange=cfg['rabbitmq']['exchange'],
                 routing_key='ch3.foo', body="{\"name\":\"0\",\"fmt_version\":\"1.0.0\", \"params\":{\"v1\": \"0\", \"v2\":3.0, \"v3\":2000}}")
-                channel.basic_publish(exchange=c.rabbitmq.exchange,
+                channel.basic_publish(exchange=cfg['rabbitmq']['exchange'],
                 routing_key='ch4.foo', body="{\"name\":\"timeout\",\"fmt_version\":\"1.0.0\"}")
             #elif test_step == 2 and "\"v1\":	\"0\"" in body and "\"v2\":	3" in body and "\"v3\":	1500" in body:
             elif test_step == 2:

@@ -6,7 +6,7 @@ import threading
 import ctypes
 import pathlib
 import pika
-import pylibconfig2 as cfg
+import libconf
 
 test_step = 0
 
@@ -35,29 +35,25 @@ class TestSpv(unittest.TestCase):
         global test_step
         os.chdir(str(pathlib.PurePath('.', 'tests', 'examples', 'spv')))
         with open('spv_mon.cfg', 'r') as cfgfile:
-            cfgdata = cfgfile.read()
-        c = cfg.Config(cfgdata)
-        credentials = pika.PlainCredentials(c.rabbitmq.username, c.rabbitmq.password)
+            cfg = libconf.load(cfgfile)
+        credentials = pika.PlainCredentials(cfg['rabbitmq']['username'], cfg['rabbitmq']['password'])
         try:
             connection = pika.BlockingConnection(pika.ConnectionParameters(
-                c.rabbitmq.hostname, c.rabbitmq.port, '/', credentials))
+                cfg['rabbitmq']['hostname'], cfg['rabbitmq']['port'], '/', credentials))
         except pika.exceptions.ConnectionClosed:
             self.fail("Could not connect to RabbitMQ server. Is it down?")
         channel = connection.channel()
-        channel.exchange_declare(exchange=c.rabbitmq.ctrl_exchange,
+        channel.exchange_declare(exchange=cfg['rabbitmq']['ctrl_exchange'],
             exchange_type='fanout', durable=True)
         result = channel.queue_declare(exclusive=True)
         queue_name = result.method.queue
-        channel.queue_bind(exchange=c.rabbitmq.ctrl_exchange, queue=queue_name)
+        channel.queue_bind(exchange=cfg['rabbitmq']['ctrl_exchange'], queue=queue_name)
 
         def callback(ch, method, properties, body):
             global test_step
             body = str(body, 'utf-8')
             if test_step == 0 and body.startswith("Spv monitor") and body.endswith("started."):
                 test_step += 1
-                # channel.basic_publish(exchange=c.rabbitmq.ctrl_exchange,
-                #     routing_key='', body='Hello World!')
-                # time.sleep(1)
 
         channel.basic_consume(callback, queue=queue_name, no_ack=True)
         recieve_thread = threading.Thread(target=channel.start_consuming)
