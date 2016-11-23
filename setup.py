@@ -10,8 +10,7 @@ from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
-
-from smedl.__about__ import *
+import json
 
 here = path.abspath(path.dirname(__file__))
 
@@ -21,30 +20,32 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 # Get the dependencies from the requirements file
 with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
-    reqs = [line.rstrip('\n') for line in f]
+    __reqs__ = [line.rstrip('\n') for line in f]
 
-print(reqs)
+# Get the package details from the SMEDL about.json file
+with open(path.join(here, 'smedl', 'about.json'), encoding='utf-8') as f:
+    __about__ = json.load(f)
 
 setup(
-    name=__title__,
+    name=__about__['title'],
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version=__version__,
+    version=__about__['version'],
 
-    description=__summary__,
+    description=__about__['summary'],
     long_description=long_description,
 
     # The project's main homepage.
-    url=__uri__,
+    url=__about__['uri'],
 
     # Author details
-    author=__author__,
-    author_email=__email__,
+    author=__about__['author'],
+    author_email=__about__['email'],
 
     # Choose your license
-    license=__license__,
+    license=__about__['license'],
 
     # See https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
@@ -83,7 +84,7 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=reqs,
+    install_requires=__reqs__,
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
@@ -98,7 +99,7 @@ setup(
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data={
-        'smedl': ['c_style/*.c', 'c_style/*.h', 'c_style/*.cfg'],
+        'smedl': ['about.json', 'c_style/*.c', 'c_style/*.h', 'c_style/*.cfg'],
     },
 
     # To provide executable scripts, use entry points in preference to the

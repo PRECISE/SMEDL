@@ -1,0 +1,11 @@
+{
+	"title" : "smedl",
+	"summary" : "A tool for generating software monitors from SMEDL and PEDL definitions.",
+	"uri" : "https://gitlab.precise.seas.upenn.edu/pgebhard/smedl",
+	"version" : "1.0.0.rc2",
+	"msg_format_version" : "1.0.0",
+	"author" : "The Trustees of the University of Pennsylvania",
+	"email" : "pgeb@seas.upenn.edu",
+	"license" : "TBD",
+	"copyright" : "Copyright (c) 2016 The Trustees of the University of Pennsylvania"
+}

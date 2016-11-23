@@ -1,4 +1,4 @@
 include LICENSE.txt
 include README.md
 
-recursive-include smedl *.py *.c *.h *.grako
+recursive-include smedl *.py *.c *.h *.cfg *.json *.grako

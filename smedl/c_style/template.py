@@ -1,7 +1,7 @@
 import re, os, collections
 from jinja2 import Environment, PackageLoader
 import smedl.mgen
-from smedl.__about__ import *
+from smedl import __about__
 
 class CTemplater(object):
     @staticmethod
@@ -23,7 +23,7 @@ class CTemplater(object):
             id['c_type'] = CTemplater.convertTypeForC(id['type'])
 
         values = dict()
-        values['msg_format_version'] = '\"'+__msg_format_version__+'\"'
+        values['msg_format_version'] = '\"'+__about__['msg_format_version']+'\"'
         values['multithreaded'] = True # command line arg for this?
         values['identities'] = identities
         values['obj'] = obj
