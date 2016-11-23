@@ -7,7 +7,6 @@
 # Peter Gebhard (pgeb@seas.upenn.edu)
 #-------------------------------------------------------------------------------
 
-from smedl.__about__ import *
 from .parser import *
 from .fsm import *
 from .c_style import *
@@ -72,7 +71,6 @@ class MonitorGenerator(object):
         if smedlPath.exists():
             with smedlPath.open() as smedlFile:
                 smedlText = smedlFile.read()
-        #print(smedlPath)
             smedlPar = smedlParser()
             self.smedlAST = smedlPar.parse(
                 smedlText,
@@ -90,8 +88,6 @@ class MonitorGenerator(object):
 
         # Parser the architecture, it exists
         if a4smedlName is not None:
-
-
             a4smedlPath = Path(os.path.expanduser(a4smedlName+ '.a4smedl'))
             print(a4smedlPath)
             if a4smedlPath.exists():
@@ -114,16 +110,16 @@ class MonitorGenerator(object):
         self._getParameterNames(self.smedlAST)
         allFSMs = self._generateFSMs(self.smedlAST)
 
-        # process architecture AST
+        # Process architecture AST
         self._parseArchitecture('top',self.a4smedlAST)
 
-        #for mon in self.monitorInterface:
-        #    print(mon)
-        #    print('\n')
-
-        #for pattern in self.archSpec:
-        #    print(pattern)
-        #    print('\n')
+        if self._debug:
+            for mon in self.monitorInterface:
+               print(mon)
+               print('\n')
+            for pattern in self.archSpec:
+               print(pattern)
+               print('\n')
 
         # Output the internal symbol table and FSMs
         if self._printStructs:
@@ -152,12 +148,10 @@ class MonitorGenerator(object):
                 if k == 'monitor_declaration':
                     self._parseInter(v)
                 elif k == 'archSpec':
-                    #print(v)
                     self._parseSpec(v)
 
 
-    def _makeMonitor(self,object):
-        #print(object)
+    def _makeMonitor(self, object):
         if isinstance(object,list):
             for mon in object:
                 monId = None
@@ -171,7 +165,6 @@ class MonitorGenerator(object):
                     elif k == 'monitor_identifier':
                         monId = v
                     elif k == 'params':
-                        #print("v:"+v)
                         if not v == None:
                             if isinstance(v,list):
                                 para = v
@@ -183,7 +176,6 @@ class MonitorGenerator(object):
                         exported = self._makeEventList(v)
 
                 interface = Interface(monType,monId,para,imported,exported)
-                #print("para:"+str(len(para)))
                 self.monitorInterface.append(interface)
 
 
@@ -447,13 +439,11 @@ class MonitorGenerator(object):
                 if k == 'object':
                     self._symbolTable.add(v, {'type': 'object'})
                 elif label == 'identity' and k == 'var':
-                    #print("object:"+str(object))
                     if isinstance(v, list):
                         for var in v:
                             self._symbolTable.add(var, {'type': 'identity', 'datatype': object['type']})
                             self.identities.append(var)
                     else:
-                        #print("v:"+v)
                         self._symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})
                         self.identities.append(v)
                 elif label == 'state' and k == 'var':
@@ -762,6 +752,7 @@ class MonitorGenerator(object):
 
 
 import argparse
+from smedl import __about__
 
 def main():
     parser = argparse.ArgumentParser(description="Code Generator for SMEDL and PEDL.")
@@ -770,7 +761,7 @@ def main():
     parser.add_argument('-d', '--debug', help='Show debug output', action='store_true')
     parser.add_argument('-c', '--console', help='Only output to console, no file output', action='store_true')
     parser.add_argument('--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
-    parser.add_argument('--version', action='version', version=__version__)
+    parser.add_argument('--version', action='version', version=__about__['version'])
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="The name of the PEDL and SMEDL files to parse")
     parser.add_argument('--arch', metavar="a4smedl_filename", help="The name of architecture file to parse")
     parser.add_argument('--dir', metavar="output_dir", help="Output the generated files to this directory relative to the input files")

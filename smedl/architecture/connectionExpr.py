@@ -12,7 +12,6 @@ class ConnectionExpr(object):
         self.targetEvent = te
         self.patternSpec = ps
 
-
     def __str__(self):
         out = "connectionExpr:"
         if not self.connName == None:

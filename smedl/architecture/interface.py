@@ -5,7 +5,6 @@ from .connectionExpr import ConnectionExpr
 
 class Interface(object):
 
-
     def __init__(self,ty,name,pa,ie,ee):
         self.type = ty
         self.id = name
