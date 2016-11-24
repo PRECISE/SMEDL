@@ -1,7 +1,7 @@
 image: python:3.5
 
 before_script:
-  - sudo apt-get install libconfig9 librabbitmq4
+  - apt-get install -y libconfig9 librabbitmq4
   - python -V
   - which python
 
