@@ -163,19 +163,5 @@ project's root directory.
 The canonical repository for this project is located on the
 [PRECISE GitLab](https://gitlab.precise.seas.upenn.edu/pgebhard/smedl).
 
-## JSON format of the message
-
-{
-  "name" : "eventName",
-  "fmt_version" : "format version",
-  "params": {
-              "v1" : value1,
-	      "v2" : value2,
-	      ...
-  }
-}
-
-Only the message is encoded in JSON string and the routing key still follows the format of the rabbitmq. As a result, the  field "name" in the JSON string is not used for now. Moreover, the field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index where index is from 1. Types and order of the data in "params" follows the definition of the event.
-
 At the moment, this is an internal repository, so please contact
 [Peter Gebhard](pgeb@seas.upenn.edu) for access.
