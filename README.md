@@ -100,6 +100,7 @@ To parse a SMEDL file using the generated parser:
 
 (Use the `-t` command-line option to enable debug tracing)
 
+
 ## RabbitMQ
 Asynchronous monitoring of events has been implemented using the [Advanced Message Queuing Protocol](http://www.amqp.org/) by the [RabbitMQ](https://www.rabbitmq.com/) message broker.
 
@@ -127,6 +128,20 @@ Asynchronous monitoring of events has been implemented using the [Advanced Messa
 		ctrl_exchange = "example.control";
 	};
 
+### JSON format of the asynchronous event message
+    {
+      "name" : "eventName",
+      "fmt_version" : "format version",
+      "params": {
+                  "v1" : value1,
+              "v2" : value2,
+              ...
+      }
+    }
+
+Only the message is encoded in JSON string and the routing key still follows the format of the rabbitmq. As a result, the  field "name" in the JSON string is not used for now. Moreover, the field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index where index is from 1. Types and order of the data in "params" follows the definition of the event.
+
+
 ## Compiling with an architecture description
 An architecture description file can be compiled with the SMEDL specification
 using the following command:
@@ -138,27 +153,15 @@ Note that `ARCH_SMEDL_FILENAME` does not contain the `.a4smedl` suffix.
 Moreover, it is necessary to compile separately with corresponding SMEDL
 specifications. For more info, readers can refer to the document ``Architecture_Description_Language_for_SMEDL``.
 
+
 ## Running the test suite
-You may run the tool's test suite by simply calling `nosetests` from the
+You may run the tool's test suite by simply calling `nose2` from the
 project's root directory.
+
 
 ## Updating from the repository
 The canonical repository for this project is located on the
 [PRECISE GitLab](https://gitlab.precise.seas.upenn.edu/pgebhard/smedl).
-
-## JSON format of the message
-
-{
-  "name" : "eventName",
-  "fmt_version" : "format version",
-  "params": {
-              "v1" : value1,
-	      "v2" : value2,
-	      ...
-  }
-}
-
-Only the message is encoded in JSON string and the routing key still follows the format of the rabbitmq. As a result, the  field "name" in the JSON string is not used for now. Moreover, the field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index where index is from 1. Types and order of the data in "params" follows the definition of the event.
 
 At the moment, this is an internal repository, so please contact
 [Peter Gebhard](pgeb@seas.upenn.edu) for access.

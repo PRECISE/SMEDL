@@ -2,7 +2,7 @@ grako==3.14.0
 Jinja2>=2.8
 MarkupSafe>=0.23
 mccabe>=0.5
-nose>=1.3.7
+nose2
 pyelftools
 pika
 libconf
