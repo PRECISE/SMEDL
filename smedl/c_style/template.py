@@ -107,8 +107,10 @@ class CTemplater(object):
                 msg_handler.append(cond + ' (!strcmp(eventName,"%s")) {' % conn.connName)
                 json_string = '\t\tcJSON * root = cJSON_Parse(string);\n\t'
                 json_string += 'char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;\n\t if(!strcmp(msg_ver,msg_format_version)){ \n\t'
+                json_params_mark = 0
                 if len(monitorParams[1:])>0:
-                    json_string+= '\t cJSON * fmt = cJSON_GetObjectItem(root,"params");\n'
+                    json_params_mark = 1
+                    json_string+= '\t cJSON * fmt = cJSON_GetObjectItem(root,"params");\n\t if (fmt!=NULL) {\n\t'
                 retAttrs = ''
                 sscanfStr = ''
                 index = 1
@@ -134,9 +136,12 @@ class CTemplater(object):
                 msg_handler.append(sscanfStr)
                 msg_handler.append('                        ' + obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');')
                 msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), conn.targetEvent))
+                if json_params_mark == 1:
+                    msg_handler.append('}\n\t else{\n\t printf("no parameters.\\n");\n\t}')
                 msg_handler.append('                    }\n\t else {\n\t printf("format version not matched\\n");\n\t}')
                 msg_handler.append('                }')
                 values['event_msg_handlers'].append('\n'.join(msg_handler))
+                
 
         parameterTypeNumMap = collections.OrderedDict()
         parameterTypeNumMap['int'] = 0
