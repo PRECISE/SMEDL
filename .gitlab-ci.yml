@@ -1,6 +1,7 @@
 image: python:3.5
 
 before_script:
+  - ping -c 10 stability.cis.upenn.edu
   - apt-get update -y
   - apt-get upgrade -y
   - apt-get install -y libconfig-dev librabbitmq-dev
@@ -14,4 +15,4 @@ test:
   - python -V
   - which python
   - pip install .
-  - nosetests
+  - nosetests -s
