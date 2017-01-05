@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "actions.h"
 
-int push_param(param **head, int *i, char *c, double *d, const void **v) {
+int push_param(param **head, int *i, char *c, double *d, const void **v, smedl_provenance_t * pro) {
     param *new = (param*)malloc(sizeof(param));
     if(new == NULL) {
         free(new);
@@ -19,6 +19,9 @@ int push_param(param **head, int *i, char *c, double *d, const void **v) {
     }
     if(v != NULL) {
         new->v = *v;
+    }
+    if (pro != NULL){
+        new->provenance = pro;
     }
     new->next = NULL;
     if(*head == NULL) {

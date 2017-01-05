@@ -47,11 +47,11 @@ void free_monitor(JsontestMonitor*);
 /*
  * Monitor Event Handlers
  */
-void jsontest_ping(JsontestMonitor* monitor, char* st, int i, double f);
-void raise_jsontest_ping(JsontestMonitor* monitor, char* v0, int v1, double v2);
-void jsontest_pong(JsontestMonitor* monitor, double f, int i, char* st);
-void exported_jsontest_pong(JsontestMonitor* monitor , double v0, int v1, char* v2);
-void raise_jsontest_pong(JsontestMonitor* monitor, double v0, int v1, char* v2);
+void jsontest_ping(JsontestMonitor* monitor, char* st, int i, double f, smedl_provenance_t* provenance);
+void raise_jsontest_ping(JsontestMonitor* monitor, char* v0, int v1, double v2, smedl_provenance_t* provenance);
+void jsontest_pong(JsontestMonitor* monitor, double f, int i, char* st, smedl_provenance_t* provenance);
+void exported_jsontest_pong(JsontestMonitor* monitor , double v0, int v1, char* v2, smedl_provenance_t* provenance);
+void raise_jsontest_pong(JsontestMonitor* monitor, double v0, int v1, char* v2, smedl_provenance_t* provenance);
 
 /*
  * Monitor Utility Functions

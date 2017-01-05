@@ -129,6 +129,14 @@ int executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
     return monitor;
 }
 
+smedl_provenance_t* create_provenance_object(char event[255], int line, long trace_counter){
+    smedl_provenance_t* provenance = (smedl_provenance_t*)malloc(sizeof(smedl_provenance_t));
+    strncpy(provenance -> event, event,255);
+    provenance -> line = line;
+    provenance -> trace_counter = trace_counter;
+    return provenance;
+}
+
 void start_monitor({{ obj|title }}Monitor* monitor) {
     int received = 0;
     amqp_frame_t frame;
@@ -163,10 +171,34 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
         if (string != NULL) {
             char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
+                cJSON * root = cJSON_Parse(string);
+                cJSON * ver = cJSON_GetObjectItem(root,"fmt_version");
+                char * msg_ver = NULL;
+                if(ver!=NULL){
+                    msg_ver = ver->valuestring;
+                }
+                smedl_provenance_t* pro = NULL;
+                if(!strcmp(msg_ver,msg_format_version)){
+                    cJSON *provenance = cJSON_GetObjectItem(root,"provenance");
+                    if (provenance!=NULL){
+                        cJSON * ev = cJSON_GetObjectItem(provenance,"event");
+                        cJSON * li = cJSON_GetObjectItem(provenance,"line");
+                        cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
+                        if (ev!= NULL && li != NULL && tr!= NULL){
+                            char* event = ev->valuestring;
+                            int line = li->valueint;
+                            long trace_counter = tr->valueint;
+                            pro = create_provenance_object(event,line,trace_counter);
+                        }
+                    }
 
-                {{ event_msg_handlers|join('\n') }}
-
+                    {{ event_msg_handlers|join('\n') }}
+                }else {
+                    printf("format version not matched\n");
+                    
+                }
             }
+
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -271,7 +303,7 @@ void executeEvents({{obj|title}}Monitor* monitor){
 
 void executePendingEvents({{obj|title}}Monitor* monitor){
     action** head = &monitor->action_queue;
-    {{var_declaration}}
+    {{var_declaration}} smedl_provenance_t* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -290,7 +322,7 @@ void executePendingEvents({{obj|title}}Monitor* monitor){
 //send export events one by one from export_queue
 void executeExportedEvent({{obj|title}}Monitor* monitor){
     action** head = &monitor->export_queue;
-    {{var_declaration}}
+    {{var_declaration}} smedl_provenance_t* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;

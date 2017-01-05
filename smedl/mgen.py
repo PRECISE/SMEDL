@@ -682,17 +682,42 @@ class MonitorGenerator(object):
 
     def _addMonitorArrowToStateVariables(self, string):
         #print('before:'+string)
+        #print(string)
         if len(string)>0 and string[0]=='\"':
             return string
-        for sv in self._symbolTable.getSymbolsByType('state'):
+        newList = list((self._symbolTable.getSymbolsByType('state')))
+        (newList).sort(key = lambda x: len(x))
+        newList.reverse()
+        #print(newList)
+        for sv in (newList):
             #print('sv:'+sv)
             indices = [t.start() for t in re.finditer(sv, string)]
             for index in indices:
+                #print(index)
                 #print('index:'+string[index])
+                i = 0
+                while(i<len(sv) and index+i<len(string)):
+                    if sv[i]!=string[index+i]:
+                        break
+                    i=i+1
+                if i<len(sv):
+                    return string
+                if i==len(sv) and index+i < len(string):
+
+                    #print(i)
+                    #print(len(sv))
+                    #print(len(string))
+                    if string[index+i].isalpha() or string[index+i] == '_':
+                        #print(sv)
+                        #print(i)
+                        #print(len(string))
+                        #print(string[index+i])
+                        #print('return:'+string)
+                        return string
                 if string[index-5:index] != 'this.' and string[index-9:index] != 'monitor->':  # Prevent duplicated 'this.'
                     if index == 0 or (not (string[index-1]).isalpha() and not string[index-1] == '_') :
                         string = string[:index] + 'monitor->' + string[index:]
-
+    #print(string)
         return string
 
 
@@ -727,7 +752,7 @@ class MonitorGenerator(object):
             #print(out)
             return out
         elif action.type == ActionType.Raise:
-            return 'raise_%s_%s(monitor%s);' % (obj.lower(), action.event, joinArgs([self._formatExpression(p) for p in action.params], ", "))
+            return 'raise_%s_%s(monitor%s%s);' % (obj.lower(), action.event, joinArgs([self._formatExpression(p) for p in action.params], ", "),",provenance")
         elif action.type == ActionType.Instantiation:
             exit("Instantiation actions are not implemented. Sorry!")
         elif action.type == ActionType.Call:

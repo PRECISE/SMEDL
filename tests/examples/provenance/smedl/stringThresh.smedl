@@ -1,0 +1,41 @@
+// detects crossing of a threshold and holding that 
+// threshold for a period of time
+// ???? generalize to crossing low to high or high to low
+object ThresholdCrossDetection
+    identity
+	int id;
+    state
+        float xingTime;
+        float threshold;
+        float holdTime;
+	string name;
+	int trigger;
+
+    events
+        //imported dataUpdate(int, float, float);
+        imported dataUpdate(string, float, float);
+        imported timeout();
+//        exported requestTimeout(int, float);
+        exported thresholdWarning(string, int);
+//        exported requestTimeout(string, float);
+//        exported thresholdWarning(string, float);
+
+    scenarios
+        stable:
+                Stable -> dataUpdate(n, ts, val) when val < threshold -> Stable
+        
+                Crossed -> dataUpdate(n, ts, val) when val < threshold -> Stable
+        
+                Triggered -> dataUpdate(n, ts, val) when val < threshold {trigger = 0; name = n; raise thresholdWarning(n, trigger); } -> Stable
+
+//		Stable -> dataUpdate(n, ts, val) when val >threshold {raise requestTimeout(12, holdTime); xingTime = ts; } -> Crossed
+		Stable -> dataUpdate(n, ts, val) when val >threshold {trigger = 1; name = n; raise thresholdWarning(n, trigger); xingTime = ts; } -> Triggered
+
+		// not used right now
+		Crossed -> timeout() when 0==0 { trigger = 1; raise thresholdWarning(name, trigger);  } -> Triggered
+
+//                Crossed   -> stop1() when 0==0 -> End1
+
+//		Stable    -> stop1() when 0==0 -> End1
+
+//		Triggered -> stop1() when 0==0 -> End1

@@ -105,8 +105,7 @@ class CTemplater(object):
                 else:
                     cond = '                else if'
                 msg_handler.append(cond + ' (!strcmp(eventName,"%s")) {' % conn.connName)
-                json_string = '\t\tcJSON * root = cJSON_Parse(string);\n\t'
-                json_string += 'char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;\n\t if(!strcmp(msg_ver,msg_format_version)){ \n\t'
+                json_string = ''
                 json_params_mark = 0
                 if len(monitorParams[1:])>0:
                     json_params_mark = 1
@@ -132,13 +131,13 @@ class CTemplater(object):
                     index = index + 1
                     retAttrs += ', ' + p['name']
 
+                retAttrs += ', pro'
                 msg_handler.append(json_string)
                 msg_handler.append(sscanfStr)
                 msg_handler.append('                        ' + obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');')
                 msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), conn.targetEvent))
                 if json_params_mark == 1:
                     msg_handler.append('}\n\t else{\n\t printf("no parameters.\\n");\n\t}')
-                msg_handler.append('                    }\n\t else {\n\t printf("format version not matched\\n");\n\t}')
                 msg_handler.append('                }')
                 values['event_msg_handlers'].append('\n'.join(msg_handler))
                 
@@ -185,9 +184,11 @@ class CTemplater(object):
                 for p in mg._symbolTable.get(m, 'params'):
                     monitorParams += [{'name':'v'+str(index),'c_type': CTemplater.convertTypeForC(p['type'])}]
                     index = index + 1
+                monitorParams += [{'name':'provenance','c_type': 'smedl_provenance_t*'}]
             else:
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                     [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
+                monitorParams += [{'name':'provenance','c_type': 'smedl_provenance_t*'}]
 
             tmp_map = {
                 'int': 0,
@@ -222,7 +223,7 @@ class CTemplater(object):
                 elif p['type'] == 'string':
                     attrstring += ', v'+str(v)
                     v += 1
-
+            attrstring += ', pro'
             parastring = ''
             ki = 0
             kd = 0
@@ -245,6 +246,7 @@ class CTemplater(object):
                     parastring += '\t\tv' + str(kv) + ' = ((params)->v);\n'
                     kv += 1
                 parastring += '\t\t(params) = (params)->next;\n'
+            parastring += 'pro = ((params)->provenance);\n\t\t(params) = (params)->next;\n'
             parastring += '\t\tpop_param(&p_head);\n'
 
             callstring += parastring;
@@ -284,7 +286,7 @@ class CTemplater(object):
             eventFunction.append('}\n\n')
 
             export_event_sig = None
-            cjson_str = '\tcJSON *root; cJSON* fmt;\n\t root = cJSON_CreateObject();\n'
+            cjson_str = '\tcJSON *root; cJSON* fmt; cJSON* prove; \n\t root = cJSON_CreateObject();\n'
             if 'exported_events' == mg._symbolTable.get(m)['type']:
                 paramString = obj.title() + "Monitor* monitor " + CTemplater._generateEventParams(mg,m)
                 export_event_sig = 'void exported_%s_%s(%s)' % (obj.lower(), m, paramString)
@@ -311,6 +313,7 @@ class CTemplater(object):
                         elif p[0] == 'char*':
                             sprintf += 'cJSON_AddStringToObject(fmt, "v%d",%s);\n' % (index,p[1])
                         index = index + 1
+                cjson_str+=("if (provenance!=NULL){\n cJSON_AddItemToObject(root, \"provenance\", prove = cJSON_CreateObject());\n cJSON_AddItemToObject(prove, \"event\", cJSON_CreateString(provenance->event));\n\t\tcJSON_AddNumberToObject(prove, \"line\", provenance->line);\n\t cJSON_AddNumberToObject(prove, \"trace_counter\", provenance->trace_counter);}\n\t")
                 sprintf += 'message = cJSON_Print(root);\n'
                 eventFunction.append(cjson_str)
                 eventFunction.append(sprintf)
@@ -337,7 +340,7 @@ class CTemplater(object):
                         # attributes can only be int
                         if p[0] == 'int':
                             sprintf_routing += '.%d'
-                        else:
+                        elif p[0] != 'smedl_provenance_t*' :
                             sprintf_routing += '.0'
 
                 sprintf_routing+='"'
@@ -359,7 +362,7 @@ class CTemplater(object):
             # Build the event handler function
             if pedlEvent:
                 probeParams = [p for p in monitorParams if p['name'] != 'monitor']
-                probeSignature = 'void %s_%s_probe(%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]))
+                probeSignature = 'void %s_%s_probe(%s%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]),",smedl_provenance_t* provenance")
                 probeFunction.append(probeSignature  + ' {')
                 if len(identityParams) > 0:
                     # Write function call to hash on the first identity we're searching for
@@ -737,6 +740,7 @@ class CTemplater(object):
         for p in mg._symbolTable.get(event, 'params'):
             paramString+=', '+ CTemplater.convertTypeForC(p['type'])+' v'+str(index)
             index += 1
+        paramString+=', smedl_provenance_t* provenance'
         return paramString
 
 
@@ -753,23 +757,26 @@ class CTemplater(object):
             for p in mg._getEventParams(paramString):
                 # Comparing SMEDL types not C types.
                 if p[0] == 'int':
-                    output.append('  push_param(&p_head, &%s, NULL, NULL, NULL);' % p[1])
+                    output.append('  push_param(&p_head, &%s, NULL, NULL, NULL,NULL);' % p[1])
                     if 'exported_events' == mg._symbolTable.get(event)['type']:
-                        output.append('  push_param(&ep_head, &%s, NULL, NULL, NULL);' % p[1])
+                        output.append('  push_param(&ep_head, &%s, NULL, NULL, NULL,NULL);' % p[1])
                 elif p[0] == 'char':
-                    output.append('  push_param(&p_head, NULL, &%s, NULL, NULL);' % p[1])
+                    output.append('  push_param(&p_head, NULL, &%s, NULL, NULL,NULL);' % p[1])
                     if 'exported_events' == mg._symbolTable.get(event)['type']:
-                        output.append('  push_param(&ep_head, NULL, &%s, NULL, NULL);' % p[1])
+                        output.append('  push_param(&ep_head, NULL, &%s, NULL, NULL,NULL);' % p[1])
                 elif p[0] == 'float':
                     exit("this should never happen. there is a missing float->double conversion.")
                 elif p[0] == 'double':
-                    output.append('  push_param(&p_head, NULL, NULL, &%s, NULL);' % p[1])
+                    output.append('  push_param(&p_head, NULL, NULL, &%s, NULL,NULL);' % p[1])
                     if 'exported_events' == mg._symbolTable.get(event)['type']:
-                        output.append('  push_param(&ep_head, NULL, NULL, &%s, NULL);' % p[1])
+                        output.append('  push_param(&ep_head, NULL, NULL, &%s, NULL,NULL);' % p[1])
                 elif p[0] == 'pointer' or p[0] == 'char*':
-                    output.append('  push_param(&p_head, NULL, NULL, NULL, &%s);' % p[1])
+                    output.append('  push_param(&p_head, NULL, NULL, NULL, &%s,NULL);' % p[1])
                     if 'exported_events' == mg._symbolTable.get(event)['type']:
-                        output.append('  push_param(&ep_head, NULL, NULL, NULL, &%s);' % p[1])
+                        output.append('  push_param(&ep_head, NULL, NULL, NULL, &%s,NULL);' % p[1])
+        output.append(' push_param(&p_head, NULL, NULL, NULL, NULL,provenance);')
+        if 'exported_events' == mg._symbolTable.get(event)['type']:
+            output.append(' push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);')
         output.append('  push_action(&monitor->action_queue, %s_%s_EVENT, p_head);' % (obj.upper(), event.upper()))
         if 'exported_events' == mg._symbolTable.get(event)['type']:
             output.append('  push_action(&monitor->export_queue, %s_%s_EVENT, ep_head);' % (obj.upper(), event.upper()))

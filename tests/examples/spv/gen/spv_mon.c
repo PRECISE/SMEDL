@@ -145,6 +145,14 @@ strcat(bindingkeys[1],".#");
     return monitor;
 }
 
+smedl_provenance_t* create_provenance_object(char event[255], int line, long trace_counter){
+    smedl_provenance_t* provenance = (smedl_provenance_t*)malloc(sizeof(smedl_provenance_t));
+    strncpy(provenance -> event, event,255);
+    provenance -> line = line;
+    provenance -> trace_counter = trace_counter;
+    return provenance;
+}
+
 void start_monitor(SpvMonitor* monitor) {
     int received = 0;
     amqp_frame_t frame;
@@ -179,47 +187,67 @@ void start_monitor(SpvMonitor* monitor) {
         if (string != NULL) {
             char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
+                cJSON * root = cJSON_Parse(string);
+                cJSON * ver = cJSON_GetObjectItem(root,"fmt_version");
+                char * msg_ver = NULL;
+                if(ver!=NULL){
+                    msg_ver = ver->valuestring;
+                }
+                smedl_provenance_t* pro = NULL;
+                if(!strcmp(msg_ver,msg_format_version)){
+                    cJSON *provenance = cJSON_GetObjectItem(root,"provenance");
+                    if (provenance!=NULL){
+                        cJSON * ev = cJSON_GetObjectItem(provenance,"event");
+                        cJSON * li = cJSON_GetObjectItem(provenance,"line");
+                        cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
+                        if (ev!= NULL && li != NULL && tr!= NULL){
+                            char* event = ev->valuestring;
+                            int line = li->valueint;
+                            long trace_counter = tr->valueint;
+                            pro = create_provenance_object(event,line,trace_counter);
+                        }
+                    }
 
-                if (!strcmp(eventName,"ch1")) {
+                    if (!strcmp(eventName,"ch1")) {
                     int tm = 0;
                     double lat = 0;
                     double lon = 0;
                     int ret = 0;
-		cJSON * root = cJSON_Parse(string);
-	char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;
-	 if(!strcmp(msg_ver,msg_format_version)){ 
-		 cJSON * fmt = cJSON_GetObjectItem(root,"params");
-
+	 cJSON * fmt = cJSON_GetObjectItem(root,"params");
+	 if (fmt!=NULL) {
+	
 tm= cJSON_GetObjectItem(fmt,"v1")->valueint;
 	lat= cJSON_GetObjectItem(fmt,"v2")->valuedouble;
 	lon= cJSON_GetObjectItem(fmt,"v3")->valuedouble;
 	ret= cJSON_GetObjectItem(fmt,"v4")->valueint;
 	
-                        spv_parse_record(monitor, tm, lat, lon, ret);
+                        spv_parse_record(monitor, tm, lat, lon, ret, pro);
                         printf("spv_parse_record called.\n");
-                    }
-	 else {
-	 printf("format version not matched\n");
+}
+	 else{
+	 printf("no parameters.\n");
 	}
                 }
                 else if (!strcmp(eventName,"ch2")) {
                     double dist = 0;
-		cJSON * root = cJSON_Parse(string);
-	char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;
-	 if(!strcmp(msg_ver,msg_format_version)){ 
-		 cJSON * fmt = cJSON_GetObjectItem(root,"params");
-
+	 cJSON * fmt = cJSON_GetObjectItem(root,"params");
+	 if (fmt!=NULL) {
+	
 dist= cJSON_GetObjectItem(fmt,"v1")->valuedouble;
 	
-                        spv_total_distance(monitor, dist);
+                        spv_total_distance(monitor, dist, pro);
                         printf("spv_total_distance called.\n");
-                    }
-	 else {
-	 printf("format version not matched\n");
+}
+	 else{
+	 printf("no parameters.\n");
 	}
                 }
-
+                }else {
+                    printf("format version not matched\n");
+                    
+                }
             }
+
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -324,7 +352,7 @@ void executeEvents(SpvMonitor* monitor){
 
 void executePendingEvents(SpvMonitor* monitor){
     action** head = &monitor->action_queue;
-    int i0, i1; double d0, d1; 
+    int i0, i1; double d0, d1;  smedl_provenance_t* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -335,39 +363,49 @@ void executePendingEvents(SpvMonitor* monitor){
 		(params) = (params)->next;
 		i1 = ((params)->i);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		spv_timestep_error(monitor, i0, i1);
+		spv_timestep_error(monitor, i0, i1, pro);
 
                 break;
             case SPV_AFTER_END_ERROR_EVENT:
-            		pop_param(&p_head);
+            pro = ((params)->provenance);
+		(params) = (params)->next;
+		pop_param(&p_head);
 		pop_action(head);
-		spv_after_end_error(monitor);
+		spv_after_end_error(monitor, pro);
 
                 break;
             case SPV_LATITUDE_RANGE_ERROR_EVENT:
             		d0 = ((params)->d);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		spv_latitude_range_error(monitor, d0);
+		spv_latitude_range_error(monitor, d0, pro);
 
                 break;
             case SPV_LONGITUDE_RANGE_ERROR_EVENT:
             		d0 = ((params)->d);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		spv_longitude_range_error(monitor, d0);
+		spv_longitude_range_error(monitor, d0, pro);
 
                 break;
             case SPV_TOTAL_DISTANCE_ERROR_EVENT:
             		d0 = ((params)->d);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		spv_total_distance_error(monitor, d0);
+		spv_total_distance_error(monitor, d0, pro);
 
                 break;
             }
@@ -378,7 +416,7 @@ void executePendingEvents(SpvMonitor* monitor){
 //send export events one by one from export_queue
 void executeExportedEvent(SpvMonitor* monitor){
     action** head = &monitor->export_queue;
-    int i0, i1; double d0, d1; 
+    int i0, i1; double d0, d1;  smedl_provenance_t* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -389,39 +427,49 @@ void executeExportedEvent(SpvMonitor* monitor){
 		(params) = (params)->next;
 		i1 = ((params)->i);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_spv_timestep_error(monitor, i0, i1);
+		exported_spv_timestep_error(monitor, i0, i1, pro);
 
                 break;
             case SPV_AFTER_END_ERROR_EVENT:
-            		pop_param(&p_head);
+            pro = ((params)->provenance);
+		(params) = (params)->next;
+		pop_param(&p_head);
 		pop_action(head);
-		exported_spv_after_end_error(monitor);
+		exported_spv_after_end_error(monitor, pro);
 
                 break;
             case SPV_LATITUDE_RANGE_ERROR_EVENT:
             		d0 = ((params)->d);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_spv_latitude_range_error(monitor, d0);
+		exported_spv_latitude_range_error(monitor, d0, pro);
 
                 break;
             case SPV_LONGITUDE_RANGE_ERROR_EVENT:
             		d0 = ((params)->d);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_spv_longitude_range_error(monitor, d0);
+		exported_spv_longitude_range_error(monitor, d0, pro);
 
                 break;
             case SPV_TOTAL_DISTANCE_ERROR_EVENT:
             		d0 = ((params)->d);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_spv_total_distance_error(monitor, d0);
+		exported_spv_total_distance_error(monitor, d0, pro);
 
                 break;
             }
@@ -435,7 +483,7 @@ void executeExportedEvent(SpvMonitor* monitor){
  * Monitor Event Handlers
  */
 
-void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret) {
+void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret, smedl_provenance_t* provenance) {
 if (executed_scenarios[SPV_CHECK_TIME_SCENARIO]==0) {
   switch (monitor->state[SPV_CHECK_TIME_SCENARIO]) {
     case SPV_CHECK_TIME_START:
@@ -444,7 +492,7 @@ if (executed_scenarios[SPV_CHECK_TIME_SCENARIO]==0) {
         monitor->state[SPV_CHECK_TIME_SCENARIO] = SPV_CHECK_TIME_START;
       }
       else {
-        raise_spv_timestep_error(monitor, tm, monitor->last_time);
+        raise_spv_timestep_error(monitor, tm, monitor->last_time,provenance);
         monitor->state[SPV_CHECK_TIME_SCENARIO] = SPV_CHECK_TIME_START;
       }
       break;
@@ -462,7 +510,7 @@ if (executed_scenarios[SPV_CHECK_LATITUDE_SCENARIO]==0) {
         monitor->state[SPV_CHECK_LATITUDE_SCENARIO] = SPV_CHECK_LATITUDE_START;
       }
       else {
-        raise_spv_latitude_range_error(monitor, lat);
+        raise_spv_latitude_range_error(monitor, lat,provenance);
         monitor->state[SPV_CHECK_LATITUDE_SCENARIO] = SPV_CHECK_LATITUDE_START;
       }
       break;
@@ -480,7 +528,7 @@ if (executed_scenarios[SPV_CHECK_LONGITUDE_SCENARIO]==0) {
         monitor->state[SPV_CHECK_LONGITUDE_SCENARIO] = SPV_CHECK_LONGITUDE_START;
       }
       else {
-        raise_spv_longitude_range_error(monitor, lon);
+        raise_spv_longitude_range_error(monitor, lon,provenance);
         monitor->state[SPV_CHECK_LONGITUDE_SCENARIO] = SPV_CHECK_LONGITUDE_START;
       }
       break;
@@ -503,7 +551,7 @@ if (executed_scenarios[SPV_AFTER_END_SCENARIO]==0) {
       break;
 
     case SPV_AFTER_END_END:
-        raise_spv_after_end_error(monitor);
+        raise_spv_after_end_error(monitor,provenance);
       monitor->state[SPV_AFTER_END_SCENARIO] = SPV_AFTER_END_END;
       break;
 
@@ -518,17 +566,18 @@ executeEvents(monitor);
 
 
 
-void raise_spv_parse_record(SpvMonitor* monitor, int v0, double v1, double v2, int v3) {
+void raise_spv_parse_record(SpvMonitor* monitor, int v0, double v1, double v2, int v3, smedl_provenance_t* provenance) {
   param *p_head = NULL;
-  push_param(&p_head, &v0, NULL, NULL, NULL);
-  push_param(&p_head, NULL, NULL, &v1, NULL);
-  push_param(&p_head, NULL, NULL, &v2, NULL);
-  push_param(&p_head, &v3, NULL, NULL, NULL);
+  push_param(&p_head, &v0, NULL, NULL, NULL,NULL);
+  push_param(&p_head, NULL, NULL, &v1, NULL,NULL);
+  push_param(&p_head, NULL, NULL, &v2, NULL,NULL);
+  push_param(&p_head, &v3, NULL, NULL, NULL,NULL);
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, SPV_PARSE_RECORD_EVENT, p_head);
 }
 
 
-void spv_total_distance(SpvMonitor* monitor, double dist) {
+void spv_total_distance(SpvMonitor* monitor, double dist, smedl_provenance_t* provenance) {
 if (executed_scenarios[SPV_CHECK_DISTANCE_SCENARIO]==0) {
   switch (monitor->state[SPV_CHECK_DISTANCE_SCENARIO]) {
     case SPV_CHECK_DISTANCE_START:
@@ -536,7 +585,7 @@ if (executed_scenarios[SPV_CHECK_DISTANCE_SCENARIO]==0) {
         monitor->state[SPV_CHECK_DISTANCE_SCENARIO] = SPV_CHECK_DISTANCE_START;
       }
       else {
-        raise_spv_total_distance_error(monitor, dist);
+        raise_spv_total_distance_error(monitor, dist,provenance);
         monitor->state[SPV_CHECK_DISTANCE_SCENARIO] = SPV_CHECK_DISTANCE_START;
       }
       break;
@@ -552,26 +601,32 @@ executeEvents(monitor);
 
 
 
-void raise_spv_total_distance(SpvMonitor* monitor, double v0) {
+void raise_spv_total_distance(SpvMonitor* monitor, double v0, smedl_provenance_t* provenance) {
   param *p_head = NULL;
-  push_param(&p_head, NULL, NULL, &v0, NULL);
+  push_param(&p_head, NULL, NULL, &v0, NULL,NULL);
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, SPV_TOTAL_DISTANCE_EVENT, p_head);
 }
 
 
-void spv_timestep_error(SpvMonitor* monitor, int tm, int last_time) {
+void spv_timestep_error(SpvMonitor* monitor, int tm, int last_time, smedl_provenance_t* provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_spv_timestep_error(SpvMonitor* monitor , int v0, int v1) {
+void exported_spv_timestep_error(SpvMonitor* monitor , int v0, int v1, smedl_provenance_t* provenance) {
   char* message;
-	cJSON *root; cJSON* fmt;
+	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_timestep_error"));
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
-
+if (provenance!=NULL){
+ cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
+ cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
+		cJSON_AddNumberToObject(prove, "line", provenance->line);
+	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+	
 cJSON_AddNumberToObject(fmt, "v1",v0);
 cJSON_AddNumberToObject(fmt, "v2",v1);
 message = cJSON_Print(root);
@@ -583,31 +638,38 @@ message = cJSON_Print(root);
 
 
 
-void raise_spv_timestep_error(SpvMonitor* monitor, int v0, int v1) {
+void raise_spv_timestep_error(SpvMonitor* monitor, int v0, int v1, smedl_provenance_t* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
-  push_param(&p_head, &v0, NULL, NULL, NULL);
-  push_param(&ep_head, &v0, NULL, NULL, NULL);
-  push_param(&p_head, &v1, NULL, NULL, NULL);
-  push_param(&ep_head, &v1, NULL, NULL, NULL);
+  push_param(&p_head, &v0, NULL, NULL, NULL,NULL);
+  push_param(&ep_head, &v0, NULL, NULL, NULL,NULL);
+  push_param(&p_head, &v1, NULL, NULL, NULL,NULL);
+  push_param(&ep_head, &v1, NULL, NULL, NULL,NULL);
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
+ push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, SPV_TIMESTEP_ERROR_EVENT, p_head);
   push_action(&monitor->export_queue, SPV_TIMESTEP_ERROR_EVENT, ep_head);
 }
 
 
-void spv_after_end_error(SpvMonitor* monitor) {
+void spv_after_end_error(SpvMonitor* monitor, smedl_provenance_t* provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_spv_after_end_error(SpvMonitor* monitor ) {
+void exported_spv_after_end_error(SpvMonitor* monitor , smedl_provenance_t* provenance) {
   char* message;
-	cJSON *root; cJSON* fmt;
+	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_after_end_error"));
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
-
+if (provenance!=NULL){
+ cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
+ cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
+		cJSON_AddNumberToObject(prove, "line", provenance->line);
+	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+	
 message = cJSON_Print(root);
 
   char routing_key[256];
@@ -617,27 +679,34 @@ message = cJSON_Print(root);
 
 
 
-void raise_spv_after_end_error(SpvMonitor* monitor) {
+void raise_spv_after_end_error(SpvMonitor* monitor, smedl_provenance_t* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
+ push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, SPV_AFTER_END_ERROR_EVENT, p_head);
   push_action(&monitor->export_queue, SPV_AFTER_END_ERROR_EVENT, ep_head);
 }
 
 
-void spv_latitude_range_error(SpvMonitor* monitor, double lat) {
+void spv_latitude_range_error(SpvMonitor* monitor, double lat, smedl_provenance_t* provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_spv_latitude_range_error(SpvMonitor* monitor , double v0) {
+void exported_spv_latitude_range_error(SpvMonitor* monitor , double v0, smedl_provenance_t* provenance) {
   char* message;
-	cJSON *root; cJSON* fmt;
+	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_latitude_range_error"));
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
-
+if (provenance!=NULL){
+ cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
+ cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
+		cJSON_AddNumberToObject(prove, "line", provenance->line);
+	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+	
 cJSON_AddNumberToObject(fmt, "v1",v0);
 message = cJSON_Print(root);
 
@@ -648,29 +717,36 @@ message = cJSON_Print(root);
 
 
 
-void raise_spv_latitude_range_error(SpvMonitor* monitor, double v0) {
+void raise_spv_latitude_range_error(SpvMonitor* monitor, double v0, smedl_provenance_t* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
-  push_param(&p_head, NULL, NULL, &v0, NULL);
-  push_param(&ep_head, NULL, NULL, &v0, NULL);
+  push_param(&p_head, NULL, NULL, &v0, NULL,NULL);
+  push_param(&ep_head, NULL, NULL, &v0, NULL,NULL);
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
+ push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, SPV_LATITUDE_RANGE_ERROR_EVENT, p_head);
   push_action(&monitor->export_queue, SPV_LATITUDE_RANGE_ERROR_EVENT, ep_head);
 }
 
 
-void spv_longitude_range_error(SpvMonitor* monitor, double lon) {
+void spv_longitude_range_error(SpvMonitor* monitor, double lon, smedl_provenance_t* provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_spv_longitude_range_error(SpvMonitor* monitor , double v0) {
+void exported_spv_longitude_range_error(SpvMonitor* monitor , double v0, smedl_provenance_t* provenance) {
   char* message;
-	cJSON *root; cJSON* fmt;
+	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_longitude_range_error"));
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
-
+if (provenance!=NULL){
+ cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
+ cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
+		cJSON_AddNumberToObject(prove, "line", provenance->line);
+	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+	
 cJSON_AddNumberToObject(fmt, "v1",v0);
 message = cJSON_Print(root);
 
@@ -681,29 +757,36 @@ message = cJSON_Print(root);
 
 
 
-void raise_spv_longitude_range_error(SpvMonitor* monitor, double v0) {
+void raise_spv_longitude_range_error(SpvMonitor* monitor, double v0, smedl_provenance_t* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
-  push_param(&p_head, NULL, NULL, &v0, NULL);
-  push_param(&ep_head, NULL, NULL, &v0, NULL);
+  push_param(&p_head, NULL, NULL, &v0, NULL,NULL);
+  push_param(&ep_head, NULL, NULL, &v0, NULL,NULL);
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
+ push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, SPV_LONGITUDE_RANGE_ERROR_EVENT, p_head);
   push_action(&monitor->export_queue, SPV_LONGITUDE_RANGE_ERROR_EVENT, ep_head);
 }
 
 
-void spv_total_distance_error(SpvMonitor* monitor, double dist) {
+void spv_total_distance_error(SpvMonitor* monitor, double dist, smedl_provenance_t* provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_spv_total_distance_error(SpvMonitor* monitor , double v0) {
+void exported_spv_total_distance_error(SpvMonitor* monitor , double v0, smedl_provenance_t* provenance) {
   char* message;
-	cJSON *root; cJSON* fmt;
+	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("spv_total_distance_error"));
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
-
+if (provenance!=NULL){
+ cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
+ cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
+		cJSON_AddNumberToObject(prove, "line", provenance->line);
+	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+	
 cJSON_AddNumberToObject(fmt, "v1",v0);
 message = cJSON_Print(root);
 
@@ -714,11 +797,13 @@ message = cJSON_Print(root);
 
 
 
-void raise_spv_total_distance_error(SpvMonitor* monitor, double v0) {
+void raise_spv_total_distance_error(SpvMonitor* monitor, double v0, smedl_provenance_t* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
-  push_param(&p_head, NULL, NULL, &v0, NULL);
-  push_param(&ep_head, NULL, NULL, &v0, NULL);
+  push_param(&p_head, NULL, NULL, &v0, NULL,NULL);
+  push_param(&ep_head, NULL, NULL, &v0, NULL,NULL);
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
+ push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, SPV_TOTAL_DISTANCE_ERROR_EVENT, p_head);
   push_action(&monitor->export_queue, SPV_TOTAL_DISTANCE_ERROR_EVENT, ep_head);
 }

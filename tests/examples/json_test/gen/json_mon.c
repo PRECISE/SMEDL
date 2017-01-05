@@ -129,6 +129,14 @@ strcat(bindingkeys[0],".#");
     return monitor;
 }
 
+smedl_provenance_t* create_provenance_object(char event[255], int line, long trace_counter){
+    smedl_provenance_t* provenance = (smedl_provenance_t*)malloc(sizeof(smedl_provenance_t));
+    strncpy(provenance -> event, event,255);
+    provenance -> line = line;
+    provenance -> trace_counter = trace_counter;
+    return provenance;
+}
+
 void start_monitor(JsontestMonitor* monitor) {
     int received = 0;
     amqp_frame_t frame;
@@ -163,29 +171,51 @@ void start_monitor(JsontestMonitor* monitor) {
         if (string != NULL) {
             char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
+                cJSON * root = cJSON_Parse(string);
+                cJSON * ver = cJSON_GetObjectItem(root,"fmt_version");
+                char * msg_ver = NULL;
+                if(ver!=NULL){
+                    msg_ver = ver->valuestring;
+                }
+                smedl_provenance_t* pro = NULL;
+                if(!strcmp(msg_ver,msg_format_version)){
+                    cJSON *provenance = cJSON_GetObjectItem(root,"provenance");
+                    if (provenance!=NULL){
+                        cJSON * ev = cJSON_GetObjectItem(provenance,"event");
+                        cJSON * li = cJSON_GetObjectItem(provenance,"line");
+                        cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
+                        if (ev!= NULL && li != NULL && tr!= NULL){
+                            char* event = ev->valuestring;
+                            int line = li->valueint;
+                            long trace_counter = tr->valueint;
+                            pro = create_provenance_object(event,line,trace_counter);
+                        }
+                    }
 
-                if (!strcmp(eventName,"ch1")) {
+                    if (!strcmp(eventName,"ch1")) {
                     char *st;
                     int i = 0;
                     double f = 0;
-		cJSON * root = cJSON_Parse(string);
-	char * msg_ver = cJSON_GetObjectItem(root,"fmt_version")->valuestring;
-	 if(!strcmp(msg_ver,msg_format_version)){ 
-		 cJSON * fmt = cJSON_GetObjectItem(root,"params");
-
+	 cJSON * fmt = cJSON_GetObjectItem(root,"params");
+	 if (fmt!=NULL) {
+	
 st= cJSON_GetObjectItem(fmt,"v1")->valuestring;
 	i= cJSON_GetObjectItem(fmt,"v2")->valueint;
 	f= cJSON_GetObjectItem(fmt,"v3")->valuedouble;
 	
-                        jsontest_ping(monitor, st, i, f);
+                        jsontest_ping(monitor, st, i, f, pro);
                         printf("jsontest_ping called.\n");
-                    }
-	 else {
-	 printf("format version not matched\n");
+}
+	 else{
+	 printf("no parameters.\n");
 	}
                 }
-
+                }else {
+                    printf("format version not matched\n");
+                    
+                }
             }
+
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -290,7 +320,7 @@ void executeEvents(JsontestMonitor* monitor){
 
 void executePendingEvents(JsontestMonitor* monitor){
     action** head = &monitor->action_queue;
-    int i0; double d0; char* v0; 
+    int i0; double d0; char* v0;  smedl_provenance_t* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -303,9 +333,11 @@ void executePendingEvents(JsontestMonitor* monitor){
 		(params) = (params)->next;
 		v0 = ((params)->v);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		jsontest_pong(monitor, d0, i0, v0);
+		jsontest_pong(monitor, d0, i0, v0, pro);
 
                 break;
             }
@@ -316,7 +348,7 @@ void executePendingEvents(JsontestMonitor* monitor){
 //send export events one by one from export_queue
 void executeExportedEvent(JsontestMonitor* monitor){
     action** head = &monitor->export_queue;
-    int i0; double d0; char* v0; 
+    int i0; double d0; char* v0;  smedl_provenance_t* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -329,9 +361,11 @@ void executeExportedEvent(JsontestMonitor* monitor){
 		(params) = (params)->next;
 		v0 = ((params)->v);
 		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
 		pop_param(&p_head);
 		pop_action(head);
-		exported_jsontest_pong(monitor, d0, i0, v0);
+		exported_jsontest_pong(monitor, d0, i0, v0, pro);
 
                 break;
             }
@@ -345,11 +379,11 @@ void executeExportedEvent(JsontestMonitor* monitor){
  * Monitor Event Handlers
  */
 
-void jsontest_ping(JsontestMonitor* monitor, char* st, int i, double f) {
+void jsontest_ping(JsontestMonitor* monitor, char* st, int i, double f, smedl_provenance_t* provenance) {
 if (executed_scenarios[JSONTEST_SC1_SCENARIO]==0) {
   switch (monitor->state[JSONTEST_SC1_SCENARIO]) {
     case JSONTEST_SC1_START:
-        raise_jsontest_pong(monitor, f, i, st);
+        raise_jsontest_pong(monitor, f, i, st,provenance);
       monitor->state[JSONTEST_SC1_SCENARIO] = JSONTEST_SC1_END;
       break;
 
@@ -364,28 +398,34 @@ executeEvents(monitor);
 
 
 
-void raise_jsontest_ping(JsontestMonitor* monitor, char* v0, int v1, double v2) {
+void raise_jsontest_ping(JsontestMonitor* monitor, char* v0, int v1, double v2, smedl_provenance_t* provenance) {
   param *p_head = NULL;
-  push_param(&p_head, NULL, NULL, NULL, &v0);
-  push_param(&p_head, &v1, NULL, NULL, NULL);
-  push_param(&p_head, NULL, NULL, &v2, NULL);
+  push_param(&p_head, NULL, NULL, NULL, &v0,NULL);
+  push_param(&p_head, &v1, NULL, NULL, NULL,NULL);
+  push_param(&p_head, NULL, NULL, &v2, NULL,NULL);
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, JSONTEST_PING_EVENT, p_head);
 }
 
 
-void jsontest_pong(JsontestMonitor* monitor, double f, int i, char* st) {
+void jsontest_pong(JsontestMonitor* monitor, double f, int i, char* st, smedl_provenance_t* provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_jsontest_pong(JsontestMonitor* monitor , double v0, int v1, char* v2) {
+void exported_jsontest_pong(JsontestMonitor* monitor , double v0, int v1, char* v2, smedl_provenance_t* provenance) {
   char* message;
-	cJSON *root; cJSON* fmt;
+	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
 	cJSON_AddItemToObject(root, "name", cJSON_CreateString("jsontest_pong"));
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
-
+if (provenance!=NULL){
+ cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
+ cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
+		cJSON_AddNumberToObject(prove, "line", provenance->line);
+	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+	
 cJSON_AddNumberToObject(fmt, "v1",v0);
 cJSON_AddNumberToObject(fmt, "v2",v1);
 cJSON_AddStringToObject(fmt, "v3",v2);
@@ -398,15 +438,17 @@ message = cJSON_Print(root);
 
 
 
-void raise_jsontest_pong(JsontestMonitor* monitor, double v0, int v1, char* v2) {
+void raise_jsontest_pong(JsontestMonitor* monitor, double v0, int v1, char* v2, smedl_provenance_t* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
-  push_param(&p_head, NULL, NULL, &v0, NULL);
-  push_param(&ep_head, NULL, NULL, &v0, NULL);
-  push_param(&p_head, &v1, NULL, NULL, NULL);
-  push_param(&ep_head, &v1, NULL, NULL, NULL);
-  push_param(&p_head, NULL, NULL, NULL, &v2);
-  push_param(&ep_head, NULL, NULL, NULL, &v2);
+  push_param(&p_head, NULL, NULL, &v0, NULL,NULL);
+  push_param(&ep_head, NULL, NULL, &v0, NULL,NULL);
+  push_param(&p_head, &v1, NULL, NULL, NULL,NULL);
+  push_param(&ep_head, &v1, NULL, NULL, NULL,NULL);
+  push_param(&p_head, NULL, NULL, NULL, &v2,NULL);
+  push_param(&ep_head, NULL, NULL, NULL, &v2,NULL);
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
+ push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, JSONTEST_PONG_EVENT, p_head);
   push_action(&monitor->export_queue, JSONTEST_PONG_EVENT, ep_head);
 }

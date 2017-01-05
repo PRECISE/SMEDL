@@ -1,0 +1,44 @@
+object adaptationTrigger
+    identity
+	int id;
+    state
+	// warnings threshold triggered, default = 0
+	int Tw;  
+	// active tracks threshold triggered, default = 0
+	int Tat;
+	// input bytes threshold triggered, default = 0
+	int Tib;
+	// disable while adaptation is running, wait for completion before enabling, default = 1
+	int enabled;
+
+	// IDs, until we get strings, or event name mapping
+	string TwID;  
+	string TatID;
+	string TibID;
+    events
+	// parameters are either 1/0 for set or cleared
+        imported warningThreshold(string, int); 
+        imported activeTracksThreshold(int);
+        imported inputBytesThreshold(int);
+	imported adaptationComplete();
+	
+        exported adaptationStart();
+	internal eval();
+	
+
+    scenarios  
+        computation: 	
+	Start -> warningThreshold(id, val) when (compare(id,TwID))       { Tw  = val;  raise eval(); } -> Start
+	Start -> warningThreshold(id, val) when (compare(id,TatID))      { Tat = val;  raise eval(); } -> Start
+	Start -> warningThreshold(id, val) when (compare(id,TibID))      { Tib  = val; raise eval(); } -> Start
+
+
+	// unused right now - using id param instead of named event
+	Start -> activeTracksThreshold(val)  { Tat = val; raise eval(); } -> Start
+	Start -> inputBytesThreshold(val)    { Tib = val; raise eval(); } -> Start
+
+	Start -> eval() when ((enabled == 1) && (Tw != 0) && (Tat != 0) && (Tib == 0)) { enabled = 0; Tw = 0; Tat = 0; raise adaptationStart();  } -> Start
+
+	Start -> adaptationComplete() { enabled = 1; } -> Start
+	
+
