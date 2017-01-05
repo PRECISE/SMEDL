@@ -5,9 +5,9 @@
 #include "cJSON.h"
 
 typedef struct smedl_provenance_t {
-     char event[255];
-     unsigned int line;
-     unsigned long trace_counter;
+    char event[255];
+    unsigned int line;
+    unsigned long trace_counter;
 }smedl_provenance_t;
 
 void output_config_error(config_t cfg);
