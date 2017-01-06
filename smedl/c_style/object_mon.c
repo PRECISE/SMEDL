@@ -177,10 +177,10 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                 if(ver!=NULL){
                     msg_ver = ver->valuestring;
                 }
-                smedl_provenance_t* pro = NULL;
+                cJSON* pro = NULL;
                 if(!strcmp(msg_ver,msg_format_version)){
-                    cJSON *provenance = cJSON_GetObjectItem(root,"provenance");
-                    if (provenance!=NULL){
+                    pro = cJSON_GetObjectItem(root,"provenance");
+                    /*if (provenance!=NULL){
                         cJSON * ev = cJSON_GetObjectItem(provenance,"event");
                         cJSON * li = cJSON_GetObjectItem(provenance,"line");
                         cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
@@ -190,7 +190,7 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                             long trace_counter = tr->valueint;
                             pro = create_provenance_object(event,line,trace_counter);
                         }
-                    }
+                    }*/
 
                     {{ event_msg_handlers|join('\n') }}
                 }else {
@@ -303,7 +303,7 @@ void executeEvents({{obj|title}}Monitor* monitor){
 
 void executePendingEvents({{obj|title}}Monitor* monitor){
     action** head = &monitor->action_queue;
-    {{var_declaration}} smedl_provenance_t* pro;
+    {{var_declaration}} cJSON* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -322,7 +322,7 @@ void executePendingEvents({{obj|title}}Monitor* monitor){
 //send export events one by one from export_queue
 void executeExportedEvent({{obj|title}}Monitor* monitor){
     action** head = &monitor->export_queue;
-    {{var_declaration}} smedl_provenance_t* pro;
+    {{var_declaration}} cJSON* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;

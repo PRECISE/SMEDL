@@ -55,13 +55,13 @@ void free_monitor(ThresholdcrossdetectionMonitor*);
 /*
  * Monitor Event Handlers
  */
-void thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* n, double ts, double val, smedl_provenance_t* provenance);
-void raise_thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* v0, double v1, double v2, smedl_provenance_t* provenance);
-void thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor, smedl_provenance_t* provenance);
-void raise_thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor, smedl_provenance_t* provenance);
-void thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* name, int trigger, smedl_provenance_t* provenance);
-void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor , char* v0, int v1, smedl_provenance_t* provenance);
-void raise_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* v0, int v1, smedl_provenance_t* provenance);
+void thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* n, double ts, double val, cJSON * provenance);
+void raise_thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* v0, double v1, double v2, cJSON* provenance);
+void thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor, cJSON * provenance);
+void raise_thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor, cJSON* provenance);
+void thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* name, int trigger, cJSON * provenance);
+void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor , char* v0, int v1, cJSON* provenance);
+void raise_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* v0, int v1, cJSON* provenance);
 
 /*
  * Monitor Utility Functions

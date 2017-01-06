@@ -188,10 +188,10 @@ void start_monitor(AdaptationtriggerMonitor* monitor) {
                 if(ver!=NULL){
                     msg_ver = ver->valuestring;
                 }
-                smedl_provenance_t* pro = NULL;
+                cJSON* pro = NULL;
                 if(!strcmp(msg_ver,msg_format_version)){
-                    cJSON *provenance = cJSON_GetObjectItem(root,"provenance");
-                    if (provenance!=NULL){
+                    pro = cJSON_GetObjectItem(root,"provenance");
+                    /*if (provenance!=NULL){
                         cJSON * ev = cJSON_GetObjectItem(provenance,"event");
                         cJSON * li = cJSON_GetObjectItem(provenance,"line");
                         cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
@@ -201,7 +201,7 @@ void start_monitor(AdaptationtriggerMonitor* monitor) {
                             long trace_counter = tr->valueint;
                             pro = create_provenance_object(event,line,trace_counter);
                         }
-                    }
+                    }*/
 
                     if (!strcmp(eventName,"ch2")) {
                     char *id;
@@ -335,7 +335,7 @@ void executeEvents(AdaptationtriggerMonitor* monitor){
 
 void executePendingEvents(AdaptationtriggerMonitor* monitor){
     action** head = &monitor->action_queue;
-    int i0; char* v0;  smedl_provenance_t* pro;
+    int i0; char* v0;  cJSON* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -365,7 +365,7 @@ void executePendingEvents(AdaptationtriggerMonitor* monitor){
 //send export events one by one from export_queue
 void executeExportedEvent(AdaptationtriggerMonitor* monitor){
     action** head = &monitor->export_queue;
-    int i0; char* v0;  smedl_provenance_t* pro;
+    int i0; char* v0;  cJSON* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -390,7 +390,7 @@ void executeExportedEvent(AdaptationtriggerMonitor* monitor){
  * Monitor Event Handlers
  */
 
-void adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* id, int val, smedl_provenance_t* provenance) {
+void adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* id, int val, cJSON * provenance) {
 if (executed_scenarios[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]==0) {
   switch (monitor->state[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]) {
     case ADAPTATIONTRIGGER_COMPUTATION_START:
@@ -425,7 +425,7 @@ executeEvents(monitor);
 
 
 
-void raise_adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* v0, int v1, smedl_provenance_t* provenance) {
+void raise_adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* v0, int v1, cJSON* provenance) {
   param *p_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0,NULL);
   push_param(&p_head, &v1, NULL, NULL, NULL,NULL);
@@ -434,7 +434,7 @@ void raise_adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor,
 }
 
 
-void adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int val, smedl_provenance_t* provenance) {
+void adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int val, cJSON * provenance) {
 if (executed_scenarios[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]==0) {
   switch (monitor->state[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]) {
     case ADAPTATIONTRIGGER_COMPUTATION_START:
@@ -454,7 +454,7 @@ executeEvents(monitor);
 
 
 
-void raise_adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int v0, smedl_provenance_t* provenance) {
+void raise_adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int v0, cJSON* provenance) {
   param *p_head = NULL;
   push_param(&p_head, &v0, NULL, NULL, NULL,NULL);
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
@@ -462,7 +462,7 @@ void raise_adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* mon
 }
 
 
-void adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int val, smedl_provenance_t* provenance) {
+void adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int val, cJSON * provenance) {
 if (executed_scenarios[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]==0) {
   switch (monitor->state[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]) {
     case ADAPTATIONTRIGGER_COMPUTATION_START:
@@ -482,7 +482,7 @@ executeEvents(monitor);
 
 
 
-void raise_adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int v0, smedl_provenance_t* provenance) {
+void raise_adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int v0, cJSON* provenance) {
   param *p_head = NULL;
   push_param(&p_head, &v0, NULL, NULL, NULL,NULL);
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
@@ -490,7 +490,7 @@ void raise_adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monit
 }
 
 
-void adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance) {
+void adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor, cJSON * provenance) {
 if (executed_scenarios[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]==0) {
   switch (monitor->state[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]) {
     case ADAPTATIONTRIGGER_COMPUTATION_START:
@@ -509,14 +509,14 @@ executeEvents(monitor);
 
 
 
-void raise_adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance) {
+void raise_adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor, cJSON* provenance) {
   param *p_head = NULL;
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, ADAPTATIONTRIGGER_ADAPTATIONCOMPLETE_EVENT, p_head);
 }
 
 
-void adaptationtrigger_eval(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance) {
+void adaptationtrigger_eval(AdaptationtriggerMonitor* monitor, cJSON * provenance) {
 if (executed_scenarios[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]==0) {
   switch (monitor->state[ADAPTATIONTRIGGER_COMPUTATION_SCENARIO]) {
     case ADAPTATIONTRIGGER_COMPUTATION_START:
@@ -543,19 +543,19 @@ executeEvents(monitor);
 
 
 
-void raise_adaptationtrigger_eval(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance) {
+void raise_adaptationtrigger_eval(AdaptationtriggerMonitor* monitor, cJSON* provenance) {
   param *p_head = NULL;
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, ADAPTATIONTRIGGER_EVAL_EVENT, p_head);
 }
 
 
-void adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance) {
+void adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor, cJSON * provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor , smedl_provenance_t* provenance) {
+void exported_adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor , cJSON* provenance) {
   char* message;
 	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
@@ -563,10 +563,7 @@ void exported_adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monito
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 if (provenance!=NULL){
- cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
- cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
-		cJSON_AddNumberToObject(prove, "line", provenance->line);
-	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+ cJSON_AddItemToObject(root, "provenance", prove = provenance);}
 	
 message = cJSON_Print(root);
 
@@ -577,7 +574,7 @@ message = cJSON_Print(root);
 
 
 
-void raise_adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance) {
+void raise_adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor, cJSON* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);

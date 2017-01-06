@@ -188,10 +188,10 @@ void start_monitor(ThresholdcrossdetectionMonitor* monitor) {
                 if(ver!=NULL){
                     msg_ver = ver->valuestring;
                 }
-                smedl_provenance_t* pro = NULL;
+                cJSON* pro = NULL;
                 if(!strcmp(msg_ver,msg_format_version)){
-                    cJSON *provenance = cJSON_GetObjectItem(root,"provenance");
-                    if (provenance!=NULL){
+                    pro = cJSON_GetObjectItem(root,"provenance");
+                    /*if (provenance!=NULL){
                         cJSON * ev = cJSON_GetObjectItem(provenance,"event");
                         cJSON * li = cJSON_GetObjectItem(provenance,"line");
                         cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
@@ -201,7 +201,7 @@ void start_monitor(ThresholdcrossdetectionMonitor* monitor) {
                             long trace_counter = tr->valueint;
                             pro = create_provenance_object(event,line,trace_counter);
                         }
-                    }
+                    }*/
 
                     if (!strcmp(eventName,"ch1")) {
                     char *n;
@@ -331,7 +331,7 @@ void executeEvents(ThresholdcrossdetectionMonitor* monitor){
 
 void executePendingEvents(ThresholdcrossdetectionMonitor* monitor){
     action** head = &monitor->action_queue;
-    int i0; double d0, d1; char* v0;  smedl_provenance_t* pro;
+    int i0; double d0, d1; char* v0;  cJSON* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -357,7 +357,7 @@ pro = ((params)->provenance);
 //send export events one by one from export_queue
 void executeExportedEvent(ThresholdcrossdetectionMonitor* monitor){
     action** head = &monitor->export_queue;
-    int i0; double d0, d1; char* v0;  smedl_provenance_t* pro;
+    int i0; double d0, d1; char* v0;  cJSON* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -386,7 +386,7 @@ pro = ((params)->provenance);
  * Monitor Event Handlers
  */
 
-void thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* n, double ts, double val, smedl_provenance_t* provenance) {
+void thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* n, double ts, double val, cJSON * provenance) {
 if (executed_scenarios[THRESHOLDCROSSDETECTION_STABLE_SCENARIO]==0) {
   switch (monitor->state[THRESHOLDCROSSDETECTION_STABLE_SCENARIO]) {
     case THRESHOLDCROSSDETECTION_STABLE_STABLE:
@@ -437,7 +437,7 @@ executeEvents(monitor);
 
 
 
-void raise_thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* v0, double v1, double v2, smedl_provenance_t* provenance) {
+void raise_thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* monitor, char* v0, double v1, double v2, cJSON* provenance) {
   param *p_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0,NULL);
   push_param(&p_head, NULL, NULL, &v1, NULL,NULL);
@@ -447,7 +447,7 @@ void raise_thresholdcrossdetection_dataUpdate(ThresholdcrossdetectionMonitor* mo
 }
 
 
-void thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor, smedl_provenance_t* provenance) {
+void thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor, cJSON * provenance) {
 if (executed_scenarios[THRESHOLDCROSSDETECTION_STABLE_SCENARIO]==0) {
   switch (monitor->state[THRESHOLDCROSSDETECTION_STABLE_SCENARIO]) {
     case THRESHOLDCROSSDETECTION_STABLE_CROSSED:
@@ -472,19 +472,19 @@ executeEvents(monitor);
 
 
 
-void raise_thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor, smedl_provenance_t* provenance) {
+void raise_thresholdcrossdetection_timeout(ThresholdcrossdetectionMonitor* monitor, cJSON* provenance) {
   param *p_head = NULL;
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, THRESHOLDCROSSDETECTION_TIMEOUT_EVENT, p_head);
 }
 
 
-void thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* name, int trigger, smedl_provenance_t* provenance) {
+void thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* name, int trigger, cJSON * provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor , char* v0, int v1, smedl_provenance_t* provenance) {
+void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor , char* v0, int v1, cJSON* provenance) {
   char* message;
 	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
@@ -492,10 +492,7 @@ void exported_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMo
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 if (provenance!=NULL){
- cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
- cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
-		cJSON_AddNumberToObject(prove, "line", provenance->line);
-	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+ cJSON_AddItemToObject(root, "provenance", prove = provenance);}
 	
 cJSON_AddStringToObject(fmt, "v1",v0);
 cJSON_AddNumberToObject(fmt, "v2",v1);
@@ -508,7 +505,7 @@ message = cJSON_Print(root);
 
 
 
-void raise_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* v0, int v1, smedl_provenance_t* provenance) {
+void raise_thresholdcrossdetection_thresholdWarning(ThresholdcrossdetectionMonitor* monitor, char* v0, int v1, cJSON* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0,NULL);

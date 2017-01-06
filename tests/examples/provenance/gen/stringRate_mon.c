@@ -189,10 +189,10 @@ void start_monitor(RatecomputationMonitor* monitor) {
                 if(ver!=NULL){
                     msg_ver = ver->valuestring;
                 }
-                smedl_provenance_t* pro = NULL;
+                cJSON* pro = NULL;
                 if(!strcmp(msg_ver,msg_format_version)){
-                    cJSON *provenance = cJSON_GetObjectItem(root,"provenance");
-                    if (provenance!=NULL){
+                    pro = cJSON_GetObjectItem(root,"provenance");
+                    /*if (provenance!=NULL){
                         cJSON * ev = cJSON_GetObjectItem(provenance,"event");
                         cJSON * li = cJSON_GetObjectItem(provenance,"line");
                         cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
@@ -202,7 +202,7 @@ void start_monitor(RatecomputationMonitor* monitor) {
                             long trace_counter = tr->valueint;
                             pro = create_provenance_object(event,line,trace_counter);
                         }
-                    }
+                    }*/
 
                     if (!strcmp(eventName,"ch3")) {
                     char *metric;
@@ -344,7 +344,7 @@ void executeEvents(RatecomputationMonitor* monitor){
 
 void executePendingEvents(RatecomputationMonitor* monitor){
     action** head = &monitor->action_queue;
-    double d0, d1; char* v0;  smedl_provenance_t* pro;
+    double d0, d1; char* v0;  cJSON* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -372,7 +372,7 @@ pro = ((params)->provenance);
 //send export events one by one from export_queue
 void executeExportedEvent(RatecomputationMonitor* monitor){
     action** head = &monitor->export_queue;
-    double d0, d1; char* v0;  smedl_provenance_t* pro;
+    double d0, d1; char* v0;  cJSON* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -403,7 +403,7 @@ pro = ((params)->provenance);
  * Monitor Event Handlers
  */
 
-void ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* metric, double ts, double val, smedl_provenance_t* provenance) {
+void ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* metric, double ts, double val, cJSON * provenance) {
 if (executed_scenarios[RATECOMPUTATION_COMPUTATION_SCENARIO]==0) {
   switch (monitor->state[RATECOMPUTATION_COMPUTATION_SCENARIO]) {
     case RATECOMPUTATION_COMPUTATION_INIT:
@@ -440,7 +440,7 @@ executeEvents(monitor);
 
 
 
-void raise_ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* v0, double v1, double v2, smedl_provenance_t* provenance) {
+void raise_ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* v0, double v1, double v2, cJSON* provenance) {
   param *p_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0,NULL);
   push_param(&p_head, NULL, NULL, &v1, NULL,NULL);
@@ -450,7 +450,7 @@ void raise_ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* v0,
 }
 
 
-void ratecomputation_timeout(RatecomputationMonitor* monitor, smedl_provenance_t* provenance) {
+void ratecomputation_timeout(RatecomputationMonitor* monitor, cJSON * provenance) {
 if (executed_scenarios[RATECOMPUTATION_COMPUTATION_SCENARIO]==0) {
   switch (monitor->state[RATECOMPUTATION_COMPUTATION_SCENARIO]) {
     case RATECOMPUTATION_COMPUTATION_INIT:
@@ -481,14 +481,14 @@ executeEvents(monitor);
 
 
 
-void raise_ratecomputation_timeout(RatecomputationMonitor* monitor, smedl_provenance_t* provenance) {
+void raise_ratecomputation_timeout(RatecomputationMonitor* monitor, cJSON* provenance) {
   param *p_head = NULL;
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, RATECOMPUTATION_TIMEOUT_EVENT, p_head);
 }
 
 
-void ratecomputation_end(RatecomputationMonitor* monitor, smedl_provenance_t* provenance) {
+void ratecomputation_end(RatecomputationMonitor* monitor, cJSON * provenance) {
 if (executed_scenarios[RATECOMPUTATION_COMPUTATION_SCENARIO]==0) {
   switch (monitor->state[RATECOMPUTATION_COMPUTATION_SCENARIO]) {
     case RATECOMPUTATION_COMPUTATION_INIT:
@@ -510,19 +510,19 @@ executeEvents(monitor);
 
 
 
-void raise_ratecomputation_end(RatecomputationMonitor* monitor, smedl_provenance_t* provenance) {
+void raise_ratecomputation_end(RatecomputationMonitor* monitor, cJSON* provenance) {
   param *p_head = NULL;
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, RATECOMPUTATION_END_EVENT, p_head);
 }
 
 
-void ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* name, double curTime, double rate, smedl_provenance_t* provenance) {
+void ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* name, double curTime, double rate, cJSON * provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor , char* v0, double v1, double v2, smedl_provenance_t* provenance) {
+void exported_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor , char* v0, double v1, double v2, cJSON* provenance) {
   char* message;
 	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
@@ -530,10 +530,7 @@ void exported_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor , char
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 if (provenance!=NULL){
- cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
- cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
-		cJSON_AddNumberToObject(prove, "line", provenance->line);
-	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+ cJSON_AddItemToObject(root, "provenance", prove = provenance);}
 	
 cJSON_AddStringToObject(fmt, "v1",v0);
 cJSON_AddNumberToObject(fmt, "v2",v1);
@@ -547,7 +544,7 @@ message = cJSON_Print(root);
 
 
 
-void raise_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* v0, double v1, double v2, smedl_provenance_t* provenance) {
+void raise_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* v0, double v1, double v2, cJSON* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0,NULL);

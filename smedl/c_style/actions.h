@@ -2,6 +2,7 @@
 #define ACTIONS_H
 
 #include "mon_utils.h"
+#include "cJSON.h"
 
 typedef struct Parameter param;
 struct Parameter {
@@ -10,11 +11,11 @@ struct Parameter {
     char c;
     double d;
     const void *v;
-    smedl_provenance_t *provenance;
+    cJSON *provenance;
     param *next;
 };
 
-int push_param(param**, int*, char*, double*, const void**, smedl_provenance_t *);
+int push_param(param**, int*, char*, double*, const void**, cJSON *);
 void pop_param(param**);
 
 typedef struct Action action;

@@ -55,15 +55,15 @@ void free_monitor(RatecomputationMonitor*);
 /*
  * Monitor Event Handlers
  */
-void ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* metric, double ts, double val, smedl_provenance_t* provenance);
-void raise_ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* v0, double v1, double v2, smedl_provenance_t* provenance);
-void ratecomputation_timeout(RatecomputationMonitor* monitor, smedl_provenance_t* provenance);
-void raise_ratecomputation_timeout(RatecomputationMonitor* monitor, smedl_provenance_t* provenance);
-void ratecomputation_end(RatecomputationMonitor* monitor, smedl_provenance_t* provenance);
-void raise_ratecomputation_end(RatecomputationMonitor* monitor, smedl_provenance_t* provenance);
-void ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* name, double curTime, double rate, smedl_provenance_t* provenance);
-void exported_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor , char* v0, double v1, double v2, smedl_provenance_t* provenance);
-void raise_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* v0, double v1, double v2, smedl_provenance_t* provenance);
+void ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* metric, double ts, double val, cJSON * provenance);
+void raise_ratecomputation_dataUpdate(RatecomputationMonitor* monitor, char* v0, double v1, double v2, cJSON* provenance);
+void ratecomputation_timeout(RatecomputationMonitor* monitor, cJSON * provenance);
+void raise_ratecomputation_timeout(RatecomputationMonitor* monitor, cJSON* provenance);
+void ratecomputation_end(RatecomputationMonitor* monitor, cJSON * provenance);
+void raise_ratecomputation_end(RatecomputationMonitor* monitor, cJSON* provenance);
+void ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* name, double curTime, double rate, cJSON * provenance);
+void exported_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor , char* v0, double v1, double v2, cJSON* provenance);
+void raise_ratecomputation_dataUpdate2(RatecomputationMonitor* monitor, char* v0, double v1, double v2, cJSON* provenance);
 
 /*
  * Monitor Utility Functions

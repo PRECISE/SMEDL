@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "actions.h"
 
-int push_param(param **head, int *i, char *c, double *d, const void **v, smedl_provenance_t * pro) {
+int push_param(param **head, int *i, char *c, double *d, const void **v, cJSON * pro) {
     param *new = (param*)malloc(sizeof(param));
     if(new == NULL) {
         free(new);

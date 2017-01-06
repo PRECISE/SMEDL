@@ -59,19 +59,19 @@ void free_monitor(AdaptationtriggerMonitor*);
 /*
  * Monitor Event Handlers
  */
-void adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* id, int val, smedl_provenance_t* provenance);
-void raise_adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* v0, int v1, smedl_provenance_t* provenance);
-void adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int val, smedl_provenance_t* provenance);
-void raise_adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int v0, smedl_provenance_t* provenance);
-void adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int val, smedl_provenance_t* provenance);
-void raise_adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int v0, smedl_provenance_t* provenance);
-void adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance);
-void raise_adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance);
-void adaptationtrigger_eval(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance);
-void raise_adaptationtrigger_eval(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance);
-void adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance);
-void exported_adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor , smedl_provenance_t* provenance);
-void raise_adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor, smedl_provenance_t* provenance);
+void adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* id, int val, cJSON * provenance);
+void raise_adaptationtrigger_warningThreshold(AdaptationtriggerMonitor* monitor, char* v0, int v1, cJSON* provenance);
+void adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int val, cJSON * provenance);
+void raise_adaptationtrigger_activeTracksThreshold(AdaptationtriggerMonitor* monitor, int v0, cJSON* provenance);
+void adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int val, cJSON * provenance);
+void raise_adaptationtrigger_inputBytesThreshold(AdaptationtriggerMonitor* monitor, int v0, cJSON* provenance);
+void adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor, cJSON * provenance);
+void raise_adaptationtrigger_adaptationComplete(AdaptationtriggerMonitor* monitor, cJSON* provenance);
+void adaptationtrigger_eval(AdaptationtriggerMonitor* monitor, cJSON * provenance);
+void raise_adaptationtrigger_eval(AdaptationtriggerMonitor* monitor, cJSON* provenance);
+void adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor, cJSON * provenance);
+void exported_adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor , cJSON* provenance);
+void raise_adaptationtrigger_adaptationStart(AdaptationtriggerMonitor* monitor, cJSON* provenance);
 
 /*
  * Monitor Utility Functions

@@ -47,25 +47,25 @@ void free_monitor(SpvMonitor*);
 /*
  * Monitor Event Handlers
  */
-void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret, smedl_provenance_t* provenance);
-void raise_spv_parse_record(SpvMonitor* monitor, int v0, double v1, double v2, int v3, smedl_provenance_t* provenance);
-void spv_total_distance(SpvMonitor* monitor, double dist, smedl_provenance_t* provenance);
-void raise_spv_total_distance(SpvMonitor* monitor, double v0, smedl_provenance_t* provenance);
-void spv_timestep_error(SpvMonitor* monitor, int tm, int last_time, smedl_provenance_t* provenance);
-void exported_spv_timestep_error(SpvMonitor* monitor , int v0, int v1, smedl_provenance_t* provenance);
-void raise_spv_timestep_error(SpvMonitor* monitor, int v0, int v1, smedl_provenance_t* provenance);
-void spv_after_end_error(SpvMonitor* monitor, smedl_provenance_t* provenance);
-void exported_spv_after_end_error(SpvMonitor* monitor , smedl_provenance_t* provenance);
-void raise_spv_after_end_error(SpvMonitor* monitor, smedl_provenance_t* provenance);
-void spv_latitude_range_error(SpvMonitor* monitor, double lat, smedl_provenance_t* provenance);
-void exported_spv_latitude_range_error(SpvMonitor* monitor , double v0, smedl_provenance_t* provenance);
-void raise_spv_latitude_range_error(SpvMonitor* monitor, double v0, smedl_provenance_t* provenance);
-void spv_longitude_range_error(SpvMonitor* monitor, double lon, smedl_provenance_t* provenance);
-void exported_spv_longitude_range_error(SpvMonitor* monitor , double v0, smedl_provenance_t* provenance);
-void raise_spv_longitude_range_error(SpvMonitor* monitor, double v0, smedl_provenance_t* provenance);
-void spv_total_distance_error(SpvMonitor* monitor, double dist, smedl_provenance_t* provenance);
-void exported_spv_total_distance_error(SpvMonitor* monitor , double v0, smedl_provenance_t* provenance);
-void raise_spv_total_distance_error(SpvMonitor* monitor, double v0, smedl_provenance_t* provenance);
+void spv_parse_record(SpvMonitor* monitor, int tm, double lat, double lon, int ret, cJSON * provenance);
+void raise_spv_parse_record(SpvMonitor* monitor, int v0, double v1, double v2, int v3, cJSON* provenance);
+void spv_total_distance(SpvMonitor* monitor, double dist, cJSON * provenance);
+void raise_spv_total_distance(SpvMonitor* monitor, double v0, cJSON* provenance);
+void spv_timestep_error(SpvMonitor* monitor, int tm, int last_time, cJSON * provenance);
+void exported_spv_timestep_error(SpvMonitor* monitor , int v0, int v1, cJSON* provenance);
+void raise_spv_timestep_error(SpvMonitor* monitor, int v0, int v1, cJSON* provenance);
+void spv_after_end_error(SpvMonitor* monitor, cJSON * provenance);
+void exported_spv_after_end_error(SpvMonitor* monitor , cJSON* provenance);
+void raise_spv_after_end_error(SpvMonitor* monitor, cJSON* provenance);
+void spv_latitude_range_error(SpvMonitor* monitor, double lat, cJSON * provenance);
+void exported_spv_latitude_range_error(SpvMonitor* monitor , double v0, cJSON* provenance);
+void raise_spv_latitude_range_error(SpvMonitor* monitor, double v0, cJSON* provenance);
+void spv_longitude_range_error(SpvMonitor* monitor, double lon, cJSON * provenance);
+void exported_spv_longitude_range_error(SpvMonitor* monitor , double v0, cJSON* provenance);
+void raise_spv_longitude_range_error(SpvMonitor* monitor, double v0, cJSON* provenance);
+void spv_total_distance_error(SpvMonitor* monitor, double dist, cJSON * provenance);
+void exported_spv_total_distance_error(SpvMonitor* monitor , double v0, cJSON* provenance);
+void raise_spv_total_distance_error(SpvMonitor* monitor, double v0, cJSON* provenance);
 
 /*
  * Monitor Utility Functions

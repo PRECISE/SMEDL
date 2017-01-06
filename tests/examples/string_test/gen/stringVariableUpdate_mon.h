@@ -49,13 +49,13 @@ void free_monitor(StringtestMonitor*);
 /*
  * Monitor Event Handlers
  */
-void stringtest_ping(StringtestMonitor* monitor, char* st, int x, smedl_provenance_t* provenance);
-void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1, smedl_provenance_t* provenance);
-void stringtest_trans(StringtestMonitor* monitor, smedl_provenance_t* provenance);
-void raise_stringtest_trans(StringtestMonitor* monitor, smedl_provenance_t* provenance);
-void stringtest_pong(StringtestMonitor* monitor, char* name, int value, smedl_provenance_t* provenance);
-void exported_stringtest_pong(StringtestMonitor* monitor , char* v0, int v1, smedl_provenance_t* provenance);
-void raise_stringtest_pong(StringtestMonitor* monitor, char* v0, int v1, smedl_provenance_t* provenance);
+void stringtest_ping(StringtestMonitor* monitor, char* st, int x, cJSON * provenance);
+void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1, cJSON* provenance);
+void stringtest_trans(StringtestMonitor* monitor, cJSON * provenance);
+void raise_stringtest_trans(StringtestMonitor* monitor, cJSON* provenance);
+void stringtest_pong(StringtestMonitor* monitor, char* name, int value, cJSON * provenance);
+void exported_stringtest_pong(StringtestMonitor* monitor , char* v0, int v1, cJSON* provenance);
+void raise_stringtest_pong(StringtestMonitor* monitor, char* v0, int v1, cJSON* provenance);
 
 /*
  * Monitor Utility Functions

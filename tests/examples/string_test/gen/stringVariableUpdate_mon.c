@@ -182,10 +182,10 @@ void start_monitor(StringtestMonitor* monitor) {
                 if(ver!=NULL){
                     msg_ver = ver->valuestring;
                 }
-                smedl_provenance_t* pro = NULL;
+                cJSON* pro = NULL;
                 if(!strcmp(msg_ver,msg_format_version)){
-                    cJSON *provenance = cJSON_GetObjectItem(root,"provenance");
-                    if (provenance!=NULL){
+                    pro = cJSON_GetObjectItem(root,"provenance");
+                    /*if (provenance!=NULL){
                         cJSON * ev = cJSON_GetObjectItem(provenance,"event");
                         cJSON * li = cJSON_GetObjectItem(provenance,"line");
                         cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
@@ -195,7 +195,7 @@ void start_monitor(StringtestMonitor* monitor) {
                             long trace_counter = tr->valueint;
                             pro = create_provenance_object(event,line,trace_counter);
                         }
-                    }
+                    }*/
 
                     if (!strcmp(eventName,"ch1")) {
                     char *st;
@@ -323,7 +323,7 @@ void executeEvents(StringtestMonitor* monitor){
 
 void executePendingEvents(StringtestMonitor* monitor){
     action** head = &monitor->action_queue;
-    int i0; char* v0;  smedl_provenance_t* pro;
+    int i0; char* v0;  cJSON* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -357,7 +357,7 @@ pro = ((params)->provenance);
 //send export events one by one from export_queue
 void executeExportedEvent(StringtestMonitor* monitor){
     action** head = &monitor->export_queue;
-    int i0; char* v0;  smedl_provenance_t* pro;
+    int i0; char* v0;  cJSON* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -386,7 +386,7 @@ pro = ((params)->provenance);
  * Monitor Event Handlers
  */
 
-void stringtest_ping(StringtestMonitor* monitor, char* st, int x, smedl_provenance_t* provenance) {
+void stringtest_ping(StringtestMonitor* monitor, char* st, int x, cJSON * provenance) {
 if (executed_scenarios[STRINGTEST_SC1_SCENARIO]==0) {
   switch (monitor->state[STRINGTEST_SC1_SCENARIO]) {
     case STRINGTEST_SC1_START:
@@ -407,7 +407,7 @@ executeEvents(monitor);
 
 
 
-void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1, smedl_provenance_t* provenance) {
+void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1, cJSON* provenance) {
   param *p_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0,NULL);
   push_param(&p_head, &v1, NULL, NULL, NULL,NULL);
@@ -416,7 +416,7 @@ void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1, smedl_p
 }
 
 
-void stringtest_trans(StringtestMonitor* monitor, smedl_provenance_t* provenance) {
+void stringtest_trans(StringtestMonitor* monitor, cJSON * provenance) {
 if (executed_scenarios[STRINGTEST_SC2_SCENARIO]==0) {
   switch (monitor->state[STRINGTEST_SC2_SCENARIO]) {
     case STRINGTEST_SC2_START:
@@ -435,19 +435,19 @@ executeEvents(monitor);
 
 
 
-void raise_stringtest_trans(StringtestMonitor* monitor, smedl_provenance_t* provenance) {
+void raise_stringtest_trans(StringtestMonitor* monitor, cJSON* provenance) {
   param *p_head = NULL;
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, STRINGTEST_TRANS_EVENT, p_head);
 }
 
 
-void stringtest_pong(StringtestMonitor* monitor, char* name, int value, smedl_provenance_t* provenance) {
+void stringtest_pong(StringtestMonitor* monitor, char* name, int value, cJSON * provenance) {
 executeEvents(monitor);
 }
 
 
-void exported_stringtest_pong(StringtestMonitor* monitor , char* v0, int v1, smedl_provenance_t* provenance) {
+void exported_stringtest_pong(StringtestMonitor* monitor , char* v0, int v1, cJSON* provenance) {
   char* message;
 	cJSON *root; cJSON* fmt; cJSON* prove; 
 	 root = cJSON_CreateObject();
@@ -455,10 +455,7 @@ void exported_stringtest_pong(StringtestMonitor* monitor , char* v0, int v1, sme
 	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
 	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
 if (provenance!=NULL){
- cJSON_AddItemToObject(root, "provenance", prove = cJSON_CreateObject());
- cJSON_AddItemToObject(prove, "event", cJSON_CreateString(provenance->event));
-		cJSON_AddNumberToObject(prove, "line", provenance->line);
-	 cJSON_AddNumberToObject(prove, "trace_counter", provenance->trace_counter);}
+ cJSON_AddItemToObject(root, "provenance", prove = provenance);}
 	
 cJSON_AddStringToObject(fmt, "v1",v0);
 cJSON_AddNumberToObject(fmt, "v2",v1);
@@ -471,7 +468,7 @@ message = cJSON_Print(root);
 
 
 
-void raise_stringtest_pong(StringtestMonitor* monitor, char* v0, int v1, smedl_provenance_t* provenance) {
+void raise_stringtest_pong(StringtestMonitor* monitor, char* v0, int v1, cJSON* provenance) {
   param *p_head = NULL;
  param *ep_head = NULL;
   push_param(&p_head, NULL, NULL, NULL, &v0,NULL);

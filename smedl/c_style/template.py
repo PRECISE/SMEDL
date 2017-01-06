@@ -184,11 +184,11 @@ class CTemplater(object):
                 for p in mg._symbolTable.get(m, 'params'):
                     monitorParams += [{'name':'v'+str(index),'c_type': CTemplater.convertTypeForC(p['type'])}]
                     index = index + 1
-                monitorParams += [{'name':'provenance','c_type': 'smedl_provenance_t*'}]
+                monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
             else:
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                     [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
-                monitorParams += [{'name':'provenance','c_type': 'smedl_provenance_t*'}]
+                monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
 
             tmp_map = {
                 'int': 0,
@@ -293,6 +293,7 @@ class CTemplater(object):
                 values['signatures'].append(export_event_sig)
                 eventFunction.append(export_event_sig + ' {')
                 eventFunction.append('  char* message;')
+                print(paramString)
                 evParams = mg._getEventParams(paramString)[1:]
                 cjson_str+=('\tcJSON_AddItemToObject(root, "name", cJSON_CreateString("%s_%s"));\n') % (obj.lower(), m)
                 cjson_str+=('\tcJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));\n')
@@ -313,7 +314,7 @@ class CTemplater(object):
                         elif p[0] == 'char*':
                             sprintf += 'cJSON_AddStringToObject(fmt, "v%d",%s);\n' % (index,p[1])
                         index = index + 1
-                cjson_str+=("if (provenance!=NULL){\n cJSON_AddItemToObject(root, \"provenance\", prove = cJSON_CreateObject());\n cJSON_AddItemToObject(prove, \"event\", cJSON_CreateString(provenance->event));\n\t\tcJSON_AddNumberToObject(prove, \"line\", provenance->line);\n\t cJSON_AddNumberToObject(prove, \"trace_counter\", provenance->trace_counter);}\n\t")
+                cjson_str+=("if (provenance!=NULL){\n cJSON_AddItemToObject(root, \"provenance\", prove = provenance);}\n\t")
                 sprintf += 'message = cJSON_Print(root);\n'
                 eventFunction.append(cjson_str)
                 eventFunction.append(sprintf)
@@ -337,10 +338,11 @@ class CTemplater(object):
                 sprintf_routing += '.'+m
                 if len(evParams) > 0:
                     for p in evParams:
+                        #print(p[0])
                         # attributes can only be int
                         if p[0] == 'int':
                             sprintf_routing += '.%d'
-                        elif p[0] != 'smedl_provenance_t*' :
+                        elif p[0] != 'cJSON*' :
                             sprintf_routing += '.0'
 
                 sprintf_routing+='"'
@@ -362,7 +364,7 @@ class CTemplater(object):
             # Build the event handler function
             if pedlEvent:
                 probeParams = [p for p in monitorParams if p['name'] != 'monitor']
-                probeSignature = 'void %s_%s_probe(%s%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]),",smedl_provenance_t* provenance")
+                probeSignature = 'void %s_%s_probe(%s%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]),",cJSON * provenance")
                 probeFunction.append(probeSignature  + ' {')
                 if len(identityParams) > 0:
                     # Write function call to hash on the first identity we're searching for
@@ -740,7 +742,7 @@ class CTemplater(object):
         for p in mg._symbolTable.get(event, 'params'):
             paramString+=', '+ CTemplater.convertTypeForC(p['type'])+' v'+str(index)
             index += 1
-        paramString+=', smedl_provenance_t* provenance'
+        paramString+=', cJSON* provenance'
         return paramString
 
 
