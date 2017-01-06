@@ -137,9 +137,12 @@ Asynchronous monitoring of events has been implemented using the [Advanced Messa
               "v2" : value2,
               ...
       }
+      "provenance" :{
+            ...
+      }
     }
 
-Only the message is encoded in JSON string and the routing key still follows the format of the rabbitmq. As a result, the  field "name" in the JSON string is not used for now. Moreover, the field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index where index is from 1. Types and order of the data in "params" follows the definition of the event.
+Only the message is encoded in JSON string and the routing key still follows the format of the rabbitmq. As a result, the  field "name" in the JSON string is not used for now. Moreover, the field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index where index is from 1. Types and order of the data in "params" follows the definition of the event. The option field "provenance" contains the provenance information, which is opaque to the monitor. 
 
 
 ## Compiling with an architecture description
