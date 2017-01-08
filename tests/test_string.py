@@ -102,7 +102,7 @@ class TestString(unittest.TestCase):
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         call2 = subprocess.Popen("./bin/stringLiteral_test", shell=True,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        time.sleep(1)
+        time.sleep(5)
         self.assertEqual(5, test_step)
         test_step = 0
         call.terminate()
@@ -111,7 +111,7 @@ class TestString(unittest.TestCase):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         call4 = subprocess.Popen("./bin/stringLiteral_test2", shell=True,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        time.sleep(1)
+        time.sleep(5)
         call3.terminate()
         call4.terminate()
         self.terminate_thread(recieve_thread)

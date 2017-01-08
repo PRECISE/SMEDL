@@ -99,7 +99,7 @@ class TestProvenance(unittest.TestCase):
         call3 = subprocess.Popen("../bin/adaptationTrigger", shell=True,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        time.sleep(10)
+        time.sleep(15)
         call.terminate()
         call2.terminate()
         call3.terminate()

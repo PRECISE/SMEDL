@@ -315,7 +315,7 @@ void executePendingEvents({{obj|title}}Monitor* monitor){
                 break;
             {% endfor -%}
         }
-        pop_action(head);
+        //pop_action(head);
     }
 }
 

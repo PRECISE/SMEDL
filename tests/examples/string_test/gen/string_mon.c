@@ -337,7 +337,7 @@ pro = ((params)->provenance);
 
                 break;
             }
-        pop_action(head);
+        //pop_action(head);
     }
 }
 

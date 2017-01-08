@@ -358,7 +358,7 @@ void executePendingEvents(AdaptationtriggerMonitor* monitor){
 
                 break;
             }
-        pop_action(head);
+        //pop_action(head);
     }
 }
 
