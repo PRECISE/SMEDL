@@ -335,7 +335,6 @@ void executeExportedEvent({{obj|title}}Monitor* monitor){
             {% endfor -%}
 
         }
-        pop_action(head);
     }
 
 }
