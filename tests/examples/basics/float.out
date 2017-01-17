@@ -1,4 +1,5 @@
---tests/examples/basics/string_mon.h--
+StringtestMonitor* monitor , double v0, double v1, cJSON* provenance
+--tests/examples/basics/float_mon.h--
 #include "monitor_map.h"
 #include "actions.h"
 #include <amqp_tcp_socket.h>
@@ -48,8 +49,11 @@ void free_monitor(StringtestMonitor*);
 /*
  * Monitor Event Handlers
  */
-void stringtest_ping(StringtestMonitor* monitor, char* st, int x, cJSON * provenance);
-void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1, cJSON* provenance);
+void stringtest_input(StringtestMonitor* monitor, cJSON * provenance);
+void raise_stringtest_input(StringtestMonitor* monitor, cJSON* provenance);
+void stringtest_msg(StringtestMonitor* monitor, double 1.0, double 3.0, cJSON * provenance);
+void exported_stringtest_msg(StringtestMonitor* monitor , double v0, double v1, cJSON* provenance);
+void raise_stringtest_msg(StringtestMonitor* monitor, double v0, double v1, cJSON* provenance);
 
 /*
  * Monitor Utility Functions
@@ -66,8 +70,8 @@ char* monitor_identities_str(MonitorIdentity**);
 void executePendingEvents(StringtestMonitor* monitor);
 void executeEvents(StringtestMonitor* monitor);
 void executeExportedEvent(StringtestMonitor* monitor);
---tests/examples/basics/string_mon.c--
-//Compile: gcc -o string_mon -std=c99 actions.c monitor_map.c string_mon.c
+--tests/examples/basics/float_mon.c--
+//Compile: gcc -o float_mon -std=c99 actions.c monitor_map.c float_mon.c
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,16 +85,16 @@ void executeExportedEvent(StringtestMonitor* monitor);
 #include "amqp_utils.h"
 #include "cJSON.h"
 #include "mon_utils.h"
-#include "string_mon.h"
+#include "float_mon.h"
 
 typedef enum { STRINGTEST_ID } stringtest_identity;
 const identity_type stringtest_identity_types[STRINGTEST_MONITOR_IDENTITIES] = { OPAQUE };
 
 typedef enum { STRINGTEST_SC1_SCENARIO } stringtest_scenario;
-typedef enum { STRINGTEST_SC1_START, STRINGTEST_SC1_END } stringtest_sc1_state;
-typedef enum { STRINGTEST_PING_EVENT } stringtest_event;
+typedef enum { STRINGTEST_SC1_START } stringtest_sc1_state;
+typedef enum { STRINGTEST_INPUT_EVENT, STRINGTEST_MSG_EVENT } stringtest_event;
 typedef enum { STRINGTEST_DEFAULT } stringtest_error;
-const char *stringtest_sc1_states[2] = { "Start", "End" };
+const char *stringtest_sc1_states[1] = { "Start" };
 const char **stringtest_states_names[1] = { stringtest_sc1_states };
 int executed_scenarios[1]={ 0 };
 
@@ -109,7 +113,7 @@ StringtestMonitor* init_stringtest_monitor( StringtestData *d ) {
     config_t cfg;
     config_setting_t *setting;
     config_init(&cfg);
-    if(!config_read_file(&cfg, "string_mon.cfg")) {
+    if(!config_read_file(&cfg, "float_mon.cfg")) {
         output_config_error(cfg);
     }
     setting = config_lookup(&cfg, "rabbitmq");
@@ -371,12 +375,24 @@ void executeEvents(StringtestMonitor* monitor){
 
 void executePendingEvents(StringtestMonitor* monitor){
     action** head = &monitor->action_queue;
-    int i0; char* v0;  cJSON* pro;
+    double d0, d1;  cJSON* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
         param *p_head = params;
         switch (type){
+            case STRINGTEST_MSG_EVENT:
+            		d0 = ((params)->d);
+		(params) = (params)->next;
+		d1 = ((params)->d);
+		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		stringtest_msg(monitor, d0, d1, pro);
+
+                break;
             }
         //pop_action(head);
     }
@@ -385,12 +401,24 @@ void executePendingEvents(StringtestMonitor* monitor){
 //send export events one by one from export_queue
 void executeExportedEvent(StringtestMonitor* monitor){
     action** head = &monitor->export_queue;
-    int i0; char* v0;  cJSON* pro;
+    double d0, d1;  cJSON* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
         param *p_head = params;
         switch (type) {
+            case STRINGTEST_MSG_EVENT:
+            		d0 = ((params)->d);
+		(params) = (params)->next;
+		d1 = ((params)->d);
+		(params) = (params)->next;
+pro = ((params)->provenance);
+		(params) = (params)->next;
+		pop_param(&p_head);
+		pop_action(head);
+		exported_stringtest_msg(monitor, d0, d1, pro);
+
+                break;
             }
         pop_action(head);
     }
@@ -402,20 +430,16 @@ void executeExportedEvent(StringtestMonitor* monitor){
  * Monitor Event Handlers
  */
 
-void stringtest_ping(StringtestMonitor* monitor, char* st, int x, cJSON * provenance) {
+void stringtest_input(StringtestMonitor* monitor, cJSON * provenance) {
 if (executed_scenarios[STRINGTEST_SC1_SCENARIO]==0) {
   switch (monitor->state[STRINGTEST_SC1_SCENARIO]) {
     case STRINGTEST_SC1_START:
-      if(x == 1) {
-        monitor->state[STRINGTEST_SC1_SCENARIO] = STRINGTEST_SC1_END;
-      }
-      else {
-        raise_error("sc1", stringtest_states_names[STRINGTEST_SC1_SCENARIO][monitor->state[STRINGTEST_SC1_SCENARIO]], "monitor->state[STRINGTEST_SC1_SCENARIO]", "DEFAULT");
-      }
+        raise_stringtest_msg(monitor, 1.0, 3.0,provenance);
+      monitor->state[STRINGTEST_SC1_SCENARIO] = STRINGTEST_SC1_START;
       break;
 
     default:
-      raise_error("stringtest_sc1", stringtest_states_names[STRINGTEST_SC1_SCENARIO][monitor->state[STRINGTEST_SC1_SCENARIO]], "ping", "DEFAULT");
+      raise_error("stringtest_sc1", stringtest_states_names[STRINGTEST_SC1_SCENARIO][monitor->state[STRINGTEST_SC1_SCENARIO]], "input", "DEFAULT");
       break;
   }
 executed_scenarios[STRINGTEST_SC1_SCENARIO]=1;
@@ -425,12 +449,50 @@ executeEvents(monitor);
 
 
 
-void raise_stringtest_ping(StringtestMonitor* monitor, char* v0, int v1, cJSON* provenance) {
+void raise_stringtest_input(StringtestMonitor* monitor, cJSON* provenance) {
   param *p_head = NULL;
-  push_param(&p_head, NULL, NULL, NULL, &v0,NULL);
-  push_param(&p_head, &v1, NULL, NULL, NULL,NULL);
  push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
-  push_action(&monitor->action_queue, STRINGTEST_PING_EVENT, p_head);
+  push_action(&monitor->action_queue, STRINGTEST_INPUT_EVENT, p_head);
+}
+
+
+void stringtest_msg(StringtestMonitor* monitor, double 1.0, double 3.0, cJSON * provenance) {
+executeEvents(monitor);
+}
+
+
+void exported_stringtest_msg(StringtestMonitor* monitor , double v0, double v1, cJSON* provenance) {
+  char* message;
+	cJSON *root; cJSON* fmt; cJSON* prove; 
+	 root = cJSON_CreateObject();
+	cJSON_AddItemToObject(root, "name", cJSON_CreateString("stringtest_msg"));
+	cJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));
+	cJSON_AddItemToObject(root, "params", fmt = cJSON_CreateObject());
+if (provenance!=NULL){
+ cJSON_AddItemToObject(root, "provenance", prove = provenance);}
+	
+cJSON_AddNumberToObject(fmt, "v1",v0);
+cJSON_AddNumberToObject(fmt, "v2",v1);
+message = cJSON_Print(root);
+
+  char routing_key[256];
+  sprintf(routing_key, "stringtest_msg.msg.0.0");
+  send_message(monitor, message, routing_key);
+}
+
+
+
+void raise_stringtest_msg(StringtestMonitor* monitor, double v0, double v1, cJSON* provenance) {
+  param *p_head = NULL;
+ param *ep_head = NULL;
+  push_param(&p_head, NULL, NULL, &v0, NULL,NULL);
+  push_param(&ep_head, NULL, NULL, &v0, NULL,NULL);
+  push_param(&p_head, NULL, NULL, &v1, NULL,NULL);
+  push_param(&ep_head, NULL, NULL, &v1, NULL,NULL);
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
+ push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);
+  push_action(&monitor->action_queue, STRINGTEST_MSG_EVENT, p_head);
+  push_action(&monitor->export_queue, STRINGTEST_MSG_EVENT, ep_head);
 }
 
 
