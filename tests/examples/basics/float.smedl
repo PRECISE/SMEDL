@@ -1,0 +1,7 @@
+object stringtest
+  events
+    imported input();
+    exported msg(float, float);
+  scenarios
+   sc1:
+     Start -> input() { raise msg(1.0, 3.0); } -> Start

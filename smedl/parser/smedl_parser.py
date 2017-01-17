@@ -18,7 +18,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 11, 9, 16, 51, 18, 2)
+__version__ = (2017, 1, 17, 19, 57, 28, 1)
 
 __all__ = [
     'smedlParser',
@@ -592,9 +592,9 @@ class smedlParser(Parser):
     def _atom_(self):
         with self._choice():
             with self._option():
-                self._integer_()
-            with self._option():
                 self._float_()
+            with self._option():
+                self._integer_()
             with self._option():
                 self._identifier_()
             with self._option():

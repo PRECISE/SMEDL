@@ -48,8 +48,8 @@ void free_monitor(OnetwomonMonitor*);
 /*
  * Monitor Event Handlers
  */
-void onetwomon_foo(OnetwomonMonitor* monitor);
-void raise_onetwomon_foo(OnetwomonMonitor* monitor);
+void onetwomon_foo(OnetwomonMonitor* monitor, cJSON * provenance);
+void raise_onetwomon_foo(OnetwomonMonitor* monitor, cJSON* provenance);
 
 /*
  * Monitor Utility Functions
@@ -197,6 +197,14 @@ OnetwomonMonitor* init_onetwomon_monitor( OnetwomonData *d ) {
     return monitor;
 }
 
+smedl_provenance_t* create_provenance_object(char event[255], int line, long trace_counter){
+    smedl_provenance_t* provenance = (smedl_provenance_t*)malloc(sizeof(smedl_provenance_t));
+    strncpy(provenance -> event, event,255);
+    provenance -> line = line;
+    provenance -> trace_counter = trace_counter;
+    return provenance;
+}
+
 void start_monitor(OnetwomonMonitor* monitor) {
     int received = 0;
     amqp_frame_t frame;
@@ -231,10 +239,34 @@ void start_monitor(OnetwomonMonitor* monitor) {
         if (string != NULL) {
             char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
+                cJSON * root = cJSON_Parse(string);
+                cJSON * ver = cJSON_GetObjectItem(root,"fmt_version");
+                char * msg_ver = NULL;
+                if(ver!=NULL){
+                    msg_ver = ver->valuestring;
+                }
+                cJSON* pro = NULL;
+                if(!strcmp(msg_ver,msg_format_version)){
+                    pro = cJSON_GetObjectItem(root,"provenance");
+                    /*if (provenance!=NULL){
+                        cJSON * ev = cJSON_GetObjectItem(provenance,"event");
+                        cJSON * li = cJSON_GetObjectItem(provenance,"line");
+                        cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
+                        if (ev!= NULL && li != NULL && tr!= NULL){
+                            char* event = ev->valuestring;
+                            int line = li->valueint;
+                            long trace_counter = tr->valueint;
+                            pro = create_provenance_object(event,line,trace_counter);
+                        }
+                    }*/
 
-                
-
+                    
+                }else {
+                    printf("format version not matched\n");
+                    
+                }
             }
+
         }
 
         if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
@@ -339,21 +371,21 @@ void executeEvents(OnetwomonMonitor* monitor){
 
 void executePendingEvents(OnetwomonMonitor* monitor){
     action** head = &monitor->action_queue;
-    
+     cJSON* pro;
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
         param *p_head = params;
         switch (type){
             }
-        pop_action(head);
+        //pop_action(head);
     }
 }
 
 //send export events one by one from export_queue
 void executeExportedEvent(OnetwomonMonitor* monitor){
     action** head = &monitor->export_queue;
-    
+     cJSON* pro;
     while(*head != NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -370,7 +402,7 @@ void executeExportedEvent(OnetwomonMonitor* monitor){
  * Monitor Event Handlers
  */
 
-void onetwomon_foo(OnetwomonMonitor* monitor) {
+void onetwomon_foo(OnetwomonMonitor* monitor, cJSON * provenance) {
 if (executed_scenarios[ONETWOMON_SC1_SCENARIO]==0) {
   switch (monitor->state[ONETWOMON_SC1_SCENARIO]) {
     case ONETWOMON_SC1_ONETWO:
@@ -392,8 +424,9 @@ executeEvents(monitor);
 
 
 
-void raise_onetwomon_foo(OnetwomonMonitor* monitor) {
+void raise_onetwomon_foo(OnetwomonMonitor* monitor, cJSON* provenance) {
   param *p_head = NULL;
+ push_param(&p_head, NULL, NULL, NULL, NULL,provenance);
   push_action(&monitor->action_queue, ONETWOMON_FOO_EVENT, p_head);
 }
 
@@ -506,24 +539,28 @@ char* monitor_identities_str(MonitorIdentity** identities) {
 #ifndef ACTIONS_H
 #define ACTIONS_H
 
+#include "mon_utils.h"
+#include "cJSON.h"
+
 typedef struct Parameter param;
 struct Parameter {
-  int type;
-  int i;
-  char c;
-  double d;
-  const void *v;
-  param *next;
+    int type;
+    int i;
+    char c;
+    double d;
+    const void *v;
+    cJSON *provenance;
+    param *next;
 };
 
-int push_param(param**, int*, char*, double*, const void**);
+int push_param(param**, int*, char*, double*, const void**, cJSON *);
 void pop_param(param**);
 
 typedef struct Action action;
 struct Action {
-  int id;
-  param *params;
-  action *next;
+    int id;
+    param *params;
+    action *next;
 };
 
 int push_action(action**, int, param*);
@@ -535,7 +572,7 @@ void pop_action(action**);
 #include <stdio.h>
 #include "actions.h"
 
-int push_param(param **head, int *i, char *c, double *d, const void **v) {
+int push_param(param **head, int *i, char *c, double *d, const void **v, cJSON * pro) {
     param *new = (param*)malloc(sizeof(param));
     if(new == NULL) {
         free(new);
@@ -552,6 +589,9 @@ int push_param(param **head, int *i, char *c, double *d, const void **v) {
     }
     if(v != NULL) {
         new->v = *v;
+    }
+    if (pro != NULL){
+        new->provenance = pro;
     }
     new->next = NULL;
     if(*head == NULL) {
@@ -3355,6 +3395,12 @@ void amqp_dump(void const *buffer, size_t len)
 
 #include <libconfig.h>
 #include "cJSON.h"
+
+typedef struct smedl_provenance_t {
+     char event[255];
+     unsigned int line;
+     unsigned long trace_counter;
+}smedl_provenance_t;
 
 void output_config_error(config_t cfg);
 void raise_error(char*, const char*, char*, char*);
