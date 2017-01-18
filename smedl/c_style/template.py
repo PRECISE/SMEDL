@@ -153,6 +153,7 @@ class CTemplater(object):
         parameterTypeNumMap['char'] = 0
 
         for m in methods:
+            print (m)
             eventFunction = []
             probeFunction = []
             params = ''
@@ -179,6 +180,7 @@ class CTemplater(object):
             monitorParams=[]
             # if m is an exported event and there is no transition triggered by it, we need to generate a signature with new names
             if CTemplater._checkParametersLiteral(mg,m):
+                print("literal")
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}]
                 index = 0
                 for p in mg._symbolTable.get(m, 'params'):
@@ -186,6 +188,7 @@ class CTemplater(object):
                     index = index + 1
                 monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
             else:
+                print("no literal")
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                     [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
                 monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
@@ -258,8 +261,8 @@ class CTemplater(object):
             for key, value in parameterTypeNumMap.items():
                 if tmp_map[key] > value:
                     parameterTypeNumMap[key] = tmp_map[key]
-
             eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
+            print (eventSignature)
             values['signatures'].append(eventSignature)
             eventFunction.append(eventSignature + ' {')
             for key, fsm in allFSMs.items():
@@ -545,8 +548,9 @@ class CTemplater(object):
 
     def _checkParametersLiteral(mg,m):
         for p in mg._symbolTable.get(m, 'params'):
+            print(p['name'])
             if len(p['name'])>0:
-                if p['name'][0]=='\"' or p['name'][0]== '-' or p['name'][0]=='+' or p['name'].isdigit():
+                if p['name'][0]=='\"' or p['name'][0]== '-' or p['name'][0]=='+' or p['name'][0].isdigit():
                     return True
         return False
 
