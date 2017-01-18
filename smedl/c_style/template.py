@@ -153,7 +153,7 @@ class CTemplater(object):
         parameterTypeNumMap['char'] = 0
 
         for m in methods:
-            print (m)
+            #print (m)
             eventFunction = []
             probeFunction = []
             params = ''
@@ -180,7 +180,6 @@ class CTemplater(object):
             monitorParams=[]
             # if m is an exported event and there is no transition triggered by it, we need to generate a signature with new names
             if CTemplater._checkParametersLiteral(mg,m):
-                print("literal")
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}]
                 index = 0
                 for p in mg._symbolTable.get(m, 'params'):
@@ -188,7 +187,6 @@ class CTemplater(object):
                     index = index + 1
                 monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
             else:
-                print("no literal")
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                     [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
                 monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
@@ -262,7 +260,7 @@ class CTemplater(object):
                 if tmp_map[key] > value:
                     parameterTypeNumMap[key] = tmp_map[key]
             eventSignature = 'void %s_%s(%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in monitorParams]))
-            print (eventSignature)
+            #print (eventSignature)
             values['signatures'].append(eventSignature)
             eventFunction.append(eventSignature + ' {')
             for key, fsm in allFSMs.items():
@@ -296,7 +294,6 @@ class CTemplater(object):
                 values['signatures'].append(export_event_sig)
                 eventFunction.append(export_event_sig + ' {')
                 eventFunction.append('  char* message;')
-                print(paramString)
                 evParams = mg._getEventParams(paramString)[1:]
                 cjson_str+=('\tcJSON_AddItemToObject(root, "name", cJSON_CreateString("%s_%s"));\n') % (obj.lower(), m)
                 cjson_str+=('\tcJSON_AddItemToObject(root, "fmt_version", cJSON_CreateString(msg_format_version));\n')
@@ -548,7 +545,7 @@ class CTemplater(object):
 
     def _checkParametersLiteral(mg,m):
         for p in mg._symbolTable.get(m, 'params'):
-            print(p['name'])
+            #print(p['name'])
             if len(p['name'])>0:
                 if p['name'][0]=='\"' or p['name'][0]== '-' or p['name'][0]=='+' or p['name'][0].isdigit():
                     return True
