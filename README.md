@@ -131,7 +131,8 @@ Asynchronous monitoring of events has been implemented using the [Advanced Messa
 ### Format of routing key
 The formal of the routing key contains four parts: the channel name, the list of identities of the monitor instance, the event name and the list of attributes of the event. Each element(including channel name, event name, each identity or attribute value) is divided by character '.'. Note that if the type of the attributes of events or identities of the monitor is not typed with integer, it will be replaced by "0" as a place holder. (Note that the string can not be the id of the monitor for now, which will be implemented in the next released version). 
 
-For example, there are two monitors RateComputation(int) and ThresholdCrossDetection(int) communicating with each other through event dataUpdate2(string, float, float),defined in channel "ch1". For the monitor instances RateComputation(0) and ThresholdCrossDetection(0), the format of the routing key sent along with the message will be "ch1.0.dataUpdates2.0.0.0". The first "0" in the routing key represents the id of RateComputation. The other three "0"s represent the place holder for three  attributes of the event dataUpdate2.  
+###### Example of routing key format
+There are two monitors RateComputation(int) and ThresholdCrossDetection(int) communicating with each other through event dataUpdate2(string, float, float),defined in channel "ch1". For the monitor instances RateComputation(0) and ThresholdCrossDetection(0), the format of the routing key sent along with the message will be "ch1.0.dataUpdates2.0.0.0". The first "0" in the routing key represents the id of RateComputation. The other three "0"s represent the place holder for three  attributes of the event dataUpdate2.  
 
 ### JSON format of the asynchronous event message
     {
