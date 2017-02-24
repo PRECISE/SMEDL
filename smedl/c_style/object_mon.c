@@ -178,7 +178,7 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                     msg_ver = ver->valuestring;
                 }
                 cJSON* pro = NULL;
-                if(!strcmp(msg_ver,msg_format_version)){
+                if(msg_ver != NULL && !strcmp(msg_ver,msg_format_version)){
                     pro = cJSON_GetObjectItem(root,"provenance");
                     /*if (provenance!=NULL){
                         cJSON * ev = cJSON_GetObjectItem(provenance,"event");
