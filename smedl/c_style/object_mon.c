@@ -193,9 +193,8 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                     }*/
 
                     {{ event_msg_handlers|join('\n') }}
-                }else {
+                } else {
                     printf("format version not matched\n");
-                    
                 }
             }
 
