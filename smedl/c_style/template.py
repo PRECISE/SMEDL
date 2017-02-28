@@ -115,27 +115,34 @@ class CTemplater(object):
                 index = 1
                 for p in monitorParams[1:]:
                     if p['c_type'] == 'char*':
-                        msg_handler.append('                    char *%s;' % (p['name']))
+                        msg_handler.append('                    char *%s = NULL;' % (p['name']))
                     else:
                         msg_handler.append('                    %s %s = 0;' % (p['c_type'], p['name']))
+                    
                     if p['c_type'] == 'int':
-                        sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valueint;\n\t') %index
+                        sscanfStr+=('if (cJSON_GetObjectItem(fmt,"v%d") != NULL) {\n\t\t' + p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valueint;\n\t') %(index,index)
                     elif p['c_type'] == 'char':
-                        sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valueint;\n\t') %index
+                        sscanfStr+=('if (cJSON_GetObjectItem(fmt,"v%d") != NULL) {\n\t\t' + p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valueint;\n\t') %(index,index)
                     elif p['c_type'] == 'float':
                         exit("this should never happen. there is a missing float->double conversion.")
                     elif p['c_type'] == 'double':
-                        sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valuedouble;\n\t') %index
+                        sscanfStr+=('if (cJSON_GetObjectItem(fmt,"v%d") != NULL) {\n\t\t' + p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valuedouble;\n\t') %(index,index)
                     elif p['c_type'] == 'char*':
-                        sscanfStr+=(p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valuestring;\n\t') %index
+                        sscanfStr+=('if (cJSON_GetObjectItem(fmt,"v%d")!= NULL) {\n\t\t' + p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valuestring;\n\t') %(index,index)
                     index = index + 1
                     retAttrs += ', ' + p['name']
-
+                
                 retAttrs += ', pro'
+                sscanfStr += obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');\n\t'
+                sscanfStr += ('printf("%s_%s called.\\n");') % (obj.lower(), conn.targetEvent)
+                while index > 1 :
+                    sscanfStr+= '}\n\t'
+                    index = index - 1
+
                 msg_handler.append(json_string)
                 msg_handler.append(sscanfStr)
-                msg_handler.append('                        ' + obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');')
-                msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), conn.targetEvent))
+                #msg_handler.append('                        ' + obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');')
+                #msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), conn.targetEvent))
                 if json_params_mark == 1:
                     msg_handler.append('}\n\t else{\n\t printf("no parameters.\\n");\n\t}')
                 msg_handler.append('                }')
