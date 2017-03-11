@@ -160,7 +160,7 @@ class CTemplater(object):
         parameterTypeNumMap['char'] = 0
 
         for m in methods:
-            print (m)
+            #print (m)
             eventFunction = []
             probeFunction = []
             params = ''
@@ -559,7 +559,7 @@ class CTemplater(object):
 
 
     def _checkParametersLiteral(mg,m):
-        print (mg._symbolTable)
+        #print (mg._symbolTable)
 
         for p in mg._symbolTable.get(m, 'params'):
                 #print(p['name'])

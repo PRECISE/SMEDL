@@ -482,7 +482,7 @@ class MonitorGenerator(object):
                         else:
                             params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
                             paramsList = self._findFunctionParams(current, params, ast)
-                            print (paramsList)
+                            #print (paramsList)
                             self._symbolTable.update(current, "params", paramsList)
                     if trace['trace_steps'][i]['step_actions'] is not None:
                         for j in range(0, len(trace['trace_steps'][i]['step_actions']['actions'])):
@@ -500,7 +500,7 @@ class MonitorGenerator(object):
                                     else:
                                         params = current['expr_list']
                                         paramsList = self._findFunctionParams(current['id'], params, ast)
-                                        print (paramsList)
+                                        #print (paramsList)
                                         self._symbolTable.update(current['id'], "params", paramsList)
                 if trace['else_actions'] is not None:
                     for i in range(0, len(trace['else_actions']['actions'])):
@@ -518,7 +518,7 @@ class MonitorGenerator(object):
                                 else:
                                     params = current['expr_list']
                                     paramsList = self._findFunctionParams(current['id'], params, ast)
-                                    print (paramsList)
+                                    #print (paramsList)
                                     self._symbolTable.update(current['id'], "params", paramsList)
 
 
