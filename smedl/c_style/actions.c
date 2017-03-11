@@ -22,6 +22,8 @@ int push_param(param **head, int *i, char *c, double *d, const void **v, cJSON *
     }
     if (pro != NULL){
         new->provenance = pro;
+    }else{
+        new->provenance = NULL;
     }
     new->next = NULL;
     if(*head == NULL) {
