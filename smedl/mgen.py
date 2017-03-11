@@ -453,13 +453,17 @@ class MonitorGenerator(object):
                     else:
                         self._symbolTable.add(v, {'type': 'state', 'datatype': object['type']})
                 elif '_events' in label and k == 'event_id':
-                    self._symbolTable.add(v, {'type': label, 'error': object['error'], 'params': object['params']})
+                    if object['params'] != None:
+                        self._symbolTable.add(v, {'type': label, 'error': object['error'], 'params': object['params']})
+                    else :
+                        self._symbolTable.add(v, {'type': label, 'error': object['error'], 'params': []})
                 elif label == 'traces':
                     if '_state' in k and v is not None:
                         self._symbolTable.add(v, {'type': 'trace_state'})
                 elif ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not \
                     (v == 'true' or v == 'false' or v == 'null' or v == 'this') and v not in self._symbolTable:
                         self._symbolTable.add(v, {'type': label})
+                #print(self._symbolTable)
                 self._parseToSymbolTable(k, v)
         if isinstance(object, list):
             for elem in object:
@@ -478,6 +482,7 @@ class MonitorGenerator(object):
                         else:
                             params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
                             paramsList = self._findFunctionParams(current, params, ast)
+                            print (paramsList)
                             self._symbolTable.update(current, "params", paramsList)
                     if trace['trace_steps'][i]['step_actions'] is not None:
                         for j in range(0, len(trace['trace_steps'][i]['step_actions']['actions'])):
@@ -495,6 +500,7 @@ class MonitorGenerator(object):
                                     else:
                                         params = current['expr_list']
                                         paramsList = self._findFunctionParams(current['id'], params, ast)
+                                        print (paramsList)
                                         self._symbolTable.update(current['id'], "params", paramsList)
                 if trace['else_actions'] is not None:
                     for i in range(0, len(trace['else_actions']['actions'])):
@@ -512,6 +518,7 @@ class MonitorGenerator(object):
                                 else:
                                     params = current['expr_list']
                                     paramsList = self._findFunctionParams(current['id'], params, ast)
+                                    print (paramsList)
                                     self._symbolTable.update(current['id'], "params", paramsList)
 
 

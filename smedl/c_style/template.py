@@ -160,7 +160,7 @@ class CTemplater(object):
         parameterTypeNumMap['char'] = 0
 
         for m in methods:
-            #print (m)
+            print (m)
             eventFunction = []
             probeFunction = []
             params = ''
@@ -186,6 +186,14 @@ class CTemplater(object):
 
             monitorParams=[]
             # if m is an exported event and there is no transition triggered by it, we need to generate a signature with new names
+            
+            tpar = mg._symbolTable.get(m, 'params')
+            if (tpar == None or not isinstance (tpar,list)) :
+                continue
+            if len(tpar) >0 and not isinstance (tpar[0],dict):
+                continue
+
+                    
             if CTemplater._checkParametersLiteral(mg,m):
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}]
                 index = 0
@@ -551,8 +559,10 @@ class CTemplater(object):
 
 
     def _checkParametersLiteral(mg,m):
+        print (mg._symbolTable)
+
         for p in mg._symbolTable.get(m, 'params'):
-            #print(p['name'])
+                #print(p['name'])
             if len(p['name'])>0:
                 if p['name'][0]=='\"' or p['name'][0]== '-' or p['name'][0]=='+' or p['name'][0].isdigit():
                     return True
