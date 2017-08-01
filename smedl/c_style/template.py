@@ -95,6 +95,7 @@ class CTemplater(object):
 
         # Construct event_msg_handlers
         name = mg._symbolTable.getSymbolsByType('object')[0]
+        print(name)
         for conn in mg.archSpec:
             if conn.targetMachine == name:
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
@@ -635,7 +636,7 @@ class CTemplater(object):
                             p_str += '\tstrcat('+b_str+',".*");\n'
                         else:
                             p_str += '\tstrcat('+b_str+',".");\n'
-                            p_str += '\tstrcat('+b_str+',monitor_identity_str('+eventIndexDic[machineIndex]+'));\n'
+                            p_str += '\tstrcat('+b_str+',monitor_identity_str('+eventIndexDic[eventIndex]+'));\n'
                         eventIndex = eventIndex + 1
                     lst.append(p_str)
                 k = k + 1
