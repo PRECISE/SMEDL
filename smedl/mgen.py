@@ -684,6 +684,7 @@ class MonitorGenerator(object):
         #print('expr:'+exprStr)
         exprStr = self._addMonitorArrowToStateVariables(exprStr)
         # expr = checkReferences(expr) # TODO--------
+        #print(exprStr)
         return MonitorGenerator._removeParentheses(exprStr)
 
 
@@ -699,15 +700,19 @@ class MonitorGenerator(object):
         for sv in (newList):
             #print('sv:'+sv)
             indices = [t.start() for t in re.finditer(sv, string)]
+            idxIter = 0
             for index in indices:
-                #print(index)
+                index = index + idxIter * 9 # 9=number of chars in 'monitor->'
                 #print('index:'+string[index])
                 i = 0
                 while(i<len(sv) and index+i<len(string)):
                     if sv[i]!=string[index+i]:
+                        print(string[0])
+                        print('sv:'+sv[i]+'str:'+string[index+i]+'idx:'+str(index+i))
                         break
                     i=i+1
                 if i<len(sv):
+                    print("give up" + str(i))
                     return string
                 if i==len(sv) and index+i < len(string):
 
@@ -724,7 +729,8 @@ class MonitorGenerator(object):
                 if string[index-5:index] != 'this.' and string[index-9:index] != 'monitor->':  # Prevent duplicated 'this.'
                     if index == 0 or (not (string[index-1]).isalpha() and not string[index-1] == '_') :
                         string = string[:index] + 'monitor->' + string[index:]
-    #print(string)
+                idxIter += 1;
+                    #print('after:'+string)
         return string
 
 
@@ -751,6 +757,7 @@ class MonitorGenerator(object):
 
 
     def _writeAction(self, obj, action):
+        #print (action)
         if action.type == ActionType.StateUpdate:
             out = "monitor->" + action.target + ' ' + action.operator
             if action.expression:
@@ -767,7 +774,7 @@ class MonitorGenerator(object):
             paramCount = len(action.params)
             c = 0
             for param in action.params:
-                out += param
+                out += self._formatExpression(param)
                 c += 1
                 if c != paramCount:
                     out += ','
