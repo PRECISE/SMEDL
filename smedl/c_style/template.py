@@ -425,13 +425,21 @@ class CTemplater(object):
 
         # Construct var_declaration
         t_str = ''
+        floatNum = parameterTypeNumMap['float']
         for key,value in parameterTypeNumMap.items():
             if value > 0:
                 t_str += CTemplater.convertTypeForC(key) + ' '
-            for k in range(0,value):
+            #print (t_str)
+            iterBegin = 0
+            iterEnd = value
+            if key == 'double':
+                iterBegin = floatNum
+                iterEnd = floatNum + value
+            for k in range(iterBegin,iterEnd):
                 if k != value-1:
                     if key == 'string':
                         t_str += 'v' + str(k) + ', '
+                
                     else:
                         t_str += CTemplater.convertTypeForC(key)[0] + str(k) + ', '
                 else:
