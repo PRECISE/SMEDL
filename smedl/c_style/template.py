@@ -436,7 +436,7 @@ class CTemplater(object):
                 iterBegin = floatNum
                 iterEnd = floatNum + value
             for k in range(iterBegin,iterEnd):
-                if k != value-1:
+                if k != iterEnd-1:
                     if key == 'string':
                         t_str += 'v' + str(k) + ', '
                 
