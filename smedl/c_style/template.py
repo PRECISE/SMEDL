@@ -295,10 +295,13 @@ class CTemplater(object):
                 if mg._implicitErrors:
                     eventFunction.append('    default:')
                     eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");' % (obj.lower(), key, name_reference, m))
+                    
+                    eventFunction.append('      goto exec;') #add at 09/20
                     eventFunction.append('      break;')
                 eventFunction.append('  }')
                 eventFunction.append('executed_scenarios[%s_%s_SCENARIO]=1;' % (obj.upper(), key.upper()))
                 eventFunction.append('  }')
+                eventFunction.append('exec:') #add at 09/20
             eventFunction.append('executeEvents(monitor);')
             eventFunction.append('}\n\n')
 
