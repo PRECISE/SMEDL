@@ -299,7 +299,7 @@ class CTemplater(object):
                     eventFunction.append('      goto exec;') #add at 09/20
                     eventFunction.append('      break;')
                 eventFunction.append('  }')
-                eventFunction.append('executed_scenarios[%s_%s_SCENARIO]=1;' % (obj.upper(), key.upper()))
+                eventFunction.append('//executed_scenarios[%s_%s_SCENARIO]=1;' % (obj.upper(), key.upper()))
                 eventFunction.append('  }')
                 eventFunction.append('exec:') #add at 09/20
             eventFunction.append('executeEvents(monitor);')
