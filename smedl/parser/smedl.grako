@@ -84,9 +84,11 @@ raise_stmt
     'raise' id:identifier ['(' expr_list+:expression_list ')']
     ;
 
+#    'new' id:identifier ['(' state_update_list+:state_update_list ')']
+
 instantiation_stmt
     =
-    'new' id:identifier ['(' state_update_list+:state_update_list ')']
+     'new' id:identifier ['(' expr_list+:expression_list ')']
     ;
 
 call_stmt

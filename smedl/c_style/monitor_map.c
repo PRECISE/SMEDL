@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <string.h>
 #include "monitor_map.h"
 
 MonitorIdentity* init_monitor_identity(identity_type type, void *value) {
@@ -9,12 +10,20 @@ MonitorIdentity* init_monitor_identity(identity_type type, void *value) {
     int *i = (int*)malloc(sizeof(int));
     uintptr_t *p = (uintptr_t*)malloc(sizeof(uintptr_t));
     pthread_t *t = (pthread_t*)malloc(sizeof(pthread_t));
+
     identity->type = type;
     switch (type) {
         case INT:
         case OPAQUE:
             *i = *(int*)value;
             identity->value = i;
+            free(p);
+            free(t);
+            break;
+        case STRING:
+            identity -> value = (char*)malloc((strlen((char*)value)+1)*sizeof(char));
+            strcpy(identity -> value,(char*)value);
+            free(i);
             free(p);
             free(t);
             break;
@@ -42,6 +51,11 @@ MonitorIdentity* init_monitor_identity(identity_type type, void *value) {
 int compare_monitor_identity(void *value, MonitorIdentity *other) {
     int value_match = 0;
     switch (other->type) {
+        case STRING:
+            if(!strcmp((char*)value,(char*)(other -> value))){
+                value_match = 1;
+            }
+            break;
         case INT:
         case OPAQUE:
             if(*(int*)value == *(int*)other->value) {
@@ -67,6 +81,13 @@ int compare_monitor_identity(void *value, MonitorIdentity *other) {
 int hash_monitor_identity(identity_type type, void *value, int map_size) {
     int bucket;
     switch (type) {
+        case STRING:
+            if(value != NULL){
+                bucket = ((char*)value)[0];
+            }else{
+                bucket = 0;
+            }
+            break;
         case INT:
         case OPAQUE:
             bucket = *(int*)value % map_size;
@@ -87,6 +108,10 @@ char* monitor_identity_str(MonitorIdentity *id) {
     char* out = malloc(20);
     out[0] = '\0';
     switch (id->type) {
+        case STRING:
+            strncpy(out,(char*)(id -> value),19);
+            int index = strlen((char*)(id->value)) > 20 ? 20 : strlen((char*)(id->value));
+            out[index] = '\0';
         case INT:
         case OPAQUE:
             sprintf(out, "%d", *(int*)id->value);

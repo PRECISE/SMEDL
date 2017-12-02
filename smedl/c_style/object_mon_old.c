@@ -30,7 +30,8 @@ typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
 int executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
 
-
+#define bindingkeyNum {{ bindingkeys_num }}
+#define msg_format_version {{ msg_format_version }}
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor( {{ obj|title }}Data *d ) {
     {{ obj|title }}Monitor* monitor = ({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
@@ -43,7 +44,92 @@ int executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
     monitor->action_queue = NULL;
     monitor->export_queue = NULL;
 
-    
+    /* Read settings from config file */
+    config_t cfg;
+    config_setting_t *setting;
+    config_init(&cfg);
+    if(!config_read_file(&cfg, "{{ base_file_name }}_mon.cfg")) {
+        output_config_error(cfg);
+    }
+    setting = config_lookup(&cfg, "rabbitmq");
+
+    const char *hostname, *username, *password;
+    int port = 0;
+
+    if (setting != NULL) {
+        if (!config_setting_lookup_string(setting, "hostname", &hostname) ||
+            !config_setting_lookup_int(setting, "port", &port) ||
+            !config_setting_lookup_string(setting, "username", &username) ||
+            !config_setting_lookup_string(setting, "password", &password) ||
+            !config_setting_lookup_string(setting, "exchange", &(monitor->amqp_exchange)) ||
+            !config_setting_lookup_string(setting, "ctrl_exchange", &(monitor->ctrl_exchange))) {
+                output_config_error(cfg);
+        }
+    }
+
+    /* RabbitMQ initialization */
+    amqp_bytes_t queuename;
+    monitor->recv_conn = amqp_new_connection();
+    monitor->recv_socket = amqp_tcp_socket_new(monitor->recv_conn);
+    if (!monitor->recv_socket) {
+        die("creating TCP socket");
+    }
+    int status = amqp_socket_open(monitor->recv_socket, hostname, port);
+    if (status) {
+        die("opening TCP socket");
+    }
+    die_on_amqp_error(amqp_login(monitor->recv_conn, "/", 0, 131072, 0,
+        AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
+    amqp_channel_open(monitor->recv_conn, 1);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Opening channel");
+    amqp_queue_declare_ok_t *r = amqp_queue_declare(monitor->recv_conn, 1,
+        amqp_empty_bytes, 0, 0, 0, 1, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Declaring queue");
+    queuename = amqp_bytes_malloc_dup(r->queue);
+    if (queuename.bytes == NULL) {
+        fprintf(stderr, "Out of memory while copying queue name");
+        exit(EXIT_FAILURE);
+    }
+
+    monitor->send_conn = amqp_new_connection();
+    monitor->send_socket = amqp_tcp_socket_new(monitor->send_conn);
+    if (!monitor->send_socket) {
+        die("creating TCP socket");
+    }
+    status = amqp_socket_open(monitor->send_socket, hostname, port);
+    if (status) {
+        die("opening TCP socket");
+    }
+    die_on_amqp_error(amqp_login(monitor->send_conn, "/", 0, 131072, 0,
+        AMQP_SASL_METHOD_PLAIN, username, password), "Logging in");
+    amqp_channel_open(monitor->send_conn, 1);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
+        "Opening channel");
+    amqp_exchange_declare(monitor->send_conn, 1,
+        amqp_cstring_bytes(monitor->amqp_exchange),
+        amqp_cstring_bytes("topic"), 0, 1, 0, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
+        "Declaring primary exchange");
+    amqp_exchange_declare(monitor->send_conn, 1,
+        amqp_cstring_bytes(monitor->ctrl_exchange),
+        amqp_cstring_bytes("fanout"), 0, 1, 0, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->send_conn),
+        "Declaring control exchange");
+
+    // binding several binding keys
+    char ** bindingkeys = (char**)malloc(bindingkeyNum*sizeof(char*));
+    {{ b_keys }}
+
+    for(int i = 0; i < bindingkeyNum; i++){
+        amqp_queue_bind(monitor->recv_conn, 1, queuename,
+            amqp_cstring_bytes(monitor->amqp_exchange),
+            amqp_cstring_bytes(bindingkeys[i]), amqp_empty_table);
+    }
+
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Binding queue");
+    amqp_basic_consume(monitor->recv_conn, 1, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
+    die_on_amqp_error(amqp_get_rpc_reply(monitor->recv_conn), "Consuming");
+
     put_{{ obj|lower }}_monitor(monitor);
     return monitor;
 }
@@ -56,7 +142,6 @@ smedl_provenance_t* create_provenance_object(char event[255], int line, long tra
     return provenance;
 }
 
-/*
 void start_monitor({{ obj|title }}Monitor* monitor) {
     int received = 0;
     amqp_frame_t frame;
@@ -100,7 +185,17 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                 cJSON* pro = NULL;
                 if(msg_ver != NULL && !strcmp(msg_ver,msg_format_version)){
                     pro = cJSON_GetObjectItem(root,"provenance");
-                    
+                    /*if (provenance!=NULL){
+                        cJSON * ev = cJSON_GetObjectItem(provenance,"event");
+                        cJSON * li = cJSON_GetObjectItem(provenance,"line");
+                        cJSON * tr = cJSON_GetObjectItem(provenance,"trace_counter");
+                        if (ev!= NULL && li != NULL && tr!= NULL){
+                            char* event = ev->valuestring;
+                            int line = li->valueint;
+                            long trace_counter = tr->valueint;
+                            pro = create_provenance_object(event,line,trace_counter);
+                        }
+                    }*/
 
                     {{ event_msg_handlers|join('\n') }}
                 } else {
@@ -120,11 +215,15 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                 if (AMQP_FRAME_METHOD == frame.frame_type) {
                     switch (frame.payload.method.id) {
                         case AMQP_BASIC_ACK_METHOD:
-
+                            /* if we've turned publisher confirms on, and we've published a message
+                             * here is a message being confirmed
+                             */
                             printf("AMQP_BASIC_ACK_METHOD\n");
                             break;
                         case AMQP_BASIC_RETURN_METHOD:
-
+                            /* if a published message couldn't be routed and the mandatory flag was set
+                             * this is what would be returned. The message then needs to be read.
+                             */
                             printf("AMQP_BASIC_RETURN_METHOD\n");
                             amqp_message_t message;
                             ret = amqp_read_message(monitor->recv_conn, frame.channel, &message, 0);
@@ -135,11 +234,21 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                             break;
 
                         case AMQP_CHANNEL_CLOSE_METHOD:
-
+                            /* a channel.close method happens when a channel exception occurs, this
+                             * can happen by publishing to an exchange that doesn't exist for example
+                             *
+                             * In this case you would need to open another channel redeclare any queues
+                             * that were declared auto-delete, and restart any consumers that were attached
+                             * to the previous channel
+                             */
                             return;
 
                         case AMQP_CONNECTION_CLOSE_METHOD:
-
+                            /* a connection.close method happens when a connection exception occurs,
+                             * this can happen by trying to use a channel that isn't open for example.
+                             *
+                             * In this case the whole connection must be restarted.
+                             */
                             return;
 
                         default:
@@ -154,7 +263,6 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
         received++;
     }
 }
-*/
 
 void send_message({{ obj|title }}Monitor* monitor, char* message, char* routing_key) {
     amqp_bytes_t message_bytes;

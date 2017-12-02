@@ -176,6 +176,7 @@ class MonitorGenerator(object):
                         exported = self._makeEventList(v)
 
                 interface = Interface(monType,monId,para,imported,exported)
+                #print(interface)
                 self.monitorInterface.append(interface)
 
 
@@ -191,11 +192,14 @@ class MonitorGenerator(object):
                             err = None
                             ev_id = None
                             para = []
+                            creation = None
                             for k,v in list(ev.items()):
                                 if k == 'error':
                                     err = v
                                 elif k == 'event_id':
                                     ev_id = v
+                                elif k == 'creation':
+                                    creation = v
                                 elif k == 'params' :
                                     if v == None :
                                         para = []
@@ -203,17 +207,20 @@ class MonitorGenerator(object):
                                         para = v
                                     elif isinstance(v,str):
                                             para = [v]
-                            event = Event(err,ev_id,para)
+                            event = Event(err,ev_id,para,creation)
                             lst.append(event)
                 elif isinstance(events,AST):
                     err = None
                     ev_id = None
                     para = []
+                    creation = None
                     for k,v in list(events.items()):
                         if k == 'error':
                             err = v
                         elif k == 'event_id':
                             ev_id = v
+                        elif k == 'creation':
+                            creation = v
                         elif k == 'params' :
                             if v == None :
                                 para = []
@@ -221,7 +228,8 @@ class MonitorGenerator(object):
                                 para = v
                             elif isinstance(v,str):
                                 para = [v]
-                    event = Event(err,ev_id,para)
+                    event = Event(err,ev_id,para,creation)
+                    #print(event)
                     lst.append(event)
         return lst
 
@@ -241,6 +249,7 @@ class MonitorGenerator(object):
             s_i = None
             t_i = None
             t_e = None
+            s_e = None
             for k,v in list(object.items()):
                 if k == 'connection':
                     conn_name = v
@@ -261,8 +270,8 @@ class MonitorGenerator(object):
             if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                 raise ValueError('attributes of events do not match')
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
-            if connEx.sourceMachine == None:
-                print(connEx)
+                #if connEx.sourceMachine == None:
+                #print(connEx)
             self.archSpec.append(connEx)
         elif isinstance(object,list):
             conn_name = None
@@ -292,8 +301,8 @@ class MonitorGenerator(object):
                 if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                     raise ValueError('attributes of events do not match')
                 connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
-                if connEx.sourceMachine == None:
-                    print(connEx)
+                    #if connEx.sourceMachine == None:
+                    #print(connEx)
                 self.archSpec.append(connEx)
 
 
@@ -423,7 +432,14 @@ class MonitorGenerator(object):
                             return ev
         return None
 
-
+    def _getTargetEvent(self,machine,event):
+        for mon in self.monitorInterface:
+            if machine == mon.id:
+                for ev in mon.importedEvents:
+                    if ev.event_id == event:
+                        return ev
+        return None
+    
     def _getIdentityName(self,index):
         id = 0
         for name in self.identities:

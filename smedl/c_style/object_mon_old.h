@@ -54,7 +54,6 @@ void free_monitor({{ obj|title }}Monitor*);
  */
 {{ obj|title }}MonitorRecord* get_{{ obj|lower }}_monitors();
 {{ obj|title }}MonitorRecord* get_{{ obj|lower }}_monitors_by_identity(int, int, void*);
-{{ obj|title }}MonitorRecord* get_{{obj|lower}}_monitors_by_identities(int[], int type, void *[]);
 {{ obj|title }}MonitorRecord* filter_{{ obj|lower }}_monitors_by_identity({{ obj|title }}MonitorRecord*, int, void*);
 int init_{{ obj|lower }}_monitor_maps();
 void free_{{ obj|lower }}_monitor_maps();

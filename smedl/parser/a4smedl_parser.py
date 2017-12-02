@@ -13,11 +13,12 @@
 
 from __future__ import print_function, division, absolute_import, unicode_literals
 
+from grako.buffering import Buffer
 from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2016, 9, 27, 2, 2, 36, 1)
+__version__ = (2017, 12, 1, 5, 22, 8, 4)
 
 __all__ = [
     'a4smedlParser',
@@ -28,6 +29,28 @@ __all__ = [
 KEYWORDS = set([])
 
 
+class a4smedlBuffer(Buffer):
+    def __init__(self,
+                 text,
+                 whitespace=None,
+                 nameguard=None,
+                 comments_re=None,
+                 eol_comments_re=None,
+                 ignorecase=None,
+                 namechars='',
+                 **kwargs):
+        super(a4smedlBuffer, self).__init__(
+            text,
+            whitespace=whitespace,
+            nameguard=nameguard,
+            comments_re=comments_re,
+            eol_comments_re=eol_comments_re,
+            ignorecase=ignorecase,
+            namechars=namechars,
+            **kwargs
+        )
+
+
 class a4smedlParser(Parser):
     def __init__(self,
                  whitespace=None,
@@ -36,7 +59,9 @@ class a4smedlParser(Parser):
                  eol_comments_re=None,
                  ignorecase=None,
                  left_recursion=True,
+                 parseinfo=True,
                  keywords=KEYWORDS,
+                 namechars='',
                  **kwargs):
         super(a4smedlParser, self).__init__(
             whitespace=whitespace,
@@ -45,9 +70,16 @@ class a4smedlParser(Parser):
             eol_comments_re=eol_comments_re,
             ignorecase=ignorecase,
             left_recursion=left_recursion,
+            parseinfo=parseinfo,
             keywords=keywords,
+            namechars=namechars,
             **kwargs
         )
+
+    def parse(self, text, *args, **kwargs):
+        if not isinstance(text, Buffer):
+            text = a4smedlBuffer(text, **kwargs)
+        return super(a4smedlParser, self).parse(text, *args, **kwargs)
 
     @graken()
     def _top_(self):
@@ -60,9 +92,8 @@ class a4smedlParser(Parser):
         self._architectureSpec_()
         self.name_last_node('archSpec')
         self._check_eof()
-
         self.ast._define(
-            ['system', 'monitor_declaration', 'archSpec'],
+            ['archSpec', 'monitor_declaration', 'system'],
             []
         )
 
@@ -73,7 +104,6 @@ class a4smedlParser(Parser):
             self._monitorInterface_()
         self._positive_closure(block1)
         self.add_last_node_to_name('interfaces')
-
         self.ast._define(
             [],
             ['interfaces']
@@ -109,14 +139,16 @@ class a4smedlParser(Parser):
             self.add_last_node_to_name('exported_events')
         self._closure(block6)
         self._token('}')
-
         self.ast._define(
             ['mon_type', 'monitor_identifier', 'params'],
-            ['imported_events', 'exported_events']
+            ['exported_events', 'imported_events']
         )
 
     @graken()
     def _event_definition_(self):
+        with self._optional():
+            self._token('creation')
+        self.name_last_node('creation')
         with self._optional():
             self._token('error')
         self.name_last_node('error')
@@ -127,9 +159,8 @@ class a4smedlParser(Parser):
             self._parameter_list_()
             self.name_last_node('params')
             self._token(')')
-
         self.ast._define(
-            ['error', 'event_id', 'params'],
+            ['creation', 'error', 'event_id', 'params'],
             []
         )
 
@@ -180,7 +211,6 @@ class a4smedlParser(Parser):
             self._connectionExpr_()
         self._positive_closure(block1)
         self.add_last_node_to_name('conn_expr')
-
         self.ast._define(
             [],
             ['conn_expr']
@@ -209,9 +239,8 @@ class a4smedlParser(Parser):
             self._patternSpec_()
             self.name_last_node('pattern_spec')
             self._token('}')
-
         self.ast._define(
-            ['connection', 'source_machine_identifier', 'source_event_identifier', 'target_machine_identifier', 'target_event_identifier', 'pattern_spec'],
+            ['connection', 'pattern_spec', 'source_event_identifier', 'source_machine_identifier', 'target_event_identifier', 'target_machine_identifier'],
             []
         )
 
@@ -240,7 +269,6 @@ class a4smedlParser(Parser):
         self.name_last_node('operator')
         self._term_()
         self.name_last_node('right')
-
         self.ast._define(
             ['left', 'operator', 'right'],
             []
@@ -254,7 +282,6 @@ class a4smedlParser(Parser):
         self._integer_()
         self.name_last_node('term_index')
         self._token(']')
-
         self.ast._define(
             ['term_id', 'term_index'],
             []
@@ -315,10 +342,12 @@ def main(
         eol_comments_re=None,
         ignorecase=None,
         left_recursion=True,
+        parseinfo=True,
         **kwargs):
 
     with open(filename) as f:
         text = f.read()
+    whitespace = whitespace or None
     parser = a4smedlParser(parseinfo=False)
     ast = parser.parse(
         text,
@@ -340,4 +369,3 @@ if __name__ == '__main__':
     print('JSON:')
     print(json.dumps(ast, indent=2))
     print()
-

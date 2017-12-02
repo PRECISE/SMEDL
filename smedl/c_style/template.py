@@ -95,7 +95,7 @@ class CTemplater(object):
 
         # Construct event_msg_handlers
         name = mg._symbolTable.getSymbolsByType('object')[0]
-        print(name)
+        #print(name)
         for conn in mg.archSpec:
             if conn.targetMachine == name:
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
@@ -112,6 +112,7 @@ class CTemplater(object):
                     json_params_mark = 1
                     json_string+= '\t cJSON * fmt = cJSON_GetObjectItem(root,"params");\n\t if (fmt!=NULL) {\n\t'
                 retAttrs = ''
+                retArray = []
                 sscanfStr = ''
                 index = 1
                 for p in monitorParams[1:]:
@@ -132,9 +133,110 @@ class CTemplater(object):
                         sscanfStr+=('if (cJSON_GetObjectItem(fmt,"v%d")!= NULL) {\n\t\t' + p['name']+'= cJSON_GetObjectItem(fmt,"v%d")->valuestring;\n\t') %(index,index)
                     index = index + 1
                     retAttrs += ', ' + p['name']
-                
+                    retArray.append(p['name'])
+            
+                #get parameter list
+                #print(conn.sourceMachine)
+                #sscanfStr + = 'char* strs[' + '] = divideRoutingkey(rk,{{}});';
+                LengthIdentityList = 0
+                s_machine_params = []
+                if conn.sourceMachine != None and conn.sourceMachine != '' and conn.sourceMachine != ' ':
+                    s_machine = mg._getMachine(conn.sourceMachine)
+                    if s_machine != None:
+                        s_machine_params = s_machine.params
+                        lengthIdentityList = len(s_machine_params)
+                        sscanfStr += 'int parameterTypes [' + str(lengthIdentityList) + '] = {'
+                        i = 0
+                        for t in s_machine_params:
+                            if i == 0:
+                                sscanfStr += t.upper()
+                            else:
+                                sscanfStr += ',' + t.upper()
+                            i = i + 1
+                                #need to reimplement the mechanism of naming when generating c code to avoid naming conflicts
+                #monitor_parameter_val_strs:
+                sscanfStr += 'char* monitor_parameter_val_strs[' + str(lengthIdentityList) + '] = divideRoutingkey(rk,'+str(lengthIdentityList)+');';
+                #sscanfStr + = 'void* values[' + lengthIdentityList + '] = {}'
+                #sscanfStr + = 'for (int i = 0; i<' + lengthIdentityList + '; i++){\n'
+                #sscanfStr + = 'if (parameterTypes[i]==INT) {value[i]=(void*)=& (atoi(monitor_parameter_val_strs[i]));}\n'
+                #sscanfStr + = 'else if(parameterTypes[i]==STRING) {value[i]=(void*)monitor_parameter_val_strs[i];}\n'
+                #sscanfStr + = 'else {value[i] = (void *)NULL;}\n'
+                #sscanfStr + = '}\n'
+                #'if (executed_scenarios[%s_%s_SCENARIO]==0) {' % (obj.upper(), key.upper())
+                sscanfStr += '%sMonitorRecord* record;\n'  % obj.title()
                 retAttrs += ', pro'
-                sscanfStr += obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');\n\t'
+                connSpec = conn.patternSpec
+                t_machine = mg._getMachine(conn.targetMachine)
+                print(t_machine)
+                print(conn.targetEvent)
+                targetEvent = mg._getTargetEvent(conn.targetMachine,conn.targetEvent)
+                if connSpec == None or len(connSpec) == 0:
+                    # retrieve all instances
+                    sscanfStr +=  'record = get_%s_monitors();' % obj.lower()
+
+                else:
+                    j = 0
+                    idList = []
+                    type = ""
+                    for pattern in connSpec: #operator is always equal, leftTerm is identity of target monitor
+                        if pattern.leftTerm != conn.targetMachine:
+                            print(pattern.leftTerm)
+                            print(conn)
+                            exit("illegal pattern1")
+                        if s_machine_params == None or pattern.leftIndex >= len(s_machine_params) :
+                            exit("illegal pattern2")
+                        if j == 0:
+                            type = s_machine_params[pattern.leftIndex].upper()
+                            j = 1
+                        idList.append(pattern.leftIndex)
+                
+                    sscanfStr += 'int identity[' + str(len(connSpec)) +'] = {'
+                    j = 0
+                    for i in idList:
+                        if j == 0:
+                            sscanfStr += str(i)
+                        else:
+                            sscanfStr += ','+str(i)
+                            j = j+1
+                    
+                    sscanfStr += '};'
+                    sscanfStr += 'void* values[' + str(len(idList)) + '] = {};'
+                    sscanfStr += 'for (int i = 0; i<' + str(len(idList)) + '; i++){\n'
+                    sscanfStr += 'if (parameterTypes[identity[i]]==INT) {values[i]=(void*)=& (atoi(monitor_parameter_val_strs[identity[i]]));}\n'
+                    sscanfStr += 'else if(parameterTypes[identity[i]]==STRING) {values[i]=(void*)monitor_parameter_val_strs[identity[i]];}\n'
+                    sscanfStr += 'else {value[i] = (void *)NULL;}\n'
+                    sscanfStr += '}\n'
+                    sscanfStr += 'record = get_%s_monitors_by_identities(identity,'  % (obj.lower())
+                    sscanfStr +=  type + ',values);'
+                    if targetEvent.creation != None:
+                        sscanfStr += 'if(record == NULL){\n'
+                        sscanfStr += 'record = (%sMonitorRecord *)malloc(sizeof(%sMonitorRecord));\n' %(obj, obj)
+                        sscanfStr += '%sData *d = (%sData *)malloc(sizeof(%sData));\n' %(obj,obj,obj)
+                        #['  %s %s;' % (v['c_type'], v['name']) for v in identities]
+                        j = 0
+                        for v in identities:
+                            sscanfStr += 'for (int i = 0; i<' + len(idList) + '; i++){\n'
+                            sscanfStr += 'if (identity[i] ==' + j + '){\n'
+                            sscanfStr += 'if (parameterTypes[identity[i]]==INT){ ' + '\t d ->' + v['name'] + '=' + '& (atoi(monitor_parameter_val_strs[identity[i]]));}\n'
+                            sscanfStr += 'else if(parameterTypes[identity[i]]==STRING) {\t d ->' + v['name'] + '=(void*)monitor_parameter_val_strs[identity[i]];}\n'
+                            sscanfStr += 'else {\t d ->' + v['name'] + '= (void *)NULL;}\n'
+                            sscanfStr += '\t}\n\t'
+                            j = j+1
+                        sscanfStr += '\t}\n\t'
+                        sscanfStr += '%sMonitor tempMon = init_%s_monitor(d);\n' % obj.lower()
+                        sscanfStr += 'tempMon -> send_conn = send_conn;\n'
+                        sscanfStr += 'tempMon -> amqp_exchange = amqp_exchange;\n'
+                        
+                        sscanfStr += 'record -> monitor = tempMon;'
+                        sscanfStr += '}\n\t'
+                sscanfStr +=  'while(record != NULL){\n'
+                sscanfStr += obj.lower() + '_' + conn.targetEvent + '(record->monitor' + retAttrs + ');\n\t'
+                sscanfStr += 'record = record->next;\n\t'
+                sscanfStr += '}'
+                    
+
+                #retAttrs += ', pro'
+                #sscanfStr += obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');\n\t'
                 sscanfStr += ('printf("%s_%s called.\\n");') % (obj.lower(), conn.targetEvent)
                 while index > 1 :
                     sscanfStr+= '}\n\t'
@@ -478,6 +580,15 @@ class CTemplater(object):
             out_c_file.write(out_c)
             out_c_file.close()
 
+        out_w = env.get_template('monitor_wrapper.c').render(values)
+        if console_output:
+            print("--" + filename + "_monitor_wrapper.c--")
+            print(out_w)
+        else:
+            out_w_file = open(os.path.join(dirname, output_dir, basename + '_monitor_wrapper.c'), 'w')
+            out_w_file.write(out_w)
+            out_w_file.close()
+        
         # Copy pre-written static helper files to the output path
         a_h = env.get_template('actions.h').render()
         if console_output:
@@ -580,9 +691,35 @@ class CTemplater(object):
                     return True
         return False
 
-
-
+    #for dynamic instantiation, no need to analyze routing key when building binding keys
     def _getBindingKeys(mg):
+        lst = []
+        name = mg._symbolTable.getSymbolsByType('object')[0]
+        k = 0
+        for conn in mg.archSpec:
+            b_str = 'bindingkeys['+str(k)+']'
+            if name==conn.targetMachine:
+                p_str = b_str + '=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy('+b_str+',"'+conn.connName+'");\n'
+                sourceMachine = mg._getMachine(conn.sourceMachine)
+                #print(sourceMachine)
+                #if sourceMachine == None:
+                #    raise ValueError('source machine not exist')
+                sourceEvent = mg._getSourceEvent(conn.sourceMachine,conn.sourceEvent)
+                #if sourceEvent == None:
+                #raise ValueError('source event not exist')
+                lst.append(p_str+'strcat('+b_str+',".#");\n')
+            k = k + 1
+
+        bindingkey = ''
+        i = 0
+        for s in lst:
+            bindingkey += s
+            i = i+1
+        if len(lst)==0:
+            bindingkey+='bindingkeys[0]=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy(bindingkeys[0],"#");\n'
+        return bindingkey
+
+    def _getBindingKeys1(mg):
         lst = []
         name = mg._symbolTable.getSymbolsByType('object')[0]
         k = 0

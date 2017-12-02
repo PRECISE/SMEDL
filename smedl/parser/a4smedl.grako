@@ -1,5 +1,7 @@
 # This grammar defines A4SMEDL in the Grako-variation of EBNF.
 
+@@grammar :: a4smedl
+
 top
     =
     'System' system:identifier ':=' monitor_declaration:monitorDeclaration archSpec:architectureSpec$;
@@ -8,13 +10,13 @@ monitorDeclaration = interfaces+:{monitorInterface}+;
 
 monitorInterface = mon_type:['Async' | 'Sync'] monitor_identifier:identifier '('params:parameter_list')'
    '{' 
-       {'imported' imported_events+:event_definition_list}
+       { 'imported' imported_events+:event_definition_list}
        {'exported' exported_events+:event_definition_list}*
    '}';
 
 event_definition
     =
-    error:['error'] event_id:identifier ['(' params:parameter_list ')'];
+    creation:['creation'] error:['error'] event_id:identifier ['(' params:parameter_list ')'];
 
 event_definition_list
     =

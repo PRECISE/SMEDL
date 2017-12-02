@@ -2,10 +2,11 @@ import collections
 
 class Event(object):
 
-    def __init__(self,er,id,pa):
+    def __init__(self,er,id,pa,cr):
         self.error = er
         self.event_id = id
         self.params = pa
+        self.creation = cr
 
     def __str__(self):
         out = ""
@@ -15,4 +16,6 @@ class Event(object):
             out+='event_id:' + (self.event_id)
         if not self.params == None:
             out += ' params:'+' '.join(str(s) for s in self.params)+';'
+        if not self.creation == None:
+            out += ' creation event'
         return out
