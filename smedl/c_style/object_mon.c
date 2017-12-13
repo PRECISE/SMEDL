@@ -338,17 +338,17 @@ int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
     return results;
 }
 
-{{ obj|title }}MonitorRecord* get_{{obj|lower}}_monitors_by_identities(int identity[], int type, void *value[]) {
+{{ obj|title }}MonitorRecord* get_{{obj|lower}}_monitors_by_identities(int identity[], int type, void *value[], int size) {
     if(identity == NULL || value == NULL)
         return NULL;
-    if(ARRAYSIZE(identity) != ARRAYSIZE(value))
-        return NULL;
+    //if(ARRAYSIZE(identity) != ARRAYSIZE(value))
+        //return NULL;
     {{ obj|title }}MonitorRecord* results = NULL;
     {{ obj|title }}MonitorMap* map = {{ obj|lower }}_monitor_maps[identity[0]];
     int bucket = hash_monitor_identity(type, value[0], {{ obj|upper }}_MONITOR_MAP_SIZE);
     {{ obj|title }}MonitorRecord* current = map->list[bucket];
     while(current != NULL) {
-        if(compare_monitor_identity(value, current->monitor->identities[identity])) {
+        if(compare_monitor_identity(value[0], current->monitor->identities[identity[0]])) {
             {{ obj|title }}MonitorRecord* record = ({{ obj|title }}MonitorRecord*)malloc(sizeof({{ obj|title }}MonitorRecord));
             record->monitor = current->monitor;
             record->next = results;
@@ -356,7 +356,7 @@ int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
         }
         current = current->next;
     }
-    for(int i = 1; i<ARRAYSIZE(identity);i++){
+    for(int i = 1; i<size;i++){
         results = filter_{{ obj|lower }}_monitors_by_identity(results, identity[i], value[i]);
     }
     return results;

@@ -10,9 +10,8 @@
 #include "mon_utils.h"
 #include "cJSON.h"
 #include "{{ base_file_name }}_mon.h"
-{%- if helper %}{{ '\n' }}#include "{{ helper }}"{% endif %}
 #define bindingkeyNum {{ bindingkeys_num }}
-#define msg_format_version {{ msg_format_version }}
+//#define msg_format_version {{ msg_format_version }}
 //**************This part will change depending on requirements of the monitor*****************************************************
 
 typedef struct {{ obj|title }}Monitor_list{
@@ -24,13 +23,13 @@ typedef struct {{ obj|title }}Monitor_list{
 
 char** divideRoutingkey(char * rk, int argNum){
     //c99 allows variable array length
-    char* str[argNum] = {};
+    char** str = (char**)malloc(sizeof(char*)*argNum);
     int i = 0;
     char * copy = (char*)malloc((sizeof(strlen(rk))+1)*sizeof(char));
     strcpy(copy, rk);
     char * temp;
-    for(int i = 0; i < argNum;i++){
-        temp = strtok(st, ".");
+    for(int i = 0; i <= argNum;i++){
+        temp = strtok(copy, ".");
         if(i!=0){
             str[i-1] = (char*)malloc((sizeof(strlen(temp))+1)*sizeof(char));
             strcpy(str[i-1],temp);
@@ -48,9 +47,17 @@ int main()
 
 
     //instantiation of the monitor
-    //{{ obj|title }}Data *statData = ({{ obj|title }}Data*)malloc(sizeof(ExplorerstatData));
+    
     init_{{ obj|lower }}_monitor_maps();
-    //{{ obj|title }}Monitor** mon;//=({{ obj|title }}Monitor**)malloc(sizeof({{ obj|title }}Monitor*));
+    
+    
+    //create a new monitor instance if there is no identity for this monitor
+    //implement after default initial value for state variables
+    //{{ obj|title }}Data *tdata = ({{ obj|title }}Data*)malloc(sizeof({{ obj|title }}Data));
+    //
+    //Monitor *mon = init_{{ obj|title }}Monitor...(tdata);
+    
+    
 //******************************RabbitMQ initialization *******************************************************
     
     const char *amqp_exchange;
@@ -137,10 +144,11 @@ int main()
 
     // binding several binding keys
     char ** bindingkeys = (char**)malloc(bindingkeyNum*sizeof(char*));
-    bindingkeys[0]=(char*)malloc(255*sizeof(char));
+    {{b_keys}}
+    //bindingkeys[0]=(char*)malloc(255*sizeof(char));
     //strcpy(bindingkeys[0],"conn");
 //strcat(bindingkeys[0],".#");
-    strcpy(bindingkeys[0],"#");
+    //strcpy(bindingkeys[0],"#");
 
     
     for(int i = 0; i < bindingkeyNum; i++){
@@ -153,7 +161,7 @@ int main()
     amqp_basic_consume(recv_conn, 1, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
     die_on_amqp_error(amqp_get_rpc_reply(recv_conn), "Consuming");
 
-
+{{ mon_init_str|join('\n') }}
 
 //*************************************************************************************************************
    // char* ids = monitor_identities_str(monitor->identities);
@@ -188,10 +196,10 @@ int main()
             amqp_bytes_t routing_key = envelope.routing_key;
             char* rk = (char*)routing_key.bytes;
 //**************Added by Karan *********************************
-            int id=-1;
-            char temp[255];
-            sscanf(rk,"%s %d",temp,&id);
-            strcpy(rk,temp);
+            //int id=-1;
+            //char temp[255];
+            //sscanf(rk,"%s %d",temp,&id);
+            //strcpy(rk,temp);
 //********************************************************
             char* string = (char*)bytes.bytes;
             //char* event[255] = {NULL};
@@ -200,7 +208,9 @@ int main()
             
 
             if (string != NULL) {
-                char* eventName = strtok(rk, ".");//eventName is channel name
+                char * copy = (char*)malloc((sizeof(strlen(rk))+1)*sizeof(char));
+                strcpy(copy, rk);
+                char* eventName = strtok(copy, ".");//eventName is channel name
                 if (eventName != NULL) {
                     cJSON * root = cJSON_Parse(string);
                     cJSON * ver = cJSON_GetObjectItem(root,"fmt_version");
@@ -220,13 +230,8 @@ int main()
                 }
                 
             }
-            if(monitor_index>=1)
-            {
-                printf("id extracted from message %d\r\n",robot_id);
-                printf("Monitor[%d] Count %d\r\n",object_index,mon[object_index]->count);
-            }
-            
 
+            
 
             if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
                 if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type &&
@@ -290,13 +295,14 @@ int main()
     }
 
     //TODO: subscribe to broker, receive retrieved event and publish output event
-    for(int j=0;j<monitor_index;j++)
+    /*for(int j=0;j<monitor_index;j++)
     {
         free_monitor(mon[j]);
-    }
+    }*/
+    
     //free(statData);
     //free(mon);
-    {{ obj|title }}Monitor_list *temp=list;
+    /*{{ obj|title }}Monitor_list *temp=list;
     while(1)
     {
         if(temp->next==NULL)
@@ -310,6 +316,6 @@ int main()
             free(temp);
             temp=list;
         }
-    }
+    }*/
     return 0;
 }

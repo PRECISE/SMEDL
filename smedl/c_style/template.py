@@ -4,6 +4,20 @@ import smedl.mgen
 from smedl import __about__
 
 class CTemplater(object):
+    
+    @staticmethod
+    def _addDataString(st, state_vars):
+        re = ''
+        for s in state_vars:
+            v = 'NULL'
+            if s['type'] == 'int' or s['type'] == 'float':
+                v = '0'
+            elif s['type'] == 'string' :
+                v = '\"0\"'
+                #print(v)
+            re += st + '->' + s['name'] + '=' + v + ';\n'
+        return re
+
     @staticmethod
     def output(mg, allFSMs, filename, helper, pedlAST, console_output=False, output_dir=''):
         if mg._debug:
@@ -13,16 +27,40 @@ class CTemplater(object):
         state_vars = [{'type': mg._symbolTable.get(v)['datatype'], 'name': v} for v in mg._symbolTable.getSymbolsByType('state')]
         for s in state_vars:
             s['c_type'] = CTemplater.convertTypeForC(s['type'])
-
+        values = dict()
+        values['mon_init_str'] = []
         # If there are no identities defined, make a default one:
         if len(mg._symbolTable.getSymbolsByType('identity')) == 0:
             identities = [{'type': 'opaque', 'name': 'id'}]
+            #if there are no identities defined, add creation of default monitor instances
+            mon_init_handler = []
+            implicit_data_name = 'implicit_d'#implicit temp data name
+            mon_init_handler.append('%sData *%s = (%sData *)malloc(sizeof(%sData));\n' %(obj.title(),implicit_data_name,obj.title(),obj.title()))
+            #TODO: need add statement adding initial value of state variables
+            implicit_str = 'int i = 0;\n'
+            implicit_str += implicit_data_name + '-> id = i;\n'
+            implicit_str += CTemplater._addDataString(implicit_data_name, state_vars)
+
+            #for s in state_vars:
+            #    v = 'NULL'
+            #    if s['type'] == 'int' or s['type'] == 'float':
+            #        v = '0'
+            #    elif s['type'] == 'string' :
+            #        v = '\"0\"'
+                #print(v)
+                #    implicit_str += implicit_data_name + '->' + s['name'] + '=' + v + ';\n'
+            mon_init_handler.append(implicit_str)
+            mon_init_handler.append('%sMonitor *tempMon = init_%s_monitor(%s);\n' % (obj.title(),obj.lower(),implicit_data_name))
+            mon_init_handler.append('tempMon -> send_conn = send_conn;\n')
+            mon_init_handler.append('tempMon -> amqp_exchange = amqp_exchange;\n')
+            values['mon_init_str'].append('\n'.join(mon_init_handler))
+            
         else:
             identities = [{'type': mg._symbolTable.get(v)['datatype'], 'name': v} for v in mg._symbolTable.getSymbolsByType('identity')]
         for id in identities:
             id['c_type'] = CTemplater.convertTypeForC(id['type'])
 
-        values = dict()
+
         values['msg_format_version'] = '\"'+__about__['msg_format_version']+'\"'
         values['multithreaded'] = True # command line arg for this?
         values['identities'] = identities
@@ -87,11 +125,14 @@ class CTemplater(object):
         values['var_declaration'] = []
         values['pending_event_case'] = []
         values['export_event_case'] = []
+
         if mg._getBindingKeysNum() == 0:
             values['bindingkeys_num'] = 1 # TODO: Make these customizable
         else:
             values['bindingkeys_num'] = mg._getBindingKeysNum()# TODO: Make these customizable
         values['b_keys'] = CTemplater._getBindingKeys(mg)
+        #print(values['b_keys'])
+
 
         # Construct event_msg_handlers
         name = mg._symbolTable.getSymbolsByType('object')[0]
@@ -99,7 +140,7 @@ class CTemplater(object):
         for conn in mg.archSpec:
             if conn.targetMachine == name:
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
-                [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(conn.targetEvent, 'params')]
+                [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type']), 'type' : p['type']} for p in mg._symbolTable.get(conn.targetEvent, 'params')]
                 msg_handler = []
                 if len(values['event_msg_handlers']) == 0:
                     cond = 'if'
@@ -115,6 +156,7 @@ class CTemplater(object):
                 retArray = []
                 sscanfStr = ''
                 index = 1
+                print(monitorParams)
                 for p in monitorParams[1:]:
                     if p['c_type'] == 'char*':
                         msg_handler.append('                    char *%s = NULL;' % (p['name']))
@@ -138,8 +180,22 @@ class CTemplater(object):
                 #get parameter list
                 #print(conn.sourceMachine)
                 #sscanfStr + = 'char* strs[' + '] = divideRoutingkey(rk,{{}});';
-                LengthIdentityList = 0
+                lengthIdentityList = 0
                 s_machine_params = []
+                #if conn.sourceMachine != None and conn.sourceMachine != '' and conn.sourceMachine != ' ':
+                #    s_machine = mg._getMachine(conn.sourceMachine)
+                #    if s_machine != None:
+                #        s_machine_params = s_machine.params
+                #        lengthIdentityList = len(s_machine_params)
+                #        sscanfStr += 'int parameterTypes [' + str(lengthIdentityList) + '] = {'
+                #        i = 0
+                #        for t in s_machine_params:
+                #            if i == 0:
+                #                sscanfStr += t.upper()
+                #            else:
+                #                sscanfStr += ',' + t.upper()
+                #            i = i + 1
+                #        sscanfStr += '};\n'
                 if conn.sourceMachine != None and conn.sourceMachine != '' and conn.sourceMachine != ' ':
                     s_machine = mg._getMachine(conn.sourceMachine)
                     if s_machine != None:
@@ -153,9 +209,12 @@ class CTemplater(object):
                             else:
                                 sscanfStr += ',' + t.upper()
                             i = i + 1
+                        sscanfStr += '};\n'
                                 #need to reimplement the mechanism of naming when generating c code to avoid naming conflicts
                 #monitor_parameter_val_strs:
-                sscanfStr += 'char* monitor_parameter_val_strs[' + str(lengthIdentityList) + '] = divideRoutingkey(rk,'+str(lengthIdentityList)+');';
+                if lengthIdentityList > 0:
+                    #sscanfStr += 'char* monitor_parameter_val_strs[' + str(lengthIdentityList) + '] = divideRoutingkey(rk,'+str(lengthIdentityList)+');';
+                    sscanfStr += 'char** monitor_parameter_val_strs = divideRoutingkey(rk,'+str(lengthIdentityList)+');';
                 #sscanfStr + = 'void* values[' + lengthIdentityList + '] = {}'
                 #sscanfStr + = 'for (int i = 0; i<' + lengthIdentityList + '; i++){\n'
                 #sscanfStr + = 'if (parameterTypes[i]==INT) {value[i]=(void*)=& (atoi(monitor_parameter_val_strs[i]));}\n'
@@ -165,28 +224,51 @@ class CTemplater(object):
                 #'if (executed_scenarios[%s_%s_SCENARIO]==0) {' % (obj.upper(), key.upper())
                 sscanfStr += '%sMonitorRecord* record;\n'  % obj.title()
                 retAttrs += ', pro'
+                #print (conn)
                 connSpec = conn.patternSpec
                 t_machine = mg._getMachine(conn.targetMachine)
-                print(t_machine)
-                print(conn.targetEvent)
+                t_machine_params = t_machine.params
+                t_lengthIdentityList = len(t_machine_params)
+                sscanfStr += 'int target_parameterTypes [' + str (t_lengthIdentityList) + '] = {'
+                i = 0
+                for t in t_machine_params:
+                    if i == 0:
+                        sscanfStr += t.upper()
+                    else:
+                        sscanfStr += ',' + t.upper()
+                    i = i + 1
+                sscanfStr += '};\n'
+
+                #print(t_machine)
+                #print(conn.targetEvent)
                 targetEvent = mg._getTargetEvent(conn.targetMachine,conn.targetEvent)
+                
+                #print (targetEvent)
+                #print (targetEvent)
+                
                 if connSpec == None or len(connSpec) == 0:
                     # retrieve all instances
+                    #print("empty")
                     sscanfStr +=  'record = get_%s_monitors();' % obj.lower()
 
                 else:
+                    #print (connSpec)
                     j = 0
                     idList = []
                     type = ""
+                    #print (pattern)
+                    eventParaList = []
                     for pattern in connSpec: #operator is always equal, leftTerm is identity of target monitor
                         if pattern.leftTerm != conn.targetMachine:
-                            print(pattern.leftTerm)
-                            print(conn)
+                            #print(pattern.leftTerm)
+                            #print(conn)
                             exit("illegal pattern1")
-                        if s_machine_params == None or pattern.leftIndex >= len(s_machine_params) :
-                            exit("illegal pattern2")
+                        #if s_machine_params == None or pattern.leftIndex >= len(s_machine_params) :
+                        #    exit("illegal pattern2")
+                        if pattern.rightTerm == conn.sourceEvent:
+                            eventParaList.append(pattern.leftIndex)
                         if j == 0:
-                            type = s_machine_params[pattern.leftIndex].upper()
+                            type = t_machine_params[pattern.leftIndex].upper()
                             j = 1
                         idList.append(pattern.leftIndex)
                 
@@ -197,37 +279,69 @@ class CTemplater(object):
                             sscanfStr += str(i)
                         else:
                             sscanfStr += ','+str(i)
-                            j = j+1
+                        j = j+1
                     
                     sscanfStr += '};'
                     sscanfStr += 'void* values[' + str(len(idList)) + '] = {};'
-                    sscanfStr += 'for (int i = 0; i<' + str(len(idList)) + '; i++){\n'
-                    sscanfStr += 'if (parameterTypes[identity[i]]==INT) {values[i]=(void*)=& (atoi(monitor_parameter_val_strs[identity[i]]));}\n'
-                    sscanfStr += 'else if(parameterTypes[identity[i]]==STRING) {values[i]=(void*)monitor_parameter_val_strs[identity[i]];}\n'
-                    sscanfStr += 'else {value[i] = (void *)NULL;}\n'
-                    sscanfStr += '}\n'
+                    
+                    
+                    j = 0
+                    local_name = 'tmp_j'
+                    while j < len(idList):
+                        stri = ''
+                        strs = ''
+                        if idList[j] in eventParaList:
+                            stri = monitorParams[idList[j]+1]['name'] + ';'
+                            strs =  '(void*)' + monitorParams[idList[j]+1]['name'] + ';'
+                        else:
+                            stri = '(atoi(monitor_parameter_val_strs[identity[' + str(j)+']]));'
+                            strs = '(void*)monitor_parameter_val_strs[identity[' + str(j)+']];\n'
+                        sscanfStr += 'if (target_parameterTypes[identity[' + str(j)+']]==INT) {int '+ local_name + ' = ' + stri
+                        sscanfStr += 'values[' + str(j) + '] =(void*)&' + local_name +';}'
+                        sscanfStr += 'else if(target_parameterTypes[identity[' + str(j)+']]==STRING) {values[' + str(j)+']=' + strs + '}\n'
+                        sscanfStr += 'else {values[' + str(j)+'] = (void *)NULL;}\n'
+                        j = j+1
+                    
+                    
+                    #sscanfStr += 'for (int i = 0; i<' + str(len(idList)) + '; i++){\n'
+                    
+                    
+                    #str = '= (atoi(monitor_parameter_val_strs[identity[i]])); values[i]=(void*)&'+local_name+';}\n'
+                    #sscanfStr += 'if (target_parameterTypes[identity[i]]==INT) {int '+ local_name + str
+                    #sscanfStr += 'else if(target_parameterTypes[identity[i]]==STRING) {values[i]=(void*)monitor_parameter_val_strs[identity[i]];}\n'
+                    #sscanfStr += 'else {values[i] = (void *)NULL;}\n'
+                    #sscanfStr += '}\n'
                     sscanfStr += 'record = get_%s_monitors_by_identities(identity,'  % (obj.lower())
-                    sscanfStr +=  type + ',values);'
+                    sscanfStr +=  type + ',values'
+                    sscanfStr += ',' + str(len(idList)) + ');\n'
+                    
                     if targetEvent.creation != None:
                         sscanfStr += 'if(record == NULL){\n'
-                        sscanfStr += 'record = (%sMonitorRecord *)malloc(sizeof(%sMonitorRecord));\n' %(obj, obj)
-                        sscanfStr += '%sData *d = (%sData *)malloc(sizeof(%sData));\n' %(obj,obj,obj)
+                        sscanfStr += 'record = (%sMonitorRecord *)malloc(sizeof(%sMonitorRecord));\n' %(obj.title(), obj.title())
+                        sscanfStr += '%sData *d = (%sData *)malloc(sizeof(%sData));\n' %(obj.title(),obj.title(),obj.title())
                         #['  %s %s;' % (v['c_type'], v['name']) for v in identities]
                         j = 0
                         for v in identities:
-                            sscanfStr += 'for (int i = 0; i<' + len(idList) + '; i++){\n'
-                            sscanfStr += 'if (identity[i] ==' + j + '){\n'
-                            sscanfStr += 'if (parameterTypes[identity[i]]==INT){ ' + '\t d ->' + v['name'] + '=' + '& (atoi(monitor_parameter_val_strs[identity[i]]));}\n'
-                            sscanfStr += 'else if(parameterTypes[identity[i]]==STRING) {\t d ->' + v['name'] + '=(void*)monitor_parameter_val_strs[identity[i]];}\n'
+                            sscanfStr += 'if (target_parameterTypes[identity['+str(j)+']]==INT){\n'
+                            sscanfStr += '\t d ->' + v['name'] + '=' + '*(int*)values[' + str(j) + '];}\n'
+                            sscanfStr += 'else if(target_parameterTypes[identity['+str(j)+']]==STRING) {\t d ->' + v['name'] + '=(void*)' + 'values[' + str(j)+ '];}\n'
                             sscanfStr += 'else {\t d ->' + v['name'] + '= (void *)NULL;}\n'
-                            sscanfStr += '\t}\n\t'
+                            #sscanfStr += 'for (int i = 0; i<' + str(len(idList)) + '; i++){\n'
+                            #sscanfStr += 'if (identity[i] ==' + str(j) + '){\n'
+                            #sscanfStr += 'if (target_parameterTypes[identity[i]]==INT){int '+ local_name+ '= (atoi(monitor_parameter_val_strs[identity[i]])); ' + '\t d ->' + v['name'] + '=' + local_name+';}\n'#'(void*)&'+local_name+';}\n'
+                            #sscanfStr += 'else if(target_parameterTypes[identity[i]]==STRING) {\t d ->' + v['name'] + '=(void*)monitor_parameter_val_strs[identity[i]];}\n'
+                            #sscanfStr += 'else {\t d ->' + v['name'] + '= (void *)NULL;}\n'
+                            #sscanfStr += '\t}\n\t'
                             j = j+1
-                        sscanfStr += '\t}\n\t'
-                        sscanfStr += '%sMonitor tempMon = init_%s_monitor(d);\n' % obj.lower()
+                        sscanfStr += CTemplater._addDataString('d',state_vars)
+                        #sscanfStr += '\t}\n\t'
+                        # mon_init_handler.append('%sMonitor *tempMon = init_%s_monitor(%s);\n' % (obj.title(),obj.lower(),implicit_data_name))
+                        sscanfStr += '%sMonitor* tempMon = init_%s_monitor(d);\n' % (obj.title(),obj.lower())
                         sscanfStr += 'tempMon -> send_conn = send_conn;\n'
                         sscanfStr += 'tempMon -> amqp_exchange = amqp_exchange;\n'
                         
                         sscanfStr += 'record -> monitor = tempMon;'
+                        sscanfStr += 'record -> next = NULL;'
                         sscanfStr += '}\n\t'
                 sscanfStr +=  'while(record != NULL){\n'
                 sscanfStr += obj.lower() + '_' + conn.targetEvent + '(record->monitor' + retAttrs + ');\n\t'
@@ -244,6 +358,8 @@ class CTemplater(object):
 
                 msg_handler.append(json_string)
                 msg_handler.append(sscanfStr)
+                #print(sscanfStr)
+                #print("\\\\\\\\\\\n")
                 #msg_handler.append('                        ' + obj.lower() + '_' + conn.targetEvent + '(monitor' + retAttrs + ');')
                 #msg_handler.append('                        printf("%s_%s called.\\n");' % (obj.lower(), conn.targetEvent))
                 if json_params_mark == 1:
@@ -697,8 +813,9 @@ class CTemplater(object):
         name = mg._symbolTable.getSymbolsByType('object')[0]
         k = 0
         for conn in mg.archSpec:
-            b_str = 'bindingkeys['+str(k)+']'
+            #print (str(k))
             if name==conn.targetMachine:
+                b_str = 'bindingkeys['+str(k)+']'
                 p_str = b_str + '=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy('+b_str+',"'+conn.connName+'");\n'
                 sourceMachine = mg._getMachine(conn.sourceMachine)
                 #print(sourceMachine)
@@ -708,7 +825,7 @@ class CTemplater(object):
                 #if sourceEvent == None:
                 #raise ValueError('source event not exist')
                 lst.append(p_str+'strcat('+b_str+',".#");\n')
-            k = k + 1
+                k = k + 1
 
         bindingkey = ''
         i = 0
@@ -717,6 +834,7 @@ class CTemplater(object):
             i = i+1
         if len(lst)==0:
             bindingkey+='bindingkeys[0]=(char*)malloc(255*sizeof(char));\n'+'\tstrcpy(bindingkeys[0],"#");\n'
+                #print (bindingkey)
         return bindingkey
 
     def _getBindingKeys1(mg):

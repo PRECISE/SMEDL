@@ -152,6 +152,8 @@ class MonitorGenerator(object):
 
 
     def _makeMonitor(self, object):
+        obj = self._symbolTable.getSymbolsByType('object')[0]
+        #print(obj)
         if isinstance(object,list):
             for mon in object:
                 monId = None
@@ -174,7 +176,12 @@ class MonitorGenerator(object):
                         imported = self._makeEventList(v)
                     elif k == 'exported_events':
                         exported = self._makeEventList(v)
-
+                if obj == monId:
+                    identities = [self._symbolTable.get(v)['datatype'] for v in self._symbolTable.getSymbolsByType('identity')]
+                    #print (identities)
+                    #print (para)
+                    if identities != para:
+                        exit("identities not consistent")
                 interface = Interface(monType,monId,para,imported,exported)
                 #print(interface)
                 self.monitorInterface.append(interface)
@@ -269,6 +276,7 @@ class MonitorGenerator(object):
                 conn_name = s_i + '_' + s_e
             if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                 raise ValueError('attributes of events do not match')
+            print (pa_spec)
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
                 #if connEx.sourceMachine == None:
                 #print(connEx)
@@ -278,9 +286,9 @@ class MonitorGenerator(object):
             s_i = None
             t_i = None
             t_e = None
+            pa_spec = []
             for obj in object:
                 for k,v in list(obj.items()):
-                    pa_spec = []
                     if k == 'connection':
                         conn_name = v
                     elif k == 'source_machine_identifier':
@@ -292,14 +300,18 @@ class MonitorGenerator(object):
                     elif k == 'target_event_identifier':
                         t_e = v
                     elif k == 'pattern_spec':
-                        pa_spec = self._makePatternSpec(v)
+                        #print(v)
+                        pa_spec=(self._makePatternSpec(v))
+                
                 if s_i == None:
                     s_i = ''
                 if conn_name == None:
                     conn_name = s_i + '_'+s_e
+                        #print (conn_name + str(pa_spec))
                 # TODO: match number of attributes of the source and target events
                 if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                     raise ValueError('attributes of events do not match')
+                        #print (pa_spec)
                 connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
                     #if connEx.sourceMachine == None:
                     #print(connEx)

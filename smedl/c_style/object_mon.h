@@ -7,6 +7,7 @@
 
 #define {{ obj|upper }}_MONITOR_MAP_SIZE 100 // number of buckets
 #define {{ obj|upper }}_MONITOR_IDENTITIES {{ identities|length }}
+#define msg_format_version {{ msg_format_version }}
 
 typedef struct {{ obj|title }}Data {
 {{ identity_declarations }}
@@ -54,7 +55,7 @@ void free_monitor({{ obj|title }}Monitor*);
  */
 {{ obj|title }}MonitorRecord* get_{{ obj|lower }}_monitors();
 {{ obj|title }}MonitorRecord* get_{{ obj|lower }}_monitors_by_identity(int, int, void*);
-{{ obj|title }}MonitorRecord* get_{{obj|lower}}_monitors_by_identities(int[], int type, void *[]);
+{{ obj|title }}MonitorRecord* get_{{obj|lower}}_monitors_by_identities(int[], int type, void *[],int);
 {{ obj|title }}MonitorRecord* filter_{{ obj|lower }}_monitors_by_identity({{ obj|title }}MonitorRecord*, int, void*);
 int init_{{ obj|lower }}_monitor_maps();
 void free_{{ obj|lower }}_monitor_maps();
