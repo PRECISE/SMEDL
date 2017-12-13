@@ -156,7 +156,13 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
                                     amqp_cstring_bytes(ann)),
                 "Publishing {{ obj|title }} monitor startup announcement");
     free(ann);
-
+    
+    char timeString[50];
+    time_t rawtime; // Setup variable
+    time(&rawtime); // Get time
+    sprintf(timeString,"{{obj|title}}_%d.log", rawtime); // Test output
+    FILE * fp = fopen (timeString,"a+");
+    int count = 0;
     while (1) {
         amqp_rpc_reply_t ret;
         amqp_envelope_t envelope;
@@ -168,6 +174,17 @@ void start_monitor({{ obj|title }}Monitor* monitor) {
         char* rk = (char*)routing_key.bytes;
         char* string = (char*)bytes.bytes;
 
+        //write string
+        fprintf(fp, string);
+        if(count >= 2){
+            count = 0;
+            fclose(fp);
+            fp = fopen (timeString,"a+");
+            
+        }
+        count++;
+        //fprintf(fp,string);
+        fprintf(fp,"\r\n");
         if (string != NULL) {
             char* eventName = strtok(rk, ".");
             if (eventName != NULL) {
