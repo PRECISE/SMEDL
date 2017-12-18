@@ -38,7 +38,7 @@ class CTemplater(object):
             mon_init_handler.append('%sData *%s = (%sData *)malloc(sizeof(%sData));\n' %(obj.title(),implicit_data_name,obj.title(),obj.title()))
             #TODO: need add statement adding initial value of state variables
             implicit_str = 'int i = 0;\n'
-            implicit_str += implicit_data_name + '-> id = i;\n'
+            implicit_str += implicit_data_name + '-> id = &i;\n'
             implicit_str += CTemplater._addDataString(implicit_data_name, state_vars)
 
             #for s in state_vars:
@@ -594,6 +594,8 @@ class CTemplater(object):
                             sprintf_routing+=', %s' % p[1]
                 sprintf_routing += ');'
                 eventFunction.append(sprintf_routing)
+                #add to test
+                eventFunction.append('printf("msg:%s\\n", message);');
                 eventFunction.append('  send_message(monitor, message, routing_key);')
                 eventFunction.append('}\n\n')
             raiseFunction = CTemplater._writeRaiseFunction(mg, m, obj)
