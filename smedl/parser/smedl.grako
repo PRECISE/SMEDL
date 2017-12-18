@@ -24,9 +24,22 @@ object
     $
     ;
 
+identifier_assign =
+    var: identifier [ '=' default: literal]
+  ;
+
+literal = 
+   float |
+   integer |
+   string   |
+   'true'  |
+   'false' |
+    'null'
+   ;
+   
 variable_declaration
     =
-    type:type var:identifier {',' var:identifier}* ';'
+    type:type var: identifier_assign {',' var: identifier_assign}* ';'
     ;
 
 import_definition

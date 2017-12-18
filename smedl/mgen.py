@@ -469,17 +469,23 @@ class MonitorGenerator(object):
                 elif label == 'identity' and k == 'var':
                     if isinstance(v, list):
                         for var in v:
-                            self._symbolTable.add(var, {'type': 'identity', 'datatype': object['type']})
-                            self.identities.append(var)
+                            self._symbolTable.add(var['var'], {'type': 'identity', 'datatype': object['type']})
+                            self.identities.append(var['var'])
                     else:
-                        self._symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})
-                        self.identities.append(v)
+                        print(v['var'])
+                        self._symbolTable.add(v['var'], {'type': 'identity', 'datatype': object['type']})
+                        self.identities.append(v['var'])
                 elif label == 'state' and k == 'var':
+                    #print ('k:'+k)
                     if isinstance(v, list):
+                        #print (v)
                         for var in v:
-                            self._symbolTable.add(var, {'type': 'state', 'datatype': object['type']})
+                            #print (var)
+                            varn = var['var']
+                            self._symbolTable.add(varn, {'type': 'state', 'datatype': object['type'], 'default': var['default']})
                     else:
-                        self._symbolTable.add(v, {'type': 'state', 'datatype': object['type']})
+                        #print (v)
+                        self._symbolTable.add(v['var'], {'type': 'state', 'datatype': object['type'], 'default': v['default']})
                 elif '_events' in label and k == 'event_id':
                     if object['params'] != None:
                         self._symbolTable.add(v, {'type': label, 'error': object['error'], 'params': object['params']})

@@ -9,14 +9,55 @@ class CTemplater(object):
     def _addDataString(st, state_vars):
         re = ''
         for s in state_vars:
-            v = 'NULL'
-            if s['type'] == 'int' or s['type'] == 'float':
-                v = '0'
-            elif s['type'] == 'string' :
-                v = '\"0\"'
+            if s['default'] != None:
+                v = s['default']
+            else:
+                v = 'NULL'
+                if s['type'] == 'int' or s['type'] == 'float':
+                    v = '0'
+                elif s['type'] == 'string' :
+                    v = '\"0\"'
                 #print(v)
             re += st + '->' + s['name'] + '=' + v + ';\n'
         return re
+
+
+
+    @staticmethod
+    def is_float_number(s):
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def is_int_number(s):
+        try:
+            int(s)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def _checkDefaultAssign(state_vars):
+        for s in state_vars:
+            print (s)
+            if s['default'] == None:
+                continue
+            if s['type'] == 'int' or s['type'] == 'char':
+                if not CTemplater.is_int_number(s['default']):
+                    return False
+            elif s['type'] == 'float' or s['type'] == 'double' :
+                if not CTemplater.is_float_number(s['default']):
+                    return False
+            elif s['type'] == 'string' :
+                if s['default'][0] != '\"' or s['default'][len(s['default'])-1] != '\"':
+                    return False
+            elif s['type'] == 'thread' or s['type'] == 'opaque' or s['type'] == 'pointer' :
+                if  s['default'] != 'null':
+                    return False
+        return True
 
     @staticmethod
     def output(mg, allFSMs, filename, helper, pedlAST, console_output=False, output_dir=''):
@@ -24,9 +65,12 @@ class CTemplater(object):
             if pedlAST:
                 print("Target Monitor Points: " + pedlAST.getTargetMonitorPoints())
         obj = mg._symbolTable.getSymbolsByType('object')[0]
-        state_vars = [{'type': mg._symbolTable.get(v)['datatype'], 'name': v} for v in mg._symbolTable.getSymbolsByType('state')]
+        state_vars = [{'type': mg._symbolTable.get(v)['datatype'], 'name': v, 'default': mg._symbolTable.get(v)['default']} for v in mg._symbolTable.getSymbolsByType('state')]
+        #print (state_vars)
         for s in state_vars:
             s['c_type'] = CTemplater.convertTypeForC(s['type'])
+        if not CTemplater._checkDefaultAssign (state_vars):
+            exit("wrong type of default value")
         values = dict()
         values['mon_init_str'] = []
         # If there are no identities defined, make a default one:
@@ -326,6 +370,7 @@ class CTemplater(object):
                             sscanfStr += '\t d ->' + v['name'] + '=' + '*(int*)values[' + str(j) + '];}\n'
                             sscanfStr += 'else if(target_parameterTypes[identity['+str(j)+']]==STRING) {\t d ->' + v['name'] + '=(void*)' + 'values[' + str(j)+ '];}\n'
                             sscanfStr += 'else {\t d ->' + v['name'] + '= (void *)NULL;}\n'
+                        
                             #sscanfStr += 'for (int i = 0; i<' + str(len(idList)) + '; i++){\n'
                             #sscanfStr += 'if (identity[i] ==' + str(j) + '){\n'
                             #sscanfStr += 'if (target_parameterTypes[identity[i]]==INT){int '+ local_name+ '= (atoi(monitor_parameter_val_strs[identity[i]])); ' + '\t d ->' + v['name'] + '=' + local_name+';}\n'#'(void*)&'+local_name+';}\n'
@@ -570,8 +615,12 @@ class CTemplater(object):
                 # TODO: peter, write functions for printing and parsing monitor identities
                 # this cast is broken and wrong, but works as long as we have only one monitor process
 
-                for v in mg.identities:
-                    sprintf_routing += '.%ld'
+                for v in identities:
+                    #print("mg:"+v)
+                    if v['type'] == 'int':
+                        sprintf_routing += '.%ld'
+                    elif v['type'] == 'string':
+                        sprintf_routing += '.%s'
                 sprintf_routing += '.'+m
                 if len(evParams) > 0:
                     for p in evParams:
@@ -579,14 +628,19 @@ class CTemplater(object):
                         # attributes can only be int
                         if p[0] == 'int':
                             sprintf_routing += '.%d'
+                        elif p[0] == 'string':
+                            sprintf_routing += '.%s'
                         elif p[0] != 'cJSON*' :
                             sprintf_routing += '.0'
 
                 sprintf_routing+='"'
-                for v in mg.identities:
-                    sprintf_routing += ', (long)(*(int*)(monitor->identities['
+                for v in identities:
+                    if v['type'] == 'int':
+                        sprintf_routing += ', (long)(*(int*)(monitor->identities['
+                    elif v['type'] == 'string':
+                        sprintf_routing += ', (char*)((monitor->identities['
                     sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
-                    sprintf_routing += v.upper() +']->value))'
+                    sprintf_routing += v['name'].upper() +']->value))'
                 if len(evParams) > 0:
                     for p in evParams:
                 # attributes can only be int

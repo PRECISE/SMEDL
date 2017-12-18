@@ -18,7 +18,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2017, 11, 30, 0, 57, 3, 3)
+__version__ = (2017, 12, 18, 0, 53, 26, 0)
 
 __all__ = [
     'smedlParser',
@@ -152,15 +152,45 @@ class smedlParser(Parser):
         )
 
     @graken()
+    def _identifier_assign_(self):
+        self._identifier_()
+        self.name_last_node('var')
+        with self._optional():
+            self._token('=')
+            self._literal_()
+            self.name_last_node('default')
+        self.ast._define(
+            ['default', 'var'],
+            []
+        )
+
+    @graken()
+    def _literal_(self):
+        with self._choice():
+            with self._option():
+                self._float_()
+            with self._option():
+                self._integer_()
+            with self._option():
+                self._string_()
+            with self._option():
+                self._token('true')
+            with self._option():
+                self._token('false')
+            with self._option():
+                self._token('null')
+            self._error('expecting one of: false null true')
+
+    @graken()
     def _variable_declaration_(self):
         self._type_()
         self.name_last_node('type')
-        self._identifier_()
+        self._identifier_assign_()
         self.name_last_node('var')
 
         def block2():
             self._token(',')
-            self._identifier_()
+            self._identifier_assign_()
             self.name_last_node('var')
         self._closure(block2)
         self._token(';')
@@ -732,6 +762,12 @@ class smedlParser(Parser):
 
 class smedlSemantics(object):
     def object(self, ast):
+        return ast
+
+    def identifier_assign(self, ast):
+        return ast
+
+    def literal(self, ast):
         return ast
 
     def variable_declaration(self, ast):
