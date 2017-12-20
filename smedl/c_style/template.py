@@ -13,7 +13,7 @@ class CTemplater(object):
                 v = s['default']
             else:
                 v = 'NULL'
-                if s['type'] == 'int' or s['type'] == 'float':
+                if s['type'] == 'int' or s['type'] == 'float' or s['type'] == 'double':
                     v = '0'
                 elif s['type'] == 'string' :
                     v = '\"0\"'
@@ -617,10 +617,11 @@ class CTemplater(object):
 
                 for v in identities:
                     #print("mg:"+v)
-                    if v['type'] == 'int':
-                        sprintf_routing += '.%ld'
-                    elif v['type'] == 'string':
+                    
+                    if v['type'] == 'string':
                         sprintf_routing += '.%s'
+                    else:
+                        sprintf_routing += '.%ld'
                 sprintf_routing += '.'+m
                 if len(evParams) > 0:
                     for p in evParams:
@@ -635,10 +636,10 @@ class CTemplater(object):
 
                 sprintf_routing+='"'
                 for v in identities:
-                    if v['type'] == 'int':
-                        sprintf_routing += ', (long)(*(int*)(monitor->identities['
-                    elif v['type'] == 'string':
+                    if v['type'] == 'string':
                         sprintf_routing += ', (char*)((monitor->identities['
+                    else:
+                        sprintf_routing += ', (long)(*(int*)(monitor->identities['
                     sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
                     sprintf_routing += v['name'].upper() +']->value))'
                 if len(evParams) > 0:
