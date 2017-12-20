@@ -42,7 +42,7 @@ class CTemplater(object):
     @staticmethod
     def _checkDefaultAssign(state_vars):
         for s in state_vars:
-            print (s)
+            #print (s)
             if s['default'] == None:
                 continue
             if s['type'] == 'int' or s['type'] == 'char':
@@ -200,7 +200,7 @@ class CTemplater(object):
                 retArray = []
                 sscanfStr = ''
                 index = 1
-                print(monitorParams)
+                #print(monitorParams)
                 for p in monitorParams[1:]:
                     if p['c_type'] == 'char*':
                         msg_handler.append('                    char *%s = NULL;' % (p['name']))

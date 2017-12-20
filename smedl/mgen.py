@@ -89,7 +89,7 @@ class MonitorGenerator(object):
         # Parser the architecture, it exists
         if a4smedlName is not None:
             a4smedlPath = Path(os.path.expanduser(a4smedlName+ '.a4smedl'))
-            print(a4smedlPath)
+            #print(a4smedlPath)
             if a4smedlPath.exists():
                 with a4smedlPath.open() as a4smedlFile:
                     a4smedlText = a4smedlFile.read()
@@ -276,7 +276,7 @@ class MonitorGenerator(object):
                 conn_name = s_i + '_' + s_e
             if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
                 raise ValueError('attributes of events do not match')
-            print (pa_spec)
+            #print (pa_spec)
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
                 #if connEx.sourceMachine == None:
                 #print(connEx)
@@ -472,7 +472,7 @@ class MonitorGenerator(object):
                             self._symbolTable.add(var['var'], {'type': 'identity', 'datatype': object['type']})
                             self.identities.append(var['var'])
                     else:
-                        print(v['var'])
+                        #print(v['var'])
                         self._symbolTable.add(v['var'], {'type': 'identity', 'datatype': object['type']})
                         self.identities.append(v['var'])
                 elif label == 'state' and k == 'var':
