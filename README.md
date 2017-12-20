@@ -167,26 +167,26 @@ specifications. For more info, readers can refer to the document ``Architecture_
 ## State variable initialization
 Default initial value of state variables can be specified in the SMEDL specification:
 
-Object mon
-state
-int i = 0, j=3;
-string s = "abc";
-double d = -2.5;
-...
+    Object mon
+    state
+    int i = 0, j=3;
+    string s = "abc";
+    double d = -2.5;
+    ...
 
 ## Dynamic instantiation
 In the architecture file, a modifier "creation" can be added before imported events of the monitor:
 
-System Tracking :=
-Async RateComputation(int, string)
-{
-imported creation dataUpdate (int, string,float,float);
-imported timeout();
-imported end();
-exported dataUpdate2(string, float, float);
-}
-...
-ch3: dataUpdate => RateComputation.dataUpdate {RateComputation[0]=dataUpdate[0];RateComputation[1]=dataUpdate[1]}
+    System Tracking :=
+    Async RateComputation(int, string)
+    {
+        imported creation dataUpdate (int, string,float,float);
+        imported timeout();
+        imported end();
+        exported dataUpdate2(string, float, float);
+    }
+    ...
+    ch3: dataUpdate => RateComputation.dataUpdate {RateComputation[0]=dataUpdate[0];RateComputation[1]=dataUpdate[1]}
 
 For the example above, instance of RateComputation can be created whenever an dataUpdate event is received. However, in the pattern specification, all identifiers should be bounded. Moreover, target monitor should always appear at the left side of the connection pattern expression. 
 
