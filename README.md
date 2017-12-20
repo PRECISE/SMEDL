@@ -81,7 +81,9 @@ Before executing the instrumented version of the target program, the generated
 runtime monitor must be compiled along with the target program using the
 following command:
 
-    gcc -o {{base_file_name}}_mon -std=c99 actions.c monitor_map.c {{base_file_name}}_mon.c
+gcc -o {{base_file_name}}_mon -std=c99 actions.c monitor_map.c {{base_file_name}}_mon.c
+
+Note: If the monitor is an asynchronous monitor, the file {{base_file_name}}_monitor_wrapper.c will be generated, which should be added to the gcc command.
 
 
 ## Manually run intermediate generation steps
