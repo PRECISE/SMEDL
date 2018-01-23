@@ -25,15 +25,17 @@ char** divideRoutingkey(char * rk, int argNum){
     //c99 allows variable array length
     char** str = (char**)malloc(sizeof(char*)*argNum);
     int i = 0;
-    char * copy = (char*)malloc((sizeof(strlen(rk))+1)*sizeof(char));
+    char * copy[sizeof(strlen(rk))+1];
+    //char * copy = (char*)malloc((sizeof(strlen(rk))+1)*sizeof(char));
     strcpy(copy, rk);
     char * temp;
-    for(int i = 0; i <= argNum;i++){
-        temp = strtok(copy, ".");
-        if(i!=0){
-            str[i-1] = (char*)malloc((sizeof(strlen(temp))+1)*sizeof(char));
-            strcpy(str[i-1],temp);
-        }
+    temp = strtok(copy, ".");
+    for(int i = 0; i < argNum;i++){
+        temp = strtok(NULL, ".");
+        //if(i!=0){
+        str[i] = (char*)malloc((sizeof(strlen(temp))+1)*sizeof(char));
+        strcpy(str[i],temp);
+        //}
     }
     return str;
 }
@@ -208,7 +210,8 @@ int main()
             
 
             if (string != NULL) {
-                char * copy = (char*)malloc((sizeof(strlen(rk))+1)*sizeof(char));
+                //char * copy = (char*)malloc((sizeof(strlen(rk))+1)*sizeof(char));
+                char * copy[sizeof(strlen(rk))+1];
                 strcpy(copy, rk);
                 char* eventName = strtok(copy, ".");//eventName is channel name
                 if (eventName != NULL) {

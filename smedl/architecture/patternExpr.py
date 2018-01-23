@@ -24,6 +24,7 @@ class PatternExpr(object):
             raise TypeError("Invalid type for term or index")
         self.leftTerm = lt
         self.leftIndex = li
+        #print(self.leftIndex)
         self.rightTerm = rt
         self.rightIndex = ri
 
@@ -41,5 +42,5 @@ class PatternExpr(object):
 
     def __str__(self):
         out = "patternExpr:"
-        out+=self.getLeftTerm()+'['+str(self.getRightIndex())+']'+self.operator+self.getRightTerm()+'['+str(self.getRightIndex())+']'
+        out+=self.getLeftTerm()+'['+str(self.getLeftIndex())+']'+self.operator+self.getRightTerm()+'['+str(self.getRightIndex())+']'
         return out

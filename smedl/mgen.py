@@ -275,11 +275,12 @@ class MonitorGenerator(object):
             if conn_name == None:
                 conn_name = s_i + '_' + s_e
             if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
+
                 raise ValueError('attributes of events do not match')
             #print (pa_spec)
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
                 #if connEx.sourceMachine == None:
-                #print(connEx)
+            print(connEx)
             self.archSpec.append(connEx)
         elif isinstance(object,list):
             conn_name = None
@@ -310,11 +311,14 @@ class MonitorGenerator(object):
                         #print (conn_name + str(pa_spec))
                 # TODO: match number of attributes of the source and target events
                 if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
+                    print(s_i)
+                    print(s_e)
+                    print(t_i)
                     raise ValueError('attributes of events do not match')
                         #print (pa_spec)
                 connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
                     #if connEx.sourceMachine == None:
-                    #print(connEx)
+                    #print(pa_spec)
                 self.archSpec.append(connEx)
 
 
@@ -368,10 +372,16 @@ class MonitorGenerator(object):
                                 rt = vv
                             elif kk == 'term_index':
                                 ri = int(vv)
+                                    #print(event)
                 spec = PatternExpr()
                 spec.addOperator(op)
+                #print(li)
+                #print(rt)
                 spec.addTerm(lt,li,rt,ri)
                 lst.append(spec)
+        #print(spec)
+        #print(li)
+                #print(len(lst))
         return lst
 
 
@@ -398,6 +408,7 @@ class MonitorGenerator(object):
                 right_mon = mon
 
         if left_mon == None or right_mon == None or not left_ev == right_ev:
+            
             return False
         return True
 
@@ -514,6 +525,7 @@ class MonitorGenerator(object):
                         if trace['trace_steps'][i]['step_event']['expression']['trailer'] is None:
                             self._symbolTable.update(current, "params", [])
                         else:
+                            #print(trace['trace_steps'][i]['step_event']['expression']['trailer']['params'])
                             params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
                             paramsList = self._findFunctionParams(current, params, ast)
                             #print (paramsList)
@@ -716,24 +728,89 @@ class MonitorGenerator(object):
         else:
             exprStr = expr
         #print('expr:'+exprStr)
+        #print("before:"+exprStr)
         exprStr = self._addMonitorArrowToStateVariables(exprStr)
+        exprStr = self._addMonitorArrowToIdentities(exprStr)
         # expr = checkReferences(expr) # TODO--------
-        #print(exprStr)
+        #print("after:"+exprStr)
         return MonitorGenerator._removeParentheses(exprStr)
 
+    def _returnAttachedString(self, tu1, tu2):
 
-    def _addMonitorArrowToStateVariables(self, string):
-        #print('before:'+string)
-        #print(string)
+        indexStr = self._symbolTable.getSymbolsByType('object')[0]
+        indexStr += '_'+tu1
+        indexStr = indexStr.upper()
+        #print(tu2['type'])
+        str = '(monitor->identities['+indexStr+']->value)'
+        if tu2['datatype'] == 'int':
+            str = '*(int*)'+str
+        elif tu2['datatype'] == 'string':
+            str = '(char*)'+str
+        return str
+    
+    def _addMonitorArrowToIdentities(self, string):
+    #print('before:'+string)
+    #print(string)
         if len(string)>0 and string[0]=='\"':
             return string
+        newList = list((self._symbolTable.getSymbolsAllByType('identity')))
+        #print(newList)
+        #print(newList)
+        (newList).sort(key = lambda x: len(x[0]))
+        newList.reverse()
+        for sv in (newList):
+            astr = self._returnAttachedString(sv[0],sv[1])
+            #print(astr)
+            indices = [t.start() for t in re.finditer(sv[0], string)]
+            #if sv in newList2:
+            #print(sv[1])
+            idxIter = 0
+            for index in indices:
+                index = index + idxIter * len(astr) # 9=number of chars in 'monitor->'
+                #print('index:'+string[index])
+                i = 0
+                while(i<len(sv) and index+i<len(string)):
+                    if sv[0][i]!=string[index+i]:
+                        print(string[0])
+                        print('sv:'+sv[0][i]+' str:'+string[index+i]+' idx:'+str(index+i))
+                        break
+                    i=i+1
+                if i<len(sv[0]):
+                    print("give up" + str(i))
+                    continue
+                if i==len(sv[0]) and index+i < len(string):
+                    
+                    #print(i)
+                    #print(len(sv))
+                    #print(len(string))
+                    if string[index+i].isalpha() or string[index+i] == '_':
+                        #print('return')
+                        #print(i)
+                        #print(len(string))
+                        #print(string[index+i])
+                        #print('return:'+string)
+                        #return string
+                        continue
+                if string[index-5:index] != 'this.' and string[index-len(astr):index] != 'monitor->':  # Prevent duplicated 'this.'
+                    if index == 0 or (not (string[index-1]).isalpha() and not string[index-1] == '_') :
+                        string = string[:index] + astr + string[index+len(sv[0]):]
+                idxIter += 1;
+    #print('after:'+string)
+        return string
+    
+
+    def _addMonitorArrowToStateVariables(self, string):
+        if len(string)>0 and string[0]=='\"':
+            return string
+        #print(self._symbolTable.keys())
         newList = list((self._symbolTable.getSymbolsByType('state')))
         (newList).sort(key = lambda x: len(x))
         newList.reverse()
-        #print(newList)
         for sv in (newList):
-            #print('sv:'+sv)
+            #print(sv)
             indices = [t.start() for t in re.finditer(sv, string)]
+                #if sv in newList2:
+                #print(indices)
             idxIter = 0
             for index in indices:
                 index = index + idxIter * 9 # 9=number of chars in 'monitor->'
@@ -747,21 +824,19 @@ class MonitorGenerator(object):
                     i=i+1
                 if i<len(sv):
                     print("give up" + str(i))
-                    return string
+                    #return string
+                    continue
                 if i==len(sv) and index+i < len(string):
-
-                    #print(i)
-                    #print(len(sv))
-                    #print(len(string))
-                    if string[index+i].isalpha() or string[index+i] == '_':
-                        #print(sv)
+                    if string[index+i].isalpha() or string[index+i] == '_':#is a substring of a longer name
+                        #print('return')
                         #print(i)
                         #print(len(string))
                         #print(string[index+i])
                         #print('return:'+string)
-                        return string
+                            #return string
+                        continue
                 if string[index-5:index] != 'this.' and string[index-9:index] != 'monitor->':  # Prevent duplicated 'this.'
-                    if index == 0 or (not (string[index-1]).isalpha() and not string[index-1] == '_') :
+                    if index == 0 or (not (string[index-1]).isalpha() and not string[index-1] == '_') : #is a substring of a longer name
                         string = string[:index] + 'monitor->' + string[index:]
                 idxIter += 1;
                     #print('after:'+string)
@@ -795,6 +870,7 @@ class MonitorGenerator(object):
         if action.type == ActionType.StateUpdate:
             out = "monitor->" + action.target + ' ' + action.operator
             if action.expression:
+                #print(action)
                 out += ' ' + self._formatExpression(action.expression)
             out += ';'
             #print(out)

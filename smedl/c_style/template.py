@@ -302,19 +302,26 @@ class CTemplater(object):
                     type = ""
                     #print (pattern)
                     eventParaList = []
+                    eventParaList_ = {}
                     for pattern in connSpec: #operator is always equal, leftTerm is identity of target monitor
                         if pattern.leftTerm != conn.targetMachine:
+                            #print (pattern.leftTerm)
+                            #print (conn)
                             #print(pattern.leftTerm)
                             #print(conn)
                             exit("illegal pattern1")
                         #if s_machine_params == None or pattern.leftIndex >= len(s_machine_params) :
                         #    exit("illegal pattern2")
+                        #print(connSpec)
+                        #print(pattern)
                         if pattern.rightTerm == conn.sourceEvent:
                             eventParaList.append(pattern.leftIndex)
+                            eventParaList_[pattern.leftIndex]=pattern.rightIndex
                         if j == 0:
                             type = t_machine_params[pattern.leftIndex].upper()
                             j = 1
                         idList.append(pattern.leftIndex)
+                #print(pattern.rightIndex)
                 
                     sscanfStr += 'int identity[' + str(len(connSpec)) +'] = {'
                     j = 0
@@ -331,12 +338,17 @@ class CTemplater(object):
                     
                     j = 0
                     local_name = 'tmp_j'
+                    #print(eventParaList)
                     while j < len(idList):
                         stri = ''
                         strs = ''
+                        
                         if idList[j] in eventParaList:
-                            stri = monitorParams[idList[j]+1]['name'] + ';'
-                            strs =  '(void*)' + monitorParams[idList[j]+1]['name'] + ';'
+                            #print(monitorParams)
+                            #print(idList[j])
+                            stri = monitorParams[eventParaList_[idList[j]]+1]['name'] + ';'
+                            #print(stri)
+                            strs =  '(void*)' + monitorParams[eventParaList_[idList[j]]+1]['name'] + ';'
                         else:
                             stri = '(atoi(monitor_parameter_val_strs[identity[' + str(j)+']]));'
                             strs = '(void*)monitor_parameter_val_strs[identity[' + str(j)+']];\n'
@@ -345,7 +357,10 @@ class CTemplater(object):
                         sscanfStr += 'else if(target_parameterTypes[identity[' + str(j)+']]==STRING) {values[' + str(j)+']=' + strs + '}\n'
                         sscanfStr += 'else {values[' + str(j)+'] = (void *)NULL;}\n'
                         j = j+1
-                    
+
+                    if lengthIdentityList > 0:
+                        sscanfStr += 'int pi = 0;\n while (pi <' + (str(lengthIdentityList)) + ') {free(monitor_parameter_val_strs[pi]); pi ++;}\n'
+                        sscanfStr += 'free(monitor_parameter_val_strs);'
                     
                     #sscanfStr += 'for (int i = 0; i<' + str(len(idList)) + '; i++){\n'
                     
@@ -544,7 +559,7 @@ class CTemplater(object):
             eventFunction.append(eventSignature + ' {')
             for key, fsm in allFSMs.items():
                 trans_group = fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m)))
-
+                
                 # Jump to next FSM if this one contains no transitions for the current event
                 if len(trans_group) == 0:
                     continue
@@ -554,6 +569,7 @@ class CTemplater(object):
                 eventFunction.append('if (executed_scenarios[%s_%s_SCENARIO]==0) {' % (obj.upper(), key.upper()))
                 eventFunction.append('  switch (%s) {' % reference)
                 for start_state, transitions in trans_group.items():
+                    #print(transitions[0])
                     eventFunction.append(CTemplater._writeCaseTransition(mg, obj, transitions, reference, name_reference, key))
                 if mg._implicitErrors:
                     eventFunction.append('    default:')
@@ -1023,9 +1039,13 @@ class CTemplater(object):
             print("\n")
 
         sorted(transitions, key = lambda trans: trans.guard)
+        
         for i in range(len(transitions)):
+            
+            #print(transitions[i].guard)
             if i == 0 and transitions[i].guard:
                 output.append('      if(' + transitions[i].guard.replace('this.', 'monitor->') + ') {\n')
+                
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
                         output.append('        %s\n' % mg._writeAction(obj, action))

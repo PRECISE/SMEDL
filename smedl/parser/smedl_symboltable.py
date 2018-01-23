@@ -57,6 +57,13 @@ class SmedlSymbolTable(OrderedDict):
             if 'type' in self[s] and self[s]['type'] == type:
                 out.append(s)
         return out
+    
+    def getSymbolsAllByType(self, type):
+        out = []
+        for s in list(self.keys()):
+            if 'type' in self[s] and self[s]['type'] == type:
+                out.append((s,self[s]))
+        return out
 
 
     def getEvents(self):
