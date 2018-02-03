@@ -159,7 +159,7 @@ class CTemplater(object):
                 errors.append('%s_%s_EVENT' % (obj.upper, e.upper()))
         values['error_enums'] = ', '.join(errors)
         values['add_to_map_calls'] = ['add_%s_monitor_to_map(monitor, %s)' % (obj.lower(), i) for i in values['identities_names']]
-
+        #values['remove_calls'] = ['remove_%s_monitor_to_map(monitor, %s, )' % (obj.lower(), i) for i in values['identities_names']]
         # Output a method for each event (switch statement to handle FSM transitions)
         methods = mg._symbolTable.getEvents()
         callCases = []
@@ -559,7 +559,7 @@ class CTemplater(object):
             eventFunction.append(eventSignature + ' {')
             for key, fsm in allFSMs.items():
                 trans_group = fsm.groupTransitionsByStartState(fsm.getTransitionsByEvent(str(m)))
-                
+                final_states = fsm.finalstates
                 # Jump to next FSM if this one contains no transitions for the current event
                 if len(trans_group) == 0:
                     continue
@@ -570,7 +570,7 @@ class CTemplater(object):
                 eventFunction.append('  switch (%s) {' % reference)
                 for start_state, transitions in trans_group.items():
                     #print(transitions[0])
-                    eventFunction.append(CTemplater._writeCaseTransition(mg, obj, transitions, reference, name_reference, key))
+                    eventFunction.append(CTemplater._writeCaseTransition(mg, obj, transitions, reference, name_reference, key, final_states))
                 if mg._implicitErrors:
                     eventFunction.append('    default:')
                     eventFunction.append('      raise_error(\"%s_%s\", %s, \"%s\", \"DEFAULT\");' % (obj.lower(), key, name_reference, m))
@@ -1025,7 +1025,7 @@ class CTemplater(object):
 
     # Write out the switch statement case for a SMEDL trace transition
     @staticmethod
-    def _writeCaseTransition(mg, obj, transitions, currentState, stateName, scenario):
+    def _writeCaseTransition(mg, obj, transitions, currentState, stateName, scenario, finalstates):
         output = ['    case %s_%s_%s:\n' % (obj.upper(), scenario.upper(), transitions[0].startState.name.upper())]
 
         if mg._debug:
@@ -1050,12 +1050,16 @@ class CTemplater(object):
                     for action in transitions[i].nextActions:
                         output.append('        %s\n' % mg._writeAction(obj, action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
+                if transitions[i].nextState.name in finalstates:
+                    output.append('monitor->recycleFlag = 1;\n')
                 output.append('      }\n')
             elif len(transitions) == 1:
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
                         output.append('        %s\n' % mg._writeAction(obj, action))
                 output.append('      %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
+                if transitions[i].nextState.name in finalstates:
+                    output.append('monitor->recycleFlag = 1;\n')
                 break
             elif transitions[i].guard:
                 output.append('      else if(' + transitions[i].guard.replace('this.', 'monitor->') + ') {\n')
@@ -1063,6 +1067,8 @@ class CTemplater(object):
                     for action in transitions[i].nextActions:
                         output.append('        %s\n' % mg._writeAction(obj, action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
+                if transitions[i].nextState.name in finalstates:
+                    output.append('monitor->recycleFlag = 1;\n')
                 output.append('      }\n')
 
             # Handle Else (an Else state is defined, or reaching an Else denotes an error condition)
@@ -1072,6 +1078,8 @@ class CTemplater(object):
                     for action in transitions[i].elseActions:
                         output.append('        %s\n' % mg._writeAction(obj, action))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
+                if transitions[i].elseState.name in finalstates:
+                    output.append('monitor->recycleFlag = 1;\n')
                 output.append('      }\n')
             elif mg._implicitErrors and i == len(transitions)-1:
                 output.append('      else {\n')

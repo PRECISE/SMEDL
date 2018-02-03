@@ -21,8 +21,12 @@ class FSM(object):
         self.endState = None
         self.currentState = None
         self.transitions = []
+        self.finalstates = []
 
 
+    def addFinalState(self, state):
+        self.finalstates.append(state)
+    
     def addState(self, state):
         if not isinstance(state, State):
             raise TypeError("Invalid type for state argument.")

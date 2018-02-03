@@ -29,11 +29,12 @@ typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
 {{ state_names }}
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
 int executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
+{{ obj|title }}MonitorRecord * monitorPoolHead = NULL;
 
-
+//({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor( {{ obj|title }}Data *d ) {
-    {{ obj|title }}Monitor* monitor = ({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
+    {{ obj|title }}Monitor* monitor = {{ obj|lower }}_getMonitorObject();
     pthread_mutex_init(&monitor->monitor_lock, NULL);
 {% for id in identities %}    monitor->identities[{{ obj|upper }}_{{ id.name|upper }}] = init_monitor_identity({{ id.type|upper }}, {% if id.type|upper == "INT" %}&{% endif -%}d->{{ id.name }});
 
@@ -42,7 +43,7 @@ int executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
 {% endfor %}{{state_inits}}
     monitor->action_queue = NULL;
     monitor->export_queue = NULL;
-
+    monitor->recycleFlag = 0;
     
     put_{{ obj|lower }}_monitor(monitor);
     return monitor;
@@ -192,6 +193,9 @@ void executeEvents({{obj|title}}Monitor* monitor){
         executeExportedEvent(monitor);
     }
     if(monitor->action_queue == NULL && monitor->export_queue == NULL){
+        if (monitor -> recycleFlag == 1){
+            remove_{{obj|lower}}_monitor(monitor);
+        }
         memset(executed_scenarios, 0, sizeof(executed_scenarios));
     }
 
@@ -232,6 +236,7 @@ void executeExportedEvent({{obj|title}}Monitor* monitor){
 
         }
     }
+   
 
 }
 
@@ -264,6 +269,74 @@ int init_{{ obj|lower }}_monitor_maps() {
 
 void free_{{ obj|lower }}_monitor_maps() {
     // TODO
+}
+
+//first try to get a monitor object from the pool, if there is none, create one
+{{ obj|title }}Monitor* {{ obj|lower }}_getMonitorObject(){
+    if (monitorPoolHead == NULL){
+        printf("newly created monitor\n");
+        {{ obj|title }}Monitor* monitor = ({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
+        return monitor;
+    }else{
+        {{ obj|title }}MonitorRecord *record = monitorPoolHead;
+        monitorPoolHead = monitorPoolHead -> next;
+        printf("picked from pool\n");
+        return record->monitor;
+    }
+}
+
+int {{ obj|lower }}_addMonitorObjectToPool({{ obj|title }}MonitorRecord* record){
+    if (monitorPoolHead == NULL){
+        printf("monitor object removed\n");
+        monitorPoolHead = record;
+        return 0;
+    }
+    {{ obj|title }}MonitorRecord* temp = monitorPoolHead;
+    {{ obj|title }}MonitorRecord* pre_temp = NULL;
+    while(temp != NULL && temp -> monitor != NULL){
+        if(temp -> monitor == record -> monitor){
+            printf("already removed\n");
+            return 1;
+        }
+        pre_temp = temp;
+        temp = temp -> next;
+    }
+    pre_temp -> next = record;
+    printf("monitor object removed\n");
+    return 0;
+}
+
+
+int remove_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor *monitor, int identity) {
+    {{ obj|title }}MonitorMap* map = {{ obj|lower }}_monitor_maps[identity];
+    int bucket = hash_monitor_identity(monitor->identities[identity]->type,
+                                       monitor->identities[identity]->value, {{ obj|upper }}_MONITOR_MAP_SIZE);
+    {{ obj|title }}MonitorRecord* current = map->list[bucket];
+    {{ obj|title }}MonitorRecord* current_pre = NULL;
+    while(current != NULL) {
+        if (monitor == current->monitor){
+            pthread_mutex_lock(&{{ obj|lower }}_monitor_maps_lock);
+            if (current == map->list[bucket]){
+                map->list[bucket] =  map->list[bucket] -> next;
+            }else{
+                current_pre -> next = current -> next;
+            }
+            pthread_mutex_unlock(&{{ obj|lower }}_monitor_maps_lock);
+            if ({{ obj|lower }}_addMonitorObjectToPool(current)){
+                printf("no need to add duplicate objects");
+                free(current);
+            }
+            return 0;
+        }
+        current_pre = current;
+        current = current->next;
+    }
+    return 1;
+}
+
+void remove_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
+    {% for v in identities_names %}    remove_{{ obj|lower }}_monitor_to_map(monitor, {{v}});
+    {% endfor %}
 }
 
 int add_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor *monitor, int identity) {

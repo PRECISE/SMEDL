@@ -109,7 +109,7 @@ class MonitorGenerator(object):
         self._parseToSymbolTable('top', self.smedlAST)
         self._getParameterNames(self.smedlAST)
         allFSMs = self._generateFSMs(self.smedlAST)
-
+        
         # Process architecture AST
         self._parseArchitecture('top',self.a4smedlAST)
 
@@ -280,7 +280,7 @@ class MonitorGenerator(object):
             #print (pa_spec)
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
                 #if connEx.sourceMachine == None:
-            print(connEx)
+                #print(connEx)
             self.archSpec.append(connEx)
         elif isinstance(object,list):
             conn_name = None
@@ -502,8 +502,12 @@ class MonitorGenerator(object):
                         self._symbolTable.add(v, {'type': label, 'error': object['error'], 'params': object['params']})
                     else :
                         self._symbolTable.add(v, {'type': label, 'error': object['error'], 'params': []})
+               
+                
                 elif label == 'traces':
                     if '_state' in k and v is not None:
+                        #print(k)
+                        #print(v)
                         self._symbolTable.add(v, {'type': 'trace_state'})
                 elif ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not \
                     (v == 'true' or v == 'false' or v == 'null' or v == 'this') and v not in self._symbolTable:
@@ -574,10 +578,17 @@ class MonitorGenerator(object):
         # Go through each scenario and build an FSM
         for scenario in ast['scenarios'][0]:  # [0] handles grako's nested list structure
             fsm = FSM()
-
+            if scenario['final_definition'] != None:
+                finalstates = scenario['final_definition']['final_state']
+                if  isinstance(finalstates, list):
+                    for fs in finalstates:
+                        fsm.addFinalState(fs)
+                else:
+                    fsm.addFinalState(finalstates)
+        
             # Go through each trace in the scenario
             for trace in scenario['traces']:
-
+                
                 # Handle the Else bits
                 elseState = None
                 elseActions = None
@@ -758,25 +769,28 @@ class MonitorGenerator(object):
         #print(newList)
         (newList).sort(key = lambda x: len(x[0]))
         newList.reverse()
+        print('string:'+string)
         for sv in (newList):
+            #print('sv0:'+str(sv[1]))
             astr = self._returnAttachedString(sv[0],sv[1])
-            #print(astr)
             indices = [t.start() for t in re.finditer(sv[0], string)]
             #if sv in newList2:
             #print(sv[1])
             idxIter = 0
             for index in indices:
+                print('idx:'+str(index))
                 index = index + idxIter * len(astr) # 9=number of chars in 'monitor->'
                 #print('index:'+string[index])
                 i = 0
-                while(i<len(sv) and index+i<len(string)):
+                while(i<len(sv[0]) and index+i<len(string)):
                     if sv[0][i]!=string[index+i]:
                         print(string[0])
                         print('sv:'+sv[0][i]+' str:'+string[index+i]+' idx:'+str(index+i))
                         break
                     i=i+1
                 if i<len(sv[0]):
-                    print("give up" + str(i))
+                    
+                    print("give up " + sv[0]+str(i))
                     continue
                 if i==len(sv[0]) and index+i < len(string):
                     
@@ -806,8 +820,9 @@ class MonitorGenerator(object):
         newList = list((self._symbolTable.getSymbolsByType('state')))
         (newList).sort(key = lambda x: len(x))
         newList.reverse()
+        
         for sv in (newList):
-            #print(sv)
+            print('sv:'+sv)
             indices = [t.start() for t in re.finditer(sv, string)]
                 #if sv in newList2:
                 #print(indices)
@@ -823,6 +838,7 @@ class MonitorGenerator(object):
                         break
                     i=i+1
                 if i<len(sv):
+                    
                     print("give up" + str(i))
                     #return string
                     continue

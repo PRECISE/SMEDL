@@ -27,6 +27,7 @@ typedef struct {{ obj|title }}Monitor {
   amqp_connection_state_t recv_conn;
   amqp_socket_t *send_socket;
   amqp_connection_state_t send_conn;
+    int recycleFlag;
 } {{ obj|title }}Monitor;
 
 typedef struct {{ obj|title }}MonitorRecord {
@@ -53,6 +54,13 @@ void free_monitor({{ obj|title }}Monitor*);
 /*
  * Monitor Utility Functions
  */
+
+{{ obj|title }}Monitor* {{ obj|lower }}_getMonitorObject();
+int {{ obj|lower }}_addMonitorObjectToPool({{ obj|title }}MonitorRecord*);
+int remove_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor *monitor, int identity);
+void remove_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) ;
+
+
 {{ obj|title }}MonitorRecord* get_{{ obj|lower }}_monitors();
 {{ obj|title }}MonitorRecord* get_{{ obj|lower }}_monitors_by_identity(int, int, void*);
 {{ obj|title }}MonitorRecord* get_{{obj|lower}}_monitors_by_identities(int[], int type, void *[],int);
