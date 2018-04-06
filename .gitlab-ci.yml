@@ -15,4 +15,4 @@ test:
   - python -V
   - which python
   - pip install .
-  - nosetests -s
+  - nose2
