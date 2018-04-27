@@ -183,6 +183,7 @@ class CTemplater(object):
         #print(name)
         for conn in mg.archSpec:
             if conn.targetMachine == name:
+                
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                 [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type']), 'type' : p['type']} for p in mg._symbolTable.get(conn.targetEvent, 'params')]
                 msg_handler = []
@@ -474,6 +475,7 @@ class CTemplater(object):
 
                     
             if CTemplater._checkParametersLiteral(mg,m):
+                #print ('title:'+obj.title())
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}]
                 index = 0
                 for p in mg._symbolTable.get(m, 'params'):
@@ -481,6 +483,8 @@ class CTemplater(object):
                     index = index + 1
                 monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
             else:
+                #print('title:'+obj)
+                #print ('title:'+obj.title())
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                     [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
                 monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]

@@ -769,7 +769,7 @@ class MonitorGenerator(object):
         #print(newList)
         (newList).sort(key = lambda x: len(x[0]))
         newList.reverse()
-        print('string:'+string)
+        #print('string:'+string)
         for sv in (newList):
             #print('sv0:'+str(sv[1]))
             astr = self._returnAttachedString(sv[0],sv[1])
@@ -822,7 +822,7 @@ class MonitorGenerator(object):
         newList.reverse()
         
         for sv in (newList):
-            print('sv:'+sv)
+            #print('sv:'+sv)
             indices = [t.start() for t in re.finditer(sv, string)]
                 #if sv in newList2:
                 #print(indices)
