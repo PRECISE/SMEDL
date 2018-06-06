@@ -1,0 +1,55 @@
+object metrics
+
+
+
+state
+float interval = 30000.0;
+int current_msg_num = 0;
+int current_event_num = 0;
+float current_length = 0;
+float avg_e_n = 0;
+float avg_e_l = 0;
+int trackNum = 0;
+int del = 0;
+float intervalTimeThreshold =  15;
+
+
+events
+imported addTrack();
+imported metric( int, float, int);//del_flag
+internal check(int);
+internal metric_avg(float, float, int);
+exported trackIntervalTimeMetric(float);
+
+scenarios
+
+
+
+at:
+start -> addTrack() {trackNum = trackNum + 1;} -> start
+
+
+
+stat:
+
+start -> metric(num, len, flag) {current_msg_num = current_msg_num + 1; current_event_num = current_event_num + num; current_length = current_length + len; raise check(flag);} -> start
+
+ 
+
+output:
+start -> check(flag) when (current_msg_num == trackNum) {avg_e_n = current_event_num / current_msg_num; avg_e_l = current_length / current_msg_num; raise metric_avg( avg_e_n, avg_e_l,trackNum); current_event_num = 0;  current_msg_num = 0; current_length = 0; trackNum = trackNum - del; del = 0;  } -> start
+start -> check(flag) when (current_msg_num != trackNum && flag == 1) { del = del + 1;} -> start
+
+
+ Start -> metric_avg(eventNum, trackTime, trackNum)     when ( (trackTime > 0) && (trackTime < intervalTimeThreshold) )
+	  	{ printf("TrackObserveTime = %f \n", 1000*trackTime/interval); raise trackIntervalTimeMetric(1000*trackTime/interval); } -> Start
+Start -> metric_avg(eventNum, trackTime, trackNum)       when (!( (trackTime > 0) && (trackTime < intervalTimeThreshold) ))
+	  	{ printf("TrackObserveTime = %f \n", 1000*trackTime/interval); raise trackIntervalTimeMetric(1000*trackTime/interval); } -> Start
+
+
+
+
+
+
+
+

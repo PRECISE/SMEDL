@@ -1,0 +1,70 @@
+#import helper
+object windowManager
+
+identity
+int id;//track id
+
+
+state
+float sub_size = 5000;
+int numOfSubWindow = 6;
+int pro_buffer = 2;
+int temp = 0;
+int nos = 8;
+float t_ts;
+int removeFlag = 0;
+int removeCounter = 0;
+int tid = 0;
+int t_num = 0;
+int interval_size = 0;
+
+float tmp_ts;
+string tmp_rt;
+float tmp_lat;
+float tmp_lon;
+float tmp_alt;
+float tmp_vlat;
+float tmp_vlon;
+float tmp_valt;
+
+
+events
+imported track(float, string, int, float, float, float, float, float, float, float, int);
+imported heartbeat(); 
+internal create(float);
+
+exported trackOut(float, float, float, float, float, float, float);
+exported subCreation(int, float, int, int);
+exported createDS(int, float, int, int, int);
+exported createWindowDec(float, float, float);//create monitor for checking abnormal events
+exported heartbeatOut(int);//delete flag
+exported addTrack(int);
+
+
+scenarios
+
+
+initWindow:
+init -> track(ts, reportType, trackid, lat, lon, alt, vlat, vlon, valt,fts,num_int) when (!compare(reportType, "COAST") ) { nos = numOfSubWindow  + pro_buffer ; interval_size  = sub_size * nos; t_num = (num_int -1) / nos; t_ts = fts +  t_num * sub_size; temp = nos; raise create(t_ts); tmp_ts = ts; tmp_rt = reportType; tmp_lat = lat; tmp_lon = lon; tmp_alt=alt; tmp_vlat = vlat; tmp_vlon = vlon; tmp_valt = valt; raise checkDrop(reportType); } -> start 
+
+start -> track(ts, reportType, trackid, lat, lon, alt, vlat, vlon, valt,fts,num_int) when (!compare(reportType, "COAST")) { raise trackOut(ts, lat, lon, alt, vlat, vlon, valt); raise checkDrop(reportType);} -> start
+
+
+chkDrp:
+start -> checkDrop(rt) when (removeFlag == 0 && compare(rt,"DROP")) {removeFlag = 1;} -> start
+start -> checkDrop(rt) when (removeFlag == 1) {removeCounter = removeCounter + 1;} -> start
+
+
+createS:
+
+start -> create(fts) when (temp > 0) { t_ts = fts + (temp - 1) * sub_size; raise subCreation(temp - 1, t_ts, sub_size, nos); temp --; raise create(fts); } -> start// illegal in the current formal semantics
+
+start -> create(fts) when (temp = 0) {raise track_out (tmp_ts, id, tmp_lat, tmp_lon, tmp_alt, tmp_vlat, tmp_vlon, tmp_valt); raise addTrack(id); raise createDS(fts, numOfSubWindow, sub_size, pro_buffer); raise createWindowDec(fts, interval_size, sub_size); } -> start
+
+hb:
+finalstates: end;
+start -> heartbeat() when (removeCounter >= numOfSubWindow + pro_buffer) {raise heartbeatOut(1); } -> end
+start -> heartbeat() when (removeCounter < numOfSubWindow + pro_buffer) {raise heartbeatOut(0); } -> start
+
+
+ 

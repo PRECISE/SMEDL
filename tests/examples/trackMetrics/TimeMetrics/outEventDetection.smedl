@@ -1,0 +1,49 @@
+//receive events that are falling out of the window and buffer
+//and raise alarm
+object outEventDetection
+
+identity
+int wid;
+
+
+state
+float begin;
+float end;
+float sub_win_size = 0;
+
+
+events
+imported createSub(float, float, float);
+imported heartbeat(int);//delete flag
+imported track(float, int, float, float, float, float, float, float);
+exported alarm(int);//-1, smaller than least bound, 1, larger than largest bound
+
+scenarios
+
+initialization:
+
+init -> createSub(ts_b, interval, wsize)  { sub_win_size= wsize
+ ;  begin = ts_b ; end = begin + interval;
+ ;
+ } -> start
+
+innerCheck:
+
+start -> track(ts, trackid, lat, lon, alt, vlat, vlon, valt) when (ts < begin) {raise alarm(-1);} -> start
+start -> track(ts, trackid, lat, lon, alt, vlat, vlon, valt) when (ts > end)) {raise alarm(1);} -> start
+
+
+
+out:
+finalstates: end;
+start -> heartbeat(b) when (b == 0){raise reset(); } -> start
+
+start -> heartbeat(b) when (b == 1) -> end
+
+
+res:
+start -> reset() {begin = begin + sub_win_size; end = end + sub_win_size;} -> start
+
+
+
+

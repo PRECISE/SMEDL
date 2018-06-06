@@ -1,0 +1,72 @@
+//need to output every heartbeat
+//subinterval value may be updated
+object subwindow
+
+identity
+int wid;
+int id;//subwindow id
+
+state
+int nos; 
+int nos_1 = 0. 
+int sub_win_size;
+float begin;
+float end;
+int numberOfEvents = 0;
+float firstEventTS = 0;
+float lastEventTS = 0;
+int cycle = 0;
+
+events
+imported createSub(int, float, int, int);
+imported heartbeat(int);//delete flag
+imported trackOut(float, int, float, float, float, float, float, float);
+internal itrack(float);
+internal reset(int, float);
+exported sub_metric( int, float, float, int);
+
+scenarios
+
+initialization:
+
+init -> createSub(w, ts, sub_size, subn)  { sub_win_size= sub_size
+ ;  begin = ts ; end = begin + sub_win_size; nos = subn; nos_1 = wid + 1;
+ ;
+ } -> start
+
+innerCheck:
+
+init -> track(ts, trackid, lat, lon, alt, vlat, vlon, valt) when ((ts >= begin && ts < end)) {numberOfEvents ++; firstEventTS = ts; lastEventTS = ts;} -> start
+start -> track(ts, trackid, lat, lon, alt, vlat, vlon, valt) when ((ts >= begin && ts < end)) {raise itrack(ts);} -> start
+
+
+count:
+
+start -> itrack(ts)  {numberOfEvents ++; } -> start
+
+updateTS:
+start -> itrack(ts) when (ts < firstEventTS) {firstEventTS = ts;} -> start
+
+updateLTS:
+start -> itrack(ts) when (ts > lastEventTS) {lastEventTS = ts;} -> start
+
+
+out:
+finalstates: end;
+start -> heartbeat(b) when (b == 0){raise sub_metric(numberOfEvents, firstEventTS, lastEventTS, b); cycle = cycle + 1; raise reset(); } -> start
+
+start -> heartbeat(b) when (b == 1){raise sub_metric(numberOfEvents, firstEventTS, lastEventTS, b);   } -> end
+
+
+update:
+start -> reset() when (nos_1 != 0 && cycle == nos_1) {firstEventTS = 0; 
+lastEventTS = 0; numberOfEvents = 0; begin = begin + nos * sub_win_size; end = begin + sub_win_size; cycle = 0; nos_1 = nos_1 -1;
+} -> start
+
+start -> reset() when (nos_1 == 0 && cycle == nos) {firstEventTS = 0; 
+lastEventTS = 0; numberOfEvents = 0; begin = begin + nos * sub_win_size; end = begin + sub_win_size; cycle = 0; 
+} -> start
+
+
+
+
