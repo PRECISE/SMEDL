@@ -1,9 +1,17 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "actions.h"
+#include "mon_utils.h"
+#include "monitor_map.h"
+#include "cJSON.h"
+
 
 int push_param(param **head, int *i, char *c, double *d, const void **v, cJSON * pro) {
-    param *new = (param*)malloc(sizeof(param));
+#ifdef DEBUG
+    param *new = calloc(1, sizeof(param));
+#else //DEBUG
+    param *new = malloc(sizeof(param));
+#endif //DEBUG
     if(new == NULL) {
         free(new);
         return 0;
@@ -46,6 +54,33 @@ void pop_param(param **head) {
     }
 }
 
+#ifdef DEBUG
+void print_param(param *head, char *types) {
+    printf("Params:");
+    for (int i = 0; types[i] != '\0'; i++) {
+        printf(" ");
+        switch (types[i]) {
+            case 'i':
+                printf("int:%d", head->i);
+                break;
+            case 'c':
+                printf("char:%c", head->c);
+                break;
+            case 'd':
+                printf("double:%lf", head->d);
+                break;
+            case 'v':
+                printf("string:%s", head->v);
+                break;
+            default:
+                printf("pro:<data>");
+        }
+        head = head->next;
+    }
+    printf("\n");
+}
+#endif //DEBUG
+
 int push_action(action **head, int id, param *params) {
     action *new = (action*)malloc(sizeof(action));
     if(new == NULL) {
@@ -70,6 +105,37 @@ int push_action(action **head, int id, param *params) {
 void pop_action(action **head) {
     if(head != NULL && *head != NULL) {
         action *old = *head;
+        *head = (*head)->next;
+        free(old);
+    }
+}
+
+int push_global_action(global_action **head, int monitor_type, MonitorIdentity **identities, int id, param *params) {
+    global_action *new = (global_action*)malloc(sizeof(global_action));
+    if(new == NULL) {
+        free(new);
+        return 0;
+    }
+    new->monitor_type = monitor_type;
+    new->identities = identities;
+    new->id = id;
+    new->params = params;
+    new->next = NULL;
+    if(*head == NULL) {
+        *head = new;
+        return 1;
+    }
+    global_action *current = *head;
+    while((current)->next != NULL) {
+        current = current->next;
+    }
+    current->next = new;
+    return 1;
+}
+
+void pop_global_action(global_action **head) {
+    if(head != NULL && *head != NULL) {
+        global_action *old = *head;
         *head = (*head)->next;
         free(old);
     }
