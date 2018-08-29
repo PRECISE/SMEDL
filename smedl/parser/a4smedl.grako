@@ -4,11 +4,11 @@
 
 top
     =
-    'System' system:identifier ':=' monitor_declaration:monitorDeclaration archSpec:architectureSpec$;
+    'System' system:identifier ':=' monitor_declaration:monitorDeclaration sync_set_declaration:syncSetDeclaration archSpec:architectureSpec$;
 
 monitorDeclaration = interfaces+:{monitorInterface}+;
 
-monitorInterface = mon_type:['Async' | 'Sync'] monitor_identifier:identifier '('params:parameter_list')'
+monitorInterface = 'Monitor' monitor_identifier:identifier '('params:parameter_list')'
    '{' 
        { 'imported' imported_events+:event_definition_list}
        {'exported' exported_events+:event_definition_list}*
@@ -44,8 +44,13 @@ integer
     ?/[-+]?[0-9]+/?
     ;
 
+syncSetDeclaration = 'Synchronous sets:' sync_set_expr+:{syncSetExpr}+;
 
-architectureSpec = conn_expr+:{connectionExpr}+;
+syncSetExpr = set_identifier:identifier ':' monitor_list;
+
+monitor_list = @:identifier {',' @:identifier}* ';';
+
+architectureSpec = 'Channels:' conn_expr+:{connectionExpr}+;
 
 connectionExpr = [connection:identifier ':'] [source_machine_identifier:identifier '.'] source_event_identifier:identifier '=>' target_machine_identifier:identifier'.'target_event_identifier:identifier ['{'pattern_spec:patternSpec'}'];
 

@@ -8,9 +8,9 @@
 #define bindingkeyNum {{ bindingkeys_num }}
 
 // This function handles imported events.
-// The first 4 parameters align with get_windowmanager_monitors_by_identities. If there are no identities to match,
+// The first 4 parameters align with get_{{ obj|lower }}_monitors_by_identities. If there are no identities to match,
 // they should be NULL, 0, NULL, 0 (although it doesn't really matter).
-// event_id is from the windowmanager_event enum
+// event_id is from the {{ obj|lower }}_event enum
 // params are the parameters of the event
 void import_event_{{ obj|lower }}(int identity[], int type, coid *values[], int size, int event_id, param *params) {
     {{ obj|title }}MonitorRecord* record;
