@@ -2,34 +2,22 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 #include <string.h>
 #include <stdint.h>
-#include <amqp_tcp_socket.h>
-#include <amqp.h>
-#include <amqp_framing.h>
-#include <libconfig.h>
-#include "amqp_utils.h"
 #include "cJSON.h"
 #include "mon_utils.h"
 #include "{{ base_file_name }}_mon.h"
+#include "{{ sync_set_name }}_global_wrapper.h" //TODO JINJA add this variable
 
 #define ARRAYSIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 
 {%- if helper %}{{ '\n' }}#include "{{ helper }}"{% endif %}
 
-typedef enum { {{ identities_names|join(', ') }} } {{ obj|lower }}_identity;
 const identity_type {{ obj|lower }}_identity_types[{{ obj|upper }}_MONITOR_IDENTITIES] = { {{ identities_types|join(', ') }} };
-
-typedef enum { {{ scenario_names|join(', ') }} } {{ obj|lower }}_scenario;
-{{ state_enums }}
-typedef enum { {{ event_enums }} } {{ obj|lower }}_event;
-typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
-{{ state_names }}
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
-int executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
-{{ obj|title }}MonitorRecord * monitorPoolHead = NULL;
+int {{ obj|lower }}_executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
+{{ obj|title }}MonitorRecord * {{ obj|lower }}_monitorPoolHead = NULL;
 
 //({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
 
@@ -42,166 +30,30 @@ int executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
 {% for v in state_vars %}    monitor->{{ v.name }} = d->{{ v.name }};
 {% endfor %}{{state_inits}}
     monitor->action_queue = NULL;
-    monitor->export_queue = NULL;
     monitor->recycleFlag = 0;
     
     put_{{ obj|lower }}_monitor(monitor);
     return monitor;
 }
 
-smedl_provenance_t* create_provenance_object(char event[255], int line, long trace_counter){
-    smedl_provenance_t* provenance = (smedl_provenance_t*)malloc(sizeof(smedl_provenance_t));
-    strncpy(provenance -> event, event,255);
-    provenance -> line = line;
-    provenance -> trace_counter = trace_counter;
-    return provenance;
-}
-
-/*
-void start_monitor({{ obj|title }}Monitor* monitor) {
-    int received = 0;
-    amqp_frame_t frame;
-
-    // Announce that the monitor has started
-    char* ids = monitor_identities_str(monitor->identities);
-    char* ann = malloc(strlen(ids)+50);
-    sprintf(ann, "{{ obj|title }} monitor (%s) started.", ids);
-    free(ids);
-    die_on_error(amqp_basic_publish(monitor->send_conn,
-                                    1,
-                                    amqp_cstring_bytes(monitor->ctrl_exchange),
-                                    amqp_cstring_bytes("smedl.control"), // Ignored due to fanout exchange
-                                    0,
-                                    0,
-                                    NULL,
-                                    amqp_cstring_bytes(ann)),
-                "Publishing {{ obj|title }} monitor startup announcement");
-    free(ann);
-
-    while (1) {
-        amqp_rpc_reply_t ret;
-        amqp_envelope_t envelope;
-        amqp_maybe_release_buffers(monitor->recv_conn);
-        ret = amqp_consume_message(monitor->recv_conn, &envelope, NULL, 0);
-        amqp_message_t msg = envelope.message;
-        amqp_bytes_t bytes = msg.body;
-        amqp_bytes_t routing_key = envelope.routing_key;
-        char* rk = (char*)routing_key.bytes;
-        char* string = (char*)bytes.bytes;
-
-        if (string != NULL) {
-            char* eventName = strtok(rk, ".");
-            if (eventName != NULL) {
-                cJSON * root = cJSON_Parse(string);
-                cJSON * ver = cJSON_GetObjectItem(root,"fmt_version");
-                char * msg_ver = NULL;
-                if(ver!=NULL){
-                    msg_ver = ver->valuestring;
-                }
-                cJSON* pro = NULL;
-                if(msg_ver != NULL && !strcmp(msg_ver,msg_format_version)){
-                    pro = cJSON_GetObjectItem(root,"provenance");
-                    
-
-                    {{ event_msg_handlers|join('\n') }}
-                } else {
-                    printf("format version not matched\n");
-                }
-            }
-
-        }
-
-        if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
-            if (AMQP_RESPONSE_LIBRARY_EXCEPTION == ret.reply_type &&
-                AMQP_STATUS_UNEXPECTED_STATE == ret.library_error) {
-                if (AMQP_STATUS_OK != amqp_simple_wait_frame(monitor->recv_conn, &frame)) {
-                    return;
-                }
-
-                if (AMQP_FRAME_METHOD == frame.frame_type) {
-                    switch (frame.payload.method.id) {
-                        case AMQP_BASIC_ACK_METHOD:
-
-                            printf("AMQP_BASIC_ACK_METHOD\n");
-                            break;
-                        case AMQP_BASIC_RETURN_METHOD:
-
-                            printf("AMQP_BASIC_RETURN_METHOD\n");
-                            amqp_message_t message;
-                            ret = amqp_read_message(monitor->recv_conn, frame.channel, &message, 0);
-                            if (AMQP_RESPONSE_NORMAL != ret.reply_type) {
-                                return;
-                            }
-                            amqp_destroy_message(&message);
-                            break;
-
-                        case AMQP_CHANNEL_CLOSE_METHOD:
-
-                            return;
-
-                        case AMQP_CONNECTION_CLOSE_METHOD:
-
-                            return;
-
-                        default:
-                            fprintf(stderr ,"An unexpected method was received %u\n", frame.payload.method.id);
-                            return;
-                    }
-                }
-            }
-        } else {
-            amqp_destroy_envelope(&envelope);
-        }
-        received++;
-    }
-}
-*/
-
-void send_message({{ obj|title }}Monitor* monitor, char* message, char* routing_key) {
-    amqp_bytes_t message_bytes;
-    message_bytes.len = strlen(message)+1;
-    message_bytes.bytes = message;
-    amqp_bytes_t routingkey_bytes;
-    routingkey_bytes.len = strlen(routing_key)+1;
-    routingkey_bytes.bytes = routing_key;
-    die_on_error(amqp_basic_publish(monitor->send_conn,
-                                    1,
-                                    amqp_cstring_bytes(monitor->amqp_exchange),
-                                    routingkey_bytes,
-                                    0,
-                                    0,
-                                    NULL,
-                                    message_bytes),
-                 "Publishing");
-
-}
-
 void free_monitor({{ obj|title }}Monitor* monitor) {
-    die_on_amqp_error(amqp_channel_close(monitor->send_conn, 1, AMQP_REPLY_SUCCESS), "Closing channel");
-    die_on_amqp_error(amqp_connection_close(monitor->send_conn, AMQP_REPLY_SUCCESS), "Closing connection");
-    die_on_error(amqp_destroy_connection(monitor->send_conn), "Ending connection");
     free(monitor);
 }
 
 //called at the end of each event handling function
-void executeEvents({{obj|title}}Monitor* monitor){
+void executeEvents_{{ obj|lower }}({{obj|title}}Monitor* monitor){
     if(monitor->action_queue != NULL){
-        executePendingEvents(monitor);
-    }
-
-    if(monitor->action_queue == NULL && monitor->export_queue != NULL){
-        executeExportedEvent(monitor);
-    }
-    if(monitor->action_queue == NULL && monitor->export_queue == NULL){
+        executePendingEvents_{{ obj|lower }}(monitor);
+    } else {
         if (monitor -> recycleFlag == 1){
             remove_{{obj|lower}}_monitor(monitor);
         }
-        memset(executed_scenarios, 0, sizeof(executed_scenarios));
+        memset({{ obj|lower }}_executed_scenarios, 0, sizeof({{ obj|lower }}_executed_scenarios));
     }
 
 }
 
-void executePendingEvents({{obj|title}}Monitor* monitor){
+void executePendingEvents_{{ obj|lower }}({{obj|title}}Monitor* monitor){
     action** head = &monitor->action_queue;
     {{var_declaration}} cJSON* pro;
     while(*head!=NULL){
@@ -217,27 +69,6 @@ void executePendingEvents({{obj|title}}Monitor* monitor){
         }
         //pop_action(head);
     }
-}
-
-//send export events one by one from export_queue
-void executeExportedEvent({{obj|title}}Monitor* monitor){
-    action** head = &monitor->export_queue;
-    {{var_declaration}} cJSON* pro;
-    while(*head != NULL){
-        int type = (*head)->id;
-        param *params = (*head)->params;
-        param *p_head = params;
-        switch (type) {
-            {% for e in export_event_case -%}
-            case {{ e.event_enum|join('\n') }}
-            {{e.callstring}}
-                break;
-            {% endfor -%}
-
-        }
-    }
-   
-
 }
 
 
@@ -273,25 +104,25 @@ void free_{{ obj|lower }}_monitor_maps() {
 
 //first try to get a monitor object from the pool, if there is none, create one
 {{ obj|title }}Monitor* {{ obj|lower }}_getMonitorObject(){
-    if (monitorPoolHead == NULL){
+    if ({{ obj|lower }}_monitorPoolHead == NULL){
         printf("newly created monitor\n");
         {{ obj|title }}Monitor* monitor = ({{ obj|title }}Monitor*)malloc(sizeof({{ obj|title }}Monitor));
         return monitor;
     }else{
-        {{ obj|title }}MonitorRecord *record = monitorPoolHead;
-        monitorPoolHead = monitorPoolHead -> next;
+        {{ obj|title }}MonitorRecord *record = {{ obj|lower }}_monitorPoolHead;
+        {{ obj|lower }}_monitorPoolHead = {{ obj|lower }}_monitorPoolHead -> next;
         printf("picked from pool\n");
         return record->monitor;
     }
 }
 
 int {{ obj|lower }}_addMonitorObjectToPool({{ obj|title }}MonitorRecord* record){
-    if (monitorPoolHead == NULL){
+    if ({{ obj|lower }}_monitorPoolHead == NULL){
         printf("monitor object removed\n");
-        monitorPoolHead = record;
+        {{ obj|lower }}_monitorPoolHead = record;
         return 0;
     }
-    {{ obj|title }}MonitorRecord* temp = monitorPoolHead;
+    {{ obj|title }}MonitorRecord* temp = {{ obj|lower }}_monitorPoolHead;
     {{ obj|title }}MonitorRecord* pre_temp = NULL;
     while(temp != NULL && temp -> monitor != NULL){
         if(temp -> monitor == record -> monitor){
