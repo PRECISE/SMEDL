@@ -5,8 +5,7 @@ from .connectionExpr import ConnectionExpr
 
 class Interface(object):
 
-    def __init__(self,ty,name,pa,ie,ee):
-        self.type = ty
+    def __init__(self,name,pa,ie,ee):
         self.id = name
         self.params = pa
         self.importedEvents = ie
@@ -14,8 +13,6 @@ class Interface(object):
 
     def __str__(self):
         out = "mon:"
-        if not (self.type == None):
-            out+=' type:'+(self.type)
         if not (self.id == None):
             out+=' name:'+(self.id)
         if not self.params == None:

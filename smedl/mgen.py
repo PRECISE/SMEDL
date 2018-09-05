@@ -46,6 +46,7 @@ class MonitorGenerator(object):
         self.smedlAST = None
         self.a4smedlAST = None
         self.monitorInterface = []
+        self.synchronousSets = dict()
         self.archSpec = []
         self.identities = []
 
@@ -147,8 +148,41 @@ class MonitorGenerator(object):
             for k, v in list(object.items()):
                 if k == 'monitor_declaration':
                     self._parseInter(v)
+                elif k == 'sync_set_declaration':
+                    self._parseSets(v)
                 elif k == 'archSpec':
                     self._parseSpec(v)
+
+    def _parseSets(self, object):
+        if isinstance(object, AST):
+            for k,v in list(object.items()):
+                if k == 'sync_sets':
+                   if isinstance(v, list):
+                       for sync_set in v:
+                           self._parseSet(v)
+
+    def _parseSet(self, object):
+        set_name = None
+        set_monitors = []
+        for k,v in list(object.items()):
+            if k == 'set_identifier':
+                set_name = v
+            elif k == 'monitor_list':
+                if not v == None:
+                    if isinstance(c, list):
+                        set_monitors = v
+                    else:
+                        set_monitors = [v]
+
+        all_monitors = []
+        for iface in self.monitorInterface:
+            all_monitors.append(iface.id)
+        for mon in set_monitors:
+            if mon not in all_monitors:
+                exit("Synchronous sets not consistent")
+
+        self.synchronousSet[set_name] = set_monitors
+
 
 
     def _makeMonitor(self, object):
@@ -160,11 +194,12 @@ class MonitorGenerator(object):
                 para = []
                 imported = []
                 exported = []
-                montype = None
+                #montype = None #TODO See what else this changes
                 for k,v in list(mon.items()):
-                    if k == 'mon_type':
-                        monType = v
-                    elif k == 'monitor_identifier':
+                    #if k == 'mon_type':
+                    #    monType = v
+                    #elif k == 'monitor_identifier':
+                    if k == 'monitor_identifier':
                         monId = v
                     elif k == 'params':
                         if not v == None:
@@ -182,7 +217,8 @@ class MonitorGenerator(object):
                     #print (para)
                     if identities != para:
                         exit("identities not consistent")
-                interface = Interface(monType,monId,para,imported,exported)
+                #interface = Interface(monType,monId,para,imported,exported)
+                interface = Interface(monId,para,imported,exported)
                 #print(interface)
                 self.monitorInterface.append(interface)
 
