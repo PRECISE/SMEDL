@@ -1,13 +1,13 @@
-#ifndef WINDOW_GLOBAL_WRAPPER_H
-#define WINDOW_GLOBAL_WRAPPER_H
+#ifndef {{ sync_set_name|upper }}_GLOBAL_WRAPPER_H
+#define {{ sync_set_name|upper }}_GLOBAL_WRAPPER_H
 
 #include "monitor_map.h"
 #include "actions.h"
 
-#define bindingkeyNum 2
+#define bindingkeyNum {{ bindingkeys_num }}
 #define msg_format_version "1.0.0"
 
-typedef enum {WINDOW_WINDOWMANAGER_MONITOR, WINDOW_SUBWINDOW_MONITOR, WINDOW_OUTEVENTDETECTION_MONITOR, WINDOW_WINDOWDOWNSTREAM_MONITOR} window_Monitor_Type;
+typedef enum { {{ sync_set_monitors_enum }} } {{ sync_set_name }}_Monitor_Type;
 
 // The global wrapper export API. All exported events go through this function, which sorts them
 // into the sync queue, async queue, or both, depending on which monitors they go to.
@@ -26,4 +26,4 @@ param* get_param_by_idx(param * head, int idx);
 // Moved from <monitortype>_mon.c but not currently used.
 smedl_provenance_t* create_provenance_object(char event[], int line, long trace_counter);
 
-#endif //WINDOW_GLOBAL_WRAPPER_H
+#endif //{{ sync_set_name|upper }}_GLOBAL_WRAPPER_H

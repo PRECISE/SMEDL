@@ -84,6 +84,8 @@ class CTemplater(object):
                 break;
         values['sync_set_monitors'] = sync_set_monitors
         values['sync_set_name'] = sync_set_name
+        values['sync_set_monitors_enum'] = ', '.join(
+                [sync_set_name.upper() + '_' + m.upper() + '_MONITOR' for m in sync_set_monitors])
 
         # Monitor initialization
         # If a monitor has no creation event, we assume that we must create it ourself
