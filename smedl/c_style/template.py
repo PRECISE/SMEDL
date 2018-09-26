@@ -72,33 +72,44 @@ class CTemplater(object):
         if not CTemplater._checkDefaultAssign (state_vars):
             exit("wrong type of default value")
         values = dict()
-        values['mon_init_str'] = []
+
+        # Use object name as default synchronous set name, but find the actual
+        # synchronous set if there is one
+        sync_set_name = obj
+        sync_set_monitors = [obj]
+        for k,v in mg.synchronousSets:
+            if obj in v:
+                sync_set_name = k
+                sync_set_monitors = v
+                break;
+        values['sync_set_monitors'] = sync_set_monitors
+        values['sync_set_name'] = sync_set_name
+
+        # Monitor initialization
+        # If a monitor has no creation event, we assume that we must create it ourself
+        # (Note: Prior to synchronous communication, this was determined by checking for identities)
+        mon_init_str = []
+        for iface in mg.monitorInterface:
+            if iface.id in sync_set_monitors:
+                has_creation = False
+                for ev in iface.importedEvents:
+                    if not ev.creation == None:
+                        has_creation = True
+                if not has_creation:
+                    # We need to add a default identity and create a default instance
+                    mon_init_str.append('{')
+                    mon_init_str.append('%sData *implicit_d = malloc(sizeof(%sData))' % (obj.title(), obj.title()))
+                    mon_init_str.append('int i = 0;')
+                    mon_init_str.append('implicit_d->id = %i;') # This seems like it's begging for a segfault
+                    mon_init_str.append(CTemplater.addDataString('implicit_d', state_vars))
+                    mon_init_str.append('%sMonitor *tempMon = init_%s_monitor(implicit_d);' % (obj.title(), obj.lower()))
+                    mon_init_str.append('}\n')
+        values['mon_init_str'] = '\n'.join(mon_init_str)
+
+
         # If there are no identities defined, make a default one:
         if len(mg._symbolTable.getSymbolsByType('identity')) == 0:
             identities = [{'type': 'opaque', 'name': 'id'}]
-            #if there are no identities defined, add creation of default monitor instances
-            mon_init_handler = []
-            implicit_data_name = 'implicit_d'#implicit temp data name
-            mon_init_handler.append('%sData *%s = (%sData *)malloc(sizeof(%sData));\n' %(obj.title(),implicit_data_name,obj.title(),obj.title()))
-            #TODO: need add statement adding initial value of state variables
-            implicit_str = 'int i = 0;\n'
-            implicit_str += implicit_data_name + '-> id = &i;\n'
-            implicit_str += CTemplater._addDataString(implicit_data_name, state_vars)
-
-            #for s in state_vars:
-            #    v = 'NULL'
-            #    if s['type'] == 'int' or s['type'] == 'float':
-            #        v = '0'
-            #    elif s['type'] == 'string' :
-            #        v = '\"0\"'
-                #print(v)
-                #    implicit_str += implicit_data_name + '->' + s['name'] + '=' + v + ';\n'
-            mon_init_handler.append(implicit_str)
-            mon_init_handler.append('%sMonitor *tempMon = init_%s_monitor(%s);\n' % (obj.title(),obj.lower(),implicit_data_name))
-            mon_init_handler.append('tempMon -> send_conn = send_conn;\n')
-            mon_init_handler.append('tempMon -> amqp_exchange = amqp_exchange;\n')
-            values['mon_init_str'].append('\n'.join(mon_init_handler))
-            
         else:
             identities = [{'type': mg._symbolTable.get(v)['datatype'], 'name': v} for v in mg._symbolTable.getSymbolsByType('identity')]
         for id in identities:
@@ -165,18 +176,25 @@ class CTemplater(object):
         callCases = []
         values['signatures']= []
         values['event_code'] = []
-        values['event_msg_handlers'] = []
+        event_msg_handlers = []
         values['var_declaration'] = []
         values['pending_event_case'] = []
         values['export_event_case'] = []
+        values['imported_event_case'] = []
+        values['exported_event_case'] = []
+        values['exported_event_routes'] = []
 
-        if mg._getBindingKeysNum() == 0:
-            values['bindingkeys_num'] = 1 # TODO: Make these customizable
-        else:
-            values['bindingkeys_num'] = mg._getBindingKeysNum()# TODO: Make these customizable
-        values['b_keys'] = CTemplater._getBindingKeys(mg)
-        #print(values['b_keys'])
+        # Make a list of binding keys
+        values['b_keys'] = CTemplater._getBindingKeys(mg, sync_set_monitors)
+        values['bindingkeys_num'] = len(values['b_keys'])
+        if values['bindingkeys_num'] == 0:
+            values['bindingkeys_num'] = 1
 
+
+        # REMOVE ######################################################################
+        ###############################################################################
+        # Because it was used only for old local wrapper. But some code here would be
+        # useful in other places.
 
         # Construct event_msg_handlers
         name = mg._symbolTable.getSymbolsByType('object')[0]
@@ -428,6 +446,429 @@ class CTemplater(object):
                 msg_handler.append('                }')
                 values['event_msg_handlers'].append('\n'.join(msg_handler))
                 
+        # END REMOVE#########################################################
+        #####################################################################
+
+        # Local wrapper imported event handlers
+        name = mg._symbolTable.getSymbolsByType('object')[0]
+        for conn in mg.archSpec:
+            if conn.targetMachine == name:
+                callstring = []
+                callstring.append('printf("' + obj + ' local wrapper importing ' + conn.targetEvent + ' event\\n");')
+
+                connSpec = conn.patternSpec
+
+                if connSpec == None or len(connSpec) == 0: # Are there identities to match?
+                    # No identities
+                    callstring.append('record = get_%s_monitors();' % obj.lower())
+                else:
+                    # Yes there are identities
+                    callstring.append('record = get_%s_monitors_by_identities(identity, type, values, size')
+                    
+                    # If this is a creation event, we need dynamic instantiation code
+                    targetEvent = mg._getTargetEvent(conn.targetMachine,conn.targetEvent)
+                    if targetEvent.creation != None:
+                        callstring.append('if(record == NULL){')
+                        callstring.append('record = (%sMonitorRecord *)malloc(sizeof(%sMonitorRecord));' %(obj.title(), obj.title()))
+                        callstring.append('%sData *d = (%sData *)malloc(sizeof(%sData));' %(obj.title(),obj.title(),obj.title()))
+                        j = 0
+                        for v in identities:
+                            callstring.append('if (target_parameterTypes[identity['+str(j)+']]==INT){')
+                            callstring.append('\t d ->' + v['name'] + '=' + '*(int*)values[' + str(j) + '];}')
+                            callstring.append('else if(target_parameterTypes[identity['+str(j)+']]==STRING) {\t d ->' + v['name'] + '=(void*)' + 'values[' + str(j)+ '];}')
+                            callstring.append('else {\t d ->' + v['name'] + '= (void *)NULL;}')
+                            j += 1
+                        callstring.append(CTemplater._addDataString('d',state_vars))
+                        callstring.append('%sMonitor* tempMon = init_%s_monitor(d);' % (obj.title(),obj.lower()))
+                        callstring.append('record -> monitor = tempMon;')
+                        callstring.append('record -> next = NULL;')
+                        callstring.append('}\n\t')
+
+                callstring.append('{');
+
+                # Pull params out
+                ki = 0
+                kd = 0
+                kv = 0
+                kc = 0
+                handler_call = '\\n' + obj.lower() + '_' + conn.targetEvent + '(record->monitor'
+                for p in mg._symboltable.get(conn.targetEvent, 'params'):
+                    if p['type'] == 'int':
+                        callstring.append('int i' + str(ki) + ' = params->i;')
+                        handler_call += ', i' + str(ki)
+                        ki += 1
+                    elif p['type'] == 'char':
+                        callstring.append('char c' + str(kc) + ' = params->c;')
+                        handler_call += ', c' + str(kc)
+                        kc += 1
+                    elif p['type'] == 'double' or p['type'] == 'float':
+                        callstring.append('double d' + str(kd) + ' = params->d;')
+                        handler_call += ', d' + str(kd)
+                        kd += 1
+                    elif p['type'] == 'pointer' or key == 'opaque':
+                        callstring.append('void *v' + str(kv) + ' = params->v;')
+                        handler_call += ', v' + str(kv)
+                        kv += 1
+                    elif p['type'] == 'string':
+                        callstring.append('char *v' + str(kv) + ' = params->v;')
+                        handler_call += ', v' + str(kv)
+                        kv += 1
+                    callstring.append('params = params->next;')
+                callstring.append('cJSON *pro = params->provenance;')
+                handler_call += ', pro);'
+
+                # Call event handlers
+                callstring.append('while(record != NULL) {')
+                callstring.append('printf("' + obj + ' local wrapper dispatching ' + conn.targetEvent + ' to a monitor");')
+                callstring.append(handler_call)
+                callstring.append('record = record->next;')
+                callstring.append('}')
+                callstring.append('}')
+
+                values['imported_event_case'].append({'event_enum':[obj.upper()+'_'+conn.targetEvent.upper()+'_EVENT:'],'callstring':'\n'.join(callstring)})
+
+        # Local wrapper exported event handlers
+        for m in methods:
+            if 'exported' == mg._symbolTable.get(m)['type']:
+                callstring = []
+                callstring.append('{')
+
+                ki = 0
+                kd = 0
+                kv = 0
+                kc = 0
+                handler_call = '\\nexported_' + obj.lower() + '_' + m + '(identities'
+                for p in mg._symboltable.get(m, 'params'):
+                    if p['type'] == 'int':
+                        callstring.append('int i' + str(ki) + ' = params->i;')
+                        handler_call += ', i' + str(ki)
+                        ki += 1
+                    elif p['type'] == 'char':
+                        callstring.append('char c' + str(kc) + ' = params->c;')
+                        handler_call += ', c' + str(kc)
+                        kc += 1
+                    elif p['type'] == 'double' or p['type'] == 'float':
+                        callstring.append('double d' + str(kd) + ' = params->d;')
+                        handler_call += ', d' + str(kd)
+                        kd += 1
+                    elif p['type'] == 'pointer' or key == 'opaque':
+                        callstring.append('void *v' + str(kv) + ' = params->v;')
+                        handler_call += ', v' + str(kv)
+                        kv += 1
+                    elif p['type'] == 'string':
+                        callstring.append('char *v' + str(kv) + ' = params->v;')
+                        handler_call += ', v' + str(kv)
+                        kv += 1
+                    callstring.append('params = params->next;')
+                callstring.append('cJSON *pro = params->provenance;')
+                handler_call += ', pro);'
+                callstring.append('pop_param(&p_head);')
+
+                callstring.append(handler_call)
+                callstring.append('}')
+
+                values['exported_event_case'].append({'event_enum':[obj.upper()+'_'+.upper()+'_EVENT:'],'callstring':'\n'.join(callstring)})
+
+        # Cases for the global wrapper export_event function
+        for m in mg.monitorInterface:
+            if m.id in sync_set_monitors:
+                exported_event_list = []
+                for ev in m.exportedEvents:
+                    ev_name = ev.event_id
+                    route_synchronously = False
+                    route_asynchronously = False
+
+                    # Is this event the source of a channel?
+                    for conn in mg.archSpec:
+                        if conn.sourceMachine == m.id:
+                            # It is. Is the destination inside and/or outside the synchronous set?
+                            if conn.targetMachine in sync_set_monitors:
+                                route_synchronously = True
+                            else:
+                                route_asynchronously = True
+
+                    callstring = []
+                    if route_synchronously:
+                        callstring.append('push_global_action(&sync_queue, monitor_type, identities, event_id, params);')
+                    if route_asynchronously:
+                        callstring.append('push_global_action(&async_queue, monitor_type, identities, event_id, params);')
+
+                    if callstring != []:
+                        exported_event_list.append({'name':ev_name,'callstring':'\n'.join(callstring)})
+                if exported_event_list != []:
+                    values['exported_event_routes'].append({'name':m.id, 'events':exported_event_list})
+
+        # Global wrapper JSON handling
+        for conn in mg.archSpec:
+            if conn.targetMachine in sync_set_monitors and !(conn.sourceMachine in sync_set_monitors):
+                event_msg_handlers.append('if (!strcmp(eventName, "%s")) {' % conn.connName)
+                
+                # Get parameters
+                ev_params = None
+                for iface in mg.monitorInterface:
+                    if iface.id == conn.targetMachine:
+                        for ev in iface.importedEvents:
+                            if ev.event_id == conn.targetEvent:
+                                # Gets a list of type strings
+                                ev_params = ev.params
+                ev_params_c = []
+                for smedl_type in ev_params:
+                    ev_params_c.append(CTemplater.convertTypeForC(smedl_type))
+
+                idx = 1
+                for c_type in ev_params_c:
+                    if c_type == 'char*':
+                        event_msg_handlers.append('char *var%d = NULL;' % (idx))
+                    else:
+                        event_msg_handlers.append('%s var%d = 0' % (c_type, idx))
+                    idx += 1
+                event_msg_handlers.append('cJSON * fmt = cJSON_GetObjectItem(root, "params");')
+                event_msg_handlers.append('if (fmt != NULL) {');
+                idx = 1
+                for c_type in ev_params_c:
+                    if c_type == 'int' or c_type == 'char':
+                        event_msg_handlers.append('if (cJSON_GetObjectItem(fmt,"v%d") != NULL {' % (idx))
+                        event_msg_handlers.append('var%d = cJSON_GetObjectItem(fmt,"v%d")->valueint;' % (idx, idx))
+                    elif c_type == 'double':
+                        event_msg_handlers.append('if (cJSON_GetObjectItem(fmt,"v%d") != NULL {' % (idx))
+                        event_msg_handlers.append('var%d = cJSON_GetObjectItem(fmt,"v%d")->valuedoule;' % (idx, idx))
+                    elif c_type == 'char*':
+                        event_msg_handlers.append('if (cJSON_GetObjectItem(fmt,"v%d") != NULL {' % (idx))
+                        event_msg_handlers.append('var%d = cJSON_GetObjectItem(fmt,"v%d")->valuestring;' % (idx, idx))
+                        idx += 1
+
+                # Create target identities (if we need to)
+                if connspec == None or len(connSpec) == 0:
+                    event_msg_handlers.append('int *identity = NULL;')
+                    event_msg_handlers.append('void **values = NULL;')
+                else:
+                    connSpec = conn.patternSpec
+                    t_machine = mg._getMachine(conn.targetMachine)
+                    t_machine_params = t_machine.params
+                    t_lengthIdentityList = len(t_machine_params)
+                    tmp_str = 'int target_parameterTypes [%d] = {' % (t_lengthIdentityList)
+                    i = 0
+                    for t in t_machine_params:
+                        if i == 0:
+                            tmp_str += t.upper()
+                        else:
+                            tmp_str += ',' + t.upper()
+                        t += 1
+                    tmp_str += '};'
+                    event_msg_handlers.append(tmp_str)
+
+                    j = 0
+                    idList = [] 
+                    type = "" 
+                    #print (pattern)
+                    eventParaList = [] 
+                    eventParaList_ = {} 
+                    for pattern in connSpec: #operator is always equal, leftTerm is identity of target monitor
+                        if pattern.leftTerm != conn.targetMachine:
+                            #print (pattern.leftTerm)
+                            #print (conn)
+                            #print(pattern.leftTerm)
+                            #print(conn)
+                            exit("illegal pattern1")
+                        #if s_machine_params == None or pattern.leftIndex >= len(s_machine_params) :
+                        #    exit("illegal pattern2")
+                        #print(connSpec)
+                        #print(pattern)
+                        if pattern.rightTerm == conn.sourceEvent:
+                            eventParaList.append(pattern.leftIndex)
+                            eventParaList_[pattern.leftIndex]=pattern.rightIndex
+                        if j == 0:
+                            type = t_machine_params[pattern.leftIndex].upper()
+                            j = 1
+                        idList.append(pattern.leftIndex)
+
+                    tmp_str = 'int identity[%d] = {' % len(connSpec)
+                    j = 0
+                    for i in idList:
+                        if j == 0:
+                            tmp_str += str(i)
+                        else:
+                            tmp_str += ','+str(i)
+                        j += 1
+
+                    tmp_str += '};'
+                    event_msg_handlers.append(tmp_str);
+                    event_msg_handlers.append('void* values[%d] = {};' % len(idList))
+
+                    #TODO Room for cleanup in this next section?
+                    tmp_str = ""
+                    j = 0
+                    local_name = 'tmp_j'
+                    #print(eventParaList)
+                    while j < len(idList):
+                        stri = ''
+                        strs = ''
+
+                        if idList[j] in eventParaList:
+                            #print(monitorParams)
+                            #print(idList[j])
+                            stri = monitorParams[eventParaList_[idList[j]]+1]['name'] + ';'
+                            #print(stri)
+                            strs =  '(void*)' + monitorParams[eventParaList_[idList[j]]+1]['name'] + ';'
+                        else:
+                            stri = '(atoi(monitor_parameter_val_strs[identity[' + str(j)+']]));'
+                            strs = '(void*)monitor_parameter_val_strs[identity[' + str(j)+']];\n'
+                        tmp_str += 'if (target_parameterTypes[identity[' + str(j)+']]==INT) {int '+ local_name + ' = ' + stri
+                        tmp_str += 'values[' + str(j) + '] =(void*)&' + local_name +';}'
+                        tmp_str += 'else if(target_parameterTypes[identity[' + str(j)+']]==STRING) {values[' + str(j)+']=' + strs + '}\n'
+                        tmp_str += 'else {values[' + str(j)+'] = (void *)NULL;}\n'
+                        j += 1
+                    event_msg_handlers.append(tmp_str);
+
+                # Create a parameter list
+                event_msg_handlers.append('param *p_head = NULL;')
+                idx = 1
+                for c_type in ev_params_c:
+                    if c_type == 'int':
+                        event_msg_handlers.append('push_param(&p_head, var%d, NULL, NULL, NULL, NULL);' % (idx))
+                    elif c_type == 'char':
+                        event_msg_handlers.append('push_param(&p_head, NULL, var%d, NULL, NULL, NULL);' % (idx))
+                    elif c_type == 'double':
+                        event_msg_handlers.append('push_param(&p_head, NULL, NULL, var%d, NULL, NULL);' % (idx))
+                    else:
+                        event_msg_handlers.append('push_param(&p_head, NULL, NULL, NULL, var%d, NULL);' % (idx))
+                        idx += 1
+                event_msg_handlers.append('push_param(&p_head, NULL, NULL, NULL, NULL, pro);')
+
+                # Call handler
+                event_msg_handlers.append('printf("%s calling import API for %s\\n");' % (sync_set_name, conn.targetMachine))
+                event_msg_handlers.append('import_event_%s(identity, %s, values, %d, %s_%s_EVENT, p_head);' % (conn.targetMachine, type, len(idList), conn.targetMachine.upper(), conn.targetEvent.upper()))
+                event_msg_handlers.append('}' * len(ev_params_c))
+
+                event_msg_handlers.append('} else {')
+                event_msg_handlers.append('printf("no parameters\n");')
+                event_msg_handlers.append('} else ')
+        # We could print a message when an event comes in with a routing key we don't recognize, but let's just silently ignore it for efficiency.
+        event_msg_handlers.append(';');
+
+        values['event_msg_handlers'] = '\n'.join(event_msg_handlers)
+
+        # Global wrapper sync_queue handling
+        sync_queue_handlers = dict() # key is monitor name
+                                     # value is another dict with event/callstring pairs
+        for mon in sync_set_monitors:
+            sync_queue_handlers[mon] = dict()
+        for conn in mg.archSpec:
+            if conn.targetMachine in sync_set_monitors and conn.sourceMachine in sync_set_monitors:
+                callstring = ['{']
+                callstring.append('int dest_event_id = %s_%s_EVENT;' % (conn.targetMachine.upper(), conn.targetEvent.upper()))
+
+                connSpec = conn.patternSpec
+                idType = ''
+                idList = []
+                if connSpec == None or len(connSpec) == 0:
+                    callstring.append('int *identity = NULL;')
+                    callstring.append('void **values = NULL;')
+                else:
+                    s_machine = mg._getMachine(conn.sourceMachine)
+                    s_machine_params = s_machine.params
+                    lengthIdentityList = len(s_machine_params)
+                    tmp_str = 'int parameterTypes [' + str(lengthIdentityList) + '] = {'
+                    i = 0
+                    for t in s_machine_params:
+                        if i == 0:
+                            tmp_str += t.upper()
+                        else:
+                            tmp_str += ',' + t.upper()
+                        i = i + 1
+                    tmp_str += '};'
+                    callstring.append(tmp_str)
+                    #monitor_parameter_val_strs:
+                    if lengthIdentityList > 0:
+                        #callstring.append('char* monitor_parameter_val_strs[' + str(lengthIdentityList) + '] = divideRoutingkey(rk,'+str(lengthIdentityList)+');')
+                        callstring.append('char** monitor_parameter_val_strs = divideRoutingkey(rk, %d);' % (lengthIdentityList))
+
+                    eventParaList = []
+                    eventParaList_ = {}
+                    for pattern in connSpec: #operator is always equal, leftTerm is identity of target monitor
+                        if pattern.leftTerm != conn.targetMachine:
+                            #print (pattern.leftTerm)
+                            #print (conn)
+                            #print(pattern.leftTerm)
+                            #print(conn)
+                            exit("illegal pattern1")
+                        #if s_machine_params == None or pattern.leftIndex >= len(s_machine_params) :
+                        #    exit("illegal pattern2")
+                        #print(connSpec)
+                        #print(pattern)
+                        if pattern.rightTerm == conn.sourceEvent:
+                            eventParaList.append(pattern.leftIndex)
+                            eventParaList_[pattern.leftIndex]=pattern.rightIndex
+                        if j == 0:
+                            idType = t_machine_params[pattern.leftIndex].upper()
+                            j = 1
+                        idList.append(pattern.leftIndex)
+                    #print(pattern.rightIndex)
+
+                    tmp_str = 'int identity[' + str(len(connSpec)) + '] = {'
+                    j = 0
+                    for i in idList:
+                        if j == 0:
+                            tmp_str += str(i)
+                        else:
+                            tmp_str += ',' + str(i)
+                        j += 1
+                    tmp_str = '};'
+                    callstring.append(tmp_str)
+                    callstring.append('void* values[%d] = {};' % (len(idList)))
+                    j = 0
+                    local_name = 'tmp_j'
+                    #print(eventParaList)
+                    while j < len(idList):
+                        stri = ''
+                        strs = ''
+
+                        if idList[j] in eventParaList:
+                            #print(monitorParams)
+                            #print(idList[j])
+                            stri = monitorParams[eventParaList_[idList[j]]+1]['name'] + ';'
+                            #print(stri)
+                            strs =  '(void*)' + monitorParams[eventParaList_[idList[j]]+1]['name'] + ';'
+                        else:
+                            stri = '(atoi(monitor_parameter_val_strs[identity[' + str(j)+']]));'
+                            strs = '(void*)monitor_parameter_val_strs[identity[' + str(j)+']];'
+                        callstring.append('if (target_parameterTypes[identity[' + str(j)+']]==INT) {')
+                        callstring.append('int '+ local_name + ' = ' + stri)
+                        callstring.append('values[' + str(j) + '] =(void*)&' + local_name +';')
+                        callstring.append('} else if(target_parameterTypes[identity[' + str(j)+']]==STRING) {')
+                        callstring.append('values[' + str(j)+']=' + strs)
+                        callstring.append('} else {')
+                        callstring.append('values[' + str(j)+'] = (void *)NULL;')
+                        callstring.append('}')
+                        j = j+1
+
+                    if lengthIdentityList > 0:
+                        sscanfStr += 'int pi = 0;\n while (pi <' + (str(lengthIdentityList)) + ') {free(monitor_parameter_val_strs[pi]); pi ++;}\n'
+                        sscanfStr += 'free(monitor_parameter_val_strs);'
+                
+                callstring.append('#ifdef DEBUG')
+                callstring.append('printf("\\n%s set calling import API for %s.%s (from %s.%s)")' %
+                        (sync_set_name, conn.targetMachine, conn.targetEvent,
+                            conn.sourceMachine, conn.sourceEvent))
+                callstring.append('#endif //DEBUG')
+                callstring.append('import_event_%s(identity, %s, values, %d, dest_event_id, params);' %
+                        (conn.targetMachine, idType, len(idList)))
+                callstring.append('}')
+
+                if conn.sourceMachine not in sync_queue_handlers or conn.sourceEvent not in sync_queue_handlers[conn.sourceMachine]:
+                    sync_queue_handlers[conn.sourceMachine][conn.sourceEvent] = callstring
+                else:
+                    sync_queue_handlers[conn.sourceMachine][conn.sourceEvent].extend(callstring)
+        for k, v in sync_queue_handlers:
+            event_list = list()
+            for ev, callstring in v:
+                event_list.append({'event_name':ev, 'callstring': '\n'.join(callstring)})
+            values['sync_queue_handlers'].append({'monitor_name':k, 'event_list':event_list})
+        # End of new code ###################################################
+        #####################################################################
+
+                if 'imported_events' == mg._symbolTable.get(m)['type']:
+                    values['imported_event_case'].append({'event_enum':[obj.upper()+'_'+m.upper()+'_EVENT:'],'callstring':callstring})
 
         parameterTypeNumMap = collections.OrderedDict()
         parameterTypeNumMap['int'] = 0
@@ -773,6 +1214,15 @@ class CTemplater(object):
             out_c_file.write(out_c)
             out_c_file.close()
 
+        out_wh = env.get_template('monitor_wrapper.h').render(values)
+        if console_output:
+            print("--" + filename + "_monitor_wrapper.h--")
+            print(out_wh)
+        else:
+            out_wh_file = open(os.path.join(dirname, output_dir, basename + '_monitor_wrapper.h'), 'w')
+            out_wh_file.write(out_wh)
+            out_wh_file.close()
+        
         out_w = env.get_template('monitor_wrapper.c').render(values)
         if console_output:
             print("--" + filename + "_monitor_wrapper.c--")
@@ -782,6 +1232,24 @@ class CTemplater(object):
             out_w_file.write(out_w)
             out_w_file.close()
         
+        glb_h = env.get_template('set_global_wrapper.h').render(values)
+        if console_output:
+            print("--" + filename + "_global_wrapper.h--")
+            print(glb_h)
+        else:
+            glb_h_file = open(os.path.join(dirname, output_dir, basename + '_global_wrapper.h'), 'w')
+            glb_h_file.write(glb_h)
+            glb_h_file.close()
+        
+        glb_c = env.get_template('set_global_wrapper.c').render(values)
+        if console_output:
+            print("--" + filename + "_global_wrapper.c--")
+            print(glb_c)
+        else:
+            glb_c_file = open(os.path.join(dirname, output_dir, basename + '_global_wrapper.c'), 'w')
+            glb_c_file.write(glb_c)
+            glb_c_file.close()
+
         # Copy pre-written static helper files to the output path
         a_h = env.get_template('actions.h').render()
         if console_output:
@@ -884,8 +1352,18 @@ class CTemplater(object):
                     return True
         return False
 
+    # Major changes for synchronous communication:
+    # Takes all channels that come into any monitor in the synchronous set from outside it
+    # Return only the channel names
+    def _getBindingKeys(mg, sync_set_monitors):
+        lst = []
+        for conn in mg.archSpec:
+            if conn.targetMachine in sync_set_monitors and !(conn.sourceMachine in sync_set_monitors):
+                lst.append(conn.connName)
+        return lst
+
     #for dynamic instantiation, no need to analyze routing key when building binding keys
-    def _getBindingKeys(mg):
+    def _getBindingKeys2(mg):
         lst = []
         name = mg._symbolTable.getSymbolsByType('object')[0]
         k = 0

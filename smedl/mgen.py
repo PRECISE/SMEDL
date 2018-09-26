@@ -180,9 +180,9 @@ class MonitorGenerator(object):
         for mon in set_monitors:
             if mon not in all_monitors:
                 exit("Synchronous sets not consistent")
+        #TODO Check if any monitors are in more than one synchronous set
 
-        self.synchronousSet[set_name] = set_monitors
-
+        self.synchronousSets[set_name] = set_monitors
 
 
     def _makeMonitor(self, object):
@@ -467,13 +467,15 @@ class MonitorGenerator(object):
             return False
 
 
-    def _getBindingKeysNum(self):
-        num = 0
-        name = self._symbolTable.getSymbolsByType('object')[0]
-        for conn in self.archSpec:
-            if name==conn.targetMachine:
-                num=num+1
-        return num
+
+    # This is only used by the templater, which can make the calculation itself.
+    #def _getBindingKeysNum(self):
+    #    num = 0
+    #    name = self._symbolTable.getSymbolsByType('object')[0]
+    #    for conn in self.archSpec:
+    #        if name==conn.targetMachine:
+    #            num=num+1
+    #    return num
 
 
     def _getMachine(self,name):

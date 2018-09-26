@@ -5,12 +5,12 @@ from .patternExpr import PatternExpr
 class ConnectionExpr(object):
 
     def __init__(self,cn,sm,se,tm,te,ps):
-        self.connName = cn
-        self.sourceMachine = sm
-        self.sourceEvent = se
-        self.targetMachine = tm
-        self.targetEvent = te
-        self.patternSpec = ps
+        self.connName = cn          #string
+        self.sourceMachine = sm     #string
+        self.sourceEvent = se       #string
+        self.targetMachine = tm     #string
+        self.targetEvent = te       #string
+        self.patternSpec = ps       #PatternExpr (patternExpr.py)
 
     def __str__(self):
         out = "connectionExpr:"

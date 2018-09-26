@@ -6,10 +6,10 @@ from .connectionExpr import ConnectionExpr
 class Interface(object):
 
     def __init__(self,name,pa,ie,ee):
-        self.id = name
-        self.params = pa
-        self.importedEvents = ie
-        self.exportedEvents = ee
+        self.id = name              #string
+        self.params = pa            #list of strings
+        self.importedEvents = ie    #Event (event.py)
+        self.exportedEvents = ee    #Event (event.py)
 
     def __str__(self):
         out = "mon:"
