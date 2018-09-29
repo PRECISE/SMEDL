@@ -1013,7 +1013,7 @@ class CTemplater(object):
 
                 reference = 'monitor->state[%s_%s_SCENARIO]' % (obj.upper(), key.upper())
                 name_reference = "%s_states_names[%s_%s_SCENARIO][monitor->state[%s_%s_SCENARIO]]"%(obj.lower(), obj.upper(), key.upper(), obj.upper(), key.upper())
-                eventFunction.append('if (executed_scenarios[%s_%s_SCENARIO]==0) {' % (obj.upper(), key.upper()))
+                eventFunction.append('if (%s_executed_scenarios[%s_%s_SCENARIO]==0) {' % (obj.lower(), obj.upper(), key.upper()))
                 eventFunction.append('  switch (%s) {' % reference)
                 for start_state, transitions in trans_group.items():
                     #print(transitions[0])
@@ -1025,16 +1025,17 @@ class CTemplater(object):
                     #  eventFunction.append('      goto exec;') #add at 09/20
                     eventFunction.append('      break;')
                 eventFunction.append('  }')
-                eventFunction.append('//executed_scenarios[%s_%s_SCENARIO]=1;' % (obj.upper(), key.upper()))
+                eventFunction.append('//%s_executed_scenarios[%s_%s_SCENARIO]=1;' % (obj.lower(), obj.upper(), key.upper()))
                 eventFunction.append('  }')
     #eventFunction.append('exec:') #add at 09/20
-            eventFunction.append('executeEvents(monitor);')
+            eventFunction.append('executeEvents_%s(monitor);' % (obj.lower()))
             eventFunction.append('}\n\n')
 
             export_event_sig = None
             cjson_str = '\tcJSON *root; cJSON* fmt; cJSON* prove; \n\t root = cJSON_CreateObject();\n'
             if 'exported_events' == mg._symbolTable.get(m)['type']:
-                paramString = obj.title() + "Monitor* monitor " + CTemplater._generateEventParams(mg,m)
+                #paramString = obj.title() + "Monitor* monitor " + CTemplater._generateEventParams(mg,m)
+                paramString = "MonitorIdentity* identities " + CTemplater._generateEventParams(mg,m)
                 export_event_sig = 'void exported_%s_%s(%s)' % (obj.lower(), m, paramString)
                 values['signatures'].append(export_event_sig)
                 eventFunction.append(export_event_sig + ' {')
@@ -1100,9 +1101,9 @@ class CTemplater(object):
                 sprintf_routing+='"'
                 for v in identities:
                     if v['type'] == 'string':
-                        sprintf_routing += ', (char*)((monitor->identities['
+                        sprintf_routing += ', (char*)((identities['
                     else:
-                        sprintf_routing += ', (long)(*(int*)(monitor->identities['
+                        sprintf_routing += ', (long)(*(int*)(identities['
                     sprintf_routing += '%s_' % obj.upper() # TODO: Update this value with exact identity name defined in SMEDL
                     sprintf_routing += v['name'].upper() +']->value))'
                 if len(evParams) > 0:
@@ -1114,7 +1115,7 @@ class CTemplater(object):
                 eventFunction.append(sprintf_routing)
                 #add to test
                 eventFunction.append('printf("msg:%s\\n", message);');
-                eventFunction.append('  send_message(monitor, message, routing_key);')
+                eventFunction.append('  send_message(message, routing_key);')
                 eventFunction.append('}\n\n')
             raiseFunction = CTemplater._writeRaiseFunction(mg, m, obj)
 
@@ -1635,6 +1636,7 @@ class CTemplater(object):
             output.append(' push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);')
         output.append('  push_action(&monitor->action_queue, %s_%s_EVENT, p_head);' % (obj.upper(), event.upper()))
         if 'exported_events' == mg._symbolTable.get(event)['type']:
-            output.append('  push_action(&monitor->export_queue, %s_%s_EVENT, ep_head);' % (obj.upper(), event.upper()))
+            #output.append('  push_action(&monitor->export_queue, %s_%s_EVENT, ep_head);' % (obj.upper(), event.upper()))
+            output.append('  export_event(%s_%s_MONITOR, monitor->identities, %s_%s_EVENT, ep_head);' % (sync_set_name.upper(), obj.upper(), obj.upper(), event.upper()))
         output.append('}\n\n')
         return {'code':output, 'signature':signature}
