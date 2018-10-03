@@ -18,7 +18,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2017, 12, 1, 5, 22, 8, 4)
+__version__ = (2018, 10, 3, 11, 50, 41, 2)
 
 __all__ = [
     'a4smedlParser',
@@ -89,11 +89,13 @@ class a4smedlParser(Parser):
         self._token(':=')
         self._monitorDeclaration_()
         self.name_last_node('monitor_declaration')
+        self._syncSetDeclaration_()
+        self.name_last_node('sync_set_declaration')
         self._architectureSpec_()
         self.name_last_node('archSpec')
         self._check_eof()
         self.ast._define(
-            ['archSpec', 'monitor_declaration', 'system'],
+            ['archSpec', 'monitor_declaration', 'sync_set_declaration', 'system'],
             []
         )
 
@@ -111,14 +113,7 @@ class a4smedlParser(Parser):
 
     @graken()
     def _monitorInterface_(self):
-        with self._optional():
-            with self._choice():
-                with self._option():
-                    self._token('Async')
-                with self._option():
-                    self._token('Sync')
-                self._error('expecting one of: Async Sync')
-        self.name_last_node('mon_type')
+        self._token('Monitor')
         self._identifier_()
         self.name_last_node('monitor_identifier')
         self._token('(')
@@ -127,20 +122,20 @@ class a4smedlParser(Parser):
         self._token(')')
         self._token('{')
 
-        def block4():
+        def block2():
             self._token('imported')
             self._event_definition_list_()
             self.add_last_node_to_name('imported_events')
-        self._closure(block4)
+        self._closure(block2)
 
-        def block6():
+        def block4():
             self._token('exported')
             self._event_definition_list_()
             self.add_last_node_to_name('exported_events')
-        self._closure(block6)
+        self._closure(block4)
         self._token('}')
         self.ast._define(
-            ['mon_type', 'monitor_identifier', 'params'],
+            ['monitor_identifier', 'params'],
             ['exported_events', 'imported_events']
         )
 
@@ -205,7 +200,44 @@ class a4smedlParser(Parser):
         self._pattern(r'[-+]?[0-9]+')
 
     @graken()
+    def _syncSetDeclaration_(self):
+        self._token('Synchronous sets:')
+
+        def block1():
+            self._syncSetExpr_()
+        self._positive_closure(block1)
+        self.add_last_node_to_name('sync_sets')
+        self.ast._define(
+            [],
+            ['sync_sets']
+        )
+
+    @graken()
+    def _syncSetExpr_(self):
+        self._identifier_()
+        self.name_last_node('set_identifier')
+        self._token('{')
+        self._monitor_list_()
+        self._token('}')
+        self.ast._define(
+            ['set_identifier'],
+            []
+        )
+
+    @graken()
+    def _monitor_list_(self):
+        self._identifier_()
+        self.name_last_node('@')
+
+        def block1():
+            self._token(',')
+            self._identifier_()
+            self.name_last_node('@')
+        self._closure(block1)
+
+    @graken()
     def _architectureSpec_(self):
+        self._token('Channels:')
 
         def block1():
             self._connectionExpr_()
@@ -314,6 +346,15 @@ class a4smedlSemantics(object):
         return ast
 
     def integer(self, ast):
+        return ast
+
+    def syncSetDeclaration(self, ast):
+        return ast
+
+    def syncSetExpr(self, ast):
+        return ast
+
+    def monitor_list(self, ast):
         return ast
 
     def architectureSpec(self, ast):
