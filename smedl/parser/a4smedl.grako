@@ -46,9 +46,9 @@ integer
 
 syncSetDeclaration = 'Synchronous sets:' sync_sets+:{syncSetExpr}+;
 
-syncSetExpr = set_identifier:identifier '{' monitor_list '}';
+syncSetExpr = set_identifier:identifier '{' monitor_list:monitorList '}';
 
-monitor_list = @:identifier {',' @:identifier}*;
+monitorList = @:identifier {',' @:identifier}*;
 
 architectureSpec = 'Channels:' conn_expr+:{connectionExpr}+;
 

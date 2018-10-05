@@ -41,6 +41,7 @@ void export_event(int monitor_type, MonitorIdentity *identities[], int event_id,
                 case {{ e.name }}
                     {{ e.callstring }}
                     break;
+                {% endfor -%}
             }
             break;
         {% endfor -%}

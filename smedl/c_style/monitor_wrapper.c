@@ -17,7 +17,7 @@ void import_event_{{ obj|lower }}(int identity[], int type, coid *values[], int 
     // Get the relevant monitor instances. Filter by ID or do dynamic instantiation if needed
     // (depends on the event type)
     switch (event_id) { //One case for each imported event.
-        {% for in imported_event_case -%}
+        {% for e in imported_event_case -%}
         case {{ e.event_enum|join('\n') }}
         {{e.callstring}}
             break;
@@ -33,7 +33,7 @@ void export_async_event_{{ obj }}(MonitorIdentity** identities, int event_id, pa
         // Only need cases for exported events that go outside the synchronous set
         // Parse out the appropriate parameters for the event type and call the appropriate
         //   function for that event to generate the JSON and send it
-        {% for in exported_event_case -%}
+        {% for e in exported_event_case -%}
         case {{ e.event_enum|join('\n') }}
         {{e.callstring}}
             break;

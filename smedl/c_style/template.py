@@ -77,7 +77,7 @@ class CTemplater(object):
         # synchronous set if there is one
         sync_set_name = obj
         sync_set_monitors = [obj]
-        for k,v in mg.synchronousSets:
+        for k,v in mg.synchronousSets.items():
             if obj in v:
                 sync_set_name = k
                 sync_set_monitors = v
@@ -103,7 +103,7 @@ class CTemplater(object):
                     mon_init_str.append('%sData *implicit_d = malloc(sizeof(%sData))' % (obj.title(), obj.title()))
                     mon_init_str.append('int i = 0;')
                     mon_init_str.append('implicit_d->id = %i;') # This seems like it's begging for a segfault
-                    mon_init_str.append(CTemplater.addDataString('implicit_d', state_vars))
+                    mon_init_str.append(CTemplater._addDataString('implicit_d', state_vars))
                     mon_init_str.append('%sMonitor *tempMon = init_%s_monitor(implicit_d);' % (obj.title(), obj.lower()))
                     mon_init_str.append('}\n')
         values['mon_init_str'] = '\n'.join(mon_init_str)
@@ -494,7 +494,7 @@ class CTemplater(object):
                 kv = 0
                 kc = 0
                 handler_call = '\\n' + obj.lower() + '_' + conn.targetEvent + '(record->monitor'
-                for p in mg._symboltable.get(conn.targetEvent, 'params'):
+                for p in mg._symbolTable.get(conn.targetEvent, 'params'):
                     if p['type'] == 'int':
                         callstring.append('int i' + str(ki) + ' = params->i;')
                         handler_call += ', i' + str(ki)
@@ -640,11 +640,24 @@ class CTemplater(object):
                         idx += 1
 
                 # Create target identities (if we need to)
-                if connspec == None or len(connSpec) == 0:
+                connSpec = conn.patternSpec
+                if connSpec == None or len(connSpec) == 0:
                     event_msg_handlers.append('int *identity = NULL;')
                     event_msg_handlers.append('void **values = NULL;')
+                    type = "INT" # doesn't matter what we set here, it won't be used
+                    idList = []
                 else:
-                    connSpec = conn.patternSpec
+                    #monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
+                    #[{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type']), 'type' : p['type']} for p in mg._symbolTable.get(conn.targetEvent, 'params')]
+                    monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}]
+                    for mon in mg.monitorInterface:
+                        if mon.id == conn.targetMachine:
+                            for ev in mon.importedEvents:
+                                if ev.event_id == conn.targetEvent:
+                                    k = 0
+                                    for t in ev.params:
+                                        monitorParams.append({'name': 'p' + str(k), 'c_type': CTemplater.convertTypeForC(t), 'type': t})
+                    #[{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type']), 'type' : p['type']} for p in mg._symbolTable.get(conn.targetEvent, 'params')]
                     t_machine = mg._getMachine(conn.targetMachine)
                     t_machine_params = t_machine.params
                     t_lengthIdentityList = len(t_machine_params)
@@ -655,7 +668,7 @@ class CTemplater(object):
                             tmp_str += t.upper()
                         else:
                             tmp_str += ',' + t.upper()
-                        t += 1
+                        i += 1
                     tmp_str += '};'
                     event_msg_handlers.append(tmp_str)
 
@@ -767,6 +780,15 @@ class CTemplater(object):
                     callstring.append('int *identity = NULL;')
                     callstring.append('void **values = NULL;')
                 else:
+                    monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}]
+                    for mon in mg.monitorInterface:
+                        if mon.id == conn.targetMachine:
+                            for ev in mon.importedEvents:
+                                if ev.event_id == conn.targetEvent:
+                                    k = 0
+                                    for t in ev.params:
+                                        monitorParams.append({'name': 'p' + str(k), 'c_type': CTemplater.convertTypeForC(t), 'type': t})
+                    #[{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type']), 'type' : p['type']} for p in mg._symbolTable.get(conn.targetEvent, 'params')]
                     s_machine = mg._getMachine(conn.sourceMachine)
                     s_machine_params = s_machine.params
                     lengthIdentityList = len(s_machine_params)
@@ -845,8 +867,8 @@ class CTemplater(object):
                         j = j+1
 
                     if lengthIdentityList > 0:
-                        sscanfStr += 'int pi = 0;\n while (pi <' + (str(lengthIdentityList)) + ') {free(monitor_parameter_val_strs[pi]); pi ++;}\n'
-                        sscanfStr += 'free(monitor_parameter_val_strs);'
+                        callstring.append('int pi = 0;\n while (pi <' + (str(lengthIdentityList)) + ') {free(monitor_parameter_val_strs[pi]); pi ++;}')
+                        callstring.append('free(monitor_parameter_val_strs);')
                 
                 callstring.append('#ifdef DEBUG')
                 callstring.append('printf("\\n%s set calling import API for %s.%s (from %s.%s)")' %
@@ -861,9 +883,10 @@ class CTemplater(object):
                     sync_queue_handlers[conn.sourceMachine][conn.sourceEvent] = callstring
                 else:
                     sync_queue_handlers[conn.sourceMachine][conn.sourceEvent].extend(callstring)
-        for k, v in sync_queue_handlers:
+        values['sync_queue_handlers'] = []
+        for k, v in sync_queue_handlers.items():
             event_list = list()
-            for ev, callstring in v:
+            for ev, callstring in v.items():
                 event_list.append({'event_name':ev, 'callstring': '\n'.join(callstring)})
             values['sync_queue_handlers'].append({'monitor_name':k, 'event_list':event_list})
         # End of new code ###################################################
@@ -1114,7 +1137,7 @@ class CTemplater(object):
                 eventFunction.append('printf("msg:%s\\n", message);');
                 eventFunction.append('  send_message(message, routing_key);')
                 eventFunction.append('}\n\n')
-            raiseFunction = CTemplater._writeRaiseFunction(mg, m, obj)
+            raiseFunction = CTemplater._writeRaiseFunction(mg, m, obj, sync_set_name)
 
             # Build the event handler function
             if pedlEvent:
@@ -1598,7 +1621,7 @@ class CTemplater(object):
         return paramString
 
 
-    def _writeRaiseFunction(mg, event, obj):
+    def _writeRaiseFunction(mg, event, obj, sync_set_name):
         output = []
         paramString = obj.title() + "Monitor* monitor" + CTemplater._generateEventParams(mg,event)
         signature = 'void raise_%s_%s(%s)' % (obj.lower(), event, paramString)

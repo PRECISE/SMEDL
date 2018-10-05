@@ -18,7 +18,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2018, 10, 3, 11, 50, 41, 2)
+__version__ = (2018, 10, 5, 15, 20, 55, 4)
 
 __all__ = [
     'a4smedlParser',
@@ -217,15 +217,16 @@ class a4smedlParser(Parser):
         self._identifier_()
         self.name_last_node('set_identifier')
         self._token('{')
-        self._monitor_list_()
+        self._monitorList_()
+        self.name_last_node('monitor_list')
         self._token('}')
         self.ast._define(
-            ['set_identifier'],
+            ['monitor_list', 'set_identifier'],
             []
         )
 
     @graken()
-    def _monitor_list_(self):
+    def _monitorList_(self):
         self._identifier_()
         self.name_last_node('@')
 
@@ -354,7 +355,7 @@ class a4smedlSemantics(object):
     def syncSetExpr(self, ast):
         return ast
 
-    def monitor_list(self, ast):
+    def monitorList(self, ast):
         return ast
 
     def architectureSpec(self, ast):

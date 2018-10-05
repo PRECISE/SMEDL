@@ -154,22 +154,28 @@ class MonitorGenerator(object):
                     self._parseSpec(v)
 
     def _parseSets(self, object):
+        #print(object)
         if isinstance(object, AST):
             for k,v in list(object.items()):
                 if k == 'sync_sets':
-                   if isinstance(v, list):
-                       for sync_set in v:
-                           self._parseSet(v)
+                    if isinstance(v, list):
+                        for sync_set in v:
+                            if isinstance(sync_set, list):
+                                for sync_set_inner in sync_set:
+                                    self._parseSet(sync_set_inner)
+                            elif isinstance(sync_set, AST):
+                                self._parseSet(sync_set)
 
     def _parseSet(self, object):
         set_name = None
         set_monitors = []
+        #print(object)
         for k,v in list(object.items()):
             if k == 'set_identifier':
                 set_name = v
             elif k == 'monitor_list':
                 if not v == None:
-                    if isinstance(c, list):
+                    if isinstance(v, list):
                         set_monitors = v
                     else:
                         set_monitors = [v]
@@ -347,6 +353,7 @@ class MonitorGenerator(object):
                         #print (conn_name + str(pa_spec))
                 # TODO: match number of attributes of the source and target events
                 if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
+                    print(conn_name)
                     print(s_i)
                     print(s_e)
                     print(t_i)
