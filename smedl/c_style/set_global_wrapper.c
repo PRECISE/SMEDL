@@ -35,10 +35,10 @@ void export_event(int monitor_type, MonitorIdentity *identities[], int event_id,
     
     switch (monitor_type) {
         {% for m in exported_event_routes -%}
-        case {{ m.name }}
+        case {{ m.casename }}
             switch (event_id) {
                 {% for e in m.events -%}
-                case {{ e.name }}
+                case {{ e.casename }}
                     {{ e.callstring }}
                     break;
                 {% endfor -%}
@@ -419,7 +419,7 @@ int main() {
 #ifdef DEBUG
                     printf("{{ sync_set_name }} set exporting {{ m }} event (id %d) to RabbitMQ\n", event_id);
 #endif //DEBUG
-                    export_async_event_{{ m }}(identities, event_id, params);
+                    export_async_event_{{ m|lower }}(identities, event_id, params);
                     break;
                 {% endfor -%}
             }

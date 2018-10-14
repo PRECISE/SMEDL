@@ -14,6 +14,7 @@
 
 {%- if helper %}{{ '\n' }}#include "{{ helper }}"{% endif %}
 
+{{ state_names }}
 const identity_type {{ obj|lower }}_identity_types[{{ obj|upper }}_MONITOR_IDENTITIES] = { {{ identities_types|join(', ') }} };
 const char **{{ obj|lower }}_states_names[{{ state_names_array|length }}] = { {{ state_names_array|join(', ') }} };
 int {{ obj|lower }}_executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
@@ -36,7 +37,7 @@ int {{ obj|lower }}_executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
     return monitor;
 }
 
-void free_monitor({{ obj|title }}Monitor* monitor) {
+void free_{{ obj|lower }}_monitor({{ obj|title }}Monitor* monitor) {
     free(monitor);
 }
 
@@ -266,7 +267,7 @@ int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
     return results;
 }
 
-char* monitor_identities_str(MonitorIdentity** identities) {
+char* monitor_identities_str_{{ obj|lower }}(MonitorIdentity** identities) {
     char* out = malloc(20*{{ obj|upper }}_MONITOR_IDENTITIES);
     out[0] = '\0';
     for(int i = 0; i < {{ obj|upper }}_MONITOR_IDENTITIES; i++) {

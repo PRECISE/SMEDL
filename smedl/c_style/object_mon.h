@@ -7,14 +7,12 @@
 
 #define {{ obj|upper }}_MONITOR_MAP_SIZE 100 // number of buckets
 #define {{ obj|upper }}_MONITOR_IDENTITIES {{ identities|length }}
-#define msg_format_version {{ msg_format_version }}
 
 typedef enum { {{ identities_names|join(', ') }} } {{ obj|lower }}_identity;
 typedef enum { {{ scenario_names|join(', ') }} } {{ obj|lower }}_scenario;
 {{ state_enums }}
 typedef enum { {{ event_enums }} } {{ obj|lower }}_event;
 typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
-{{ state_names }}
 
 typedef struct {{ obj|title }}Data {
 {{ identity_declarations }}
