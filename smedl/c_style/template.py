@@ -810,7 +810,7 @@ class CTemplater(object):
                     i = 0
                     for pattern in connSpec:
                         if pattern.leftTerm != conn.targetMachine:
-                            exit("Illegal pattern: Left term(%s) must be the target machine")
+                            exit("Illegal pattern: Left term(%s) must be the target machine" % pattern.leftTerm)
                         if pattern.rightTerm == conn.sourceEvent:
                             # This identity comes from the event parameters. TODO Can identities be
                             # anything other than INT or STRING?
