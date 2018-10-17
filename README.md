@@ -190,7 +190,58 @@ In the architecture file, a modifier "creation" can be added before imported eve
 
 For the example above, instance of RateComputation can be created whenever an dataUpdate event is received. However, in the pattern specification, all identifiers should be bounded. Moreover, target monitor should always appear at the left side of the connection pattern expression. 
 
+## Synchronous Communication
 
+Related monitors can be grouped into a "synchronous set." Monitors in the same synchronous set all run in one combined process. They use direct calls to each other's event handlers rather than RabbitMQ messages to exchange events between each other.
+
+This comes with syntax changes in the architecture file and additional C source files that will be generated with the monitors.
+
+### New changes to the architecture file
+
+* Monitors are now declared with the `Monitor` keyword rather than the `Async` keyword. For example:
+  
+    ```
+    Async RateComputation(int, string)
+    {
+        imported creation dataUpdate (int, string,float,float);
+        imported timeout();
+        imported end();
+        exported dataUpdate2(string, float, float);
+    }
+    ```
+
+* Between the monitor declarations and the channel specifications, there is a new section where synchronous sets are defined. It begins with the line `Synchronous sets:` followed by the list of synchronous sets. Each set is specified with its name, followed by a comma-separated list of monitor names enclosed in curly braces. For example, to define a set named "metricsSet" containing the monitors "frontend" and "metricsCollector":
+
+    ```
+    Synchronous sets:
+    metricsSet: {frontend, metricsCollector}
+    ```
+
+* Finally, the start of the channel specifications must be maked with the line `Channels:` to separate it from the synchronous set definitions. Buiding on the previous example:
+
+    ```
+    Synchronous sets:
+    metricsSet: {frontend, metricsCollector}
+
+    Channels:
+    ch1: measurement => frontend.measurementIn
+    ch2: frontend.requestMetrics => metricsCollector.metricsRequest
+    ...
+    ```
+
+### Additional C source files
+
+With this change to mgen, the wrapper from dynamic instantiation gets replaced with a "local wrapper" and "global wrapper." The local wrapper shares the same name as the old wrapper from dynamic instantiation (`<monitor>_wrapper.c`/`.h`), though the contents are very different. The global wrapper (`<set_name>_global_wrapper.c`/`.h`) is an entirely new file.
+
+There is one global wrapper per synchronous set and it routes all events between monitors and takes on the role of interfacing with RabbitMQ. The local wrapper is the interface between the global wrapper and individual monitor instances. It handles dynamic instantiation and distributing imported events to the correct instances of its monitor.
+
+### Generating and building synchronous monitors
+
+The steps for generating monitors have not changed. Run mgen the same way as before. The new wrappers will be generated automatically if the architecture file is provided. Note that the global wrapper is generated any time an architecture file is given, but the produced .c/.h file will be the same for any monitor in the same synchronous set.
+
+When building, there are no new libraries; however, there is the new C file for the global wrapper. The other change is that monitors in the same synchronous set must now all be built (or linked) together. For example, if building the monitors in the `metricsSet` example above:
+
+    gcc -std=c99 -D_POSIX_C_SOURCE=199309L actions.c amqp_utils.c cJSON.c monitor_map.c mon_utils.c frontend_mon.c frontend_monitor_wrapper.c metricsCollector_mon.c metricsCollector_monitor_wrapper.c metricsSet_global_wrapper.c -o metricsSet -lm -lconfig -lrabbitmq
 
 ## Running the test suite
 You may run the tool's test suite by simply calling `nose2` from the
