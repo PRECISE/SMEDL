@@ -201,7 +201,7 @@ This comes with syntax changes in the architecture file and additional C source 
 * Monitors are now declared with the `Monitor` keyword rather than the `Async` keyword. For example:
   
     ```
-    Async RateComputation(int, string)
+    Monitor RateComputation(int, string)
     {
         imported creation dataUpdate (int, string,float,float);
         imported timeout();
