@@ -37,6 +37,14 @@ int {{ obj|lower }}_executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
     return monitor;
 }
 
+void init_default_{{ obj|lower }}_monitor() {
+    {{ obj|title }}Data *d = malloc(sizeof({{ obj|title }}Data));
+    
+    {{ mon_init_str }}
+
+    init_{{ obj|lower }}_monitor(d);
+}
+
 void free_{{ obj|lower }}_monitor({{ obj|title }}Monitor* monitor) {
     free(monitor);
 }

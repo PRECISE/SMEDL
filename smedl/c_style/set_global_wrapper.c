@@ -213,7 +213,9 @@ int main() {
     amqp_basic_consume(recv_conn, 1, queuename, amqp_empty_bytes, 0, 1, 0, amqp_empty_table);
     die_on_amqp_error(amqp_get_rpc_reply(recv_conn), "Consuming");
 
-    {{ mon_init_str }}
+    {% for m in monitors_to_statically_init -%}
+    init_default_{{ m|lower }}_monitor();
+    {% endfor -%}
 
 
 //*************************************************************************************************************

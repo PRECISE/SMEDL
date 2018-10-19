@@ -87,28 +87,6 @@ class CTemplater(object):
         values['sync_set_monitors_enum'] = ', '.join(
                 [sync_set_name.upper() + '_' + m.upper() + '_MONITOR' for m in sync_set_monitors])
 
-        # Monitor initialization
-        # If a monitor has no creation event, we assume that we must create it ourself
-        # (Note: Prior to synchronous communication, this was determined by checking for identities)
-        mon_init_str = []
-        for iface in mg.monitorInterface:
-            if iface.id in sync_set_monitors:
-                has_creation = False
-                for ev in iface.importedEvents:
-                    if not ev.creation == None:
-                        has_creation = True
-                if not has_creation:
-                    # We need to add a default identity and create a default instance
-                    mon_init_str.append('{')
-                    mon_init_str.append('%sData *implicit_d = malloc(sizeof(%sData));' % (iface.id.title(), iface.id.title()))
-                    mon_init_str.append('int i = 0;')
-                    mon_init_str.append('implicit_d->id = &i;') # TODO This seems like it's begging for a segfault or at least data corruption
-                    mon_init_str.append(CTemplater._addDataString('implicit_d', state_vars))
-                    mon_init_str.append('%sMonitor *tempMon = init_%s_monitor(implicit_d);' % (iface.id.title(), iface.id.lower()))
-                    mon_init_str.append('}\n')
-        values['mon_init_str'] = '\n'.join(mon_init_str)
-
-
         # If there are no identities defined, make a default one:
         if len(mg._symbolTable.getSymbolsByType('identity')) == 0:
             identities = [{'type': 'opaque', 'name': 'id'}]
@@ -116,6 +94,33 @@ class CTemplater(object):
             identities = [{'type': mg._symbolTable.get(v)['datatype'], 'name': v} for v in mg._symbolTable.getSymbolsByType('identity')]
         for id in identities:
             id['c_type'] = CTemplater.convertTypeForC(id['type'])
+
+
+        # Monitor initialization
+        # If a monitor has no creation event, we assume that we must create it ourself
+        # (Note: Prior to synchronous communication, this was determined by checking for identities)
+        monitors_to_init = []
+        for iface in mg.monitorInterface:
+            if iface.id in sync_set_monitors:
+                has_creation = False
+                for ev in iface.importedEvents:
+                    if not ev.creation == None:
+                        has_creation = True
+                if not has_creation:
+                    monitors_to_init.append(iface.id)
+        values['monitors_to_statically_init'] = monitors_to_init
+        mon_init_str = []
+        for ident in identities:
+            if ident['type'] == 'int':
+                #mon_init_str.append('d->%s=malloc(sizeof(int));' % ident['name'])
+                #mon_init_str.append('*(d->%s) = 0;' % ident['name'])
+                mon_init_str.append('d->%s = 0;' % ident['name'])
+            else:
+                #mon_init_str.append('d->%s=malloc(1);' % ident['name'])
+                #mon_init_str.append("*(char *)(d->%s) = '\\0';" % ident['name'])
+                mon_init_str.append('d->%s = "";' % ident['name'])
+        mon_init_str.append(CTemplater._addDataString('d', state_vars))
+        values['mon_init_str'] = '\n'.join(mon_init_str)
 
 
         values['msg_format_version'] = '\"'+__about__['msg_format_version']+'\"'
@@ -536,7 +541,7 @@ class CTemplater(object):
 
                 # Call event handlers
                 callstring.append('while(record != NULL) {')
-                callstring.append('printf("' + obj + ' local wrapper dispatching ' + conn.targetEvent + ' to a monitor");')
+                callstring.append('printf("' + obj + ' local wrapper dispatching ' + conn.targetEvent + ' to a monitor\\n");')
                 callstring.append(handler_call)
                 callstring.append('record = record->next;')
                 callstring.append('}')
@@ -741,9 +746,9 @@ class CTemplater(object):
                         if idList[j] in eventParaList:
                             #print(monitorParams)
                             #print(idList[j])
-                            stri =  'var%d;' % (eventParaList_[idList[j]])
+                            stri =  'var%d;' % (eventParaList_[idList[j]] + 1)
                             #print(stri)
-                            strs =  '(void*) var%d;' % (eventParaList_[idList[j]])
+                            strs =  '(void*) var%d;' % (eventParaList_[idList[j]] + 1)
                         else:
                             stri = '(atoi(monitor_parameter_val_strs[identity[' + str(j)+']]));'
                             strs = '(void*)monitor_parameter_val_strs[identity[' + str(j)+']];\n'
@@ -801,10 +806,10 @@ class CTemplater(object):
                     callstring.append('int *identity = NULL;')
                     callstring.append('void **values = NULL;')
                 else:
-                    # TODO create identity array with indices of identities to match
+                    # * create identity array with indices of identities to match
                     # from the pattern spec
-                    # TODO create type var from the type of the first identity (or is it something else?)
-                    # TODO create values array from event params or exporting monitor identity
+                    # * create values array from event params or exporting monitor identity
+                    # * create type var from the type of the first identity used
                     identityList = []
                     identityLines = []
                     i = 0
@@ -818,10 +823,10 @@ class CTemplater(object):
                             identityLines.append("for (int i = 0; i < %d; i++) {" % pattern.rightIndex)
                             identityLines.append("p = p->next;")
                             identityLines.append("}")
-                            if mg._getMachine(conn.targetMachine).params[pattern.leftIndex] == "string":
+                            if mg._getMachine(conn.targetMachine).params[pattern.leftIndex] == "int":
+                                identityLines.append("values[%d] = &(p->i);" % i)
+                            else: # It's a string or some other type that uses the a pointer (v)
                                 identityLines.append("values[%d] = p->v;" % i)
-                            elif mg._getMachine(conn.targetMachine).params[pattern.leftIndex] == "int":
-                                identityLines.append("values[%d] = &(p->v);" % i)
                         elif pattern.rightTerm == conn.sourceMachine:
                             # This identity comes from the source machine's identities
                             identityLines.append("values[%d] = identities[%d]->value;" % (i, pattern.rightIndex))
@@ -850,6 +855,7 @@ class CTemplater(object):
                         (sync_set_name, conn.targetMachine, conn.targetEvent,
                             conn.sourceMachine, conn.sourceEvent))
                 callstring.append('#endif //DEBUG')
+                #TODO len(idList) is substituting in zero, which is wrong
                 callstring.append('import_event_%s(identity, %s, values, %d, dest_event_id, params);' %
                         (conn.targetMachine.lower(), idType, len(idList)))
                 callstring.append('}')

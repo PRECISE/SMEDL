@@ -41,6 +41,7 @@ typedef struct {{ obj|title }}MonitorMap {
 pthread_mutex_t {{ obj|lower }}_monitor_maps_lock;
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor({{ obj|title }}Data*);
+void init_default_{{ obj|lower }}_monitor();
 void free_{{ obj|lower}}_monitor({{ obj|title }}Monitor*);
 
 /*
