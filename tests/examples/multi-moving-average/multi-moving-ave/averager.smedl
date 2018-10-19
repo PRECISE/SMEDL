@@ -1,0 +1,64 @@
+object averager
+
+identity
+int consumerID;
+
+state
+float val1 = 0;
+float val2 = 0;
+float val3 = 0;
+float val4 = 0;
+float val5 = 0;
+float sum;
+int measurementCount = 0;
+
+events
+imported measurement(int, float);
+imported averageRequest();
+exported sendAverage(float);
+exported notifyFrontend();
+
+scenarios
+
+receiveMeasurements:
+init
+-> measurement(id, value) {
+    raise notifyFrontend();
+    measurementCount++;
+    val5 = val4;
+    val4 = val3;
+    val3 = val2;
+    val2 = val1;
+    val1 = value;
+}
+-> idle
+idle
+-> measurement(id, value) {
+    measurementCount++;
+    val5 = val4;
+    val4 = val3;
+    val3 = val2;
+    val2 = val1;
+    val1 = value;
+}
+-> idle
+
+handleRequests:
+idle
+-> averageRequest() when (measurementCount == 0) {raise sendAverage(0);}
+-> idle
+idle
+-> averageRequest() when (measurementCount == 1) {raise sendAverage(val1);}
+-> idle
+idle
+-> averageRequest() when (measurementCount == 2) {sum = val1 + val2; raise sendAverage(sum / 2);}
+-> idle
+idle
+-> averageRequest() when (measurementCount == 3) {sum = val1 + val2 + val3; raise sendAverage(sum / 3);}
+-> idle
+idle
+-> averageRequest() when (measurementCount == 4) {sum = val1 + val2 + val3 + val4; raise sendAverage(sum / 4);}
+-> idle
+idle
+-> averageRequest() when (measurementCount >= 5) {sum = val1 + val2 + val3 + val4 + val5; raise sendAverage(sum / 5);}
+-> idle

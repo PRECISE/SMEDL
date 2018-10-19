@@ -1,0 +1,30 @@
+System multiAverages :=
+
+Monitor frontend()
+{
+imported measurementIn(int, float);
+imported newConsumer();
+imported averageResponse(float);
+exported measurementOut(int, float);
+exported raiseAlarm();
+exported resetAlarm();
+exported requestAverages();
+}
+
+Monitor averager(int)
+{
+imported creation measurement(int, float);
+imported averageRequest();
+exported sendAverage(float);
+exported notifyFrontend();
+}
+
+Synchronous sets:
+sumMonitor {frontend, averager}
+
+Channels:
+ch1: measurement => frontend.measurementIn
+ch2: frontend.measurementOut => averager.measurement {averager[0]=measurementOut[0]}
+ch3: averager.notifyFrontend => frontend.newConsumer
+ch4: frontend.requestAverages => averager.averageRequest
+ch5: averager.sendAverage => frontend.averageResponse
