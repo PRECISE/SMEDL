@@ -229,6 +229,8 @@ This comes with syntax changes in the architecture file and additional C source 
     ...
     ```
 
+**An example monitor using the new syntax and features can be found in tests/examples/multi-moving-average.**
+
 ### Additional C source files
 
 With this change to mgen, the wrapper from dynamic instantiation gets replaced with a "local wrapper" and "global wrapper." The local wrapper shares the same name as the old wrapper from dynamic instantiation (`<monitor>_wrapper.c`/`.h`), though the contents are very different. The global wrapper (`<set_name>_global_wrapper.c`/`.h`) is an entirely new file.
