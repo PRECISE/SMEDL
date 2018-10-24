@@ -21,12 +21,12 @@ scenarios
 
 countMeasurements:
 idle
--> measurementIn(id, usage) {printf("YYYYYYYYYYYYYYY\n"); raise measurementOut(id, usage); printf("ZZZZZZZZZZZZZZZ\n"); measurementCount++; raise checkCount();}
+-> measurementIn(id, usage) {raise measurementOut(id, usage); measurementCount++; raise checkCount();}
 -> idle
 
 gatherAverages:
 idle
--> checkCount() when (measurementCount >= 5) {printf("XXXXXXXXXXXXXXX\n"); measurementCount = 0; responseCount = 1; sum = 0; raise requestAverages();}
+-> checkCount() when (measurementCount >= 5) {measurementCount = 0; responseCount = 1; sum = 0; raise requestAverages();}
 -> awaiting_responses
 idle
 -> checkCount() when (measurementCount < 5)
