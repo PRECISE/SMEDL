@@ -44,7 +44,7 @@ integer
     ?/[-+]?[0-9]+/?
     ;
 
-syncSetDeclaration = 'Synchronous sets:' sync_sets+:{syncSetExpr}+;
+syncSetDeclaration = 'Synchronous sets:' sync_sets+:{syncSetExpr}*;
 
 syncSetExpr = set_identifier:identifier '{' monitor_list:monitorList '}';
 

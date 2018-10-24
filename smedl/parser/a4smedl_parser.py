@@ -18,7 +18,7 @@ from grako.parsing import graken, Parser
 from grako.util import re, RE_FLAGS, generic_main  # noqa
 
 
-__version__ = (2018, 10, 5, 15, 20, 55, 4)
+__version__ = (2018, 10, 24, 12, 45, 52, 2)
 
 __all__ = [
     'a4smedlParser',
@@ -205,7 +205,7 @@ class a4smedlParser(Parser):
 
         def block1():
             self._syncSetExpr_()
-        self._positive_closure(block1)
+        self._closure(block1)
         self.add_last_node_to_name('sync_sets')
         self.ast._define(
             [],
