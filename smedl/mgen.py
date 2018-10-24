@@ -318,7 +318,7 @@ class MonitorGenerator(object):
                 conn_name = s_i + '_' + s_e
             if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
 
-                raise ValueError('attributes of events do not match')
+                raise ValueError('attributes of events do not match for connection %s' % conn_name)
             #print (pa_spec)
             connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
                 #if connEx.sourceMachine == None:
@@ -357,7 +357,8 @@ class MonitorGenerator(object):
                     print(s_i)
                     print(s_e)
                     print(t_i)
-                    raise ValueError('attributes of events do not match')
+                    print(t_e)
+                    raise ValueError('attributes of events do not match for connection %s' % conn_name)
                         #print (pa_spec)
                 connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
                     #if connEx.sourceMachine == None:
@@ -442,14 +443,14 @@ class MonitorGenerator(object):
                         left_ev = ev.params
                         break
                 left_mon = mon
-            elif ti == mon.id:
+            if ti == mon.id:
                 for ev in mon.importedEvents:
                     if ev.event_id == te:
 
                         right_ev = ev.params
                         break
                 right_mon = mon
-
+ 
         if left_mon == None or right_mon == None or not left_ev == right_ev:
             
             return False
