@@ -83,7 +83,7 @@ int hash_monitor_identity(identity_type type, void *value, int map_size) {
     switch (type) {
         case STRING:
             if(value != NULL){
-                bucket = ((char*)value)[0];
+                bucket = ((char*)value)[0] % map_size;
             }else{
                 bucket = 0;
             }
