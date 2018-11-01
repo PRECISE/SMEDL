@@ -75,14 +75,13 @@ char** divideRoutingkey(char * rk, int argNum) {
     char** str = (char**)malloc(sizeof(char*)*argNum);
     int i = 0;
     char * copy[sizeof(strlen(rk))+1];
-    //char * copy = (char*)malloc((sizeof(strlen(rk))+1)*sizeof(char));
     strcpy(copy, rk);
     char * temp;
     temp = strtok(copy, ".");
     for(int i = 0; i < argNum;i++){
         temp = strtok(NULL, ".");
         //if(i!=0){
-        str[i] = (char*)malloc((sizeof(strlen(temp))+1)*sizeof(char));
+        str[i] = (char*)malloc((strlen(temp)+1)*sizeof(char));
         strcpy(str[i],temp);
         //}
     }
