@@ -58,13 +58,15 @@ int {{ obj|lower }}_addMonitorObjectToPool({{ obj|title }}MonitorRecord*);
 int remove_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor *monitor, int identity);
 void remove_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) ;
 
-
+{{ obj|title }}MonitorRecord* traverseAndGet_{{ obj|lower }}({{ obj|title }}MonitorRecord*, int);
+{{ obj|title }}MonitorRecord* find_{{ obj|lower }}_record({{ obj|title }}MonitorRecord*, void*, int);
 {{ obj|title }}MonitorRecord* get_{{ obj|lower }}_monitors();
 {{ obj|title }}MonitorRecord* get_{{ obj|lower }}_monitors_by_identity(int, int, void*);
 {{ obj|title }}MonitorRecord* get_{{obj|lower}}_monitors_by_identities(int[], int type, void *[],int);
 {{ obj|title }}MonitorRecord* filter_{{ obj|lower }}_monitors_by_identity({{ obj|title }}MonitorRecord*, int, void*);
 int init_{{ obj|lower }}_monitor_maps();
 void free_{{ obj|lower }}_monitor_maps();
+void insert_{{ obj|lower }}_record({{ obj|title }}MonitorRecord*, {{ obj|title }}MonitorRecord*, int, int);
 int add_{{ obj|lower }}_monitor_to_map({{ obj|title }}Monitor*, int);
 int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor*); //puts into all maps
 char* monitor_identities_str_{{ obj|lower }}(MonitorIdentity**);

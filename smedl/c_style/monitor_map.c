@@ -78,12 +78,54 @@ int compare_monitor_identity(void *value, MonitorIdentity *other) {
     return value_match;
 }
 
+int compare_identity(MonitorIdentity *v, MonitorIdentity *other) {
+    int value_match = 0;
+    switch (other->type) {
+        case STRING:
+            return strcmp((char*)(v->value), (char*)(other->value));
+        case INT:
+        case OPAQUE:
+            return *(int*)(v->value) - *(int*)other->value;
+        case POINTER:
+            return *(uintptr_t*)(v->value) - *(uintptr_t*)(other->value);
+        case THREAD:
+            return *(pthread_t*)(v->value) - *(pthread_t*)(other->value);
+        default:
+            return -1;
+    }
+    return -1;
+}
+
+int compare_identity_2(void *value, MonitorIdentity *other) {
+    int value_match = 0;
+    switch (other->type) {
+        case STRING:
+            return strcmp((char*)(value), (char*)(other->value));
+        case INT:
+        case OPAQUE:
+            return *(int*)(value) - *(int*)other->value;
+        case POINTER:
+            return *(uintptr_t*)(value) - *(uintptr_t*)(other->value);
+        case THREAD:
+            return *(pthread_t*)(value) - *(pthread_t*)(other->value);
+        default:
+            return -1;
+    }
+    return -1;
+}
+
 int hash_monitor_identity(identity_type type, void *value, int map_size) {
     int bucket;
     switch (type) {
         case STRING:
             if(value != NULL){
-                bucket = ((char*)value)[0] % map_size;
+                // See djb2 from http://www.cse.yorku.ca/~oz/hash.html
+                unsigned long int acc = 5381;
+                for (int i = 0; i < strlen((char*) value); i++) {
+                    //The next line is equiv to: acc = (acc * 31) ^ value[i]
+                    acc = ((acc << 5) + acc) ^ ((char *)value)[i];
+                }
+                bucket = acc % map_size;
             }else{
                 bucket = 0;
             }
