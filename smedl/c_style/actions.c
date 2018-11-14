@@ -47,7 +47,7 @@ int push_param(param **head, int *i, char *c, double *d, const void **v, cJSON *
 }
 
 void pop_param(param **head) {
-    if(head != NULL && *head != NULL) {
+    while(head != NULL && *head != NULL) {
         param *old = *head;
         *head = (*head)->next;
         free(old);

@@ -238,17 +238,28 @@ int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
 
 
 {{ obj|title }}MonitorRecord* filter_{{ obj|lower }}_monitors_by_identity({{ obj|title }}MonitorRecord* before, int identity, void  *value) {
-    {{ obj|title }}MonitorRecord* results = NULL;
-    while(before != NULL) {
-        if(compare_monitor_identity(value, before->monitor->identities[identity])) {
-            {{ obj|title }}MonitorRecord* record = ({{ obj|title }}MonitorRecord*)malloc(sizeof({{ obj|title }}MonitorRecord));
-            record->monitor = before->monitor;
-            record->next = results;
-            results = record;
+    {{ obj|title }}MonitorRecord* tmp;
+    {{ obj|title }}MonitorRecord* current = before;
+    {{ obj|title }}MonitorRecord* prev = NULL;
+
+    while(current != NULL) {
+        if(!compare_monitor_identity(value, before->monitor->identities[identity])) {
+            if (current == before) {
+                before = before->next;
+            } else {
+                prev->next = current->next;
+            }
+
+            tmp = current;
+            current = current->next;
+            free(tmp);
+        } else {
+            prev = current;
+            current = current->next;
         }
-        before = before->next;
     }
-    return results;
+
+    return before;
 }
 
 {{ obj|title }}MonitorRecord* get_{{obj|lower}}_monitors_by_identities(int identity[], int type, void *value[], int size) {

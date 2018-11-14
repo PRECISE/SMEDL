@@ -70,20 +70,15 @@ void send_message(char* message, char* routing_key) {
                  "Publishing");
 }
 
-char** divideRoutingkey(char * rk, int argNum) {
-    //c99 allows variable array length
-    char** str = (char**)malloc(sizeof(char*)*argNum);
-    int i = 0;
-    char * copy[sizeof(strlen(rk))+1];
-    strcpy(copy, rk);
+// rk_copy doesn't necessarily need to be a copy of the routing key, but it
+// does get modified (by strtok). The caller is responsible for freeing the
+// return value from this function.
+char** divideRoutingkey(char * rk_copy, int argNum) {
+    char** str = malloc(sizeof(char*)*argNum);
     char * temp;
-    temp = strtok(copy, ".");
+    temp = strtok(rk_copy, ".");
     for(int i = 0; i < argNum;i++){
-        temp = strtok(NULL, ".");
-        //if(i!=0){
-        str[i] = (char*)malloc((strlen(temp)+1)*sizeof(char));
-        strcpy(str[i],temp);
-        //}
+        str[i] = strtok(NULL, ".");
     }
     return str;
 }
@@ -247,30 +242,26 @@ int main() {
         amqp_envelope_t envelope;
         amqp_maybe_release_buffers(recv_conn);
         ret = amqp_consume_message(recv_conn, &envelope, NULL, 0);
-        amqp_message_t msg = envelope.message;
-        amqp_bytes_t bytes = msg.body;
-        amqp_bytes_t routing_key = envelope.routing_key;
-        char* rk = (char*)routing_key.bytes;
-        //**************Added by Karan *********************************
-        //int id=-1;
-        //char temp[255];
-        //sscanf(rk,"%s %d",temp,&id);
-        //strcpy(rk,temp);
-        //********************************************************
-        char* string = (char*)bytes.bytes;
-        //char* event[255] = {NULL};
+        
+        if (AMQP_RESPONSE_NORMAL == ret.reply_type) {
+            amqp_message_t msg = envelope.message;
+            amqp_bytes_t bytes = msg.body;
+            amqp_bytes_t routing_key = envelope.routing_key;
+
+            char rk[routing_key.len + 1];
+            memcpy(rk, routing_key.bytes, routing_key.len);
+            rk[rotuing_key.len] = '\0';
+
+            char string[bytes.len + 1];
+            memcpy(string, bytes.bytes, bytes.len);
+            string[bytes.len] = '\0';
 
 #ifdef DEBUG
-        printf("\n{{ sync_set_name }} set new message: %s\nBody: %s\n", rk, string);        
+            printf("\n{{ sync_set_name }} set new message: %s\nBody: %s\n", rk, string);        
 #endif //DEBUG
-        
-        int object_index = 0;
 
-        if (string != NULL) {
-            //char * copy = (char*)malloc((sizeof(strlen(rk))+1)*sizeof(char));
-            char * copy[sizeof(strlen(rk))+1];
-            strcpy(copy, rk);
-            char* eventName = strtok(copy, ".");//eventName is channel name
+
+            char* eventName = strtok(rk, ".");//eventName is channel name
             if (eventName != NULL) {
                 cJSON * root = cJSON_Parse(string);
                 cJSON * ver = cJSON_GetObjectItem(root,"fmt_version");

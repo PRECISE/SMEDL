@@ -24,6 +24,7 @@ void import_event_{{ obj|lower }}(int identity[], int type, void *values[], int 
             break;
         {% endfor -%}
     }
+    pop_param(&params);
 }
 
 // Handle events to be exported to RabbitMQ from the global wrapper.

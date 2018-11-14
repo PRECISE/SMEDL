@@ -249,7 +249,8 @@ class CTemplater(object):
                         callstring.append('record -> next = NULL;')
                         callstring.append('}\n\t')
 
-                callstring.append('{');
+                callstring.append('{')
+                callstring.append(obj.title() + "MonitorRecord *tmp;")
 
                 # Pull params out
                 ki = 0
@@ -286,7 +287,9 @@ class CTemplater(object):
                 callstring.append('while(record != NULL) {')
                 callstring.append('printf("' + obj + ' local wrapper dispatching ' + conn.targetEvent + ' to a monitor\\n");')
                 callstring.append(handler_call)
+                callstring.append("tmp = record;")
                 callstring.append('record = record->next;')
+                callstring.append("free(tmp);")
                 callstring.append('}')
                 callstring.append('}')
 
