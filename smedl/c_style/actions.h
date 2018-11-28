@@ -2,7 +2,9 @@
 #define ACTIONS_H
 
 #include "monitor_map.h"
+{% if genjson -%}
 #include "cJSON.h"
+{% endif -%}
 
 typedef struct Parameter param;
 struct Parameter {
@@ -11,7 +13,9 @@ struct Parameter {
     char c;
     double d;
     const void *v;
+{% if genjson -%}
     cJSON *provenance;
+{% endif -%}
     param *next;
 };
 
@@ -19,7 +23,7 @@ struct Parameter {
 void print_param(param*, char*);
 #endif //DEBUG
 
-int push_param(param**, int*, char*, double*, const void**, cJSON *);
+int push_param(param**, int*, char*, double*, const void**{% if genjson %}, cJSON *{% endif %});
 void pop_param(param**);
 
 typedef struct Action action;

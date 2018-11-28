@@ -51,7 +51,7 @@ class MonitorGenerator(object):
         self.identities = []
 
 
-    def generate(self, pedlsmedlName, a4smedlName=None, helper=None, output_dir=''):
+    def generate(self, pedlsmedlName, a4smedlName=None, helper=None, output_dir='', genjson=True):
         # Parse the PEDL, if it exists
         pedlPath = Path(pedlsmedlName + '.pedl')
         if pedlPath.exists():
@@ -131,7 +131,7 @@ class MonitorGenerator(object):
                 print('\nFSM: %s\n' % key)
                 print('%s\n' % fsm)
 
-        CTemplater.output(self, allFSMs, pedlsmedlName, helper, self.pedlAST, console_output=self._console, output_dir=output_dir)
+        CTemplater.output(self, allFSMs, pedlsmedlName, helper, self.pedlAST, console_output=self._console, output_dir=output_dir, genjson=genjson)
 
 
     def _parseInter(self,object):
@@ -927,7 +927,7 @@ class MonitorGenerator(object):
         re.findall(r'\s([A-Za-z_]\w*).\w+\W+', guard)
 
 
-    def _writeAction(self, obj, action):
+    def _writeAction(self, obj, action, genjson):
         #print (action)
         if action.type == ActionType.StateUpdate:
             out = "monitor->" + action.target + ' ' + action.operator
@@ -938,7 +938,10 @@ class MonitorGenerator(object):
             #print(out)
             return out
         elif action.type == ActionType.Raise:
-            return 'raise_%s_%s(monitor%s%s);' % (obj.lower(), action.event, joinArgs([self._formatExpression(p) for p in action.params], ", "),",provenance")
+            if genjson:
+                return 'raise_%s_%s(monitor%s%s);' % (obj.lower(), action.event, joinArgs([self._formatExpression(p) for p in action.params], ", "),",provenance")
+            else:
+                return 'raise_%s_%s(monitor%s);' % (obj.lower(), action.event, joinArgs([self._formatExpression(p) for p in action.params], ", "))
         elif action.type == ActionType.Instantiation:
             exit("Instantiation actions are not implemented. Sorry!")
         elif action.type == ActionType.Call:
@@ -972,6 +975,7 @@ def main():
     parser.add_argument('-d', '--debug', help='Show debug output', action='store_true')
     parser.add_argument('-c', '--console', help='Only output to console, no file output', action='store_true')
     parser.add_argument('--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
+    parser.add_argument('-j', '--nojson', help='Generate synchronous interface with no JSON handling', action='store_false')
     parser.add_argument('--version', action='version', version=__about__['version'])
     parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="The name of the PEDL and SMEDL files to parse")
     parser.add_argument('--arch', metavar="a4smedl_filename", help="The name of architecture file to parse")
@@ -980,7 +984,7 @@ def main():
 
     mgen = MonitorGenerator(structs=args.structs, debug=args.debug,
         console=args.console, implicit=args.noimplicit)
-    mgen.generate(args.pedlsmedl, args.arch, helper=args.helper, output_dir=args.dir)
+    mgen.generate(args.pedlsmedl, args.arch, helper=args.helper, output_dir=args.dir, genjson=args.nojson)
 
 if __name__ == '__main__':
     main()

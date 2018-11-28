@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+{% if genjson -%}
 #include "cJSON.h"
+{% endif -%}
 #include "mon_utils.h"
 #include "{{ base_file_name }}_mon.h"
 #include "{{ sync_set_name }}_global_wrapper.h"
@@ -64,7 +66,10 @@ void executeEvents_{{ obj|lower }}({{obj|title}}Monitor* monitor){
 
 void executePendingEvents_{{ obj|lower }}({{obj|title}}Monitor* monitor){
     action** head = &monitor->action_queue;
-    {{var_declaration}} cJSON* pro;
+    {{var_declaration}}
+    {% if genjson -%}
+    cJSON* pro;
+    {% endif -%}
     while(*head!=NULL){
         int type = (*head)->id;
         param *params = (*head)->params;
@@ -76,7 +81,6 @@ void executePendingEvents_{{ obj|lower }}({{obj|title}}Monitor* monitor){
                 break;
             {% endfor -%}
         }
-        //pop_action(head);
     }
 }
 

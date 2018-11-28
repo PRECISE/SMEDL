@@ -3,7 +3,9 @@
 #include <string.h>
 #include <stdint.h>
 #include "mon_utils.h"
+{% if genjson -%}
 #include "cJSON.h"
+{% endif -%}
 #include "{{ base_file_name }}_mon.h"
 #include "{{ base_file_name }}_monitor_wrapper.h"
 #include "{{ sync_set_name }}_global_wrapper.h"
