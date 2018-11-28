@@ -283,8 +283,11 @@ class CTemplater(object):
                         handler_call += ', v' + str(kv)
                         kv += 1
                     callstring.append('params = params->next;')
-                callstring.append('cJSON *pro = params->provenance;')
-                handler_call += ', pro);'
+                if genjson:
+                    callstring.append('cJSON *pro = params->provenance;')
+                    handler_call += ', pro);'
+                else:
+                    handler_call += ');'
 
                 # Call event handlers
                 callstring.append('while(record != NULL) {')
@@ -331,8 +334,11 @@ class CTemplater(object):
                         handler_call += ', v' + str(kv)
                         kv += 1
                     callstring.append('params = params->next;')
-                callstring.append('cJSON *pro = params->provenance;')
-                handler_call += ', pro);'
+                if genjson:
+                    callstring.append('cJSON *pro = params->provenance;')
+                    handler_call += ', pro);'
+                else:
+                    handler_call += ');'
                 callstring.append('pop_param(&p_head);')
 
                 callstring.append(handler_call)
