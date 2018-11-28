@@ -309,6 +309,7 @@ int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
         }
     }
     return cur_results;
+}
 
 {{ obj|title }}MonitorRecord* get_{{obj|lower}}_monitors_by_identity(int identity, int type, void *value) {
     {{ obj|title }}MonitorRecord* results = NULL;
@@ -364,7 +365,7 @@ int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
 
     if (r > 0) {
         if (root->left != NULL) {
-            findRecord(root->left, value, identity);
+            find_{{ obj|lower }}_record(root->left, value, identity);
         } else {
             return NULL;
         }

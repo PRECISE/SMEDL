@@ -250,7 +250,7 @@ int main() {
 
             char rk[routing_key.len + 1];
             memcpy(rk, routing_key.bytes, routing_key.len);
-            rk[rotuing_key.len] = '\0';
+            rk[routing_key.len] = '\0';
 
             char string[bytes.len + 1];
             memcpy(string, bytes.bytes, bytes.len);

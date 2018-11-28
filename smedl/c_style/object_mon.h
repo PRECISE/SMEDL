@@ -31,6 +31,8 @@ typedef struct {{ obj|title }}Monitor {
 typedef struct {{ obj|title }}MonitorRecord {
   {{ obj|title }}Monitor *monitor;
   struct {{ obj|title }}MonitorRecord *next;
+  struct {{ obj|title }}MonitorRecord *left;
+  struct {{ obj|title }}MonitorRecord *right;
 } {{ obj|title }}MonitorRecord;
 
 typedef struct {{ obj|title }}MonitorMap {
