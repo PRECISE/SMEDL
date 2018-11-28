@@ -60,7 +60,7 @@ class CTemplater(object):
         return True
 
     @staticmethod
-    def output(mg, allFSMs, filename, helper, pedlAST, console_output=False, output_dir=''):
+    def output(mg, allFSMs, filename, helper, pedlAST, genjson=True, console_output=False, output_dir=''):
         if mg._debug:
             if pedlAST:
                 print("Target Monitor Points: " + pedlAST.getTargetMonitorPoints())
@@ -72,6 +72,9 @@ class CTemplater(object):
         if not CTemplater._checkDefaultAssign (state_vars):
             exit("wrong type of default value")
         values = dict()
+
+        CTemplater.genjson = genjson
+        values['genjson'] = genjson
 
         # Use object name as default synchronous set name, but find the actual
         # synchronous set if there is one
@@ -669,13 +672,15 @@ class CTemplater(object):
                 for p in mg._symbolTable.get(m, 'params'):
                     monitorParams += [{'name':'v'+str(index),'c_type': CTemplater.convertTypeForC(p['type'])}]
                     index = index + 1
-                monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
+                if genjson:
+                    monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
             else:
                 #print('title:'+obj)
                 #print ('title:'+obj.title())
                 monitorParams = [{'name':'monitor', 'c_type':obj.title() + 'Monitor*'}] + \
                     [{'name': p['name'], 'c_type': CTemplater.convertTypeForC(p['type'])} for p in mg._symbolTable.get(m, 'params')]
-                monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
+                if genjson:
+                    monitorParams += [{'name':'provenance','c_type': 'cJSON *'}]
 
             tmp_map = {
                 'int': 0,
@@ -710,7 +715,8 @@ class CTemplater(object):
                 elif p['type'] == 'string':
                     attrstring += ', v'+str(v)
                     v += 1
-            attrstring += ', pro'
+            if genjson:
+                attrstring += ', pro'
             parastring = ''
             ki = 0
             kd = 0
@@ -733,7 +739,8 @@ class CTemplater(object):
                     parastring += '\t\tv' + str(kv) + ' = ((params)->v);\n'
                     kv += 1
                 parastring += '\t\t(params) = (params)->next;\n'
-            parastring += 'pro = ((params)->provenance);\n\t\t(params) = (params)->next;\n'
+            if genjson:
+                parastring += 'pro = ((params)->provenance);\n\t\t(params) = (params)->next;\n'
             parastring += '\t\tpop_param(&p_head);\n'
 
             callstring += parastring;
@@ -777,8 +784,8 @@ class CTemplater(object):
             eventFunction.append('}\n\n')
 
             export_event_sig = None
-            cjson_str = '\tcJSON *root; cJSON* fmt; cJSON* prove; \n\t root = cJSON_CreateObject();\n'
             if 'exported_events' == mg._symbolTable.get(m)['type']:
+                cjson_str = '\tcJSON *root; cJSON* fmt; cJSON* prove; \n\t root = cJSON_CreateObject();\n'
                 #paramString = obj.title() + "Monitor* monitor " + CTemplater._generateEventParams(mg,m)
                 paramString = "MonitorIdentity** identities" + CTemplater._generateEventParams(mg,m)
                 export_event_sig = 'void exported_%s_%s(%s)' % (obj.lower(), m, paramString)
@@ -807,8 +814,14 @@ class CTemplater(object):
                         index = index + 1
                 cjson_str+=("if (provenance!=NULL){\n cJSON_AddItemToObject(root, \"provenance\", prove = provenance);}\n\t")
                 sprintf += 'message = cJSON_Print(root);\n'
-                eventFunction.append(cjson_str)
-                eventFunction.append(sprintf)
+                if genjson:
+                    eventFunction.append(cjson_str)
+                    eventFunction.append(sprintf)
+                else:
+                    eventFunction.append("/*")
+                    eventFunction.append(cjson_str)
+                    eventFunction.append(sprintf)
+                    eventFunction.append("*/")
                 eventFunction.append('  char routing_key[256];')
 
                 # Construct routing key
@@ -859,15 +872,21 @@ class CTemplater(object):
                 sprintf_routing += ');'
                 eventFunction.append(sprintf_routing)
                 #add to test
-                eventFunction.append('printf("msg:%s\\n", message);');
-                eventFunction.append('  send_message(message, routing_key);')
+                eventFunction.append('//printf("msg:%s\\n", message);');
+                if genjson:
+                    eventFunction.append('  send_message(message, routing_key);')
+                else:
+                    eventFunction.append('  //send_message(message, routing_key);')
                 eventFunction.append('}\n\n')
             raiseFunction = CTemplater._writeRaiseFunction(mg, m, obj, sync_set_name)
 
             # Build the event handler function
             if pedlEvent:
                 probeParams = [p for p in monitorParams if p['name'] != 'monitor']
-                probeSignature = 'void %s_%s_probe(%s%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]),",cJSON * provenance")
+                if genjson:
+                    probeSignature = 'void %s_%s_probe(%s%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]),",cJSON * provenance")
+                else:
+                    probeSignature = 'void %s_%s_probe(%s%s)' % (obj.lower(), m, ", ".join(['%s %s'%(p['c_type'], p['name']) for p in identityParams]), ", ".join(['%s %s'%(p['c_type'], p['name']) for p in probeParams]))
                 probeFunction.append(probeSignature  + ' {')
                 if len(identityParams) > 0:
                     # Write function call to hash on the first identity we're searching for
@@ -1017,23 +1036,24 @@ class CTemplater(object):
             a_c_file.write(a_c)
             a_c_file.close()
 
-        cjson_h = env.get_template('cJSON.h').render()
-        if console_output:
-            print("--cJSON.h--")
-            print(cjson_h)
-        else:
-            cjson_h_file = open(os.path.join(dirname, output_dir, 'cJSON.h'), 'w')
-            cjson_h_file.write(cjson_h)
-            cjson_h_file.close()
+        if genjson:
+            cjson_h = env.get_template('cJSON.h').render()
+            if console_output:
+                print("--cJSON.h--")
+                print(cjson_h)
+            else:
+                cjson_h_file = open(os.path.join(dirname, output_dir, 'cJSON.h'), 'w')
+                cjson_h_file.write(cjson_h)
+                cjson_h_file.close()
 
-        cjson_c = env.get_template('cJSON.c').render()
-        if console_output:
-            print("--cJSON.c--")
-            print(cjson_c)
-        else:
-            cjson_c_file = open(os.path.join(dirname, output_dir, 'cJSON.c'), 'w')
-            cjson_c_file.write(cjson_c)
-            cjson_c_file.close()
+            cjson_c = env.get_template('cJSON.c').render()
+            if console_output:
+                print("--cJSON.c--")
+                print(cjson_c)
+            else:
+                cjson_c_file = open(os.path.join(dirname, output_dir, 'cJSON.c'), 'w')
+                cjson_c_file.write(cjson_c)
+                cjson_c_file.close()
 
         m_h = env.get_template('monitor_map.h').render()
         if console_output:
@@ -1053,23 +1073,24 @@ class CTemplater(object):
             m_c_file.write(m_c)
             m_c_file.close()
 
-        u_h = env.get_template('amqp_utils.h').render()
-        if console_output:
-            print("--amqp_utils.h--")
-            print(u_h)
-        else:
-            u_h_file = open(os.path.join(dirname, output_dir, 'amqp_utils.h'), 'w')
-            u_h_file.write(u_h)
-            u_h_file.close()
+        if genjson:
+            u_h = env.get_template('amqp_utils.h').render()
+            if console_output:
+                print("--amqp_utils.h--")
+                print(u_h)
+            else:
+                u_h_file = open(os.path.join(dirname, output_dir, 'amqp_utils.h'), 'w')
+                u_h_file.write(u_h)
+                u_h_file.close()
 
-        u_c = env.get_template('amqp_utils.c').render()
-        if console_output:
-            print("--amqp_utils.c--")
-            print(u_c)
-        else:
-            u_c_file = open(os.path.join(dirname, output_dir, 'amqp_utils.c'), 'w')
-            u_c_file.write(u_c)
-            u_c_file.close()
+            u_c = env.get_template('amqp_utils.c').render()
+            if console_output:
+                print("--amqp_utils.c--")
+                print(u_c)
+            else:
+                u_c_file = open(os.path.join(dirname, output_dir, 'amqp_utils.c'), 'w')
+                u_c_file.write(u_c)
+                u_c_file.close()
 
         mu_h = env.get_template('mon_utils.h').render()
         if console_output:
@@ -1278,7 +1299,7 @@ class CTemplater(object):
                 
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s\n' % mg._writeAction(obj, action))
+                        output.append('        %s\n' % mg._writeAction(obj, action, CTemplater.genjson))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 if transitions[i].nextState.name in finalstates:
                     output.append('monitor->recycleFlag = 1;\n')
@@ -1286,7 +1307,7 @@ class CTemplater(object):
             elif len(transitions) == 1:
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s\n' % mg._writeAction(obj, action))
+                        output.append('        %s\n' % mg._writeAction(obj, action, CTemplater.genjson))
                 output.append('      %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 if transitions[i].nextState.name in finalstates:
                     output.append('monitor->recycleFlag = 1;\n')
@@ -1295,7 +1316,7 @@ class CTemplater(object):
                 output.append('      else if(' + transitions[i].guard.replace('this.', 'monitor->') + ') {\n')
                 if transitions[i].nextActions:
                     for action in transitions[i].nextActions:
-                        output.append('        %s\n' % mg._writeAction(obj, action))
+                        output.append('        %s\n' % mg._writeAction(obj, action, CTemplater.genjson))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].nextState.name)).upper() + ';\n')
                 if transitions[i].nextState.name in finalstates:
                     output.append('monitor->recycleFlag = 1;\n')
@@ -1306,7 +1327,7 @@ class CTemplater(object):
                 output.append('      else {\n')
                 if transitions[i].elseActions:
                     for action in transitions[i].elseActions:
-                        output.append('        %s\n' % mg._writeAction(obj, action))
+                        output.append('        %s\n' % mg._writeAction(obj, action, CTemplater.genjson))
                 output.append('        %s = ' % currentState + ("%s_%s_%s" % (obj, scenario, transitions[i].elseState.name)).upper() + ';\n')
                 if transitions[i].elseState.name in finalstates:
                     output.append('monitor->recycleFlag = 1;\n')
@@ -1342,7 +1363,8 @@ class CTemplater(object):
         for p in mg._symbolTable.get(event, 'params'):
             paramString+=', '+ CTemplater.convertTypeForC(p['type'])+' v'+str(index)
             index += 1
-        paramString+=', cJSON* provenance'
+        if CTemplater.genjson:
+            paramString+=', cJSON* provenance'
         return paramString
 
 
@@ -1359,29 +1381,49 @@ class CTemplater(object):
             for p in mg._getEventParams(paramString):
                 # Comparing SMEDL types not C types.
                 if p[0] == 'int':
-                    output.append('  push_param(&p_head, &%s, NULL, NULL, NULL,NULL);' % p[1])
-                    if 'exported_events' == mg._symbolTable.get(event)['type']:
-                        output.append('  push_param(&ep_head, &%s, NULL, NULL, NULL,NULL);' % p[1])
+                    if CTemplater.genjson:
+                        output.append('  push_param(&p_head, &%s, NULL, NULL, NULL,NULL);' % p[1])
+                        if 'exported_events' == mg._symbolTable.get(event)['type']:
+                            output.append('  push_param(&ep_head, &%s, NULL, NULL, NULL,NULL);' % p[1])
+                    else:
+                        output.append('  push_param(&p_head, &%s, NULL, NULL, NULL);' % p[1])
+                        if 'exported_events' == mg._symbolTable.get(event)['type']:
+                            output.append('  push_param(&ep_head, &%s, NULL, NULL, NULL);' % p[1])
                 elif p[0] == 'char':
-                    output.append('  push_param(&p_head, NULL, &%s, NULL, NULL,NULL);' % p[1])
-                    if 'exported_events' == mg._symbolTable.get(event)['type']:
-                        output.append('  push_param(&ep_head, NULL, &%s, NULL, NULL,NULL);' % p[1])
+                    if CTemplater.genjson:
+                        output.append('  push_param(&p_head, NULL, &%s, NULL, NULL,NULL);' % p[1])
+                        if 'exported_events' == mg._symbolTable.get(event)['type']:
+                            output.append('  push_param(&ep_head, NULL, &%s, NULL, NULL,NULL);' % p[1])
+                    else:
+                        output.append('  push_param(&p_head, NULL, &%s, NULL, NULL);' % p[1])
+                        if 'exported_events' == mg._symbolTable.get(event)['type']:
+                            output.append('  push_param(&ep_head, NULL, &%s, NULL, NULL);' % p[1])
                 elif p[0] == 'float':
                     exit("this should never happen. there is a missing float->double conversion.")
                 elif p[0] == 'double':
-                    output.append('  push_param(&p_head, NULL, NULL, &%s, NULL,NULL);' % p[1])
-                    if 'exported_events' == mg._symbolTable.get(event)['type']:
-                        output.append('  push_param(&ep_head, NULL, NULL, &%s, NULL,NULL);' % p[1])
+                    if CTemplater.genjson:
+                        output.append('  push_param(&p_head, NULL, NULL, &%s, NULL,NULL);' % p[1])
+                        if 'exported_events' == mg._symbolTable.get(event)['type']:
+                            output.append('  push_param(&ep_head, NULL, NULL, &%s, NULL,NULL);' % p[1])
+                    else:
+                        output.append('  push_param(&p_head, NULL, NULL, &%s, NULL);' % p[1])
+                        if 'exported_events' == mg._symbolTable.get(event)['type']:
+                            output.append('  push_param(&ep_head, NULL, NULL, &%s, NULL);' % p[1])
                 elif p[0] == 'pointer' or p[0] == 'char*':
-                    output.append('  push_param(&p_head, NULL, NULL, NULL, &%s,NULL);' % p[1])
-                    if 'exported_events' == mg._symbolTable.get(event)['type']:
-                        output.append('  push_param(&ep_head, NULL, NULL, NULL, &%s,NULL);' % p[1])
-        output.append(' push_param(&p_head, NULL, NULL, NULL, NULL,provenance);')
-        if 'exported_events' == mg._symbolTable.get(event)['type']:
-            output.append(' push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);')
+                    if CTemplater.genjson:
+                        output.append('  push_param(&p_head, NULL, NULL, NULL, &%s,NULL);' % p[1])
+                        if 'exported_events' == mg._symbolTable.get(event)['type']:
+                            output.append('  push_param(&ep_head, NULL, NULL, NULL, &%s,NULL);' % p[1])
+                    else:
+                        output.append('  push_param(&p_head, NULL, NULL, NULL, &%s);' % p[1])
+                        if 'exported_events' == mg._symbolTable.get(event)['type']:
+                            output.append('  push_param(&ep_head, NULL, NULL, NULL, &%s);' % p[1])
+        if CTemplater.genjson:
+            output.append(' push_param(&p_head, NULL, NULL, NULL, NULL,provenance);')
+            if 'exported_events' == mg._symbolTable.get(event)['type']:
+                output.append(' push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);')
         output.append('  push_action(&monitor->action_queue, %s_%s_EVENT, p_head);' % (obj.upper(), event.upper()))
         if 'exported_events' == mg._symbolTable.get(event)['type']:
-            #output.append('  push_action(&monitor->export_queue, %s_%s_EVENT, ep_head);' % (obj.upper(), event.upper()))
             output.append('  export_event(%s_%s_MONITOR, monitor->identities, %s_%s_EVENT, ep_head);' % (sync_set_name.upper(), obj.upper(), obj.upper(), event.upper()))
         output.append('}\n\n')
         return {'code':output, 'signature':signature}

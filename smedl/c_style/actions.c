@@ -3,10 +3,12 @@
 #include "actions.h"
 #include "mon_utils.h"
 #include "monitor_map.h"
+{% if genjson -%}
 #include "cJSON.h"
+{% endif -%}
 
 
-int push_param(param **head, int *i, char *c, double *d, const void **v, cJSON * pro) {
+int push_param(param **head, int *i, char *c, double *d, const void **v{%if genjson %}, cJSON * pro{% endif %}) {
 #ifdef DEBUG
     param *new = calloc(1, sizeof(param));
 #else //DEBUG
@@ -28,11 +30,13 @@ int push_param(param **head, int *i, char *c, double *d, const void **v, cJSON *
     if(v != NULL) {
         new->v = *v;
     }
+    {% if genjson -%}
     if (pro != NULL){
         new->provenance = pro;
     }else{
         new->provenance = NULL;
     }
+    {% endif -%}
     new->next = NULL;
     if(*head == NULL) {
         *head = new;
@@ -72,8 +76,10 @@ void print_param(param *head, char *types) {
             case 'v':
                 printf("string:%s", head->v);
                 break;
+            {% if genjson -%}
             default:
                 printf("pro:<data>");
+            {% endif -%}
         }
         head = head->next;
     }
