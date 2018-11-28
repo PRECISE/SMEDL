@@ -301,7 +301,7 @@ int put_{{ obj|lower }}_monitor({{ obj|title }}Monitor *monitor) {
     }
 
     for (; i < {{ obj|upper }}_MONITOR_MAP_SIZE; i++) {
-        {{ obj|title }MonitorRecord *current = map->list[i];
+        {{ obj|title }}MonitorRecord *current = map->list[i];
         results = traverseAndGet_{{ obj|lower }}(current, i);
         temp_cur->next = results;
         while (temp_cur->next != NULL) {
