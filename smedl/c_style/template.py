@@ -207,7 +207,9 @@ class CTemplater(object):
         for conn in mg.archSpec:
             if conn.targetMachine == name:
                 callstring = []
+                callstring.append('\n#ifdef DEBUG')
                 callstring.append('printf("' + obj + ' local wrapper importing ' + conn.targetEvent + ' event\\n");')
+                callstring.append('#endif //DEBUG')
 
                 connSpec = conn.patternSpec
 
@@ -291,7 +293,9 @@ class CTemplater(object):
 
                 # Call event handlers
                 callstring.append('while(record != NULL) {')
+                callstring.append('#ifdef DEBUG')
                 callstring.append('printf("' + obj + ' local wrapper dispatching ' + conn.targetEvent + ' to a monitor\\n");')
+                callstring.append('#endif //DEBUG')
                 callstring.append(handler_call)
                 callstring.append("tmp = record;")
                 callstring.append('record = record->next;')
@@ -380,10 +384,14 @@ class CTemplater(object):
                 if exported_event_list != []:
                     values['exported_event_routes'].append({'casename':sync_set_name.upper() + "_" + m.id.upper() + "_MONITOR:", 'events':exported_event_list})
 
-        # Global wrapper JSON handling
+        # Global wrapper imported async handling
+        sync_import_handlers = []
+        sync_set_connections = []
         for conn in mg.archSpec:
             if conn.targetMachine in sync_set_monitors and conn.sourceMachine not in sync_set_monitors:
                 event_msg_handlers.append('if (!strcmp(eventName, "%s")) {' % conn.connName)
+                sync_callstring = []
+                sync_set_connections.append(conn.connName)
                 
                 # Get parameters
                 ev_params = None
@@ -425,6 +433,8 @@ class CTemplater(object):
                 if connSpec == None or len(connSpec) == 0:
                     event_msg_handlers.append('int *identity = NULL;')
                     event_msg_handlers.append('void **values = NULL;')
+                    sync_callstring.append('int *identity = NULL;')
+                    sync_callstring.append('void **values = NULL;')
                     type = "INT" # doesn't matter what we set here, it won't be used
                     idList = []
                 else:
@@ -452,6 +462,7 @@ class CTemplater(object):
                         i += 1
                     tmp_str += '};'
                     event_msg_handlers.append(tmp_str)
+                    sync_callstring.append(tmp_str)
 
                     j = 0
                     idList = [] 
@@ -490,6 +501,8 @@ class CTemplater(object):
                     tmp_str += '};'
                     event_msg_handlers.append(tmp_str);
                     event_msg_handlers.append('void* values[%d] = {};' % len(idList))
+                    sync_callstring.append(tmp_str);
+                    sync_callstring.append('void* values[%d] = {};' % len(idList))
 
                     tmp_str = ""
                     j = 0
@@ -505,6 +518,11 @@ class CTemplater(object):
                             stri =  'var%d;' % (eventParaList_[idList[j]] + 1)
                             #print(stri)
                             strs =  '(void*) var%d;' % (eventParaList_[idList[j]] + 1)
+                            sync_callstring.append('if (target_parameterTypes[identity[' + str(j)+']]==INT) {')
+                            sync_callstring.append('values[' + str(j) + '] = &(get_param_by_idx(params, %d)->i);' % eventParaList_[idList[j]])
+                            sync_callstring.append('} else {')
+                            sync_callstring.append('values[' + str(j)+'] = get_param_by_idx(params, %d)->v;' % eventParaList_[idList[j]])
+                            sync_callstring.append('}')
                         else:
                             stri = '(atoi(monitor_parameter_val_strs[identity[' + str(j)+']]));'
                             strs = '(void*)monitor_parameter_val_strs[identity[' + str(j)+']];\n'
@@ -531,18 +549,28 @@ class CTemplater(object):
                 event_msg_handlers.append('push_param(&p_head, NULL, NULL, NULL, NULL, pro);')
 
                 # Call handler
+                event_msg_handlers.append('#ifdef DEBUG')
                 event_msg_handlers.append('printf("%s calling import API for %s\\n");' % (sync_set_name, conn.targetMachine))
+                event_msg_handlers.append('#endif //DEBUG')
                 event_msg_handlers.append('import_event_%s(identity, %s, values, %d, %s_%s_EVENT, p_head);' % (conn.targetMachine.lower(), type, len(idList), conn.targetMachine.upper(), conn.targetEvent.upper()))
+                sync_callstring.append('#ifdef DEBUG')
+                sync_callstring.append('printf("%s calling import API for %s\\n");' % (sync_set_name, conn.targetMachine))
+                sync_callstring.append('#endif //DEBUG')
+                sync_callstring.append('import_event_%s(identity, %s, values, %d, %s_%s_EVENT, params);' % (conn.targetMachine.lower(), type, len(idList), conn.targetMachine.upper(), conn.targetEvent.upper()))
                 event_msg_handlers.append('}' * len(ev_params_c))
                 
                 if len(ev_params) > 0:
                     event_msg_handlers.append('} else {')
                     event_msg_handlers.append('printf("no parameters\\n");\n}')
                 event_msg_handlers.append('} else ')
+                sync_import_handlers.append({'name': sync_set_name.upper() + '_' + conn.connName.upper() + '_CONNECTION', 'callstring': '\n'.join(sync_callstring)})
+
         # We could print a message when an event comes in with a routing key we don't recognize, but let's just silently ignore it for efficiency.
         event_msg_handlers.append(';');
 
         values['event_msg_handlers'] = '\n'.join(event_msg_handlers)
+        values['sync_import_handlers'] = sync_import_handlers
+        values['sync_set_connections'] = sync_set_connections
 
         # Global wrapper sync_queue handling
         sync_queue_handlers = dict() # key is monitor name
@@ -823,11 +851,11 @@ class CTemplater(object):
                 if genjson:
                     eventFunction.append(cjson_str)
                     eventFunction.append(sprintf)
-                else:
-                    eventFunction.append("/*")
-                    eventFunction.append(cjson_str)
-                    eventFunction.append(sprintf)
-                    eventFunction.append("*/")
+                #else:
+                    #eventFunction.append("/*")
+                    #eventFunction.append(cjson_str)
+                    #eventFunction.append(sprintf)
+                    #eventFunction.append("*/")
                 eventFunction.append('  char routing_key[256];')
 
                 # Construct routing key
@@ -839,7 +867,10 @@ class CTemplater(object):
                         break
                 if connName == None:
                     connName = obj+'_'+ m
-                sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
+                if genjson:
+                    sprintf_routing = '  sprintf(routing_key, "%s' % (connName)
+                else:
+                    sprintf_routing = '  printf("%s' % (connName)
                 # TODO: peter, write functions for printing and parsing monitor identities
                 # this cast is broken and wrong, but works as long as we have only one monitor process
 
@@ -862,7 +893,10 @@ class CTemplater(object):
                         elif p[0] != 'cJSON*' :
                             sprintf_routing += '.0'
 
+                if genjson == False:
+                    sprintf_routing += '\\n'
                 sprintf_routing+='"'
+
                 for v in identities:
                     if v['type'] == 'string':
                         sprintf_routing += ', (char*)((identities['
@@ -878,11 +912,9 @@ class CTemplater(object):
                 sprintf_routing += ');'
                 eventFunction.append(sprintf_routing)
                 #add to test
-                eventFunction.append('//printf("msg:%s\\n", message);');
                 if genjson:
+                    eventFunction.append('//printf("msg:%s\\n", message);');
                     eventFunction.append('  send_message(message, routing_key);')
-                else:
-                    eventFunction.append('  //send_message(message, routing_key);')
                 eventFunction.append('}\n\n')
             raiseFunction = CTemplater._writeRaiseFunction(mg, m, obj, sync_set_name)
 

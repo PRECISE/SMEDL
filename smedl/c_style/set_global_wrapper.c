@@ -2,13 +2,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+{% if genjson -%}
 #include <amqp_tcp_socket.h>
 #include <amqp.h>
 #include <amqp_framing.h>
 #include <libconfig.h>
+{% endif -%}
 #include "mon_utils.h"
+{% if genjson -%}
 #include "amqp_utils.h"
 #include "cJSON.h"
+{% endif -%}
 #include "actions.h"
 #include "monitor_map.h"
 #include "{{ sync_set_name }}_global_wrapper.h"
@@ -21,10 +25,12 @@
 global_action *sync_queue = NULL;
 global_action *async_queue = NULL;
 
+// {% if genjson -%}
 // Global RabbitMQ state that's used in both main() and send_message()
 const char *amqp_exchange;
 amqp_connection_state_t send_conn;
 
+{% endif -%}
 //CHANGE This function is entirely new. It's a giant nested switch that can be generated from the
 // architecture file. Only exported events are present
 void export_event(int monitor_type, MonitorIdentity *identities[], int event_id, param *params)
@@ -48,6 +54,7 @@ void export_event(int monitor_type, MonitorIdentity *identities[], int event_id,
     }
 }
 
+{% if genjson -%}
 void send_message(char* message, char* routing_key) {
 #ifdef DEBUG
     printf("{{ sync_set_name }} set sending message: %s\nbody: %s\n", routing_key, message);
@@ -91,6 +98,23 @@ smedl_provenance_t* create_provenance_object(char event[255], int line, long tra
     return provenance;
 }
 
+{% endif -%}
+{% if genjson == False -%}
+void {{ sync_set_name|lower }}_global_import({{ sync_set_name }}_Connection ch_id, param *params) {
+    switch (ch_id) {
+{% for c in sync_import_handlers -%}
+        case {{ c.name }}:
+            {
+            {{ c.callstring }}
+            }
+            break;
+{% endfor -%}
+    }
+
+    {{ sync_set_name|lower }}_process_queues();
+}
+
+{% endif -%}
 param * get_param_by_idx(param * head, int idx) {
     for (int i = 0; i < idx; i++) {
         head = head->next;
@@ -99,6 +123,7 @@ param * get_param_by_idx(param * head, int idx) {
     return head;
 }
 
+{% if genjson -%}
 int main() {
     //CHANGE Initialize all monitor types
     printf("Initializing monitors in {{ sync_set_name }} set...\n");
@@ -349,6 +374,16 @@ int main() {
         }
         received++;
 
+{% else -%}
+void {{ sync_set_name|lower }}_set_init() {
+    printf("Initializing monitors in {{ sync_set_name }} set...\n");
+    {% for m in sync_set_monitors -%}
+    init_{{ m|lower }}_monitor_maps();
+    {% endfor -%}
+}
+
+void {{ sync_set_name|lower }}_process_queues() {
+{% endif -%}
 #ifdef DEBUG
         printf("\n{{ sync_set_name }} set handling sync queue\n");
 #endif //DEBUG
@@ -418,6 +453,7 @@ int main() {
         
             pop_global_action(&async_queue);
         }
+{% if genjson -%}
         
 #ifdef DEBUG
         printf("\n{{ sync_set_name }} set waiting for next imported asynchronous event\n\n========================\n");
@@ -425,4 +461,5 @@ int main() {
     }
 
     return 0;
+{% endif -%}
 }
