@@ -380,6 +380,10 @@ void {{ sync_set_name|lower }}_set_init() {
     {% for m in sync_set_monitors -%}
     init_{{ m|lower }}_monitor_maps();
     {% endfor -%}
+
+    {% for m in monitors_to_statically_init -%}
+    init_default_{{ m|lower }}_monitor();
+    {% endfor -%}
 }
 
 void {{ sync_set_name|lower }}_process_queues() {
