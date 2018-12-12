@@ -384,7 +384,7 @@ class CTemplater(object):
                 if exported_event_list != []:
                     values['exported_event_routes'].append({'casename':sync_set_name.upper() + "_" + m.id.upper() + "_MONITOR:", 'events':exported_event_list})
 
-        # Global wrapper imported async handling
+        # Global wrapper imported sync/async handling
         sync_import_handlers = []
         sync_set_connections = []
         for conn in mg.archSpec:

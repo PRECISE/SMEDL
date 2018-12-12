@@ -106,7 +106,7 @@ int init_{{ obj|lower }}_monitor_maps() {
         return 0;
     }
     for(int i = 0; i < {{ obj|upper }}_MONITOR_IDENTITIES; i++) {
-        {{ obj|lower }}_monitor_maps[i] = ({{ obj|title }}MonitorMap*)malloc(sizeof({{ obj|title }}MonitorMap));
+        {{ obj|lower }}_monitor_maps[i] = calloc(1, sizeof({{ obj|title }}MonitorMap));
     }
     return 1;
 }

@@ -17,6 +17,7 @@
 // params are the parameters of the event
 void import_event_{{ obj|lower }}(int identity[], int type, void *values[], int size, int event_id, param *params) {
     {{ obj|title }}MonitorRecord* record;
+    param *params_head = params;
     // Get the relevant monitor instances. Filter by ID or do dynamic instantiation if needed
     // (depends on the event type)
     switch (event_id) { //One case for each imported event.
@@ -26,7 +27,7 @@ void import_event_{{ obj|lower }}(int identity[], int type, void *values[], int 
             break;
         {% endfor -%}
     }
-    pop_param(&params);
+    pop_param(&params_head);
 }
 
 // Handle events to be exported to RabbitMQ from the global wrapper.

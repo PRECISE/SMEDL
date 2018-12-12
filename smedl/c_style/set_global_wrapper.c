@@ -415,7 +415,7 @@ void {{ sync_set_name|lower }}_process_queues() {
                         case {{ m.monitor_name|upper }}_{{ e.event_name|upper }}_EVENT:
                             {{ e.callstring }}
 
-                            pop_param(&params);
+                            //pop_param(&params);
                             break;
                         {% endfor -%}
                     }
