@@ -262,6 +262,8 @@ There are two new functions of interest when doing this: `<syncset>_set_init` an
 
 Currently there is no provision for monitors to export events back to the target system without manual modifications. Until such a feature is discussed and implemented, manual modifications should go in the `exported_<monitor>_<eventname>` functions in \<monitor\>_mon.c. These are the functions that get called when the corresponding event is exported from the synchronous set.
 
+An example usage of a synchronous global wrapper can be found in the auction example in tests/examples.
+
 ## Running the test suite
 You may run the tool's test suite by simply calling `nose2` from the
 project's root directory.

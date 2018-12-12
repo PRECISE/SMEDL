@@ -1,0 +1,122 @@
+object auctionmonitor
+
+identity
+string name;
+
+state
+float reserve_price;
+float current_price = 0;
+float duration;
+float days_passed = 0;
+
+events
+imported create_auction(string, float, float);
+imported bid(string, float);
+imported sold(string);
+imported end_of_day();
+internal check_price();
+internal reserve_met();
+internal check_time();
+internal auction_expired();
+exported alarm_recreation();
+exported alarm_low_bid();
+exported alarm_sold_early();
+exported alarm_not_sold();
+exported alarm_action_after_end();
+exported alarm_action_before_start();
+
+scenarios
+
+main:
+init
+-> create_auction(item, minimum, period) {reserve_price = minimum; duration = period;}
+-> bidding
+init
+-> bid(item, amount) {raise alarm_action_before_start();}
+-> error
+init
+-> sold(item) {raise alarm_action_before_start();}
+-> error
+
+bidding
+-> bid(item, amount) when (amount <= current_price) {raise alarm_low_bid();}
+-> error
+bidding
+-> bid(item, amount) when (amount > current_price) {current_price = amount; raise check_price();}
+-> bidding
+bidding
+-> sold(item) {raise alarm_sold_early();}
+-> error
+bidding
+-> end_of_day() {days_passed++; raise check_time();}
+-> bidding
+bidding
+-> reserve_met()
+-> above_reserve
+bidding
+-> auction_expired()
+-> done
+bidding
+-> create_auction(item, minimum, period) {raise alarm_recreation();}
+-> error
+
+above_reserve
+-> sold(item)
+-> done
+above_reserve
+-> bid(item, amount) when (amount <= current_price) {raise alarm_low_bid();}
+-> error
+above_reserve
+-> bid(item, amount) when (amount > current_price) {current_price = amount;}
+-> above_reserve
+above_reserve
+-> end_of_day() {days_passed++; raise check_time();}
+-> error
+above_reserve
+-> auction_expired() {raise alarm_not_sold();}
+-> error
+above_reserve
+-> create_auction(item, minimum, period) {raise alarm_recreation();}
+-> error
+
+done
+-> end_of_day()
+-> done
+done
+-> bid(item, amount) {raise alarm_action_after_end();}
+-> error
+done
+-> sold(item) {raise alarm_action_after_end();}
+-> error
+done 
+-> create_auction(item, minimum, period) {raise alarm_recreation();}
+-> error
+
+error
+-> create_auction(item, minimum, period)
+-> error
+error
+-> bid(item, amount)
+-> error
+error
+-> sold(item)
+-> error
+error
+-> end_of_day()
+-> error
+
+price_check:
+idle
+-> check_price() when (current_price >= reserve_price) {raise reserve_met();}
+-> idle
+idle
+-> check_price() when (current_price < reserve_price)
+-> idle
+
+time_check:
+idle
+-> check_time() when (days_passed >= duration) {raise auction_expired();}
+-> idle
+idle
+-> check_time() when (days_passed < duration)
+-> idle
