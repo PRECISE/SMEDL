@@ -245,6 +245,23 @@ When building, there are no new libraries; however, there is the new C file for 
 
     gcc -std=c99 -D_POSIX_C_SOURCE=199309L actions.c amqp_utils.c cJSON.c monitor_map.c mon_utils.c frontend_mon.c frontend_monitor_wrapper.c metricsCollector_mon.c metricsCollector_monitor_wrapper.c metricsSet_global_wrapper.c -o metricsSet -lm -lconfig -lrabbitmq
 
+### Synchronous global wrappers
+
+Normally, the global wrapper sends and receives events asynchronously, over RabbitMQ. There is also the option of generating a synchronous interface. In that case, no JSON generation or parsing code is generated either, for performance.
+
+To do this, use the -j or --nojson flag when invoking mgen. The files cJSON.c and amqp_utils.c will not be generated, so be sure to remove these from any makefiles if necessary.
+
+There are two new functions of interest when doing this: `<syncset>_set_init` and `<syncset>_global_import`. These make up the interface between the monitor and the target system.
+
+`<syncset>_set_init()` initializes the internal data structures for the synchronous set's monitors. This function must be called once before any calls to `<syncset>_global_import`.
+
+`<syncset>_global_import(<syncset>_Connection ch_id, param *params)` is what the target system should call to send an event to the monitors in the synchronous set. It takes two parameters:
+
+* `<syncset>_Connection ch_id` is a new enum representing the connections in the architecture file. See \<syncset\>_global_wrapper.h to see how it is defined. Use the connection that corresponds to the event being sent.
+* `param *params` is the parameters for the event. See actions.h for more information on this data type.
+
+Currently there is no provision for monitors to export events back to the target system without manual modifications. Until such a feature is discussed and implemented, manual modifications should go in the `exported_<monitor>_<eventname>` functions in \<monitor\>_mon.c. These are the functions that get called when the corresponding event is exported from the synchronous set.
+
 ## Running the test suite
 You may run the tool's test suite by simply calling `nose2` from the
 project's root directory.
