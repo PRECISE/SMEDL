@@ -104,12 +104,12 @@ void {{ sync_set_name|lower }}_global_import({{ sync_set_name }}_Connection ch_i
     switch (ch_id) {
 {% for c in sync_import_handlers -%}
         case {{ c.name }}:
-            {
             {{ c.callstring }}
-            }
             break;
 {% endfor -%}
     }
+
+    pop_param(&params)
 
     {{ sync_set_name|lower }}_process_queues();
 }
@@ -415,7 +415,6 @@ void {{ sync_set_name|lower }}_process_queues() {
                         case {{ m.monitor_name|upper }}_{{ e.event_name|upper }}_EVENT:
                             {{ e.callstring }}
 
-                            //pop_param(&params);
                             break;
                         {% endfor -%}
                     }
@@ -423,6 +422,7 @@ void {{ sync_set_name|lower }}_process_queues() {
                 {% endfor -%}
             }
             
+            pop_param(&params);
             pop_global_action(&sync_queue);
         }
         

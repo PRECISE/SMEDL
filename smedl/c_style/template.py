@@ -385,13 +385,12 @@ class CTemplater(object):
                     values['exported_event_routes'].append({'casename':sync_set_name.upper() + "_" + m.id.upper() + "_MONITOR:", 'events':exported_event_list})
 
         # Global wrapper imported sync/async handling
-        sync_import_handlers = []
+        sync_import_handlers = dict()
         sync_set_connections = []
         for conn in mg.archSpec:
             if conn.targetMachine in sync_set_monitors and conn.sourceMachine not in sync_set_monitors:
                 event_msg_handlers.append('if (!strcmp(eventName, "%s")) {' % conn.connName)
                 sync_callstring = []
-                sync_set_connections.append(conn.connName)
                 
                 # Get parameters
                 ev_params = None
@@ -557,19 +556,28 @@ class CTemplater(object):
                 sync_callstring.append('printf("%s calling import API for %s\\n");' % (sync_set_name, conn.targetMachine))
                 sync_callstring.append('#endif //DEBUG')
                 sync_callstring.append('import_event_%s(identity, %s, values, %d, %s_%s_EVENT, params);' % (conn.targetMachine.lower(), type, len(idList), conn.targetMachine.upper(), conn.targetEvent.upper()))
+                event_msg_handlers.append('pop_param(&p_head);')
                 event_msg_handlers.append('}' * len(ev_params_c))
                 
                 if len(ev_params) > 0:
                     event_msg_handlers.append('} else {')
                     event_msg_handlers.append('printf("no parameters\\n");\n}')
                 event_msg_handlers.append('} else ')
-                sync_import_handlers.append({'name': sync_set_name.upper() + '_' + conn.connName.upper() + '_CONNECTION', 'callstring': '\n'.join(sync_callstring)})
+                if conn.connName in sync_set_connections:
+                    sync_import_handlers[conn.connName] += '\n{\n' + '\n'.join(sync_callstring) + '\n}'
+                else:
+                    sync_import_handlers[conn.connName] = '{\n' + '\n'.join(sync_callstring) + '\n}'
+                if conn.connName not in sync_set_connections:
+                    sync_set_connections.append(conn.connName)
 
         # We could print a message when an event comes in with a routing key we don't recognize, but let's just silently ignore it for efficiency.
         event_msg_handlers.append(';');
 
+        sync_import_handlers_list = []
+        for k, v in sync_import_handlers.items():
+            sync_import_handlers_list.append({'name': sync_set_name.upper() + '_' + k.upper() + '_CONNECTION', 'callstring': v})
         values['event_msg_handlers'] = '\n'.join(event_msg_handlers)
-        values['sync_import_handlers'] = sync_import_handlers
+        values['sync_import_handlers'] = sync_import_handlers_list
         values['sync_set_connections'] = sync_set_connections
 
         # Global wrapper sync_queue handling
