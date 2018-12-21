@@ -475,7 +475,7 @@ class CTemplater(object):
                             #print (conn)
                             #print(pattern.leftTerm)
                             #print(conn)
-                            exit("illegal pattern1")
+                            exit("target machine name is not consistent with pattern expression")
                         #if s_machine_params == None or pattern.leftIndex >= len(s_machine_params) :
                         #    exit("illegal pattern2")
                         #print(connSpec)
