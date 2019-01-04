@@ -109,7 +109,7 @@ void {{ sync_set_name|lower }}_global_import({{ sync_set_name }}_Connection ch_i
 {% endfor -%}
     }
 
-    pop_param(&params)
+    pop_param(&params);
 
     {{ sync_set_name|lower }}_process_queues();
 }
