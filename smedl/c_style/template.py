@@ -979,8 +979,8 @@ class CTemplater(object):
         t_str = ''
         floatNum = parameterTypeNumMap['float']
         for key,value in parameterTypeNumMap.items():
-            if value > 0:
-                t_str += CTemplater.convertTypeForC(key) + ' '
+            #if value > 0:
+            #    t_str += CTemplater.convertTypeForC(key) + ' '
             #print (t_str)
             iterBegin = 0
             iterEnd = value
@@ -988,17 +988,10 @@ class CTemplater(object):
                 iterBegin = floatNum
                 iterEnd = floatNum + value
             for k in range(iterBegin,iterEnd):
-                if k != iterEnd-1:
-                    if key == 'string':
-                        t_str += 'v' + str(k) + ', '
-                
-                    else:
-                        t_str += CTemplater.convertTypeForC(key)[0] + str(k) + ', '
+                if key == 'string':
+                    t_str += CTemplater.convertTypeForC(key) + ' ' + 'v' + str(k) + ';\n'
                 else:
-                    if key == 'string':
-                        t_str += 'v' + str(k) + '; '
-                    else:
-                        t_str += CTemplater.convertTypeForC(key)[0] + str(k) + '; '
+                    t_str += CTemplater.convertTypeForC(key) + ' ' +  CTemplater.convertTypeForC(key)[0] + str(k) + ';\n'
         values['var_declaration'] = t_str
 
         # Render the monitor templates and write to disk
@@ -1455,7 +1448,7 @@ class CTemplater(object):
                         output.append('  push_param(&p_head, NULL, NULL, &%s, NULL);' % p[1])
                         if 'exported_events' == mg._symbolTable.get(event)['type']:
                             output.append('  push_param(&ep_head, NULL, NULL, &%s, NULL);' % p[1])
-                elif p[0] == 'pointer' or p[0] == 'char*':
+                elif p[0] == 'void*' or p[0] == 'char*':
                     if CTemplater.genjson:
                         output.append('  push_param(&p_head, NULL, NULL, NULL, &%s,NULL);' % p[1])
                         if 'exported_events' == mg._symbolTable.get(event)['type']:
