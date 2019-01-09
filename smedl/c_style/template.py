@@ -505,8 +505,10 @@ class CTemplater(object):
 
                     tmp_str = ""
                     j = 0
-                    local_name = 'tmp_j'
+                    local_name = 'tmp_'
                     #print(eventParaList)
+                    for i in idList:
+                        tmp_str += 'int '+  local_name  + str(i) +';'
                     while j < len(idList):
                         stri = ''
                         strs = ''
@@ -525,9 +527,10 @@ class CTemplater(object):
                         else:
                             stri = '(atoi(monitor_parameter_val_strs[identity[' + str(j)+']]));'
                             strs = '(void*)monitor_parameter_val_strs[identity[' + str(j)+']];\n'
-                        tmp_str += 'if (target_parameterTypes[identity[' + str(j)+']]==INT) {int '+ local_name + ' = ' + stri
-                        tmp_str += 'values[' + str(j) + '] =(void*)&' + local_name +';}'
-                        tmp_str += 'else if(target_parameterTypes[identity[' + str(j)+']]==STRING) {values[' + str(j)+']=' + strs + '}\n'
+                        #tmp_str += 'if (target_parameterTypes[identity[' + str(j)+']]==INT) {int '+ local_name + ' = ' + stri
+                        tmp_str += 'if (target_parameterTypes[identity[' + str(j)+']]==INT) {'+ local_name + str(j) + ' = ' + stri
+                        tmp_str += 'values[' + str(j) + '] =(void*)&' + local_name + str(j) + ';}'
+                        tmp_str += 'else if(target_parameterTypes[identity[' + str(j)+']]==STRING) {values[' + str(j) + ']=' + strs + '}\n'
                         tmp_str += 'else {values[' + str(j)+'] = (void *)NULL;}\n'
                         j += 1
                     event_msg_handlers.append(tmp_str);
