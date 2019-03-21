@@ -373,16 +373,16 @@ class CTemplater(object):
                     if route_synchronously == False and route_asynchronously == False:
                         route_asynchronously = True
 
-                    callstring = []
+                    Queues = []
                     if route_synchronously:
-                        callstring.append('push_global_action(&sync_queue, monitor_type, identities, event_id, params);')
+                        Queues.append('sync_queue')
                     if route_asynchronously:
-                        callstring.append('push_global_action(&async_queue, monitor_type, identities, event_id, params);')
+                        Queues.append('async_queue')
 
-                    if callstring != []:
-                        exported_event_list.append({'casename':m.id.upper() + "_" + ev_name.upper() + "_EVENT:",'callstring':'\n'.join(callstring)})
+                    if Queues != []:
+                        exported_event_list.append({'ev_name': ev_name,'queues':Queues})
                 if exported_event_list != []:
-                    values['exported_event_routes'].append({'casename':sync_set_name.upper() + "_" + m.id.upper() + "_MONITOR:", 'events':exported_event_list})
+                    values['exported_event_routes'].append({'monitor':m.id, 'events':exported_event_list})
 
         # Global wrapper imported sync/async handling
         sync_import_handlers = dict()

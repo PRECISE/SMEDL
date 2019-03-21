@@ -33,26 +33,20 @@ amqp_connection_state_t send_conn;
 {% endif -%}
 //CHANGE This function is entirely new. It's a giant nested switch that can be generated from the
 // architecture file. Only exported events are present
-void export_event(int monitor_type, MonitorIdentity *identities[], int event_id, param *params)
-{
+
+{%- for m in exported_event_routes %}
+    {%- for e in m.events %}
+    void export_{{m.monitor}}_{{e.ev_name}}_event(MonitorIdentity *identities[], param *params){
 #ifdef DEBUG
-    printf("{{ sync_set_name }} set queueing exported event: Monitor type %d, Event ID %d\n", monitor_type, event_id);
+        printf("{{ sync_set_name }} set queueing exported event: Monitor type {{m.monitor}}, Event ID {{e.ev_name}}\n");
 #endif //DEBUG
-    
-    switch (monitor_type) {
-        {% for m in exported_event_routes -%}
-        case {{ m.casename }}
-            switch (event_id) {
-                {% for e in m.events -%}
-                case {{ e.casename }}
-                    {{ e.callstring }}
-                    break;
-                {% endfor -%}
-            }
-            break;
-        {% endfor -%}
+        {%- for i in e.queues %}
+        push_global_action({{i}}, {{sync_set_name|upper}}_{{m.monitor|upper}}_MONITOR, identities, {{m.monitor|upper}}_{{e.ev_name|upper}}_EVENT,params);
+        {%- endfor %}
     }
-}
+    {%- endfor %}
+{%- endfor %}
+
 
 {% if genjson -%}
 void send_message(char* message, char* routing_key) {
