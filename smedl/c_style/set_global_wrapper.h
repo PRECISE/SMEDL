@@ -18,7 +18,12 @@ typedef enum {
 
 // The global wrapper export API. All exported events go through this function, which sorts them
 // into the sync queue, async queue, or both, depending on which monitors they go to.
-void export_event(int monitor_type, MonitorIdentity *identities[], int event_id, param *params);
+
+{%- for m in exported_event_routes %}
+    {%- for e in m.events %}
+void export_{{m.monitor}}_{{e.ev_name}}_event(MonitorIdentity *identities[], param *params);
+    {%- endfor %}
+{%- endfor %}
 
 {% if genjson -%}
 // Send a message over RabbitMQ. This is used by the exported_...() functions in
