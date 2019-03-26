@@ -1060,7 +1060,7 @@ class CTemplater(object):
             glb_c_file.close()
 
         # Copy pre-written static helper files to the output path
-        a_h = env.get_template('actions.h').render()
+        a_h = env.get_template('actions.h').render(values)
         if console_output:
             print("--actions.h--")
             print(a_h)
@@ -1069,7 +1069,7 @@ class CTemplater(object):
             a_h_file.write(a_h)
             a_h_file.close()
 
-        a_c = env.get_template('actions.c').render()
+        a_c = env.get_template('actions.c').render(values)
         if console_output:
             print("--actions.c--")
             print(a_c)
@@ -1079,7 +1079,7 @@ class CTemplater(object):
             a_c_file.close()
 
         if genjson:
-            cjson_h = env.get_template('cJSON.h').render()
+            cjson_h = env.get_template('cJSON.h').render(values)
             if console_output:
                 print("--cJSON.h--")
                 print(cjson_h)
@@ -1088,7 +1088,7 @@ class CTemplater(object):
                 cjson_h_file.write(cjson_h)
                 cjson_h_file.close()
 
-            cjson_c = env.get_template('cJSON.c').render()
+            cjson_c = env.get_template('cJSON.c').render(values)
             if console_output:
                 print("--cJSON.c--")
                 print(cjson_c)
@@ -1097,7 +1097,7 @@ class CTemplater(object):
                 cjson_c_file.write(cjson_c)
                 cjson_c_file.close()
 
-        m_h = env.get_template('monitor_map.h').render()
+        m_h = env.get_template('monitor_map.h').render(values)
         if console_output:
             print("--monitor_map.h--")
             print(m_h)
@@ -1106,7 +1106,7 @@ class CTemplater(object):
             m_h_file.write(m_h)
             m_h_file.close()
 
-        m_c = env.get_template('monitor_map.c').render()
+        m_c = env.get_template('monitor_map.c').render(values)
         if console_output:
             print("--monitor_map.c--")
             print(m_c)
@@ -1116,7 +1116,7 @@ class CTemplater(object):
             m_c_file.close()
 
         if genjson:
-            u_h = env.get_template('amqp_utils.h').render()
+            u_h = env.get_template('amqp_utils.h').render(values)
             if console_output:
                 print("--amqp_utils.h--")
                 print(u_h)
@@ -1125,7 +1125,7 @@ class CTemplater(object):
                 u_h_file.write(u_h)
                 u_h_file.close()
 
-            u_c = env.get_template('amqp_utils.c').render()
+            u_c = env.get_template('amqp_utils.c').render(values)
             if console_output:
                 print("--amqp_utils.c--")
                 print(u_c)
@@ -1134,7 +1134,7 @@ class CTemplater(object):
                 u_c_file.write(u_c)
                 u_c_file.close()
 
-        mu_h = env.get_template('mon_utils.h').render()
+        mu_h = env.get_template('mon_utils.h').render(values)
         if console_output:
             print("--mon_utils.h--")
             print(mu_h)
@@ -1143,7 +1143,7 @@ class CTemplater(object):
             mu_h_file.write(mu_h)
             mu_h_file.close()
 
-        mu_c = env.get_template('mon_utils.c').render()
+        mu_c = env.get_template('mon_utils.c').render(values)
         if console_output:
             print("--mon_utils.c--")
             print(mu_c)
