@@ -1466,6 +1466,6 @@ class CTemplater(object):
                 output.append(' push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);')
         output.append('  push_action(&monitor->action_queue, %s_%s_EVENT, p_head);' % (obj.upper(), event.upper()))
         if 'exported_events' == mg._symbolTable.get(event)['type']:
-            output.append('  export_event(%s_%s_MONITOR, monitor->identities, %s_%s_EVENT, ep_head);' % (sync_set_name.upper(), obj.upper(), obj.upper(), event.upper()))
+            output.append('  export_%s_%s_event(monitor->identities, ep_head);' % (obj, event))
         output.append('}\n\n')
         return {'code':output, 'signature':signature}
