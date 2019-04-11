@@ -252,6 +252,7 @@ class CTemplater(object):
                         callstring.append('%sMonitor* tempMon = init_%s_monitor(d);' % (obj.title(),obj.lower()))
                         callstring.append('record -> monitor = tempMon;')
                         callstring.append('record -> next = NULL;')
+                        callstring.append('put_%s_monitor(tempMon);'% (obj.lower()))
                         callstring.append('}\n\t')
 
                 callstring.append('{')
