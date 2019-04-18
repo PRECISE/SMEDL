@@ -27,8 +27,7 @@ int {{ obj|lower }}_executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor( {{ obj|title }}Data *d ) {
     {{ obj|title }}Monitor* monitor = {{ obj|lower }}_getMonitorObject();
     pthread_mutex_init(&monitor->monitor_lock, NULL);
-{% for id in identities %}    monitor->identities[{{ obj|upper }}_{{ id.name|upper }}] = init_monitor_identity({{ id.type|upper }}, {% if id.type|upper == "INT" %}&{% endif -%}d->{{ id.name }});
-
+{% for id in identities %}    monitor->identities = d->identities;
 {% endfor -%}
 {% for v in state_vars %}    monitor->{{ v.name }} = d->{{ v.name }};
 {% endfor %}{{state_inits}}
@@ -39,9 +38,9 @@ int {{ obj|lower }}_executed_scenarios[{{num_scenarios}}]={ {{ zeros }} };
     return monitor;
 }
 
-{{ obj|title }}Monitor* init_default_{{ obj|lower }}_monitor() {
+{{ obj|title }}Monitor* init_default_{{ obj|lower }}_monitor(MonitorIdentity **identities) {
     {{ obj|title }}Data *d = malloc(sizeof({{ obj|title }}Data));
-    
+    d->identities = identities;
     {{ mon_init_str }}
 
     return init_{{ obj|lower }}_monitor(d);

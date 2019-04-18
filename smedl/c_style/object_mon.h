@@ -15,13 +15,13 @@ typedef enum { {{ event_enums }} } {{ obj|lower }}_event;
 typedef enum { {{ error_enums }} } {{ obj|lower }}_error;
 
 typedef struct {{ obj|title }}Data {
-{{ identity_declarations }}
+MonitorIdentity **identities;
 {{ state_var_declarations }}
 } {{ obj|title }}Data;
 
 typedef struct {{ obj|title }}Monitor {
   pthread_mutex_t monitor_lock;
-  MonitorIdentity *identities[{{ identities|length }}];
+  MonitorIdentity **identities;
   int state[{{ scenario_names|length }}];
 {{ state_var_declarations }}
   action *action_queue;
@@ -35,7 +35,7 @@ typedef struct {{ obj|title }}MonitorPoolRecord {
 
 
 {{ obj|title }}Monitor* init_{{ obj|lower }}_monitor({{ obj|title }}Data*);
-{{ obj|title }}Monitor* init_default_{{ obj|lower }}_monitor();
+{{ obj|title }}Monitor* init_default_{{ obj|lower }}_monitor(MonitorIdentity **identities);
 void free_{{ obj|lower}}_monitor({{ obj|title }}Monitor*);
 
 /*

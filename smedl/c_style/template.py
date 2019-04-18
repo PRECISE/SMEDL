@@ -121,9 +121,9 @@ class CTemplater(object):
             else:
                 #mon_init_str.append('d->%s=malloc(1);' % ident['name'])
                 #mon_init_str.append("*(char *)(d->%s) = '\\0';" % ident['name'])
-                mon_init_str.append('d->%s = "";' % ident['name'])
-        mon_init_str.append(CTemplater._addDataString('d', state_vars))
-        values['mon_init_str'] = '\n'.join(mon_init_str)
+                #mon_init_str.append('d->%s = "";' % ident['name'])
+                mon_init_str.append(CTemplater._addDataString('d', state_vars))
+                values['mon_init_str'] = '\n'.join(mon_init_str)
 
 
         values['msg_format_version'] = '\"'+__about__['msg_format_version']+'\"'
@@ -243,10 +243,13 @@ class CTemplater(object):
                         callstring.append('%sData *d = (%sData *)malloc(sizeof(%sData));' %(obj.title(),obj.title(),obj.title()))
                         j = 0
                         for v in identities:
-                            callstring.append('if (target_parameterTypes[identity['+str(j)+']]==INT){')
-                            callstring.append('\t d ->' + v['name'] + '=' + '*(int*)values[' + str(j) + '];}')
-                            callstring.append('else if(target_parameterTypes[identity['+str(j)+']]==STRING) {\t d ->' + v['name'] + '=(void*)' + 'values[' + str(j)+ '];}')
-                            callstring.append('else {\t d ->' + v['name'] + '= (void *)NULL;}')
+                            #callstring.append('if (target_parameterTypes[identity['+str(j)+']]==INT){')
+                            #callstring.append('\t d ->' + v['name'] + '=' + '*(int*)values[' + str(j) + '];}')
+                            #callstring.append('else if(target_parameterTypes[identity['+str(j)+']]==STRING) {\t d ->' + v['name'] + '=(void*)' + 'values[' + str(j)+ '];}')
+                            #callstring.append('else {\t d ->' + v['name'] + '= (void *)NULL;}')
+                            callstring.append('d->identities = malloc(sizeof(MonitorIdentity)*%s_MONITOR_IDENTITIES);' %(obj.upper()))
+                            callstring.append('d->identities[identity[0]] = init_monitor_identity(target_parameterTypes[identity[0]],values[0]);')
+                            
                             j += 1
                         callstring.append(CTemplater._addDataString('d',state_vars))
                         callstring.append('%sMonitor* tempMon = init_%s_monitor(d);' % (obj.title(),obj.lower()))

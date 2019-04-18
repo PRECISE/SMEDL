@@ -227,7 +227,7 @@ int main() {
     die_on_amqp_error(amqp_get_rpc_reply(recv_conn), "Consuming");
 
     {% for m in monitors_to_statically_init -%}
-    init_default_{{ m|lower }}_monitor();
+    init_default_{{ m|lower }}_monitor(NULL);
     {% endfor -%}
 
 
@@ -376,7 +376,7 @@ void {{ sync_set_name|lower }}_set_init() {
     {% endfor -%}
 
     {% for m in monitors_to_statically_init -%}
-    init_default_{{ m|lower }}_monitor();
+    init_default_{{ m|lower }}_monitor(NULL);
     {% endfor -%}
 }
 
