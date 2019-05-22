@@ -15,20 +15,15 @@
 // they should be NULL, 0, NULL, 0 (although it doesn't really matter).
 // event_id is from the {{ obj|lower }}_event enum
 // params are the parameters of the event
-void import_event_{{ obj|lower }}(int identity[], int type, void *values[], int size, int event_id, param *params) {
-    {{ obj|title }}MonitorRecord* record;
-    //param *params_head = params;
-    // Get the relevant monitor instances. Filter by ID or do dynamic instantiation if needed
-    // (depends on the event type)
-    switch (event_id) { //One case for each imported event.
-        {% for e in imported_event_case -%}
-        case {{ e.event_enum|join('\n') }}
-        {{e.callstring}}
-            break;
-        {% endfor -%}
+
+{%- for m in imported_event_case %}
+    {%- for e in m.import_event %}
+    void import_{{m.import_obj}}_{{e}}_event(int identity[], int type, void *values[], int size, param *params){
+        {{ obj|title }}MonitorRecord* record;
+        {{m.callstring}}
     }
-    //pop_param(&params_head);
-}
+    {%- endfor %}
+{%- endfor %}
 
 // Handle events to be exported to RabbitMQ from the global wrapper.
 void export_async_event_{{ obj|lower }}(MonitorIdentity** identities, int event_id, param *params) {

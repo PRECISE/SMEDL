@@ -307,8 +307,8 @@ class CTemplater(object):
                 callstring.append('}')
                 callstring.append('}')
 
-                values['imported_event_case'].append({'event_enum':[obj.upper()+'_'+conn.targetEvent.upper()+'_EVENT:'],'callstring':'\n'.join(callstring)})
-
+                #values['imported_event_case'].append({'event_enum':[obj.upper()+'_'+conn.targetEvent.upper()+'_EVENT:'],'callstring':'\n'.join(callstring)})
+                values['imported_event_case'].append({'import_obj':obj,'import_event':[conn.targetEvent],'callstring':'\n'.join(callstring)})
         # Local wrapper exported event handlers
         for m in methods:
             if 'exported_events' == mg._symbolTable.get(m)['type']:
