@@ -1007,7 +1007,8 @@ class CTemplater(object):
         dirname = os.path.dirname(filename)
         if output_dir is None:
             output_dir = ''
-        os.makedirs(os.path.join(dirname, output_dir), exist_ok=True)
+        if os.path.join(dirname, output_dir) != '':
+            os.makedirs(os.path.join(dirname, output_dir), exist_ok=True)
 
         out_h = env.get_template('object_mon.h').render(values)
         if console_output:
