@@ -18,7 +18,7 @@
 
 {%- for m in imported_event_case %}
     {%- for e in m.import_event %}
-    void import_{{m.import_obj}}_{{e}}_event(int identity[], int type, void *values[], int size, param *params){
+    void process_{{m.import_obj}}_{{e}}(int identity[], int type, void *values[], int size, param *params){
         {{ obj|title }}MonitorRecord* record;
         {{m.callstring}}
     }

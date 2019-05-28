@@ -558,11 +558,11 @@ class CTemplater(object):
                 event_msg_handlers.append('#ifdef DEBUG')
                 event_msg_handlers.append('printf("%s calling import API for %s\\n");' % (sync_set_name, conn.targetMachine))
                 event_msg_handlers.append('#endif //DEBUG')
-                event_msg_handlers.append('import_event_%s(identity, %s, values, %d, %s_%s_EVENT, p_head);' % (conn.targetMachine.lower(), type, len(idList), conn.targetMachine.upper(), conn.targetEvent.upper()))
+                event_msg_handlers.append('process_%s_%s(identity, %s, values, %d, p_head);' % (conn.targetMachine.lower(), conn.targetEvent.lower(), type, len(idList)))
                 sync_callstring.append('#ifdef DEBUG')
                 sync_callstring.append('printf("%s calling import API for %s\\n");' % (sync_set_name, conn.targetMachine))
                 sync_callstring.append('#endif //DEBUG')
-                sync_callstring.append('import_event_%s(identity, %s, values, %d, %s_%s_EVENT, params);' % (conn.targetMachine.lower(), type, len(idList), conn.targetMachine.upper(), conn.targetEvent.upper()))
+                sync_callstring.append('process_%s_%s(identity, %s, values, %d, params);' % (conn.targetMachine.lower(), conn.targetEvent.upper(), type, len(idList)))
                 event_msg_handlers.append('pop_param(&p_head);')
                 event_msg_handlers.append('}' * len(ev_params_c))
                 
@@ -1471,6 +1471,6 @@ class CTemplater(object):
                 output.append(' push_param(&ep_head, NULL, NULL, NULL, NULL,provenance);')
         output.append('  push_action(&monitor->action_queue, %s_%s_EVENT, p_head);' % (obj.upper(), event.upper()))
         if 'exported_events' == mg._symbolTable.get(event)['type']:
-            output.append('  export_%s_%s_event(monitor->identities, ep_head);' % (obj, event))
+            output.append('  export_%s_%s(monitor->identities, ep_head);' % (obj, event))
         output.append('}\n\n')
         return {'code':output, 'signature':signature}

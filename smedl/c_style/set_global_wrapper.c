@@ -31,12 +31,9 @@ const char *amqp_exchange;
 amqp_connection_state_t send_conn;
 
 {% endif -%}
-//CHANGE This function is entirely new. It's a giant nested switch that can be generated from the
-// architecture file. Only exported events are present
-
 {%- for m in exported_event_routes %}
     {%- for e in m.events %}
-    void export_{{m.monitor}}_{{e.ev_name}}_event(MonitorIdentity *identities[], param *params){
+    void export_{{m.monitor}}_{{e.ev_name}}(MonitorIdentity *identities[], param *params){
 #ifdef DEBUG
         printf("{{ sync_set_name }} set queueing exported event: Monitor type {{m.monitor}}, Event ID {{e.ev_name}}\n");
 #endif //DEBUG

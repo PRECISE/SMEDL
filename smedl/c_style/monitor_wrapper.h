@@ -24,10 +24,9 @@ pthread_mutex_t {{ obj|lower }}_monitor_maps_lock;
 // they should be NULL, 0, NULL, 0 (although it doesn't really matter).
 // event_id is from the {{ obj|lower }}_event enum
 // params are the parameters of the event
-//void import_event_{{ obj|lower }}(int identity[], int type, void *values[], int size, int event_id, param *params);
 {%- for m in imported_event_case %}
     {%- for e in m.import_event %}
-void import_{{m.import_obj}}_{{e}}_event(int identity[], int type, void *values[], int size, param *params);
+void process_{{m.import_obj}}_{{e}}(int identity[], int type, void *values[], int size, param *params);
     {%- endfor %}
 {%- endfor %}
 // Called by the global wrapper when it needs to export events to RabbitMQ. It calls the appropriate

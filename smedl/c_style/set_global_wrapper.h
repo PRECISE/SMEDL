@@ -16,12 +16,12 @@ typedef enum {
 } {{ sync_set_name }}_Connection;
 {% endif -%}
 
-// The global wrapper export API. All exported events go through this function, which sorts them
+// The global wrapper export API. All exported events go through these functions, which sort them
 // into the sync queue, async queue, or both, depending on which monitors they go to.
 
 {%- for m in exported_event_routes %}
     {%- for e in m.events %}
-void export_{{m.monitor}}_{{e.ev_name}}_event(MonitorIdentity *identities[], param *params);
+void export_{{m.monitor}}_{{e.ev_name}}(MonitorIdentity *identities[], param *params);
     {%- endfor %}
 {%- endfor %}
 
