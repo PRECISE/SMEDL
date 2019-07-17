@@ -46,12 +46,17 @@ smedl_provenance_t* create_provenance_object(char event[], int line, long trace_
 // Initialize the monitors in the set
 void {{ sync_set_name|lower }}_set_init();
 
+// Synchronously import events from the target system by name into the global wrapper
+{%- for h in pedl_import_handlers %}
+void raise_{{ sync_set_name|lower }}_PEDL_{{ h.event_name }}(param *params);
+{%- endfor %}
+
 // Synchronously import an event into the global wrapper
 void {{ sync_set_name|lower }}_global_import({{ sync_set_name }}_Connection ch_id, param *params);
 
 // Handle all the events that have accumulated in the sync and async queues
 // (called by {{ sync_set_name|lower }}_global_import()
-void {{ sync_set_name|lower }}_process_queues();
+void {{ sync_set_name|lower }}_global_wrapper();
 
 {% endif -%}
 #endif //{{ sync_set_name|upper }}_GLOBAL_WRAPPER_H

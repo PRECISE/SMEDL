@@ -91,6 +91,12 @@ smedl_provenance_t* create_provenance_object(char event[255], int line, long tra
 
 {% endif -%}
 {% if genjson == False -%}
+{%- for h in pedl_import_handlers %}
+void raise_{{ sync_set_name|lower }}_PEDL_{{ h.event_name }}(param *params) {
+    {{ sync_set_name|lower }}_global_import({{ h.conn_name }}, params);
+}
+{%- endfor %}
+
 void {{ sync_set_name|lower }}_global_import({{ sync_set_name }}_Connection ch_id, param *params) {
     switch (ch_id) {
 {% for c in sync_import_handlers -%}
@@ -377,7 +383,7 @@ void {{ sync_set_name|lower }}_set_init() {
     {% endfor -%}
 }
 
-void {{ sync_set_name|lower }}_process_queues() {
+void {{ sync_set_name|lower }}_global_wrapper() {
 {% endif -%}
 #ifdef DEBUG
         printf("\n{{ sync_set_name }} set handling sync queue\n");

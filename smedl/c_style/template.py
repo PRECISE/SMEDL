@@ -391,8 +391,14 @@ class CTemplater(object):
         # Global wrapper imported sync/async handling
         sync_import_handlers = dict()
         sync_set_connections = []
+        pedl_import_handlers = []
         for conn in mg.archSpec:
             if conn.targetMachine in sync_set_monitors and conn.sourceMachine not in sync_set_monitors:
+                if conn.sourceMachine == '':
+                    pedl_handler = dict()
+                    pedl_handler['event_name'] = conn.sourceEvent
+                    pedl_handler['conn_name'] = sync_set_name.upper() + "_" + conn.connName.upper() + "_CONNECTION"
+                    pedl_import_handlers.append(pedl_handler)
                 event_msg_handlers.append('if (!strcmp(eventName, "%s")) {' % conn.connName)
                 sync_callstring = []
                 
@@ -586,6 +592,7 @@ class CTemplater(object):
         values['event_msg_handlers'] = '\n'.join(event_msg_handlers)
         values['sync_import_handlers'] = sync_import_handlers_list
         values['sync_set_connections'] = sync_set_connections
+        values['pedl_import_handlers'] = pedl_import_handlers
 
         # Global wrapper sync_queue handling
         sync_queue_handlers = dict() # key is monitor name
