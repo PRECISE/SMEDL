@@ -564,7 +564,7 @@ class CTemplater(object):
                 event_msg_handlers.append('#ifdef DEBUG')
                 event_msg_handlers.append('printf("%s calling import API for %s\\n");' % (sync_set_name, conn.targetMachine))
                 event_msg_handlers.append('#endif //DEBUG')
-                event_msg_handlers.append('process_%s_%s(identity, %s, values, %d, p_head);' % (conn.targetMachine.lower(), conn.targetEvent.lower(), type, len(idList)))
+                event_msg_handlers.append('process_%s_%s(identity, %s, values, %d, p_head);' % (conn.targetMachine, conn.targetEvent, type, len(idList)))
                 sync_callstring.append('#ifdef DEBUG')
                 sync_callstring.append('printf("%s calling import API for %s\\n");' % (sync_set_name, conn.targetMachine))
                 sync_callstring.append('#endif //DEBUG')
