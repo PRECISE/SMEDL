@@ -10,6 +10,7 @@
 #include "mon_utils.h"
 #include "{{ base_file_name }}_mon.h"
 #include "{{ sync_set_name }}_global_wrapper.h"
+#include "{{ base_file_name }}_monitor_wrapper.h"
 
 #define ARRAYSIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
