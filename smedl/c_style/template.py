@@ -602,7 +602,7 @@ class CTemplater(object):
         for conn in mg.archSpec:
             if conn.targetMachine in sync_set_monitors and conn.sourceMachine in sync_set_monitors:
                 callstring = ['{']
-                callstring.append('int dest_event_id = %s_%s_EVENT;' % (conn.targetMachine.upper(), conn.targetEvent.upper()))
+                
 
                 connSpec = conn.patternSpec
                 idType = ''
@@ -659,8 +659,8 @@ class CTemplater(object):
                         (sync_set_name, conn.targetMachine, conn.targetEvent,
                             conn.sourceMachine, conn.sourceEvent))
                 callstring.append('#endif //DEBUG')
-                callstring.append('import_event_%s(identity, %s, values, %d, dest_event_id, params);' %
-                        (conn.targetMachine.lower(), idType, len(identityList)))
+                callstring.append('process_%s_%s(identity, %s, values, %d, params);' %
+                        (conn.targetMachine, conn.targetEvent,idType, len(identityList)))
                 callstring.append('}')
 
                 if conn.sourceMachine not in sync_queue_handlers or conn.sourceEvent not in sync_queue_handlers[conn.sourceMachine]:
