@@ -1,0 +1,23 @@
+identifier_list =
+    ','.{identifier}*
+    ;
+
+identifier =
+    /[a-zA-Z][A-Za-z0-9_]*/
+    ;
+
+type_list =
+    ','.{type}*
+    ;
+
+# See c_style/smedl_types.h for info on types
+type =
+    'int'
+    | 'float'
+    | 'double' @:`float` # Return 'float' when parsing 'double'
+    | 'char'
+    | 'string'
+    | 'pointer'
+    | 'thread'
+    | 'opaque'
+    ;
