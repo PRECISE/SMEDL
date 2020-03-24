@@ -4,7 +4,7 @@
 ## Requirements
 1. [Python 3.5](https://docs.python.org/3.5/index.html)
 2. [pip](https://pip.pypa.io/en/stable/)
-    - [Grako 3.14](https://pythonhosted.org/grako/)
+    - [TatSu 4.4.0](https://github.com/neogeny/TatSu)
     - [Jinja2 2.8](http://jinja.pocoo.org/)
     - [nose 1.3.7](https://nose.readthedocs.io/en/latest/)
     - [pika 0.10.0](https://pika.readthedocs.io/en/0.10.0/index.html)
