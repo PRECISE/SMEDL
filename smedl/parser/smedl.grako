@@ -16,6 +16,7 @@ start =
 
 declaration =
     'object' @:identifier
+    ;
 
 helper_list =
     {helper_definition}*
@@ -160,6 +161,7 @@ call_stmt =
 
 expression_list =
     ','.{expression}*
+    ;
 
 # SMEDL expression operators, highest to lowest precedence:
 # Unary +, Unary -, Bitwise negation ~, Logical negation !
