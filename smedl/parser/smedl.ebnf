@@ -1,7 +1,7 @@
 # This grammar defines SMEDL in the Grako-variation of EBNF.
 
 # Grako-specific directives
-@@grammar :: smedl
+@@grammar :: SMEDL
 
 #include :: "common.ebnf"
 

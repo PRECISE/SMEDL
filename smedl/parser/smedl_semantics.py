@@ -24,9 +24,12 @@ class SmedlSemantics(common_semantics.CommonSemantics):
 
     def _initial_value_matches(self, var_type, value_type):
         if var_type is expr.SmedlType.INT:
-            return value_type in ['int', 'char']
+            return value_type in ['int', 'char'] # Float is normally permitted
+                                                 # for assignment, but if used
+                                                 # for initialization, something
+                                                 # is likely wrong.
         elif var_type is expr.SmedlType.FLOAT:
-            return value_type in ['float', 'int']
+            return value_type in ['float', 'int', 'char']
         elif var_type is expr.SmedlType.CHAR:
             return value_type in ['char', 'int']
         elif var_type is expr.SmedlType.STRING:
@@ -164,7 +167,113 @@ class SmedlSemantics(common_semantics.CommonSemantics):
 
         return ast
 
-    ### Expression type checking ##############################################
+    def assignment(self, ast):
+        """Verify that the state variable exists and the type matches the
+        expression, then create the AssignmentAction"""
+        # Verify that the state variable exists
+        try:
+            state_var = self.monitor.state_vars[ast.target]
+        except KeyError:
+            raise NameNotDefined("{} is not a state variable".format(
+                ast.target))
+
+        # Check type
+        try:
+            ast.value.assignment_type_check(state_var.type)
+        except TypeMismatch as e:
+            raise TypeMismatch("Expression of type {} cannot be assigned to "
+                    "state variable {} of incompatible type {}".format(
+                    ast.value.type, ast.target, state_var.type))
+
+        # Create AssignmentAction
+        return monitor.AssignmentAction(ast.target, ast.value)
+
+    def increment(self, ast):
+        """Verify that the state variable exists and is numeric or pointer, then
+        create the IncrementAction"""
+        # Verify that the state variable exists
+        try:
+            state_var = self.monitor.state_vars[ast.target]
+        except KeyError:
+            raise NameNotDefined("{} is not a state variable".format(
+                ast.target))
+
+        # Check type
+        if state_var.type not in [
+                expr.SmedlType.INT,
+                expr.SmedlType.FLOAT,
+                expr.SmedlType.CHAR,
+                expr.SmedlType.POINTER]: #TODO Allow pointer increment and
+                                         # decrement? If so, should we also
+                                         # allow +/- on pointers?
+            raise TypeMismatch("Cannot increment state variable {} of type {}"
+                    .format(ast.target, state_var.type))
+        
+        # Create action
+        return monitor.IncrementAction(ast.target)
+
+    def decrement(self, ast):
+        """Verify that the state variable exists and is numeric or pointer, then
+        create the DecrementAction"""
+        # Verify that the state variable exists
+        try:
+            state_var = self.monitor.state_vars[ast.target]
+        except KeyError:
+            raise NameNotDefined("{} is not a state variable".format(
+                ast.target))
+
+        # Check type
+        if state_var.type not in [
+                expr.SmedlType.INT,
+                expr.SmedlType.FLOAT,
+                expr.SmedlType.CHAR,
+                expr.SmedlType.POINTER]: #TODO Allow pointer increment and
+                                         # decrement? If so, should we also
+                                         # allow +/- on pointers?
+            raise TypeMismatch("Cannot decrement state variable {} of type {}"
+                    .format(ast.target, state_var.type))
+        
+        # Create action
+        return monitor.DecrementAction(ast.target)
+    
+    def raise_stmt(self, ast):
+        """Verify that the event is an internal or exported event and do type
+        checking on the parameters, then create the RaiseAction"""
+        # Check that the event is internal or exported and the parameter count
+        # matches
+        if ast.event in self.monitor.exported_events:
+            if len(self.monitor.exported_events[ast.event]) != len(ast.params):
+                raise NameNotDefined("{} event has incorrect number of "
+                        "parameters".format(ast.event))
+            else:
+                event_params = self.monitor.exported_events[ast.event]
+        elif ast.event in self.monitor.internal_events:
+            if len(self.monitor.internal_events[ast.event]) != len(ast.params):
+                raise NameNotDefined("{} event has incorrect number of "
+                        "parameters".format(ast.event))
+            else:
+                event_params = self.monitor.internal_events[ast.event]
+        else:
+            raise NameNotDefined("{} event is not an exported or internal "
+                    "event.".format(ast.event))
+
+        # Type check the parameters
+        for i in range(len(ast.params)):
+            ast.params[i].assignment_type_check(event_params[i])
+
+        # Create the RaiseAction
+        return monitor.RaiseAction(ast.event, ast.params)
+    
+    def call_stmt(self, ast):
+        """Create the CallAction"""
+        # Calling a helper function as an action should be discouraged and
+        # potentially depecated. Its only use would be functions with side
+        # effects.
+        # There is little verification we can do besides the type checking
+        # already done by Expressions, so simply create the action.
+        return monitor.CallAction(ast.function, ast.params)
+
+    ### Expressions and type checking ##########################################
 
     # Note: All type_ parameters should be either a SmedlType, "null", or None.
     # None if it is a helper function or an expression with a helper function
@@ -219,20 +328,8 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         """Type check the unary_expr and create a UnaryOp"""
         if isinstance(ast, Expression):
             return ast
-        elif ast[0] in ["+", "-"] and ast[1].type in [
-                expr.SmedlType.INT,
-                expr.SmedlType.FLOAT,
-                expr.SmedlType.CHAR]:
-            return expr.UnaryOp(ast[0], ast[1], ast[1].type)
-        elif ast[0] in ["~", "!"] and ast[1].type in [
-                expr.SmedlType.INT,
-                expr.SmedlType.CHAR]:
-            return expr.UnaryOp(ast[0], ast[1], ast[1].type)
-        elif ast[1].type is None:
-            return expr.UnaryOp(ast[0], ast[1], ast[1].type)
-        else:
-            raise TypeMismatch("Cannot use {} on expression of type {}".format(
-                ast[0], ast[1].type))
+        # This also does type checking
+        return expr.UnaryOp(ast[0], ast[1])
 
     def expression(self, ast):
         """Type check all binary expressions and create BinaryOps from them"""
@@ -245,132 +342,8 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         left = self.expression(ast[1])
         right = self.expression(ast[2])
 
-        # Type check arithmetic operators
-        if ast[0] in ['*', '/', '%', '+', '-']:
-            # If one or both operands are float and all are numbers, type=float
-            if (left.type == expr.SmedlType.FLOAT and right.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.FLOAT,
-                        expr.SmedlType.CHAR]) or (
-                    right.type == expr.SmedlType.FLOAT and left.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.CHAR]):
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.FLOAT)
-            # If one or both operands are None and rest are numbers, type=None
-            elif (left.type is None and right.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.FLOAT,
-                        expr.SmedlType.CHAR,
-                        None]) or (right.type is None and left.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.FLOAT,
-                        expr.SmedlType.CHAR]):
-                return expr.BinaryOp(ast[0], ast[1], ast[2], None)
-            #If one or both operands are int and all are int or char, type=int
-            elif (left.type == expr.SmedlType.INT and right.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.CHAR]) or (
-                    right.type == expr.SmedlType.INT and
-                    left.type == expr.SmedlType.CHAR):
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.INT)
-            #If both operands are char, type=char
-            elif (left.type == expr.SmedlType.CHAR and
-                    right.type == expr.SmedlType.CHAR):
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.CHAR)
-            else:
-                raise TypeMismatch("Cannot use {} on expressions of type {} "
-                    "and {}".format(ast[0], ast[1].type, ast[2].type))
-
-        # Type check bitwise operators
-        elif ast[0] in ['<<', '>>', '&', '^', '|']:
-            # If one or both operands are None and rest are int/char, type=None
-            elif (left.type is None and right.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.CHAR,
-                        None]) or (right.type is None and left.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.CHAR]):
-                return expr.BinaryOp(ast[0], ast[1], ast[2], None)
-            #If one or both operands are int and all are int or char, type=int
-            elif (left.type == expr.SmedlType.INT and right.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.CHAR]) or (
-                    right.type == expr.SmedlType.INT and
-                    left.type == expr.SmedlType.CHAR):
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.INT)
-            #If both operands are char, type=char
-            elif (left.type == expr.SmedlType.CHAR and
-                    right.type == expr.SmedlType.CHAR):
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.CHAR)
-            else:
-                raise TypeMismatch("Cannot use {} on expressions of type {} "
-                    "and {}".format(ast[0], ast[1].type, ast[2].type))
-
-        # Type check comparison operators and boolean operators (while they are
-        # fundamentally different operations, their type requirements happen to
-        # be the same)
-        elif ast[0] in ['<', '<=', '>', '>=', '&&', '||']:
-            # If both operands are numbers or None, type=int
-            if (left.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.FLOAT,
-                        expr.SmedlType.CHAR,
-                        None]
-                    and right.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.FLOAT,
-                        expr.SmedlType.CHAR,
-                        None]):
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.INT)
-            else:
-                raise TypeMismatch("Cannot use {} on expressions of type {} "
-                    "and {}".format(ast[0], ast[1].type, ast[2].type))
-
-        # Type check equality operators
-        elif ast[0] in ['==', '!=']:
-            # If either operand is None, other operand can be anything, type=int
-            if left.type is None or right.type is None:
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.INT)
-            # If both operands are numbers, type=int
-            elif (left.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.FLOAT,
-                        expr.SmedlType.CHAR]
-                    and right.type in [
-                        expr.SmedlType.INT,
-                        expr.SmedlType.FLOAT,
-                        expr.SmedlType.CHAR]):
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.INT)
-            # If either operand is "null", the other can be "null", pointer, or
-            # opaque. type=int
-            elif (left.type == "null" and right.type in [
-                    expr.SmedlType.POINTER,
-                    expr.SmedlType.OPAQUE,
-                    "null"]) or (right.type == "null" and left.type in [
-                    expr.SmedlType.POINTER,
-                    expr.SmedlType.OPAQUE]):
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.INT)
-            # If both operands are the same type, type=int
-            elif left.type == right.type:
-                return expr.BinaryOp(ast[0], ast[1], ast[2],
-                        expr.SmedlType.INT)
-            else:
-                raise TypeMismatch("Cannot use {} on expressions of type {} "
-                    "and {}".format(ast[0], ast[1].type, ast[2].type))
-
-        # This should not happen. It means the code above missed an operator.
-        else:
-            raise ValueError("Internal error: unknown operation {}"
-                    .format(ast[0]))
+        # This also does type checking
+        return expr.BinaryOp(ast[0], ast[1], ast[2])
 
     ###########################################################################
 

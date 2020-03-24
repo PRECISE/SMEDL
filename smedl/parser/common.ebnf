@@ -1,3 +1,5 @@
+@@comments :: (/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)
+
 identifier_list =
     ','.{identifier}*
     ;
