@@ -37,6 +37,19 @@ class SmedlType(Enum):
     THREAD = ('thread', 'pthread_t')
     OPAQUE = ('opaque', 'void *')
 
+    def convertible_to(self, other):
+        """Return True if this SmedlType can convert to the other SmedlType
+        (e.g. in assignment, parameters, etc.) and False if not."""
+        # All numeric types can convert between each other.
+        if (self in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR] and
+                other in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR]):
+            return True
+        # All other types are only compatible with themselves.
+        elif self is other:
+            return True
+        else:
+            return False
+
 # Notes on type checking:
 # Types in expressions may be any of the SmedlTypes above, "null" if the value
 # is a null pointer (compatible with POINTER and OPAQUE), and None if the value
@@ -197,24 +210,15 @@ class Expression(object):
         SmedlType. Useful for state variable assignments, type checking for
         event parameters, etc. If compatible, nothing happens. If not, raise
         TypeMismatch."""
-        # All numeric types are compatible with each other
-        if (dest_type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR] and
-                self.type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR,
-                None]):
+        # None is compatible with all types
+        if self.type is None:
             return
-        # All other types are compatible with themselves, None, and for POINTER
-        # and OPAQUE, "null"
-        elif (dest_type == SmedlType.STRING and self.type in [
-                SmedlType.STRING, None]):
+        # "null" is compatible with POINTER and OPAQUE
+        elif self.type == "null" and dest_type in [
+                SmedlType.POINTER, SmedlType.OPAQUE]:
             return
-        elif (dest_type == SmedlType.POINTER and self.type in [
-                SmedlType.POINTER, "null", None]):
-            return
-        elif (dest_type == SmedlType.THREAD and self.type in [
-                SmedlType.THREAD, None]):
-            return
-        elif (dest_type == SmedlType.OPAQUE and self.type in [
-                SmedlType.OPAQUE, "null", None]):
+        # Otherwise, determine according to SmedlType.convertible_to()
+        elif self.type.convertible_to(dest_type):
             return
         # If none of the other cases matched, we have a type mismatch
         else:

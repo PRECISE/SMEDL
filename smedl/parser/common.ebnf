@@ -4,6 +4,8 @@ identifier_list =
     ','.{identifier}*
     ;
 
+# Note: Identifiers starting with underscore are reserved for internal use (e.g.
+# automatically generated channel names)
 identifier =
     /[a-zA-Z][A-Za-z0-9_]*/
     ;

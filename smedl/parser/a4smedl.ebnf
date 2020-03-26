@@ -1,61 +1,123 @@
 # This grammar defines A4SMEDL in the Grako-variation of EBNF.
 
-@@grammar :: a4smedl
+@@grammar :: A4SMEDL
 
-top
-    =
-    'System' system:identifier ':=' monitor_declaration:monitorDeclaration sync_set_declaration:syncSetDeclaration archSpec:architectureSpec$;
+#include :: "common.ebnf"
 
-monitorDeclaration = interfaces+:{monitorInterface}+;
-
-monitorInterface = 'Monitor' monitor_identifier:identifier '('params:parameter_list')'
-   '{' 
-       { 'imported' imported_events+:event_definition_list}
-       {'exported' exported_events+:event_definition_list}*
-   '}';
-
-event_definition
-    =
-    creation:['creation'] error:['error'] event_id:identifier ['(' params:parameter_list ')'];
-
-event_definition_list
-    =
-    @:event_definition {',' @:event_definition}* ';'
+start =
+    {(
+        import_stmt
+        | monitor_decl
+        | syncset_decl
+        | connection_defn
+    )';'}*
+    $
     ;
 
-parameter_list
-    =
-      @:type {',' @:type}*
-    | ()
+# Filename looks like a string literal but does not accept escape sequences
+# (similar to #include "..." in C)
+import_stmt =
+    'import' @:smedl_filename
     ;
 
-type
-    =
-    ?/[a-zA-Z][A-Za-z0-9_]*/?
+smedl_filename =
+    /"[^"\n\r\v\f]*"/
     ;
 
-identifier
-    =
-    ?/[a-zA-Z][A-Za-z0-9_]*/?
+monitor_decl =
+    'monitor' name:identifier '(' params:type_list ')'
+    ['as' renamed:identifier]
     ;
 
-integer
-    =
-    ?/[-+]?[0-9]+/?
+syncset_decl =
+    'syncset' name:identifier '{' monitors:identifier_list '}'
     ;
 
-syncSetDeclaration = 'Synchronous sets:' sync_sets+:{syncSetExpr}*;
+#TODO Proposed change: Instead of repeating source spec for each target spec,
+# allow multiple targets for a source, and do not allow repeating a source. That
+# way, there is no ambiguity about whether the same source can have different
+# connection/channel names (it cannot)
+#
+# This would look like this:
+#
+# connection_defn =
+#     [name:identifier ':'] source:source_spec
+#     '=>' targets:'=>'.{target_spec}+
+#     ;
+connection_defn =
+    [name:identifier ':'] source:source_spec
+    '=>' target:target_spec
+    ;
 
-syncSetExpr = set_identifier:identifier '{' monitor_list:monitorList '}';
+source_spec =
+    [monitor:identifier '.'] event:identifier
+    ;
 
-monitorList = @:identifier {',' @:identifier}*;
+target_spec =
+    target_event
+    | monitor_initialization
+    ;
 
-architectureSpec = 'Channels:' conn_expr+:{connectionExpr}+;
+target_event =
+    dest_monitor:identifier
+    ['[' monitor_params:wildcard_parameter_list ']']
+    '.'
+    dest_event:identifier
+    ['(' event_params:parameter_list ')']
+    ;
 
-connectionExpr = [connection:identifier ':'] [source_machine_identifier:identifier '.'] source_event_identifier:identifier '=>' target_machine_identifier:identifier'.'target_event_identifier:identifier ['{'pattern_spec:patternSpec'}'];
+monitor_initialization =
+    dest_monitor:identifier
+    '(' (
+        # Two cases:
+        # 1. There is at least one parameter (in which case, separating comma is
+        #    needed)
+        # 2. There is no parameter, and may or may not be state variable
+        #    initializations. This is not allowed, but we allow it in the
+        #    grammar so that we can catch it and display a more helpful error
+        #    message in the semantics processor.
+        monitor_params:parameter_list_nonempty
+                [',' state_vars:initializer_list_nonempty]
+        | state_vars:initializer_list
+    ) ')'
+    ;
 
-patternSpec = @:patternExpr {';' @:patternExpr}*;
+initializer_list_nonempty =
+    ','.{initializer}+
+    ;
 
-patternExpr = left:term operator:('='|'<>') right:term;
+initializer_list =
+    ','.{initializer}*
+    ;
 
-term = term_id:identifier'['term_index:integer']';
+initializer =
+    var_name:identifier '=' value:parameter
+    ;
+
+wildcard_parameter_list =
+    ','.{wildcard_parameter}*
+    ;
+
+parameter_list_nonempty =
+    ','.{parameter}+
+    ;
+
+parameter_list =
+    ','.{parameter}*
+    ;
+
+wildcard_parameter =
+    parameter
+    | kind:'*'
+    ;
+
+parameter =
+    kind:'#' index:natural
+    | 'Id' kind:`#` '.' index:natural
+    | kind: '$' index:natural
+    | 'Param' kind:`$` '.' index:natural
+    ;
+
+natural =
+    /[0-9]+/
+    ;
