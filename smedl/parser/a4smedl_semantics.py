@@ -29,6 +29,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
 
     def start(self, ast):
         """Return the monitor system"""
+        self.system.assign_singleton_syncsets()
         return self.system
 
     def import_stmt(self, ast):

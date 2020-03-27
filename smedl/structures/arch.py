@@ -200,3 +200,29 @@ class MonitorSystem(object):
 
         # Add the syncset to the MonitorSystem
         self.syncsets[name] = set(monitors)
+
+    def _unused_syncset(self, monitor_name):
+        """Find an unused synchronous set name for the named monitor. If the
+        monitor name iself is not already a synchronous set, use that.
+        Otherwise, append a number."""
+        syncset = monitor_name
+        i = 1
+        while syncset in self.syncsets:
+            i += 1
+            syncset = monitor_name + str(i)
+        if syncset != monitor_name:
+            print("Warning: {} is already the name of a synchronous set. "
+                    "Monitor {} will be in synchronous set {}".format(
+                    monitor_name, syncset))
+        return syncset
+
+    def assign_singleton_syncsets(self):
+        """Assign any monitors that are not already in a synchronous set to
+        their own isolated synchronous sets. Normally, these synchronous sets
+        will be named after the monitor, but if that name is already taken,
+        a warning will be displayed and a number appended."""
+        for mon in self.monitor_decls:
+            if mon.syncset is None:
+                syncset = _unused_syncset(mon.name)
+                mon.assign_syncset(syncset)
+                self.syncsets[syncset] = {mon.name}

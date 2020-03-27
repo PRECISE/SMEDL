@@ -37,6 +37,31 @@ class CodeGenerator(object):
                 with open(outpath, "w") as outfile:
                     f.write(text)
 
-    def write_all(self, system):
-        """Write all C files for the provided monitoring system"""
+    def write_wrappers(self, system, syncset_name):
+        """Write the global wrapper and local wrappers for one synchronous set
 
+        Parameters:
+        system - A MonitorSystem containing the synchronous set
+        syncset_name - The name of the synchronous set whose wrappers should be
+          generated
+        """
+
+    def write_monitor(self, monitor_spec, syncset_name):
+        """Write the files for one monitor specification
+
+        Parameters:
+        monitor_spec - A MonitorSpec whose monitor should be written
+        syncset_name - The name of the synchronous set to which this monitor
+          belongs
+        """
+        pass #TODO
+
+    def write_all(self, system):
+        """Write all C files for the provided monitoring system
+
+        Parameters:
+        system - A MonitorSystem for which code should be generated
+        """
+        self.write_static_files()
+
+        pass #TODO
