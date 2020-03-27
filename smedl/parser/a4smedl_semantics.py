@@ -38,9 +38,9 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         filename = ast[1:-1]
 
         # Read and parse the monitor from the named file
-        parser = smedl_parser.SMEDLParser()
         with open(filename, "r") as f:
             smedl_spec = f.read()
+        parser = smedl_parser.SMEDLParser()
         monitor_spec = parser.parse(smedl_spec, rule_name='start',
                 semantics=smedl_semantics.SmedlSemantics())
 
