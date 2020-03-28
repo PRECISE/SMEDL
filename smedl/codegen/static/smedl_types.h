@@ -44,6 +44,15 @@ typedef struct {
                    // count here so we can free the copy when necessary. But,
                    // that strategy won't work for opaque since we can't copy
                    // it.
-}
+} SMEDLValue;
+
+/*
+ * Auxiliary data is passed through monitors untouched. It might be used for
+ * provenance info or any other attachment to events.
+ */
+typedef struct {
+    void *data;
+    size_t len;
+} Aux;
 
 #endif //SMEDL_TYPES_H

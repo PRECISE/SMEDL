@@ -97,6 +97,8 @@ class Scenario(object):
         # This would create an implicit state between event1 and event2.
         # Implicit states are given numbers sequentially, so we need to keep
         # track of how many exist so far.
+        #
+        # In the generated code, implicit states get names like "_state0"
         self.implicit_states = 0
         # Steps: Single steps from a transition.
         # Keys are 2-tuples (state, event name) representing the state the step
@@ -172,12 +174,12 @@ class MonitorSpec(object):
     """A monitor specification from a .smedl file"""
     def __init__(self, name):
         """Instantiate a new MonitorSpec to hold the data from a .smedl file"""
-        # Name of the monitor
+        # Name of the monitor.
         self.name = name
         # List of helper header files, with the enclosing "" or <>
         self.helpers = []
-        # State vars: keys are names, values are StateVariables
-        self.state_vars = dict()
+        # State vars: list of StateVariable
+        self.state_vars = []
         # Imported, internal, and exported events: keys are names, values are
         # lists of SmedlType representing their parameters
         self.imported_events = dict()
@@ -192,13 +194,9 @@ class MonitorSpec(object):
         self.helpers.append(helper)
 
     def add_state_var(self, name, type_, initial_value=None):
-        """Add a state variable to the monitor, if it isn't already there. If
-        an initial value isn't provided, a default will be used. If the state
-        variable is already present, raise NameCollision."""
-        if name in self.state_vars:
-            raise NameCollision("State variable {} already defined"
-                    .format(name))
-        self.state_vars[name] = StateVariable(name, type_, initial_value)
+        """Add a state variable to the monitor. If an initial value isn't
+        provided, a default will be used."""
+        self.state_vars.append(StateVariable(name, type_, initial_value))
 
     def add_event(self, type_, name, param_list):
         """Add an event to the monitor. The type must be a string that's either

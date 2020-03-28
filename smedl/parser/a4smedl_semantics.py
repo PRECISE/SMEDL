@@ -82,7 +82,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         If the channel name is not provided:
         1. Check if one already is assigned for this source event. If so, use
            that.
-        2. If not, generate one like this: _monitor_event or __event
+        2. If not, generate one like this: _monitor_event or _event
 
         If the channel name is provided:
         1. If there is no name already assigned, use the given one.
@@ -103,7 +103,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
             except KeyError:
                 # No previous name, use generated name
                 if event[0] is None:
-                    auto_name = "__{}".format(event[1])
+                    auto_name = "_{}".format(event[1])
                 else:
                     auto_name = "_{}_{}".format(event[0], event[1])
                 self.event_channels[event] = auto_name

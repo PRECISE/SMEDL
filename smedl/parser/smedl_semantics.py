@@ -4,10 +4,16 @@ SMEDL file semantic actions
 
 from structures import monitor, expr
 from . import common_semantics
-from .exceptions import TypeMismatch, NameNotDefined
+from .exceptions import TypeMismatch, NameNotDefined, NameCollision
 
 class SmedlSemantics(common_semantics.CommonSemantics):
     """Semantic actions for SMEDL parsing"""
+    def __init__(self):
+        """Do some basic initialization"""
+        # List of state var names (to check for duplicates)
+        self.state_vars = []
+        # self.monitor is created in declaration()
+
     def start(self, ast):
         """Return the MonitorSpec object"""
         return self.monitor
@@ -46,6 +52,13 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         var_name = ast.name
         var_type = ast.type
         value = ast.value
+
+        # Check if already declared
+        if var_name in self.state_vars:
+            raise NameCollision("State variable {} already defined".format(
+                var_name))
+        else:
+            self.state_vars.append(var_name)
 
         # Check type of the initial value
         if (value is not None and
