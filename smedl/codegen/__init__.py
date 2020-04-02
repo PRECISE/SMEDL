@@ -70,7 +70,28 @@ class CodeGenerator(object):
         syncset_name - The name of the synchronous set whose wrappers should be
           generated
         """
-        pass #TODO
+        # Write the local wrappers
+        for mon_name in system.syncsets[syncset_name]:
+            values = {
+                    "mon": system.monitor_decls[mon_name],
+                }
+            self._render("local_wrapper.c", mon_name + "_local_wrapper.c",
+                    values)
+            self._render("local_wrapper.h", mon_name + "_local_wrapper.h",
+                    values)
+
+        # Write the global wrapper
+        values = {
+                "sys": system,
+                "syncset_name": syncset_name,
+                "syncset": system.syncsets[syncset_name], #TODO Should this be
+                                                          # a list of actual
+                                                          # MonitorDecls?
+            }
+        self._render("global_wrapper.c", syncset_name + "_global_wrapper.c",
+                values)
+        self._render("global_wrapper.h", syncset_name + "_global_wrapper.h",
+                values)
 
     def _write_monitor(self, monitor_spec):
         """Write the files for one monitor specification
@@ -105,4 +126,16 @@ class CodeGenerator(object):
         """
         self._write_static_files()
 
-        pass #TODO
+        # Collect the monitor specs to generate
+        mon_specs = dict()
+        for decl in system.monitor_decls.values():
+            if decl.specs.name not in mon_specs:
+                mon_specs[decl.specs.name] = decl.specs
+
+        # Generate monitors
+        for spec in mon_specs.values():
+            self._write_monitor(spec)
+
+        # Generate wrappers
+        for syncset_name in system.syncsets.keys():
+            self._write_wrappers(system, syncset_name)
