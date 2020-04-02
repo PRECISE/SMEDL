@@ -199,6 +199,9 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux) {
     {{event_handler(event)}}
+
+    /* Finish the macro-step */
+    handle_{{spec.name}}_queue(mon);
 }
 {% endfor %}
 {% endif %}
