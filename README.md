@@ -1,7 +1,10 @@
-# SMEDL/PEDL Monitor Generator
-### Version 1.0.0
+SMEDL Monitor Generator
+=======================
+### Version 2.0.0
 
-## Requirements
+Requirements
+------------
+
 1. [Python 3.5](https://docs.python.org/3.5/index.html)
 2. [pip](https://pip.pypa.io/en/stable/)
     - [TatSu 4.4.0](https://github.com/neogeny/TatSu)
@@ -11,7 +14,9 @@
     - [pylibconfig2 0.2.5](https://pypi.python.org/pypi/pylibconfig2/0.2.5)
     - [pyparsing](https://pypi.python.org/pypi/pyparsing/2.1.10)
 
-## Getting started
+Getting started
+---------------
+
 A [Python virtual environment](https://docs.python.org/3/library/venv.html)
 including [Python 3.5](https://docs.python.org/3.5/index.html) and all required Python
 packages has been defined to simplify the process of getting started with the
@@ -34,7 +39,9 @@ To update the installation of `mgen` without updating its dependencies, run
     pip install .
 
 
-## Generating the monitor
+Generating the monitor
+----------------------
+
 The 'mgen' script is the primary interface for generating software monitors
 from SMEDL and PEDL definitions. This script can be run with the following
 command (from the project root directory):
@@ -65,7 +72,9 @@ Other useful flags:
 
 
 
-## Instrumenting the target
+Instrumenting the target
+------------------------
+
 At the moment, instrumentation of the target program must be performed
 manually. The generated event handling functions, or 'probes', can be found in
 the {object}\_mon.h file. The probe naming convention uses the monitor object
@@ -76,7 +85,9 @@ the {object}\_mon.h header file is included in the respective target source
 code files.
 
 
-## Compiling the generated output
+Compiling the generated output
+------------------------------
+
 Before executing the instrumented version of the target program, the generated
 runtime monitor must be compiled along with the target program using the
 following command:
@@ -86,7 +97,9 @@ gcc -o {{base_file_name}}_mon -std=c99 actions.c monitor_map.c {{base_file_name}
 Note: If the monitor is an asynchronous monitor, the file {{base_file_name}}_monitor_wrapper.c will be generated, which should be added to the gcc command.
 
 
-## Manually run intermediate generation steps
+Manually run intermediate generation steps
+------------------------------------------
+
 [Grako](https://pythonhosted.org/grako/), a PEG parser generator, is used to
 generate the SMEDL and PEDL parsers for their EBNF-defined grammars.
 
@@ -103,10 +116,13 @@ To parse a SMEDL file using the generated parser:
 (Use the `-t` command-line option to enable debug tracing)
 
 
-## RabbitMQ
+RabbitMQ
+--------
+
 Asynchronous monitoring of events has been implemented using the [Advanced Message Queuing Protocol](http://www.amqp.org/) by the [RabbitMQ](https://www.rabbitmq.com/) message broker.
 
 ### Configuring a RabbitMQ-enabled monitor
+
 **Hostname**: The host address of your RabbitMQ broker.
 
 **Port**: Keep this value as `5672` if your broker is using the default port, or set it to the custom port you have already configured for your broker.
@@ -120,6 +136,7 @@ Asynchronous monitoring of events has been implemented using the [Advanced Messa
 **Control Exchange (ctrl_exchange)**: The message exchange for passing control-related messages.
 
 ###### Example SMEDL RabbitMQ configuration file
+
 	rabbitmq =
 	{
 		hostname = "example.com";
@@ -131,12 +148,15 @@ Asynchronous monitoring of events has been implemented using the [Advanced Messa
 	};
 
 ### Format of routing key
+
 The formal of the routing key contains four parts: the channel name, the list of identities of the monitor instance, the event name and the list of attributes of the event. Each element(including channel name, event name, each identity or attribute value) is divided by character '.'. Note that if the type of the attributes of events or identities of the monitor is not typed with integer, it will be replaced by "0" as a place holder. (Note that the string can not be the id of the monitor for now, which will be implemented in the next released version). 
 
 ###### Example of routing key format
+
 There are two monitors RateComputation(int) and ThresholdCrossDetection(int) communicating with each other through event dataUpdate2(string, float, float),defined in channel "ch1". For the monitor instances RateComputation(0) and ThresholdCrossDetection(0), the format of the routing key sent along with the message will be "ch1.0.dataUpdates2.0.0.0". The first "0" in the routing key represents the id of RateComputation. The other three "0"s represent the place holder for three  attributes of the event dataUpdate2.  
 
 ### JSON format of the asynchronous event message
+
     {
       "name" : "eventName",
       "fmt_version" : "format version",
@@ -153,7 +173,9 @@ There are two monitors RateComputation(int) and ThresholdCrossDetection(int) com
 Only the message is encoded in JSON string and the routing key still follows the format of the rabbitmq. As a result, the  field "name" in the JSON string is not used for now. Moreover, the field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index where index is from 1. Types and order of the data in "params" follows the definition of the event. The option field "provenance" contains the provenance information, which is opaque to the monitor. 
 
 
-## Compiling with an architecture description
+Compiling with an architecture description
+------------------------------------------
+
 An architecture description file can be compiled with the SMEDL specification
 using the following command:
 
@@ -164,7 +186,9 @@ Note that `ARCH_SMEDL_FILENAME` does not contain the `.a4smedl` suffix.
 Moreover, it is necessary to compile separately with corresponding SMEDL
 specifications. For more info, readers can refer to the document ``Architecture_Description_Language_for_SMEDL``.
 
-## State variable initialization
+State variable initialization
+-----------------------------
+
 Default initial value of state variables can be specified in the SMEDL specification:
 
     Object mon
@@ -174,7 +198,9 @@ Default initial value of state variables can be specified in the SMEDL specifica
     double d = -2.5;
     ...
 
-## Dynamic instantiation
+Dynamic instantiation
+---------------------
+
 In the architecture file, a modifier "creation" can be added before imported events of the monitor:
 
     System Tracking :=
@@ -190,7 +216,8 @@ In the architecture file, a modifier "creation" can be added before imported eve
 
 For the example above, instance of RateComputation can be created whenever an dataUpdate event is received. However, in the pattern specification, all identifiers should be bounded. Moreover, target monitor should always appear at the left side of the connection pattern expression. 
 
-## Synchronous Communication
+Synchronous Communication
+-------------------------
 
 Related monitors can be grouped into a "synchronous set." Monitors in the same synchronous set all run in one combined process. They use direct calls to each other's event handlers rather than RabbitMQ messages to exchange events between each other.
 
@@ -264,12 +291,16 @@ Currently there is no provision for monitors to export events back to the target
 
 An example usage of a synchronous global wrapper can be found in the auction example in tests/examples.
 
-## Running the test suite
+Running the test suite
+----------------------
+
 You may run the tool's test suite by simply calling `nose2` from the
 project's root directory.
 
 
-## Updating from the repository
+Updating from the repository
+----------------------------
+
 The canonical repository for this project is located on the
 [PRECISE GitLab](https://gitlab.precise.seas.upenn.edu/pgebhard/smedl).
 
