@@ -3,7 +3,7 @@ Types and operations for SMEDL expressions
 """
 
 from enum import Enum
-from parser.exceptions import TypeMismatch
+from smedl.parser.exceptions import TypeMismatch
 
 class SmedlType(Enum):
     """Represents the valid data types for SMEDL state variables and params.
@@ -50,6 +50,11 @@ class SmedlType(Enum):
         else:
             return False
 
+    # Useful in Jinja templates
+    def is_a(self, name):
+        """Check if name matches the provided string"""
+        return self.name == name
+
 # Notes on type checking:
 # Types in expressions may be any of the SmedlTypes above, "null" if the value
 # is a null pointer (compatible with POINTER and OPAQUE), and None if the value
@@ -62,9 +67,11 @@ class SmedlType(Enum):
 
 class Expression(object):
     """A SMEDL expression"""
-    def __init__(self, type_):
+    def __init__(self, type_, expr_type):
         self.type = type_
         self.parens = False
+        # Needed by Jinja
+        self.expr_type = expr_type
 
     def parenthesize(self):
         """In child classes that are not atoms, parenthesize the expression. But
@@ -228,7 +235,13 @@ class Expression(object):
 class StateVar(Expression):
     """A state variable usage"""
     def __init__(self, name, type_):
-        super().__init__(type_)
+        super().__init__(type_, 'state_var')
+        """Initialize the StateVar.
+
+        Parameters:
+        name - Name of the state variable
+        type_ - The SMEDL type of the state variable
+        """
         self.name = name
         self.type = type_
 
@@ -237,8 +250,14 @@ class EventParam(Expression):
     their index in the parameter list, as the parameters can be given different
     names each time the event is used in a transition."""
     def __init__(self, idx, type_):
-        super().__init__(type_)
-        self.name = name
+        """Initialize the EventParam.
+
+        Parameters:
+        idx - The index of the parameter in the param list.
+        type_ - The SMEDL type of the parameter.
+        """
+        super().__init__(type_, 'param')
+        self.idx = idx
 
 class Literal(Expression):
     """A literal in an expression"""
@@ -250,7 +269,7 @@ class Literal(Expression):
           integer or "'a'" for a char
         type_ - The SMEDL type of the literal
         """
-        super().__init__(type_)
+        super().__init__(type_, 'literal')
         self.string = string
 
 class HelperCall(Expression):
@@ -260,10 +279,10 @@ class HelperCall(Expression):
 
         Parameters:
         name - The name of the helper function
-        params - A list of expressions (types from this module) to be passed as
-          parameters to the helper function
+        params - A list of Expressions to be passed as parameters to the helper
+          function
         """
-        super().__init__(None)
+        super().__init__(None, 'helper_call')
         self.name = name
         self.params = params
 
@@ -277,7 +296,7 @@ class UnaryOp(Expression):
         operator - The operator, as a string (e.g. "+", "-", "~", "!")
         operand - The operand, an expression type from this module
         """
-        super().__init__(operand.unary_type_check(operator))
+        super().__init__(operand.unary_type_check(operator), 'unary_op')
         self.operator = operator
         self.operand = operand
 
@@ -295,7 +314,7 @@ class BinaryOp(Expression):
         left - The left operand, an expression from this module
         right - The right operand, an expression from this module
         """
-        super().__init__(left.binary_type_check(operator, right))
+        super().__init__(left.binary_type_check(operator, right), 'binary_op')
         self.operator = operator
         self.left = left
         self.right = right

@@ -2,7 +2,8 @@
 Structures and types for SMEDL monitors (.smedl files)
 """
 
-from parser.exceptions import NameCollision, ElseCollision
+from . import expr
+from smedl.parser.exceptions import NameCollision, ElseCollision
 
 class StateVariable(object):
     """Stores the information for a single state variable in a SMEDL spec"""
@@ -23,16 +24,20 @@ class StateVariable(object):
             elif self.type == 'pointer':
                 self.initial_value = "NULL"
             elif self.type == 'thread':
-                self.initial_value = "0" #TODO
+                self.initial_value = None
             elif self.type == 'opaque':
                 self.initial_value = "NULL"
 
 class Action(object):
     """A base class for all the action types that may appear in the list of
     actions for a transition step."""
-    def to_c(self):
-        """Generate C code for the action"""
-        pass #TODO Should this be in a template?
+    def __init__(self, action_type):
+        """Initialize the action
+
+        Parameters:
+        action_type - A string describing the type of action for use with Jinja
+        """
+        self.action_type = action_type
 
 class AssignmentAction(Action):
     """An action representing assigning an expression to a state variable"""
@@ -43,6 +48,7 @@ class AssignmentAction(Action):
         var - The name of the state variable to assign to
         expr - An expr.Expression to be assigned to it
         """
+        super().__init__('assignment')
         self.var = var
         self.expr = expr
 
@@ -50,12 +56,14 @@ class IncrementAction(Action):
     """An action representing incrementing a state variable"""
     def __init__(self, var):
         """Initialize the increment using the provided state variable name."""
+        super().__init__('increment')
         self.var = var
 
 class DecrementAction(Action):
     """An action representing decrementing a state variable"""
     def __init__(self, var):
         """Initialize the decrement using the provided state variable name."""
+        super().__init__('decrement')
         self.var = var
 
 class RaiseAction(Action):
@@ -67,6 +75,7 @@ class RaiseAction(Action):
         event - The name of the event to be raised
         params - Parameters of the event as a list of expr.Expression
         """
+        super().__init__('raise')
         self.event = event
         self.params = params
 
@@ -82,6 +91,9 @@ class CallAction(Action):
         function - The name of the helper function to call
         params - Parameters of the call as a list of expr.Expression
         """
+        super().__init__('call')
+        self.function = function
+        self.params = params
 
 class Scenario(object):
     """Stores the information for a single scenario in a SMEDL spec"""
@@ -125,6 +137,10 @@ class Scenario(object):
         self.implicit_states += 1
         return state
 
+    def all_states(self):
+        """Get a list of all states, explicit and implicit"""
+        return self.states + list(range(self.implicit_states))
+
     def _add_else(self, from_state, event, to_state, actions):
         """Add else actions to a particular state-event pair"""
         if to_state is not None:
@@ -144,7 +160,8 @@ class Scenario(object):
           first from state of the first step added will become the starting
           state for the scenario!
         event - Name of event this step is for.
-        condition - An Expression representing the condition for this step
+        condition - An Expression representing the condition for this step, or
+          None if no condition
         to_state - Name of state (or number of implicit state) this step is to
         actions - A list of Action
         else_state - Name of the "else state" or None if not provided. This may
@@ -159,6 +176,10 @@ class Scenario(object):
         self._add_state(to_state)
         self._add_state(else_state)
 
+        # If condition is None, convert to a true Expression (1)
+        if condition is None:
+            condition = expr.Literal('1', expr.SmedlType.INT)
+
         # Add a new entry to the steps dict
         key = (from_state, event)
         value = (condition, to_state, actions)
@@ -169,6 +190,18 @@ class Scenario(object):
         
         # Add the else
         self.add_else(from_state, event, else_state, else_actions)
+
+    def handles_event(self, event):
+        """Check if this scenario has any transitions for the specified event.
+        Return True or False.
+
+        Parameters:
+        event - The name of the event to check for
+        """
+        for key in self.steps.keys():
+            if key[2] == event:
+                return True
+        return False
 
 class MonitorSpec(object):
     """A monitor specification from a .smedl file"""
@@ -225,6 +258,19 @@ class MonitorSpec(object):
                 raise NameCollision("A scenario with name {} already exists"
                         .format(scenario.name))
         self.scenarios.append(scenario)
+
+    def get_event(self, name):
+        """Retrieve the list of SmedlType representing an events parameters,
+        whether it be an imported, internal, or exported event. Return None
+        if the name is not a valid event."""
+        if name in self.imported_events:
+            return self.imported_events[name]
+        elif name in self.internal_events:
+            return self.internal_events[name]
+        elif name in self.exported_events:
+            return self.exported_events[name]
+        else:
+            return None
 
     def __repr__(self):
         #TODO Proably do this by adding __repr__ to components and calling those

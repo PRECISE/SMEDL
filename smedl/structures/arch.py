@@ -2,7 +2,8 @@
 Structures and types for monitoring system architectures (.a4smedl files)
 """
 
-from parser.exceptions import NameCollision, NameNotDefined, AlreadyInSyncset
+from smedl.parser.exceptions import (NameCollision, NameNotDefined,
+        AlreadyInSyncset)
 
 class Parameter(object):
     """A parameter for a target specification. May be used for either monitor

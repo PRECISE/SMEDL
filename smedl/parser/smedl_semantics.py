@@ -2,7 +2,7 @@
 SMEDL file semantic actions
 """
 
-from structures import monitor, expr
+from smedl.structures import monitor, expr
 from . import common_semantics
 from .exceptions import TypeMismatch, NameNotDefined, NameCollision
 
@@ -164,8 +164,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         self.current_event = ast.name
         self.current_event_params = ast.params # Will be a list of names as strs
 
-        # Verify that event exists, is an imported or internal event, and that
-        # the parameter count matches
+        # Verify that event exists and that the parameter count matches
         if ast.name in self.monitor.imported_events:
             if len(self.monitor.imported_events[ast.name]) != len(ast.params):
                 raise NameNotDefined("{} event has incorrect number of "
@@ -174,9 +173,13 @@ class SmedlSemantics(common_semantics.CommonSemantics):
             if len(self.monitor.internal_events[ast.name]) != len(ast.params):
                 raise NameNotDefined("{} event has incorrect number of "
                         "parameters".format(ast.name))
+        elif ast.name in self.monitor.exported_events:
+            if len(self.monitor.exported_events[ast.name]) != len(ast.params):
+                raise NameNotDefined("{} event has incorrect number of "
+                        "parameters".format(ast.name))
         else:
-            raise NameNotDefined("{} event is not an imported or internal "
-                    "event.".format(ast.name))
+            raise NameNotDefined("{} event is not an imported, internal, or"
+                    "exported event.".format(ast.name))
 
         return ast
 

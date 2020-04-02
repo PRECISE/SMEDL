@@ -4,6 +4,7 @@ Code generation and template filling
 
 import os.path
 import jinja2
+from smedl.structures import expr
 
 # importlib.resources is only available in python>=3.7, but is available as a
 # backport.
@@ -28,12 +29,13 @@ class CodeGenerator(object):
         # Initialize the Jinja2 environment
         self.env = jinja2.Environment(trim_blocks=True, lstrip_blocks=True,
                 keep_trailing_newline=True,
-                loader=jinja2.PackageLoader('smedl.codegen', '.'))
+                loader=jinja2.PackageLoader('smedl.codegen', '.'),
+                globals={'SmedlType': expr.SmedlType})
 
         # Set up some custom tests for convenience in templates
         self.env.tests.['nonempty'] = lambda x: len(x) > 0
 
-    def write_static_files(self):
+    def _write_static_files(self):
         """Write the static code to the output directory"""
         from . import static
         files = resources.contents(static)
@@ -60,7 +62,7 @@ class CodeGenerator(object):
         with open(out_path, "w") as f:
             f.write(text)
 
-    def write_wrappers(self, system, syncset_name):
+    def _write_wrappers(self, system, syncset_name):
         """Write the global wrapper and local wrappers for one synchronous set
 
         Parameters:
@@ -70,7 +72,7 @@ class CodeGenerator(object):
         """
         pass #TODO
 
-    def write_monitor(self, monitor_spec):
+    def _write_monitor(self, monitor_spec):
         """Write the files for one monitor specification
 
         Parameters:
@@ -82,8 +84,18 @@ class CodeGenerator(object):
             }
 
         # Write the files
-        self.render("mon.c", monitor_spec.name + "_mon.c", values)
-        self.render("mon.h", monitor_spec.name + "_mon.h", values)
+        self._render("mon.c", monitor_spec.name + "_mon.c", values)
+        self._render("mon.h", monitor_spec.name + "_mon.h", values)
+
+    def write_one(self, monitor):
+        """Write all C files for the single monitor described by the provided
+        specification
+
+        Parameters:
+        monitor - The MonitorSpec whose code should be generated
+        """
+        self._write_static_files()
+        self._write_monitor(monitor)
 
     def write_all(self, system):
         """Write all C files for the provided monitoring system
@@ -91,6 +103,6 @@ class CodeGenerator(object):
         Parameters:
         system - A MonitorSystem for which code should be generated
         """
-        self.write_static_files()
+        self._write_static_files()
 
         pass #TODO
