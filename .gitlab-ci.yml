@@ -9,6 +9,7 @@ before_script:
   - which python
 
 test:
+  when: manual
   script:
   - pyvenv .env && source .env/bin/activate
   - ls -la .env/bin
