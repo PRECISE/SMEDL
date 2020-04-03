@@ -1,3 +1,6 @@
+#ifndef {{spec.name}}_MON_H
+#define {{spec.name}}_MON_H
+
 #include "smedl_types.h"
 #include "events.h"
 
@@ -69,7 +72,7 @@ typedef struct {{spec.name}}Monitor {
 /* Callback registration functions - Set the export callback for an exported
  * event. Set to NULL to unregister a callback. */
 {% for event in spec.exported_events.keys() %}
-void callback_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, Aux aux));
+void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, Aux aux));
 {% endfor %}
 
 /* Event handling functions:
@@ -144,3 +147,5 @@ void default_{{spec.name}}_state({{spec.name}}State *state);
 
 /* Free a {{spec.name}} monitor */
 void free_{{spec.name}}_monitor({{spec.name}}Monitor *mon);
+
+#endif /* {{spec.name}}_MON_H */

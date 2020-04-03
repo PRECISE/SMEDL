@@ -74,6 +74,7 @@ class CodeGenerator(object):
         for mon_name in system.syncsets[syncset_name]:
             values = {
                     "mon": system.monitor_decls[mon_name],
+                    "spec": system.monitor_decls[mon_name].spec,
                 }
             self._render("local_wrapper.c", mon_name + "_local_wrapper.c",
                     values)
@@ -83,10 +84,9 @@ class CodeGenerator(object):
         # Write the global wrapper
         values = {
                 "sys": system,
-                "syncset_name": syncset_name,
-                "syncset": system.syncsets[syncset_name], #TODO Should this be
-                                                          # a list of actual
-                                                          # MonitorDecls?
+                "syncset": syncset_name,
+                "mon_decls": [system.monitor_decls[mon] for mon in
+                        system.syncsets[syncset_name]]
             }
         self._render("global_wrapper.c", syncset_name + "_global_wrapper.c",
                 values)
@@ -129,8 +129,8 @@ class CodeGenerator(object):
         # Collect the monitor specs to generate
         mon_specs = dict()
         for decl in system.monitor_decls.values():
-            if decl.specs.name not in mon_specs:
-                mon_specs[decl.specs.name] = decl.specs
+            if decl.spec.name not in mon_specs:
+                mon_specs[decl.spec.name] = decl.spec
 
         # Generate monitors
         for spec in mon_specs.values():

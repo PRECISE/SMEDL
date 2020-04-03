@@ -7,7 +7,7 @@
 
 /* An event in an EventQueue */
 typedef struct Event {
-    int event;
+    unsigned int event;
     /* params is an array. Size is known because number of parameters for any
      * specified event is known. */
     SMEDLValue *params;
@@ -44,7 +44,7 @@ int pop_event(EventQueue *q, int *event, SMEDLValue **params, Aux *aux);
 /* Represents an event queued in a global wrapper for dispatching */
 typedef struct GlobalEvent {
     Event e; /* e.next is ignored */
-    int mon;
+    unsigned int mon;
     /* ids (monitor identities) is an array. Size is known because the number of
      * identities for a specified monitor is known. */
     SMEDLValue *ids;

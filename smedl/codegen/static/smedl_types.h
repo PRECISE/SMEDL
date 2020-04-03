@@ -34,7 +34,7 @@ typedef struct {
         int i;
         double d;
         char c;
-        char *s;
+        const char *s;
         void *p;
         pthread_t th;
     } v;

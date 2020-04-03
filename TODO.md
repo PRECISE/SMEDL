@@ -57,6 +57,11 @@ Semantics Details
   is not an issue when using the RabbitMQ adapter, but when using synchronous
   communication, can pose a problem. See also the "Concurrency and Thread
   Safety" sections, as these issues are sort of related.
+  * One solution may be to add an "imported" queue, separate from the intra and
+    inter queues. Then, an arbitrary number of imported events may be acquired,
+    both between calls to global_wrapper() and while the previous call is still
+    running. (In this case, when addressing concurrency and thread safety, put a
+    mutex around the import queue.)
 - The global wrapper does not do any sort of event ordering or reordering.
   Consider a Monitor 1 that exports an event that both Monitor 2A and Monitor 2B
   receive. Monitor 2A exports an event connected to the creation of Monitor 3,

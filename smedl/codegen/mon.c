@@ -15,7 +15,7 @@
  * event */
 {% for event in spec.exported_events.keys() %}
 
-void callback_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, Aux aux)) {
+void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, Aux aux)) {
     mon->callback_{{event}} = cb_func;
 }
 {% endfor %}

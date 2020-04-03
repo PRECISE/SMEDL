@@ -30,6 +30,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
     def start(self, ast):
         """Return the monitor system"""
         self.system.assign_singleton_syncsets()
+        self.system.create_export_connections()
         return self.system
 
     def import_stmt(self, ast):
@@ -220,7 +221,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
 
             # Check that souce event exists and get source event params
             try:
-                source_event_params = source_mon_decl.specs.exported_events[
+                source_event_params = source_mon_decl.spec.exported_events[
                         ast.source.event]
             except KeyError:
                 raise NameNotDefined("Source monitor {} does not contain "
@@ -243,7 +244,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
             if isinstance(ast.target, arch.TargetEvent):
                 # Validate destination event parameter types
                 target_ev = ast.target.event
-                target_ev_types = target_mon_decl.specs.imported_events[
+                target_ev_types = target_mon_decl.spec.imported_events[
                         target_ev]
                 self._validate_param_types(source_mon_params,
                         source_event_params, ast.target.event_params,
@@ -254,7 +255,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                 for var, param in ast.target.state_vars.items():
                     # Validate that state var exists and get type
                     try:
-                        dest_type = target_mon_decl.specs.state_vars[var]
+                        dest_type = target_mon_decl.spec.state_vars[var]
                     except KeyError:
                         raise NameNotDefined("Monitor {} has no state variable "
                                 "{}".format(target_mon_decl.name, var))
@@ -320,7 +321,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                 # Validate state vars
                 for var, param in ast.target.state_vars.items():
                     # Validate that state var exists
-                    if var not in target_mon_decl.specs.state_vars:
+                    if var not in target_mon_decl.spec.state_vars:
                         raise NameNotDefined("Monitor {} has no state variable "
                                 "{}".format(target_mon_decl.name, var))
                     # Validate that state var comes from event parameter, not
@@ -357,7 +358,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                     .format(ast.dest_monitor))
         # Check that destination event exists as an imported event
         elif ast.dest_event not in self.system.monitor_decls[
-                ast.dest_monitor].specs.imported_events:
+                ast.dest_monitor].spec.imported_events:
             raise NameNotDefined("Destination monitor {} does not contain "
                     "imported event {}".format(ast.dest_event))
 
@@ -377,10 +378,10 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                     len(ast.monitor_params)))
         # Check that the number of event params matches
         if len(ast.event_params) != len(self.system.monitor_decls[
-                ast.dest_monitor].specs.imported_events[ast.dest_event]):
+                ast.dest_monitor].spec.imported_events[ast.dest_event]):
             raise ParameterError("Expected {} parameters for event {}.{}, "
                     "got {}".format(len(self.system.monitor_decls[
-                    ast.dest_monitor].specs.imported_events[ast.dest_event]),
+                    ast.dest_monitor].spec.imported_events[ast.dest_event]),
                     ast.dest_monitor, ast.dest_event, len(ast.monitor_params)))
 
         # Create the TargetEvent

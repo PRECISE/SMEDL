@@ -102,14 +102,23 @@ class TargetCreation(Target):
             return False
         return super().same_as(other)
 
+class TargetExport(Target):
+    """An event export target, for events that are exported out of a synchronous
+    set back to the target system. Note that "export target" and "target system"
+    are two different senses of the word "target," the former being a connection
+    target and the latter being the target of monitoring."""
+    def __init__(self):
+        """Initialize this export target."""
+        super().__init__(None, [])
+
 class DeclaredMonitor(object):
     """A monitor delcaration from the architecture file"""
-    def __init__(self, name, specs, params):
+    def __init__(self, name, spec, params):
         # Name of the monitor given in the declaration (meaning the "as" name,
         # if provided)
         self.name = name
         # The monitor.MonitorSpec to use for this monitor
-        self.specs = specs
+        self.spec = spec
         # List of the parameter types to use for this monitor (as SmedlTypes)
         self.params = params
         # Name of the synchronous set this monitor belongs to
@@ -126,9 +135,21 @@ class DeclaredMonitor(object):
                     " set twice.".format(self.name))
         self.syncset = syncset
 
+    def create_export_connections(self):
+        """Exported events that are not explicitly the source of a connection
+        in the architecture specification implicitly get exported back to the
+        environment. This creates those implicit TargetExports."""
+        for event in self.spec.exported_events.keys():
+            if event not in self.connections:
+                self.connections[event] = TargetExport()
+                # Set channel name using the autogenerate format from
+                # A4smedlSemantics._connection_name_validations()
+                self.connections[event].set_channel("_{}_{}".format(self.name,
+                    event))
+
     def __repr__(self):
         return "monitor {}({}) as {}".format(
-                self.specs,
+                self.spec,
                 ", ".join(self.params),
                 self.name)
 
@@ -227,3 +248,10 @@ class MonitorSystem(object):
                 syncset = _unused_syncset(mon.name)
                 mon.assign_syncset(syncset)
                 self.syncsets[syncset] = {mon.name}
+    
+    def create_export_connections(self):
+        """Iterate through all the monitor declarations and create export
+        targets for all the exported events that are not already the source of
+        an explicit connection."""
+        for mon in self.monitor_decls:
+            mon.create_export_connections()
