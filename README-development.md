@@ -68,5 +68,99 @@ info on how to do releases
 
 TODO
 
-Design of mgen
+Design of Mgen
 --------------
+
+Mgen is split into a few major parts:
+
+### Data Structures and Types
+
+Located in "smedl/structures".
+
+These are all the classes and types for the internal representations of
+monitors, monitoring systems, and all their parts, such as expressions,
+monitor declarations, actions, and so on. These are important as they act as the
+intermediate representation between the parsers and the code generators.
+
+These are split roughly into three categories, each with their own Python
+module:
+
+- **monitor.py** - Classes related to .smedl files
+- **arch.py** - Classes related to .a4smedl files
+- **expr.py** - Classes related to SMEDL expressions and type checking
+
+### Parsers
+
+Located in "smedl/parser"
+
+The parsers are responsible for reading the input .smedl and .a4smedl files and
+generating the data structures in the previous section.
+
+Mgen uses TatSu (formerly Grako) for parsing. With TatSu, the developer writes a
+**grammar** in a variant of extended Backus–Naur form (EBNF) specifying the
+syntax of the language. The developer then feeds that grammer into TatSu, which
+generates Python code to parse the language.
+
+For example, the grammar for .smedl files is "smedl.ebnf", and the parser,
+"smedl\_parser.py", is generated from that with
+`tatsu -o smedl_parser.ebnf smedl.ebnf`. Then, "smedl\_parser.py" contains a
+class `SmedlParser` that can be used to parse .smedl files.
+
+The parser alone simply generates an abstract syntax tree (AST), but the
+developer can also create a "semantic actions" class. When provided, this class
+can perform extra validations and transformations on the AST, like type
+checking. In our case, these semantic actions are what transforms the AST into
+the data structures in "smedl/structures", and they work closely with the code
+there to accomplish that.
+
+For more information on how TatSu works and how to use it, see "README-tatsu.md"
+in the same directory and [the TatSu documentation](https://tatsu.readthedocs.io/en/stable/index.html).
+
+For mgen, there are two parsers, "semdl\_parser.py" and "a4smedl\_parser.py",
+generated respectively from "smedl.ebnf" and "a4smedl.ebnf". These both have
+their own semantic actions, "smedl\_semantics.py" and "a4smedl\_semantics.py".
+Both parsers share some elements, so there is a common grammer, "common.ebnf",
+that they both include and both semantic actions inherit from
+"common\_semantics.py".
+
+Finally, there is a Python module containing exceptions for use while parsing.
+These are for semantic issues like type mismatches, using events that were not
+declared, etc.
+
+### Code Generation
+
+Located in "smedl/codegen"
+
+This contains everything responsible for taking the structures from
+"smedl/structures" and transforming them into C code for monitors and monitoring
+systems. "\_\_init\_\_.py" is the only Python file in this directly (look up
+[Python Packages](https://docs.python.org/3/tutorial/modules.html#packages) if
+you are unsure why it is named like that). It contains a class, `CodeGenerator`,
+that (surprise) manages code generation.
+
+Mgen uses the [Jinja](https://jinja.palletsprojects.com/) templating library
+for code generation. Jinja is normally used to generate HTML for web
+applications, but it is perfectly suitable for other templating needs, so we
+use it to generate C code from templates. Upon initialization, `CodeGenerator`
+in turn initializes a new Jinja `Environment` with the appropriate options.
+It then provides the appropriate structures (from "semdl/structures") to fill
+each template.
+
+The templates reside directly in "smedl/codegen" as .c and .h files. Open them
+and you will find they contain many Jinja placeholders and directives in curly
+braces. For information on how to read and edit these files, see the [Jinja
+Template Designer Documentation](https://jinja.palletsprojects.com/en/2.11.x/templates/).
+
+Please refer also to "README-templates.md" for some tips and important best
+practices for template writing.
+
+### "mgen.py" Itself
+
+"mgen.py" is the main driver module. It really has two jobs: 1) parsing command
+line options and 2) making calls to the other modules to handle the bulk of the
+work.
+
+After parsing the command line options, it initializes the code generator,
+calls either the SMEDL parser or the A4SMEDL parser depending on what type of
+input file was provided, and then passes the output (which will be objects from
+"smedl/structures") to the code generator for transformation to C code.

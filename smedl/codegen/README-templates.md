@@ -59,16 +59,42 @@ generation, so most block openings and closings should go on their own line and
 be indented properly. The contents of blocks will retain their indentation and
 for loop iterations will be separated by a line break. For example:
 
-    {% for item in items %}
-        {{item}}
-    {% endfor %}
+    if (test == 1) {
+        {% for func in functions %}
+        {{func}}();
+        {% endfor %}
+    }
 
-If `items` is `["foo", "bar", "baz"]`, the result will look like:
+If `functions` is `["foo", "bar", "baz"]`, the result will look like:
 
-    foo
-    bar
-    baz
+    if (test == 1) {
+        foo();
+        bar();
+        baz();
+    }
 
 If each item should not get its own line, consider using minus signs to strip
-more whitespace than `trim_blocks` and `lstrip_blocks` do by default or simply
+more whitespace than `trim_blocks` and `lstrip_blocks` do by default, or simply
 placing the block opener, body, and closer all inline.
+
+Template logic vs. Python logic
+-------------------------------
+
+Jinja templates are quite flexible and can do a certain amount of processing on
+their own, but take care not to have the templates doing more computation than
+necessary. The line to draw is this: Python code should not be handling C code
+directly. If logic cannot be moved out of the template without breaking that
+rule, then the logic belongs in the template. Otherwise, it belongs somewhere in
+the Python code.
+
+For example, the expression and action generation macros in the "mon.c" template
+are very complex and logic-heavy. That is a sign to consider whether some of
+that logic should be moved to Python code instead. However, in this case, the
+logic directly handles C code. There would be no way to move it to the
+`Expression` and `Action` classes without having those classes handle snippets
+of C code, so placing the logic in the template is in fact the correct decision.
+
+A good test for this is to ask yourself the question, "If we wanted to generate
+a language other than C, would we be able to accomplish that purely with a new
+set of templates?" If the answer is no, then that is a sign that the Python code
+is doing something that should be the templates' job.
