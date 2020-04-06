@@ -15,7 +15,7 @@
  * event */
 {% for event in spec.exported_events.keys() %}
 
-void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, Aux aux)) {
+void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux)) {
     mon->callback_{{event}} = cb_func;
 }
 {% endfor %}
@@ -25,7 +25,7 @@ void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)
 static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
     int event;
     SMEDLValue *params;
-    Aux aux;
+    SMEDLAux aux;
 
     while (pop_event(&mon->event_queue, &event, &params, &aux)) {
         switch (event) {
@@ -78,7 +78,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
     {%- elif e.type is sameas SmedlType.THREAD -%}
         th
     {%- elif e.type is sameas SmedlType.OPAQUE -%}
-        p
+        o
     {%- endif -%}
 {%- elif e.expr_type == 'literal' -%}
     {{e.string}}
@@ -92,7 +92,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
 {%- elif e.expr_type == 'unary_op' -%}
     {{e.operator}}{{e.operand}}
 {%- elif e.expr_type == 'binary_op' -%}
-    {# == or != on strings requires special handling. #}
+    {# == or != on strings and opaques requires special handling. #}
     {%- if e.operand == '==' and
             (e.left.type is sameas SmedlType.STRING or
             e.right.type is sameas SmedlType.STRING) -%}
@@ -101,6 +101,14 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
             (e.left.type is sameas SmedlType.STRING or
             e.right.type is sameas SmedlType.STRING) -%}
         strcmp({{expression(e.left)}}, {{expression(e.right}})
+    {%- if e.operand == '==' and
+            (e.left.type is sameas SmedlType.OPAQUE or
+            e.right.type is sameas SmedlType.OPAQUE) -%}
+        opaque_equals({{expression(e.left)}}, {{expression(e.right}})
+    {%- elif e.operand == '!=' and
+            (e.left.type is sameas SmedlType.OPAQUE or
+            e.right.type is sameas SmedlType.OPAQUE) -%}
+        !opaque_equals({{expression(e.left)}}, {{expression(e.right}})
     {%- else -%}
         {{expression(e.left)}} {{e.operator}} {{expression(e.right)}}
     {%- endif -%}
@@ -123,7 +131,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
         }
         {% for param_type in spec.get_event(a.event) %}
         new_params[{{loop.index0}}].t = SMEDL_{{param_type.value|upper}};
-        new_params[{{loop.index0}}].
+        new_params[{{loop.index0}}].v.
         {%- if param_type is sameas SmedlType.INT -%}
             i
         {%- elif param_type is sameas SmedlType.FLOAT -%}
@@ -137,7 +145,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
         {%- elif param_type is sameas SmedlType.THREAD -%}
             th
         {%- elif param_type is sameas SmedlType.OPAQUE -%}
-            p
+            o
         {%- endif +%} = {{expression(a.params[loop.index0])}};
         {% endfor %}
         queue_{{spec.name}}_{{a.event}}(mon, new_params, aux);
@@ -197,7 +205,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
 /* Imported events */
 {% for event in spec.imported_events.keys() %}
 
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux) {
+void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
     {{event_handler(event)}}
 
     /* Finish the macro-step */
@@ -210,11 +218,11 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 /* Internal events */
 {% for event in spec.internal_events.keys() %}
 
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux) {
+void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
     {{event_handler(event)}}
 }
 
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux) {
+void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
     push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux);
 }
 {% endfor %}
@@ -224,18 +232,18 @@ void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
 /* Exported events */
 {% for event in spec.exported_events.keys() %}
 
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux) {
+void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
     {{event_handler(event)}}
 
     /* Export the event */
     export_{{spec.name}}_{{event}}(mon, params, aux);
 }
 
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux) {
+void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
     push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux);
 }
 
-void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux) {
+void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
     if (mon->callback_{{event}} != NULL) {
         (mon->callback_{{event}})(mon->identities, params, aux);
     }

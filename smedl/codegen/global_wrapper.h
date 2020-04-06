@@ -29,7 +29,7 @@ void free_{{syncset}}_syncset();
  */
 {% for decl in mon_decls %}
 {% for event in decl.spec.exported_events.keys() %}
-void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, Aux aux);
+void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 {% endfor %}
 
@@ -46,12 +46,12 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, A
  * aux - Extra data to be passed through unchanged */
 {# Events from target system #}
 {% for target in system.imported_connections.values() if target.monitor in system.syncsets[syncset] %}
-void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, Aux aux);
+void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 {# Events from other synchronous sets #}
 {% for decl in system.monitor_decls if decl.syncset != syncset %}
 {% for target in decl.connections.values() if target.monitor in system.syncsets[syncset] %}
-void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, Aux aux);
+void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 {% endfor %}
 
@@ -64,7 +64,7 @@ void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *p
  *   unregister a callback. Must accept three parameters: An array of SMEDLValue
  *   for the source monitor's identities (or NULL if the source monitor has
  *   none), another array of SMEDLValue for the source event's parameters, and
- *   an Aux for passthrough data.
+ *   a SMEDLAux for passthrough data.
  *
  * TODO Should we create a way to explicitly export events to the target system
  * in the architecture file? This would allow 1) sending events to both a
@@ -77,7 +77,7 @@ void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *p
  */
 {% for decl in mon_decls %}
 {% for target in decl.connections.values() if target.monitor is none %}
-void callback_{{syncset}}_{{target.channel}}(void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, Aux aux));
+void callback_{{syncset}}_{{target.channel}}(void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux));
 {% endfor %}
 {% endfor %}
 

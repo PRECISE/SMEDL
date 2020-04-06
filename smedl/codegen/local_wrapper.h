@@ -35,7 +35,7 @@ void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *ini
  * aux - Extra data that is passed through to exported events unchanged.
  */
 {% for event in spec.imported_events.keys() %}
-void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, Aux aux);
+void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 
 /******************************************************************************

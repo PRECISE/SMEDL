@@ -60,7 +60,7 @@ typedef struct {{spec.name}}Monitor {
 
     /* Exported event callback pointers */
     {% for event in spec.exported_events.keys() %}
-    void (*callback_{{event}})(SMEDLValue *identities, SMEDLValue *params, Aux aux);
+    void (*callback_{{event}})(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
     {% endfor %}
 
     /* Local event queue */
@@ -72,7 +72,7 @@ typedef struct {{spec.name}}Monitor {
 /* Callback registration functions - Set the export callback for an exported
  * event. Set to NULL to unregister a callback. */
 {% for event in spec.exported_events.keys() %}
-void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, Aux aux));
+void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux));
 {% endfor %}
 
 /* Event handling functions:
@@ -117,16 +117,16 @@ void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)
  * export_* - Export an exported event by calling the registered callback, if
  *   any. */
 {% for event in spec.imported_events.keys() %}
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux);
+void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 {% for event in spec.internal_events.keys() %}
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux);
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux);
+void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux);
+void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 {% for event in spec.exported_events.keys() %}
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux);
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux);
-void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, Aux aux);
+void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux);
+void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux);
+void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 
 /* Monitor management functions */

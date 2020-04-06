@@ -45,7 +45,8 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         elif var_type is expr.SmedlType.THREAD:
             return False
         elif var_type is expr.SmedlType.OPAQUE:
-            return value_type == 'null'
+            #TODO Should we allow opaques to be initialized like strings?
+            return False
 
     def state_declaration(self, ast):
         """Add a state variable to the monitor"""

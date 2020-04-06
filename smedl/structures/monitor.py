@@ -26,7 +26,9 @@ class StateVariable(object):
             elif self.type == 'thread':
                 self.initial_value = None
             elif self.type == 'opaque':
-                self.initial_value = "NULL"
+                #TODO This may cause errors converting a const char * to
+                # non-const void * in C++. (C should not complain.)
+                self.initial_value = '{"", 0}'
 
 class Action(object):
     """A base class for all the action types that may appear in the list of

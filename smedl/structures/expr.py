@@ -35,7 +35,7 @@ class SmedlType(Enum):
     STRING = ('string', 'char *')
     POINTER = ('pointer', 'void *')
     THREAD = ('thread', 'pthread_t')
-    OPAQUE = ('opaque', 'void *')
+    OPAQUE = ('opaque', 'SMEDLOpaque')
 
     def convertible_to(self, other):
         """Return True if this SmedlType can convert to the other SmedlType
@@ -172,12 +172,11 @@ class Expression(object):
         elif (self.type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR] and
                 other.type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR]):
             return SmedlType.INT
-        # If either operand is "null", the other can be "null", pointer, or
-        # opaque. Return int
+        # If either operand is "null", the other can be "null" or pointer.
+        # Return int
         elif (self.type == "null" and other.type in [
-                SmedlType.POINTER, SmedlType.OPAQUE, "null"]) or (
-                other.type == "null" and self.type in [
-                SmedlType.POINTER, SmedlType.OPAQUE]):
+                SmedlType.POINTER, "null"]) or (
+                other.type == "null" and self.type == SmedlType.POINTER):
             return SmedlType.INT
         # If both operands are the same type, return int
         elif self.type == other.type:
@@ -220,9 +219,8 @@ class Expression(object):
         # None is compatible with all types
         if self.type is None:
             return
-        # "null" is compatible with POINTER and OPAQUE
-        elif self.type == "null" and dest_type in [
-                SmedlType.POINTER, SmedlType.OPAQUE]:
+        # "null" is compatible with POINTER
+        elif self.type == "null" and dest_type == SmedlType.POINTER:
             return
         # Otherwise, determine according to SmedlType.convertible_to()
         elif self.type.convertible_to(dest_type):
