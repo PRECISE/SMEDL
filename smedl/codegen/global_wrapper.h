@@ -2,7 +2,6 @@
 #define {{syncset}}_GLOBAL_WRAPPER_H
 
 #include "smedl_types.h"
-#include "conn_id.h"
 //TODO
 
 /******************************************************************************

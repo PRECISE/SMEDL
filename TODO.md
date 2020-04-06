@@ -88,3 +88,65 @@ Concurrency and Thread Safety
   (about blocking imported events during a macro-step).
 - Similarly, SMEDL is not thread-safe. Mutexes are likely the solution to this,
   as well.
+
+Opaque Type
+-----------
+
+- The intention of the opaque type was likely for a block of data of unknown
+  structure that could be compared for equality by value.
+- Currently, we treat it more or less as a pointer. The issue is if we have two
+  different blocks with the same copy of the opaque data, 1) they will not
+  compare equal and 2) they will not match for monitor identity purposes.
+- Proposal:
+  1. Add a new struct to smedl\_types.h:
+
+      typedef struct {
+          void *op;  // Opaque pointer
+          size_t os; // Opaque size
+      }
+
+  2. Add the new struct to the `SMEDLValue` union as `Opaque o` and remove the
+     `int reserved` to save space (as it has not turned out to be useful)
+
+Memory Management
+-----------------
+
+- Add notes to API functions about whether they take ownership of pointers or
+  not and if return values must be freed.
+- Generally speaking:
+  * Callers of API functions retain ownership of malloc'd memory passed in as
+    parameters. That is, callers must free all their own memory when it is no
+    longer needed by SMEDL or the caller.
+  * Parameter lists passed to import APIs (`import_*()` in the global wrapper,
+    `process_*()` in the local wrapper, `execute_*` for imported events in the
+    monitors) must remain valid until the function returns. In effect, such
+    parameters may safely come from the stack, heap, or static storage.
+  * Event parameter lists provided to export callbacks (i.e., the callbacks
+    registered with `callback_*()` in the global wrapper or `register_*()` in
+    the monitors) are malloc'd and the callback function becomes responsible for
+    freeing them. (Is there a better solution for this? E.g. using static
+    memory and requiring the callback to make a copy? That likely is not thread
+    safe, though.)
+  * Identity lists provided to export callbacks, however, are not the
+    responsibility of the callback function, and callback functions *MUST NOT*
+    free them.
+  * Aux data is simply passed through untouched by SMEDL. Pointers to aux data
+    provided to callbacks will be identical to those originally passed in, thus
+    will remain valid as long as the original pointer does.
+  * What about data that parameter lists point to? (i.e. strings and opaques.)
+    That may need to remain valid longer that the imported parameter list
+    itself, e.g. if it becomes a monitor identity or part of an exported
+    parameter list.
+    - If we can determine a way to specify how long parameter data must be
+      valid, that would require the fewest code changes.
+    - Otherwise, another option is to copy parameter data that is stored after
+      the import event returns. In that case, we should probably provide a
+      `param_free()` function or similar in smedl\_types.h or events.h to use on
+      exported param lists when they are no longer needed. We should have
+      exported param lists be `SMEDL_NULL`-terminated so the `param_free()`
+      function can iterate over them.
+- Internally, this means that whenever a new param list is created, it must be
+  malloc'd (or reserved from a pool or similar). And after a non-imported event
+  is handled or a monitor is freed, their param lists and identities
+  (respectively) must be freed.
+- Add a section to the developer's README about this stuff.
