@@ -40,6 +40,9 @@ typedef struct {
     size_t size;
 } SMEDLOpaque;
 
+//TODO Should string in SMEDLValue be const char * and data in SMEDLOpaque be
+// const void *?
+
 /*
  * A single SMEDL value
  */
@@ -49,23 +52,18 @@ typedef struct {
         int i;
         double d;
         char c;
-        const char *s;
+        char *s;
         void *p;
         pthread_t th;
         SMEDLOpaque o;
     } v;
 } SMEDLValue;
 
-/* 
- * Compare two SMEDLOpaque values and return nonzero if they are equal, zero if
- * not 
- */
-int opaque_equal(SMEDLOpaque o1, SMEDLOpaque o2);
-
 /*
- * Compute a hash of the SMEDLValue useful for hash tables
+ * Compare two SMEDLValue and return <0 if the first is less than the second,
+ * 0 if they are identical, >0 if the first is greater than the second
  */
-int smedl_hash(SMEDLValue val);
+int smedl_compare(SMEDLValue v1, SMEDLValue v2);
 
 /*
  * Auxiliary data is passed through monitors untouched. It might be used for
@@ -76,4 +74,4 @@ typedef struct {
     size_t len;
 } SMEDLAux;
 
-#endif //SMEDL_TYPES_H
+#endif /* SMEDL_TYPES_H */
