@@ -119,7 +119,7 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     break;
                 case 2:
                     /* Needs rebalance to the left */
-                    if (node->left->bal > 0) {
+                    if (node->right->bal > 0) {
                         /* Right-right case */
                         node->bal = 0;
                         node = left_rotate(&node);
@@ -251,10 +251,12 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
     }
 
     /* Only record left with this key. It must be removed from the tree. Do
-     * the standard BST deletion: swap the record down to a leaf node in a way
-     * that preserves the ordering. */
+     * the standard BST deletion: If no children, simply remove. If one child,
+     * remove and put the child in its place. If two children, swap it with 
+     * its successor and try again. */
     SMEDLRecordBase *node = NULL;
-    while (parent == NULL) {
+    int bal_change;
+    while (node == NULL) {
         if (rec->left == NULL) {
             if (rec->right == NULL) {
                 /* Record has no children. Remove it now. */
@@ -262,34 +264,56 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 if (node == NULL) {
                     /* Last record in the tree. Return empty tree. */
                     return NULL;
+                } else if (node->left = rec) {
+                    node->left = NULL;
+                    bal_change = 1;
+                } else {
+                    node->right = NULL;
+                    bal_change = -1;
                 }
             } else {
-                /* Record has only right child. Swap with it. */
-                swap_records(rec, rec->right);
+                /* Record has only right child. Replace with child. */
+                node = rec->parent;
+                if (node == NULL) {
+                    /* Record is root. Make child new root. */
+                    rec->right->parent = NULL;
+                    return rec->right;
+                if (node->left = rec) {
+                    node->left = rec->right;
+                    rec->right->parent = node;
+                    bal_change = 1;
+                } else {
+                    node->right = rec->right;
+                    rec->right->parent = node;
+                    bal_change = -1;
+                }
             }
         } else {
             if (rec->right == NULL) {
-                /* Record has only left child. Swap with it. */
-                swap_records(rec, rec->left);
+                /* Record has only left child. Replace with child. */
+                node = rec->parent;
+                if (node == NULL) {
+                    /* Record is root. Make child new root. */
+                    rec->left->parent = NULL;
+                    return rec->left;
+                if (node->left = rec) {
+                    node->left = rec->left;
+                    rec->left->parent = node;
+                    bal_change = 1;
+                } else {
+                    node->right = rec->left;
+                    rec->left->parent = node;
+                    bal_change = -1;
+                }
             } else {
                 /* Record has two children. Find the record with the next
-                 * highest key and swap with it. */
+                 * highest key and swap with it. Then try again. */
                 for (SMEDLRecordBase *successor = rec->right;
                         successor->left != NULL;
                         successor = successor->left);
                 swap_records(rec, successor);
             }
         }
-    }
-
-    /* Remove the record */
-    int bal_change;
-    if (parent->left == rec) {
-        parent->left = NULL;
-        bal_change = 1;
-    } else {
-        parent->right = NULL;
-        bal_change = -1;
     }
 
     /* Rebalance */
@@ -314,16 +338,21 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 break;
             case -2:
                 /* Needs rebalance to the right */
-                if (node->left->bal < 0) {
+                if (node->left->bal == 0) {
                     /* Left-left case */
-                    node->bal = 0; //CHECK
+                    node->bal = -1;
                     right_rotate(&node);
-                    node->bal = 0; //CHECK
+                    node->bal = 1;
+                } else if (node->left->bal < 0) {
+                    /* Left-left case */
+                    node->bal = 0;
+                    right_rotate(&node);
+                    node->bal = 0;
                 } else {
                     /* Left-right case */
                     left_rotate(&node->left);
                     right_rotate(&node);
-                    if (node->bal < 0) { //CHECK From here...
+                    if (node->bal < 0) {
                         node->left->bal = 0;
                         node->right->bal = 1;
                     } else if (node->bal > 0) {
@@ -333,25 +362,26 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                         node->left->bal = 0;
                         node->right->bal = 0;
                     }
-                    node->bal = 0; //CHECK ...to here
+                    node->bal = 0;
                 }
-                //TODO This copied from the insert code. I believe it is correct
-                // except for possibly the resulting balance factors. Double
-                // check the code marked "CHECK."
-                // Also determine whether rebalance needs to continue.
                 break;
             case 2:
                 /* Needs rebalance to the left */
-                if (node->left->bal > 0) {
+                if (node->right->bal == 0) {
                     /* Right-right case */
-                    node->bal = 0; //CHECK
+                    node->bal = 1;
                     node = left_rotate(&node);
-                    node->bal = 0; //CHECK
+                    node->bal = -1;
+                } else if (node->right->bal > 0) {
+                    /* Right-right case */
+                    node->bal = 0;
+                    node = left_rotate(&node);
+                    node->bal = 0;
                 } else {
                     /* Right-left case */
                     right_rotate(&node->right);
                     left_rotate(&node);
-                    if (node->bal < 0) { //CHECK From here...
+                    if (node->bal < 0) {
                         node->left->bal = 0;
                         node->right->bal = 1;
                     } else if (node->bal > 0) {
@@ -361,12 +391,8 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                         node->left->bal = 0;
                         node->right->bal = 0;
                     }
-                    node->bal = 0; //CHECK ...to here
+                    node->bal = 0;
                 }
-                //TODO This copied from the insert code. I believe it is correct
-                // except for possibly the resulting balance factors. Double
-                // check the code marked "CHECK."
-                // Also determine whether rebalance needs to continue.
                 break;
         }
     /* If the current node's balance factor is -1 or 1, the height of its branch
