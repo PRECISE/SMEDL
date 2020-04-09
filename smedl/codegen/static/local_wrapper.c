@@ -243,11 +243,24 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
         rec->equal->right = rec->right;
         rec->equal->bal = rec->bal;
         rec->equal->equal_prev = NULL;
+        if (rec->parent != NULL && rec->parent->left == rec) {
+            rec->parent->left = rec->equal;
+        } else if (rec->parent != NULL) {
+            rec->parent->right = rec->equal;
+        }
+        if (rec->left != NULL) {
+            rec->left->parent = rec->equal;
+        }
+        if (rec->right != NULL) {
+            rec->right->parent = rec->equal;
+        }
 
         /* Return the root of the tree unchanged */
+        rec = rec->equal;
         while (rec->parent != NULL) {
             rec = rec->parent;
         }
+        return rec;
     }
 
     /* Only record left with this key. It must be removed from the tree. Do
