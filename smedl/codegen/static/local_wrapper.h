@@ -50,8 +50,14 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec);
  * root - Root of the map to lookup from
  * key - Key to lookup records for
  *
- * Returns a *circular* linked list of matching records (linked with ->equal
- * member) */
+ * Returns a linked list of matching records (linked with ->equal member),
+ * or NULL if there were no matches. */
 SMEDLRecordBase * monitor_map_lookup(SMEDLRecordBase *root, SMEDLValue *key);
+
+/* Fetch all monitors
+ *
+ * Return a linked list of all monitors in the map (linked with ->next
+ * member) */
+SMEDLRecordBase * monitor_map_all(SMEDLRecordBase *root);
 
 #endif /* LOCAL_WRAPPER_H */

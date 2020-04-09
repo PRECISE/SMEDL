@@ -445,3 +445,31 @@ SMEDLRecordBase * monitor_map_lookup(SMEDLRecordBase *root, SMEDLValue *key) {
     /* Reached a leaf and didn't find it */
     return NULL;
 }
+
+static void link_all(SMEDLRecordBase *root, SMEDLRecordBase *tail) {
+    tail->next = root;
+    if (root->left != NULL) {
+        tail
+}
+
+/* Fetch all monitors
+ *
+ * Return a linked list of all monitors in the map (linked with ->next
+ * member) */
+SMEDLRecordBase * monitor_map_all(SMEDLRecordBase *root) {
+    /* Construct the results list */
+    SMEDLRecordBase *tail = root;
+    for (SMEDLRecordBase *pos = root; pos != NULL; pos = pos->next) {
+        if (pos->left != NULL) {
+            tail->next = pos->left;
+            tail = tail->next;
+        }
+        if (pos->right != NULL) {
+            tail->next = pos->right;
+            tail = tail->next;
+        }
+        tail->next = NULL;
+    }
+
+    return root;
+}

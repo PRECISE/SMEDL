@@ -1,6 +1,7 @@
 #ifndef SMEDL_TYPES_H
 #define SMEDL_TYPES_H
 
+#include <string.h>
 #include <pthread.h>
 
 /*
@@ -67,6 +68,36 @@ typedef struct {
  * not the same type!
  */
 int smedl_compare(SMEDLValue v1, SMEDLValue v2);
+
+/*
+ * Compare two SMEDLValue and return nonzero if they are equal, zero if they are
+ * not. If the first value is a wildcard (represented by type being SMEDL_NULL),
+ * the result is always a match.
+ *
+ * NOTE: No type checking is performed! Results are undefined if v1 and v2 are
+ * not the same type (excluding SMEDL_NULL for a wildcard first value)!
+ */
+int smedl_equal(SMEDLValue v1, SMEDLValue v2);
+
+/*
+ * Compare two arrays of SMEDLValue and return nonzero if each element in the
+ * first is equal to the corresponding element in the second. The first array
+ * may contain wildcards (represented by type being SMEDL_NULL), which will
+ * always match.
+ *
+ * NOTE: No type checking is performed! Results are undefined if any of the
+ * corresponding elements are not of the same type (excluding SMEDL_NULL for
+ * wildcards in the first array)!
+ */
+int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len);
+
+/* 
+ * Make a copy of the SMEDLValue array with the given length. This is a shallow
+ * copy: strings and opaques will still point to the original data.
+ *
+ * Return the copy, or NULL if it could not be made.
+ */
+SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len);
 
 /*
  * Auxiliary data is passed through monitors untouched. It might be used for

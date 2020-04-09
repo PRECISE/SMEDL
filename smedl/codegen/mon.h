@@ -145,7 +145,8 @@ void default_{{spec.name}}_state({{spec.name}}State *state);
  * free_{{spec.name}}_monitor() when no longer needed. */
 {{spec.name}}Monitor * init_{{spec.name}}_with_state(SMEDLValue *identities, {{spec.name}}State *init_state);
 
-/* Free a {{spec.name}} monitor */
+/* Free a {{spec.name}} monitor. NOTE: Does not free the identities. That must
+ * be done by the caller, if necessary. */
 void free_{{spec.name}}_monitor({{spec.name}}Monitor *mon);
 
 #endif /* {{spec.name}}_MON_H */

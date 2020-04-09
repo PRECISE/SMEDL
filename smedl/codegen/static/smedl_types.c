@@ -108,3 +108,79 @@ int smedl_compare(SMEDLValue v1, SMEDLValue v2) {
             return 0; 
     }
 }
+
+/*
+ * Compare two SMEDLValue and return nonzero if they are equal, zero if they are
+ * not. If the first value is a wildcard (represented by type being SMEDL_NULL),
+ * the result is always a match.
+ *
+ * NOTE: No type checking is performed! Results are undefined if v1 and v2 are
+ * not the same type (excluding SMEDL_NULL for a wildcard first value)!
+ */
+int smedl_equal(SMEDLValue v1, SMEDLValue v2) {
+    switch (v1.t) {
+        case SMEDL_INT:
+            return v1.v.i == v2.v.i;
+            break;
+        case SMEDL_FLOAT:
+            return v1.v.d == v2.v.d;
+            break;
+        case SMEDL_CHAR:
+            return v1.v.c == v2.v.c;
+            break;
+        case SMEDL_STRING:
+            return strcmp(v1.v.s, v2.v.s) == 0;
+            break;
+        case SMEDL_POINTER:
+            return v1.v.p == v2.v.p;
+            break;
+        case SMEDL_THREAD:
+            return pthread_equal(v1.v.th, v2.v.th);
+            break;
+        case SMEDL_OPAQUE:
+            return v1.v.o.size == v2.v.o.size &&
+                memcmp(v1.v.o.data, v2.v.o.data, v1.v.o.size) == 0;
+            break;
+        case SMEDL_NULL:
+            return 1;
+        default:
+            return 0; 
+    }
+}
+
+/*
+ * Compare two arrays of SMEDLValue and return nonzero if each element in the
+ * first is equal to the corresponding element in the second. The first array
+ * may contain wildcards (represented by type being SMEDL_NULL), which will
+ * always match.
+ *
+ * NOTE: No type checking is performed! Results are undefined if any of the
+ * corresponding elements are not of the same type (excluding SMEDL_NULL for
+ * wildcards in the first array)!
+ */
+int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (!smedl_equal(a1[i], a2[i])) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* 
+ * Make a copy of the SMEDLValue array with the given length. This is a shallow
+ * copy: strings and opaques will still point to the original data.
+ *
+ * Return the copy, or NULL if it could not be made.
+ */
+SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len) {
+    SMEDLValue *copy = malloc(sizeof(SMEDLValue) * len);
+    if (copy == NULL) {
+        return NULL;
+    }
+
+    for (size_t i = 0; i < len; i++) {
+        copy[i] = array[i];
+    }
+    return copy;
+}

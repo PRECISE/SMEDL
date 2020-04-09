@@ -288,7 +288,6 @@ void default_{{spec.name}}_state({{spec.name}}State *state) {
     }
 
     /* Store the assigned identities */
-    //TODO Should we make a copy of identities?
     mon->identities = identities;
 
     /* Copy initial state vars in */
