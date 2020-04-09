@@ -142,6 +142,9 @@ Performance enhancements
   implemented. The first identity provided is looked up in an AVL tree and then
   further identities by iterating through a linked list of the results from the
   first.
+- One improvement might be using hash tables and using the AVL trees for the
+  buckets (perhaps only for certain identity types?)
+- Another might be nested maps instead of linked list inside maps
 
 Miscellaneous TODOs
 -------------------

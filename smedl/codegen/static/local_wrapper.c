@@ -33,6 +33,7 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
     /* Check for empty tree */
     if (*root == NULL) {
         rec->equal = NULL;
+        rec->equal_prev = NULL;
         rec->parent = NULL;
         *root = rec;
     }
@@ -48,6 +49,7 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                 node->left = rec;
                 rec->parent = node;
                 rec->equal = NULL;
+                rec->equal_prev = NULL;
                 bal_change = -1;
             } else {
                 /* Traverse left */
@@ -60,6 +62,7 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                 node->right = rec;
                 rec->parent = node;
                 rec->equal = NULL;
+                rec->equal_prev = NULL;
                 bal_change = 1;
             } else {
                 /* Traverse right */
@@ -144,6 +147,8 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
         } while (node->bal != 0);
 
         /* Insert done and tree is balanced. Return the root. */
+        //TODO Is this necessary? Will the root ever have changed, and can we
+        // update root only when that happens?
         while (node->parent != NULL) {
             node = node->parent;
         }
@@ -151,9 +156,134 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
     }
 
     /* Found a matching key already present. Add to that key. */
+    rec->parent = NULL;
+    if (node->equal != NULL) {
+        node->equal->equal_prev = rec;
+    }
     rec->equal = node->equal;
+    rec->equal_prev = node;
     node->equal = rec;
-    *root = node;
+}
+
+/* Swap the two records' location in the tree */
+static void swap_records(SMEDLRecordBase *a, SMEDLRecordBase *b) {
+    SMEDLRecordBase tmp = *a;
+
+    /* Put b in a's spot */
+    if (a->parent != NULL && a->parent->left == a) {
+        a->parent->left = b;
+    } elif (a->parent != NULL) {
+        a->parent->right = b;
+    }
+    if (a->left != NULL) {
+        a->left->parent = b;
+    }
+    if (a->right != NULL) {
+        a->right->parent = b;
+    }
+
+    /* Put b's field's in a */
+    a->parent = b->parent;
+    a->left = b->left;
+    a->right = b->right;
+    a->bal = b->bal;
+
+    /* Put a in b's spot */
+    if (b->parent != NULL && b->parent->left == b) {
+        b->parent->left = a;
+    } elif (b->parent != NULL) {
+        b->parent->right = a;
+    }
+    if (b->left != NULL) {
+        b->left->parent = a;
+    }
+    if (b->right != NULL) {
+        b->right->parent = a;
+    }
+
+    /* Put a's fields in b */
+    b->parent = tmp.parent;
+    b->left = tmp.left;
+    b->right = tmp.right;
+    b->bal = tmp.bal;
+}
+
+/* Deletion function. 
+ *
+ * rec - Record to remove from its map
+ *
+ * Returns the root of the updated tree. NOTE: Does not free any memory used
+ * by the record. */
+SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
+    if (rec->equal_prev != NULL) {
+        /* Not the only record with this key. Remove it without touching the
+         * tree. */
+        rec->equal_prev->equal = rec->equal;
+        if (rec->equal != NULL) {
+            rec->equal->equal_prev =rec->equal_prev;
+        }
+
+        /* Return the root of the tree unchanged */
+        while (rec->equal_prev != NULL) {
+            rec = rec->equal_prev;
+        }
+        while (rec->parent != NULL) {
+            rec = rec->parent;
+        }
+        return rec;
+    } else if (rec->equal != NULL) {
+        /* Not the only record with this key, but is the head of this key's
+         * linked list. Make the next element the new head while removing this
+         * record. */
+        rec->equal->parent = rec->parent;
+        rec->equal->left = rec->left;
+        rec->equal->right = rec->right;
+        rec->equal->bal = rec->bal;
+        rec->equal->equal_prev = NULL;
+
+        /* Return the root of the tree unchanged */
+        while (rec->parent != NULL) {
+            rec = rec->parent;
+        }
+    }
+
+    /* Only record left with this key. It must be removed from the tree. Do
+     * the standard BST deletion: swap the record down to a leaf node in a way
+     * that preserves the ordering. */
+    SMEDLRecordBase *parent = NULL;
+    while (parent == NULL) {
+        if (rec->left == NULL) {
+            if (rec->right == NULL) {
+                /* Record has no children. Remove it now. */
+                parent = rec->parent;
+                if (parent == NULL) {
+                    /* Last record in the tree. Return empty tree. */
+                    return NULL;
+                }
+            } else {
+                /* Record has only right child. Swap with it. */
+                swap_records(rec, rec->right);
+            }
+        } else {
+            if (rec->right == NULL) {
+                /* Record has only left child. Swap with it. */
+                swap_records(rec, rec->left);
+            } else {
+                /* Record has two children. Find the record with the next
+                 * highest key and swap with it. */
+                for (SMEDLRecordBase *successor = rec->right;
+                        successor->left != NULL;
+                        successor = successor->left);
+                swap_records(rec, successor);
+            }
+        }
+    }
+
+    /* TODO Remove the record */
+
+    /* TODO Rebalance */
+
+    /* TODO Return the new root */
 }
 
 /* Lookup function
