@@ -2,93 +2,107 @@
 #include <pthread.h>
 #include "smedl_types.h"
 
-/* 
- * Compare two SMEDLOpaque values and return nonzero if they are equal, zero if
- * not 
- */
-int opaque_equal(SMEDLOpaque o1, SMEDLOpaque o2) {
-    return o1.size == o2.size && !memcmp(o1.data, o2.data, o1.size);
-}
-
-/*
- * Compute the hash of arbitrary data as a CRC-32
- */
-static unsigned int hash_opaque(void *data, size_t size) {
-    // Use a lookup table for speed, generated the first time this function runs
-    static int table_ready = 0;
-    static uint32_t table[256];
-    if (!table_ready) {
-        for (int i = 0; i < 256; i++) {
-            uint32_t remainder = i;
-            for (int j = 0; j < 8; j++) {
-                if (remainder & 1) {
-                    remainder >>= 1;
-                    remainder ^= 0xedb88320;
-                } else {
-                    remainder >>= 1;
-                }
+/* Compare two opaque values */
+static int compare_opaque(void *data1, size_t len1, void *data2, size_t len2) {
+    size_t i = 0;
+    while (1) {
+        if (i == len1) {
+            if (i == len2) {
+                return 0;
+            } else {
+                return -1;
             }
-            table[i] = remainder;
+        } else if (i == len2) {
+            return 1;
         }
-        table_ready = 1;
-    }
 
-    // Calculate CRC
-    uint32_t crc = 0xffffffff;
-    for (size_t i = 0; i < size; i++) {
-        crc = (crc >> 8) ^ table[(crc ^ data[i]) & 0xff];
+        if (*((unsigned char *) data1) < *((unsigned char *) data2)) {
+            return -1;
+        } else if (*((unsigned char *) data1) > *((unsigned char *) data2)) {
+            return 1;
+        }
+
+        i++;
     }
-    return ~crc;
+}
+
+/* Compare two threads
+ *
+ * TODO Currently this just uses compare_opaque, as pthread_t is considered an
+ * opaque type by the C standard. However, this is technically undefined
+ * behavior, as the only guaranteed safe way to compare threads is with
+ * pthread_equal(3). This will most likely work, but if there happens to be
+ * bits in a pthread_t that are ignored and arbitrary, this may not work
+ * right.
+ * An alternative method that would be safer would be to use something like
+ * pthread_key_create(3), but that means a change to the target system. */
+static int compare_thread(pthread_t t1, pthread_t t2) {
+    // Only return 0 if pthread_equal(3) says they are equal
+    if (pthread_equal(t1, t2)) {
+        return 0;
+    } else {
+        if (compare_opaque(&t1, sizeof(t1), &t2, sizeof(t2)) > 0) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
 }
 
 /*
- * Compute a hash of a pthread_t
+ * Compare two SMEDLValue and return <0 if the first is less than the second,
+ * 0 if they are identical, >0 if the first is greater than the second
+ *
+ * NOTE: No type checking is performed! Results are undefined if v1 and v2 are
+ * not the same type!
  */
-static unsigned int hash_pthread_t(pthread_t th) {
-    //TODO This will probably work, generally, but is unportable. Consider
-    // another solution, such as using pthread_key_create(3) (maybe with an mgen
-    // command line flag to fall back to this)
-    return hash_opaque(&th, sizeof(th));
-}
-
-/*
- * Compute a hash of the SMEDLValue useful for hash tables
- */
-unsigned int smedl_hash(SMEDLValue val) {
-    switch (val.t) {
+int smedl_compare(SMEDLValue v1, SMEDLValue v2) {
+    switch (v1.t) {
         case SMEDL_INT:
-            return val.v.i;
+            if (v1.v.i < v2.v.i) {
+                return -1;
+            } else if (v1.v.i > v2.v.i) {
+                return 1;
+            } else {
+                return 0;
+            }
             break;
         case SMEDL_FLOAT:
-            return 0; //TODO find a hash function of some sort where if
-                      // C == is true, the hashes are also equal
-            break;
-        case SMEDL_CHAR:
-            return val.v.c;
-            break;
-        case SMEDL_STRING:
-            // djb2 from http://www.cse.yorku.ca/~oz/hash.html
-            {
-                unsigned char *str = val.v.s;
-                unsigned long int acc = 5381;
-                uint_fast8_t c;
-                while (c = *str++) {
-                    acc = ((acc << 5) + acc) ^ c;
-                }
-                return acc;
+            if (v1.v.d < v2.v.d) {
+                return -1;
+            } else if (v1.v.d > v2.v.d) {
+                return 1;
+            } else {
+                return 0;
             }
             break;
+        case SMEDL_CHAR:
+            if (v1.v.c < v2.v.c) {
+                return -1;
+            } else if (v1.v.c > v2.v.c) {
+                return 1;
+            } else {
+                return 0;
+            }
+            break;
+        case SMEDL_STRING:
+            return strcmp(v1.v.s, v2.v.s);
+            break;
         case SMEDL_POINTER:
-            // uintptr_t is an unsigned int that a void * can safely convert
-            // to and from. (This will likely be truncated further by the
-            // unsigned int conversion when returning.)
-            return (uintptr_t) val.v.o;
+            if ((uintptr_t) v1.v.p < (uintptr_t) v2.v.p) {
+                return -1;
+            } else if ((uintptr_t) v1.v.p > (uintptr_t) v2.v.p) {
+                return 1;
+            } else {
+                return 0;
+            }
             break;
         case SMEDL_THREAD:
-            return hash_pthread_t(val.v.th);
+            return compare_thread(v1.v.th, v2.v.th);
             break;
         case SMEDL_OPAQUE:
-            return hash_opaque(val.v.o.data, val.v.o.size);
+            return compare_opaque(v1.v.o.data, v1.v.o.size,
+                    v2.v.o.data, v2.v.o.size);
             break;
         default:
             return 0; 

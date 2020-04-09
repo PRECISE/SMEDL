@@ -44,6 +44,7 @@ issues with the code.
   architecture file (.a4smedl) or a single monitor specification (.smedl). When
   an architecture file is provided, all monitors it imports will be generated
   automatically.
+- Various bugs and memory leaks have been fixed.
 
 ### Removed
 

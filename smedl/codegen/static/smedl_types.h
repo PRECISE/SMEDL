@@ -62,6 +62,9 @@ typedef struct {
 /*
  * Compare two SMEDLValue and return <0 if the first is less than the second,
  * 0 if they are identical, >0 if the first is greater than the second
+ *
+ * NOTE: No type checking is performed! Results are undefined if v1 and v2 are
+ * not the same type!
  */
 int smedl_compare(SMEDLValue v1, SMEDLValue v2);
 

@@ -88,6 +88,9 @@ Concurrency and Thread Safety
   (about blocking imported events during a macro-step).
 - Similarly, SMEDL is not thread-safe. Mutexes are likely the solution to this,
   as well.
+- We should probably add a command-line flag to SMEDL for thread-safety since
+  not all systems have pthreads. When this flag is off, we should remove the
+  pthread type from the generated code.
 
 Memory Management
 -----------------
@@ -131,6 +134,14 @@ Memory Management
   is handled or a monitor is freed, their param lists and identities
   (respectively) must be freed.
 - Add a section to the developer's README about this stuff.
+
+Performance enhancements
+------------------------
+
+- There is likely room for improvement with how the monitor lookups are
+  implemented. The first identity provided is looked up in an AVL tree and then
+  further identities by iterating through a linked list of the results from the
+  first.
 
 Miscellaneous TODOs
 -------------------

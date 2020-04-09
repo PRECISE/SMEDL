@@ -1,25 +1,25 @@
-#ifndef {{mon.name}}_LOCAL_WRAPPER_H
-#define {{mon.name}}_LOCAL_WRAPPER_H
-
-#include <stdint.h>
 #include "smedl_types.h"
 #include "{{spec.name}}_mon.h"
 
-/* Number of buckets in monitor hash tables. Can be modified to fit the use case
- * as necessary, or left at the default. */
-#define {{mon.name}}_MAP_SIZE 100
-
-/******************************************************************************
- * External Interface                                                         *
- ******************************************************************************/
+/* {{mon.name}} Monitor Maps - One AVL tree for each identity */
+{% for i in range(len(mon.params)) %}
+static {{mon.name}}Record *monitor_map_{{i}} = NULL;
+{% endfor %}
 
 /* Initialization interface - Initialize the local wrapper. Must be called once
  * before creating any monitors or importing any events. */
-void init_{{mon.name}}_local_wrapper();
+void init_{{mon.name}}_local_wrapper() {
+    /* Reserved for future use, but no need to actually do anything at this
+     * time. Monitor maps are already initialized to NULL by being of static
+     * storage duration (because they are global, not because they are declared
+     * static). */
+}
 
 /* Cleanup interface - Tear down and free the resources used by this local
  * wrapper and all the monitors it manages */
-void free_{{mon.name}}_local_wrapper();
+void free_{{mon.name}}_local_wrapper() {
+    //TODO
+}
 
 /* Creation interface - Instantiate a new {{mon.name}} monitor.
  *
@@ -29,7 +29,18 @@ void free_{{mon.name}}_local_wrapper();
  *   the initial state variable values for this monitor. A default initial
  *   state can be retrieved with default_{{spec.name}}_state()
  *   and then just the desired variables can be updated. */
-void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init_state);
+void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init_state) {
+    /* Check if monitor with identities already exists */
+    if (check_{{mon.name}}_monitors(identities)) {
+        return;
+    }
+
+    /* Initialize new monitor with identities and state */
+    {{spec.name}}Monitor *mon = init_{{spec.name}}_with_state(identities, init_state);
+
+    /* Store monitor in maps */
+    add_{{mon.name}}_monitor(mon);
+}
 
 /* Event import interfaces - Send the respective event to the monitor(s) and
  * potentially perform dynamic instantiation.
@@ -39,26 +50,24 @@ void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *ini
  * params - An array of SMEDLValue, one for each parameter of the event.
  * aux - Extra data that is passed through to exported events unchanged. */
 {% for event in spec.imported_events.keys() %}
-void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
+    /* Fetch the monitors to send the event to or do dynamic instantiation if
+     * necessary */
+    {{mon.name}}Record records = get_{{mon.name}}_monitors(identities);
+
+    /* Send the event to each monitor */
+    while (records != NULL) {
+        {{spec.name}}Monitor *mon = records->mon;
+        execute_{{spec.name}}_{{event}}(mon, params, aux);
+        records = records->next;
+    }
+}
 {% endfor %}
 
-/******************************************************************************
- * End of External Interface                                                  *
- ******************************************************************************/
-
-/* Record type for monitor maps */
-typedef struct {{mon.name}}Record {
-    {{spec.name}}Monitor *mon;
-    /* For linked list use (function return values) */
-    struct {{mon.name}}Record *next;
-    /* For tree use (storage in maps) */
-    struct {{mon.name}}Record *left;
-    struct {{mon.name}}Record *right;
-    int_fast8_t bal;
-} {{mon.name}}Record;
-
 /* Add the provided monitor to the monitor maps */
-void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
+void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
+    //TODO
+}
 
 /* Fetch a list of monitor instances matching the given identities.
  *
@@ -70,13 +79,17 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
  * identities and return it.
  *
  * Returns a linked list of {{mon.name}}Record. */
-{{mon.name}}Record * get_{{mon.name}}_monitors(SMEDLValue *identities);
+{{mon.name}}Record * get_{{mon.name}}_monitors(SMEDLValue *identities) {
+    //TODO
+}
 
 /* Check if a monitor with the given identities is present. Return nonzero if
  * so, zero if not. */
-int check_{{mon.name}}_monitors(SMEDLValue *identities);
+int check_{{mon.name}}_monitors(SMEDLValue *identities) {
+    //TODO
+}
 
 /* Remove a monitor with the given identities from the monitor maps */
-void remove_{{mon.name}}_monitor(SMEDLValue *identities);
-
-#endif /* {{mon.name}}_LOCAL_WRAPPER_H */
+void remove_{{mon.name}}_monitor(SMEDLValue *identities) {
+    //TODO
+}
