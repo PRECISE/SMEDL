@@ -457,19 +457,32 @@ static void link_all(SMEDLRecordBase *root, SMEDLRecordBase *tail) {
  * Return a linked list of all monitors in the map (linked with ->next
  * member) */
 SMEDLRecordBase * monitor_map_all(SMEDLRecordBase *root) {
-    /* Construct the results list */
-    SMEDLRecordBase *tail = root;
-    for (SMEDLRecordBase *pos = root; pos != NULL; pos = pos->next) {
-        if (pos->left != NULL) {
-            tail->next = pos->left;
+    /* Construct the results list. There are two categories of records:
+     * the tree nodes and the non tree nodes (records with the same key as a
+     * tree node that are in the tree node's ->equal linked list). 
+     * Tree nodes are added to the tail of the list, starting with the root.
+     * Non tree nodes are added to the head of the list. Iterate through
+     * the list toward the tail to visit every tree node and get their children
+     * and equals. */
+    SMEDLRecordBase *tail = root; 
+    SMEDLRecordBase *head = root;
+    for (SMEDLRecordBase *curr = root; curr != NULL; curr = curr->next) {
+        /* Add equals to the head */
+        for (SMEDLRecordBase *eq = curr->eq; eq != NULL; eq = eq->equal) {
+            eq->next = head;
+            head = eq;
+        }
+        /* Add children to the tail */
+        if (curr->left != NULL) {
+            tail->next = curr->left;
             tail = tail->next;
         }
-        if (pos->right != NULL) {
-            tail->next = pos->right;
+        if (curr->right != NULL) {
+            tail->next = curr->right;
             tail = tail->next;
         }
         tail->next = NULL;
     }
 
-    return root;
+    return head;
 }

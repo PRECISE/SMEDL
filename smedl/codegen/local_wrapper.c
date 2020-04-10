@@ -1,5 +1,5 @@
 #include "smedl_types.h"
-#include "local_wrapper.h"
+#include "lcocal_wrapper.h"
 #include "{{spec.name}}_mon.h"
 
 {% if mon.params is nonempty %}
@@ -30,7 +30,27 @@ void init_{{mon.name}}_local_wrapper() {
  * wrapper and all the monitors it manages */
 void free_{{mon.name}}_local_wrapper() {
     {% if mon.params is nonempty %}
-    //TODO
+    {{mon.name}}Record records;
+    {% for i in range(len(mon.params)) %}
+
+    {% if loop.last %}
+    /* Free records, monitors, identities, and map for monitor_map_{{i}} */
+    {% else %}
+    /* Free records and map for monitor_map_{{i}} */
+    {% endif %}
+    records = ({{mon.name}}Record *) monitor_map_all(monitor_map_{{i}});
+    {{mon.name}}Record next;
+    while (records != NULL) {
+        {% if loop.last %}
+        free(records->mon->identities);
+        free(records->mon);
+        {% endif %}
+        next = ({{mon.name}}Record records->r.next;
+        free(records);
+        records = next;
+    }
+    monitor_map_{{i}} = NULL;
+    {% endfor %}
     {% else %}
     free_{{spec.name}}_monitor(monitor);
     {% endif %}
@@ -53,7 +73,6 @@ void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *ini
     }
 
     /* Initialize new monitor with identities and state */
-    //TODO Identities must be freed when monitor is freed
     SMEDLValue *ids_copy = smedl_copy_array(identities, {{len(mon.params)}});
     if (ids_copy == NULL) {
         //TODO Malloc failed. What do we do here?
@@ -87,7 +106,7 @@ void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, 
     while (records != NULL) {
         {{spec.name}}Monitor *mon = records->mon;
         execute_{{spec.name}}_{{event}}(mon, params, aux);
-        records = records->next;
+        records = records->r.next;
     }
     {% else %}
     /* Send event to the singleton monitor */
@@ -143,12 +162,13 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
         all_wildcards = 1;
     }
 
+    {{mon.name}}Record *result;
     if (all_wildcards) {
         /* Fetch *all* records */
-        candidates = monitor_map_all(monitor_map_0);
+        result = ({{mon.name}}Record *) monitor_map_all(monitor_map_0);
     } else {
         /* Filter down to candidates that match the full identity list */
-        {{mon.name}}Record *result = NULL;
+        result = NULL;
         for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
             if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities)) {
                 rec->next = (SMEDLRecordBase *) result;
