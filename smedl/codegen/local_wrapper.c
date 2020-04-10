@@ -1,5 +1,6 @@
 #include "smedl_types.h"
-#include "lcocal_wrapper.h"
+#include "local_wrapper.h"
+#include "{{spec.syncset}}_global_wrapper.h"
 #include "{{spec.name}}_mon.h"
 
 {% if mon.params is nonempty %}
@@ -12,6 +13,13 @@ static {{mon.name}}Record *monitor_map_{{i}} = NULL;
 static {{spec.name}}Monitor *monitor;
 {% endif %}
 
+/* Register the global wrapper's export callbacks with the monitor */
+static void setup_{{mon.name}}_callbacks({{spec.name}}Monitor *mon) {
+    {% for event in spec.exported_events.keys() %}
+    register_{{spec.name}}_{{event}}(mon, raise_{{mon.name}}_{{event}});
+    {% endfor %}
+}
+
 /* Initialization interface - Initialize the local wrapper. Must be called once
  * before creating any monitors or importing any events. */
 void init_{{mon.name}}_local_wrapper() {
@@ -23,6 +31,7 @@ void init_{{mon.name}}_local_wrapper() {
     {% else %}
     /* Initialize the singleton */
     monitor = init_{{spec.name}}_monitor(NULL);
+    setup_{{mon.name}}_callbacks(monitor);
     {% endif %}
 }
 
@@ -78,6 +87,7 @@ void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *ini
         //TODO Malloc failed. What do we do here?
     }
     {{spec.name}}Monitor *mon = init_{{spec.name}}_with_state(ids_copy, init_state);
+    setup_{{mon.name}}_callbacks(mon);
 
     /* Store monitor in maps */
     add_{{mon.name}}_monitor(mon);
@@ -193,6 +203,7 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
                 //TODO Malloc failed. What do we do here?
             }
             {{spec.name}}Monitor *mon = init_{{spec.name}}_monitor(ids_copy);
+            setup_{{mon.name}}_callbacks(mon);
             add_{{mon.name}}_monitor(mon);
         }
     }
