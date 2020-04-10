@@ -1,26 +1,39 @@
 #include "smedl_types.h"
+#include "local_wrapper.h"
 #include "{{spec.name}}_mon.h"
 
-//TODO How does this work if the monitor has no identities?
-
+{% if mon.params is nonempty %}
 /* {{mon.name}} Monitor Maps - One AVL tree for each identity */
 {% for i in range(len(mon.params)) %}
 static {{mon.name}}Record *monitor_map_{{i}} = NULL;
 {% endfor %}
+{% else %}
+/* Singleton monitor */
+static {{spec.name}}Monitor *monitor;
+{% endif %}
 
 /* Initialization interface - Initialize the local wrapper. Must be called once
  * before creating any monitors or importing any events. */
 void init_{{mon.name}}_local_wrapper() {
+    {% if mon.params is nonempty %}
     /* Reserved for future use, but no need to actually do anything at this
      * time. Monitor maps are already initialized to NULL by being of static
      * storage duration (because they are global, not because they are declared
      * static). */
+    {% else %}
+    /* Initialize the singleton */
+    monitor = init_{{spec.name}}_monitor(NULL);
+    {% endif %}
 }
 
 /* Cleanup interface - Tear down and free the resources used by this local
  * wrapper and all the monitors it manages */
 void free_{{mon.name}}_local_wrapper() {
+    {% if mon.params is nonempty %}
     //TODO
+    {% else %}
+    free_{{spec.name}}_monitor(monitor);
+    {% endif %}
 }
 
 /* Creation interface - Instantiate a new {{mon.name}} monitor.
@@ -33,6 +46,7 @@ void free_{{mon.name}}_local_wrapper() {
  *   state can be retrieved with default_{{spec.name}}_state()
  *   and then just the desired variables can be updated. */
 void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init_state) {
+    {% if mon.params is nonempty %}
     /* Check if monitor with identities already exists */
     if (check_{{mon.name}}_monitors(identities)) {
         return;
@@ -48,6 +62,9 @@ void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *ini
 
     /* Store monitor in maps */
     add_{{mon.name}}_monitor(mon);
+    {% else %}
+    /* Singleton monitor - This is a no-op */
+    {% endif %}
 }
 
 /* Event import interfaces - Send the respective event to the monitor(s) and
@@ -61,6 +78,7 @@ void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *ini
 {% for event in spec.imported_events.keys() %}
 
 void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
+    {% if mon.params is nonempty %}
     /* Fetch the monitors to send the event to or do dynamic instantiation if
      * necessary */
     {{mon.name}}Record records = get_{{mon.name}}_monitors(identities);
@@ -71,8 +89,14 @@ void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, 
         execute_{{spec.name}}_{{event}}(mon, params, aux);
         records = records->next;
     }
+    {% else %}
+    /* Send event to the singleton monitor */
+    execute_{{spec.name}}_{{event}}(monitor, params, aux);
+    {% endif %}
+
 }
 {% endfor %}
+{% if mon.params is nonempty %}
 
 /* Add the provided monitor to the monitor maps */
 void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
@@ -195,3 +219,4 @@ void remove_{{mon.name}}_monitor(SMEDLValue *identities) {
     }
     {% endfor %}
 }
+{% endif %}

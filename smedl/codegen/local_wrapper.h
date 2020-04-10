@@ -3,11 +3,8 @@
 
 #include <stdint.h>
 #include "smedl_types.h"
+#include "local_wrapper.h"
 #include "{{spec.name}}_mon.h"
-
-/* Number of buckets in monitor hash tables. Can be modified to fit the use case
- * as necessary, or left at the default. */
-#define {{mon.name}}_MAP_SIZE 100
 
 /******************************************************************************
  * External Interface                                                         *
@@ -45,16 +42,12 @@ void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, 
 /******************************************************************************
  * End of External Interface                                                  *
  ******************************************************************************/
+{% if mon.params is nonempty %}
 
 /* Record type for monitor maps */
 typedef struct {{mon.name}}Record {
+    SMEDLRecordBase r;
     {{spec.name}}Monitor *mon;
-    /* For linked list use (function return values) */
-    struct {{mon.name}}Record *next;
-    /* For tree use (storage in maps) */
-    struct {{mon.name}}Record *left;
-    struct {{mon.name}}Record *right;
-    int_fast8_t bal;
 } {{mon.name}}Record;
 
 /* Add the provided monitor to the monitor maps */
@@ -78,5 +71,6 @@ int check_{{mon.name}}_monitors(SMEDLValue *identities);
 
 /* Remove a monitor with the given identities from the monitor maps */
 void remove_{{mon.name}}_monitor(SMEDLValue *identities);
+{% endif %}
 
 #endif /* {{mon.name}}_LOCAL_WRAPPER_H */
