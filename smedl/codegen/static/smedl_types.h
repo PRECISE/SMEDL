@@ -108,4 +108,8 @@ typedef struct {
     size_t len;
 } SMEDLAux;
 
+/* A callback function pointer for receiving exported events from monitors and
+ * global wrappers */
+typdef void (*SMEDLCallback)(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+
 #endif /* SMEDL_TYPES_H */

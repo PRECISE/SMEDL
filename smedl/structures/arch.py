@@ -30,11 +30,13 @@ class Target(object):
     """The target of a connection, such as an imported event or monitor
     creation. Note that this is not the same as the "target system," which is
     the system being monitored."""
-    def __init__(self, monitor, mon_params):
+    def __init__(self, type_, monitor, mon_params):
         """Initialize the Target object.
         
+        type_ - String describing the type of target for Jinja
         monintor - Name of the destination monitor
         mon_params - List of Parameters for the monitor identities"""
+        self.target_type = type_
         self.monitor = monitor
         self.mon_params = mon_params
 
@@ -64,7 +66,7 @@ class TargetEvent(Target):
         dest_event - Name of the destination monitor's imported event
         mon_params - List of Parameters for the monitor identities
         event_params - List of Parameters for the event"""
-        super().__init__(dest_monitor, mon_params)
+        super().__init__('event', dest_monitor, mon_params)
         self.event = dest_event
         self.event_params = event_params
 
@@ -90,7 +92,7 @@ class TargetCreation(Target):
           keys are state variable names and values are Parameters (which may
           not be wildcards).
         """
-        super().__init__(dest_monitor, mon_params)
+        super().__init__('creation', dest_monitor, mon_params)
         self.state_vars = state_vars
 
     def same_as(self, other):
@@ -109,7 +111,7 @@ class TargetExport(Target):
     target and the latter being the target of monitoring."""
     def __init__(self):
         """Initialize this export target."""
-        super().__init__(None, [])
+        super().__init__('export', None, [])
 
 class DeclaredMonitor(object):
     """A monitor delcaration from the architecture file"""
@@ -151,7 +153,7 @@ class DeclaredMonitor(object):
         return "monitor {}({}) as {}".format(
                 self.spec,
                 ", ".join(self.params),
-                self.name)
+                self.name)+eagfedj0omme0
 
 class MonitorSystem(object):
     """A monitor system as specified by an architecture file (a4smedl file)"""

@@ -76,7 +76,7 @@ void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *p
  */
 {% for decl in mon_decls %}
 {% for target in decl.connections.values() if target.monitor is none %}
-void callback_{{syncset}}_{{target.channel}}(void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux));
+void callback_{{syncset}}_{{target.channel}}(SMEDLCallback cb_func);
 {% endfor %}
 {% endfor %}
 

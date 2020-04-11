@@ -60,7 +60,7 @@ typedef struct {{spec.name}}Monitor {
 
     /* Exported event callback pointers */
     {% for event in spec.exported_events.keys() %}
-    void (*callback_{{event}})(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+    SMEDLCallback callback_{{event}};
     {% endfor %}
 
     /* Local event queue */
@@ -72,7 +72,7 @@ typedef struct {{spec.name}}Monitor {
 /* Callback registration functions - Set the export callback for an exported
  * event. Set to NULL to unregister a callback. */
 {% for event in spec.exported_events.keys() %}
-void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, void (*cb_func)(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux));
+void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLCallback cb_func);
 {% endfor %}
 
 /* Event handling functions:
