@@ -143,11 +143,65 @@ class DeclaredMonitor(object):
         environment. This creates those implicit TargetExports."""
         for event in self.spec.exported_events.keys():
             if event not in self.connections:
-                self.connections[event] = TargetExport()
+                self.connections[event] = [TargetExport()]
                 # Set channel name using the autogenerate format from
                 # A4smedlSemantics._connection_name_validations()
                 self.connections[event].set_channel("_{}_{}".format(self.name,
                     event))
+
+    def is_event_intra(self, event, syncset):
+        """Check if the named event has a connection that is destined within the
+        synchronous set and return True or False
+
+        event - Name of the event
+        syncset - List of monitor names in the synchronous set
+        """
+        try:
+            for target in self.connections[event]:
+                if target.monitor in syncset:
+                    return True
+        except KeyError:
+            return False
+        return False
+
+    def is_event_inter(self, event, syncset):
+        """Check if the named event has a connection that is destined outside
+        the synchronous set and return True or False
+
+        event - Name of the event
+        syncset - List of monitor names in the synchronous set
+        """
+        try:
+            for target in self.connections[event]:
+                if target.monitor not in syncset:
+                    return True
+        except KeyError:
+            return False
+        return False
+
+    def has_intra_events(self, syncset):
+        """Check if the monitor has any connections that are destined within the
+        synchronous set and return True or False
+
+        syncset - List of monitor names in the synchronous set
+        """
+        for target_list in self.connections.values():
+            for target in target_list:
+                if target.monitor in syncset:
+                    return True
+        return False
+
+    def has_inter_events(self, syncset):
+        """Check if the monitor has any connections that are destined outside
+        the synchronous set and return True or False
+
+        syncset - List of monitor names in the synchronous set
+        """
+        for target_list in self.connections.values():
+            for target in target_list:
+                if target.monitor not in syncset:
+                    return True
+        return False
 
     def __repr__(self):
         return "monitor {}({}) as {}".format(
@@ -257,3 +311,11 @@ class MonitorSystem(object):
         an explicit connection."""
         for mon in self.monitor_decls:
             mon.create_export_connections()
+
+    def get_syncset_spec_names(self, syncset):
+        """Get a list of monitor specification names for all monitors in a
+        synchronous set"""
+        decls = [self.monitor_decls[mon] for mon in self.syncsets[syncset]]
+        spec_names = set([decl.spec.name for decl in decls])
+        return list(spec_names)
+

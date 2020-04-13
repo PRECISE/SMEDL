@@ -274,6 +274,13 @@ class MonitorSpec(object):
         else:
             return None
 
+    def var_type(self, name):
+        """Get the SmedlType of the named state variable"""
+        for var in self.state_vars:
+            if var.name == name:
+                return var.type
+
+
     def __repr__(self):
         #TODO Proably do this by adding __repr__ to components and calling those
         pass

@@ -12,7 +12,7 @@ typedef enum {
     {% for event in spec.exported_events.keys() %}
     EVENT_{{spec.name}}_{{event}},
     {% endfor %}
-} {{spec.name}}_Event;
+} {{spec.name}}Event;
 
 /* Scenario state enums */
 {% for scenario in spec.scenarios %}

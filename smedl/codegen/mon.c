@@ -223,7 +223,9 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 }
 
 void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
-    push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux);
+    if (!push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux)) {
+        //TODO Out of memory. What now?
+    }
 }
 {% endfor %}
 {% endif %}
@@ -240,7 +242,9 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 }
 
 void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
-    push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux);
+    if (!push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux)) {
+        //TODO Out of memory. What now?
+    }
 }
 
 void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {

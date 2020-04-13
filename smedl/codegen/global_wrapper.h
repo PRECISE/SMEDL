@@ -44,13 +44,17 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
  * params - An array of the source event's parameters
  * aux - Extra data to be passed through unchanged */
 {# Events from target system #}
-{% for target in system.imported_connections.values() if target.monitor in system.syncsets[syncset] %}
+{% for target_list in system.imported_connections.values() %} 
+{% for target in target_list if target.monitor in system.syncsets[syncset] %}
 void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+{% endfor %}
 {% endfor %}
 {# Events from other synchronous sets #}
 {% for decl in system.monitor_decls if decl.syncset != syncset %}
-{% for target in decl.connections.values() if target.monitor in system.syncsets[syncset] %}
+{% for target_list in decl.connections.values() %}
+{% for target in target_list if target.monitor in system.syncsets[syncset] %}
 void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+{% endfor %}
 {% endfor %}
 {% endfor %}
 
@@ -93,5 +97,11 @@ void callback_{{syncset}}_{{target.channel}}(SMEDLCallback cb_func);
 /******************************************************************************
  * End of External Interface                                                  *
  ******************************************************************************/
+
+typedef enum {
+    {% for decl in mon_decls %}
+    MONITOR_{{syncset}}_{{decl.name}},
+    {% endfor %}
+} {{syncset}}MonitorId;
 
 #endif /* {{syncset}}_GLOBAL_WRAPPER_H */
