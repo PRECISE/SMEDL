@@ -33,6 +33,11 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         self.system.create_export_connections()
         return self.system
 
+    def declaration(self, ast):
+        """Set the monitor system name"""
+        self.system.assign_name(ast)
+        return ast
+
     def import_stmt(self, ast):
         """Parse the named SMEDL file and store the spec for use in monitor
         declarations"""

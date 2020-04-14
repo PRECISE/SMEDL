@@ -234,6 +234,10 @@ class MonitorSystem(object):
         #   None.
         self.imported_connections = dict()
 
+    def assign_name(self, name):
+        """Assign a name to the monitoring system"""
+        self.name = name
+
     def add_monitor_decl(self, name, target, params):
         """Add a monitor declaration to the system.
 

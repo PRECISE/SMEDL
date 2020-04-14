@@ -5,6 +5,7 @@
 #include :: "common.ebnf"
 
 start =
+    declaration ';'
     {(
         import_stmt
         | monitor_decl
@@ -12,6 +13,10 @@ start =
         | connection_defn
     )';'}*
     $
+    ;
+
+declaration =
+    'system' @:identifier
     ;
 
 # Filename looks like a string literal but does not accept escape sequences

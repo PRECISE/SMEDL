@@ -15,7 +15,7 @@ start =
     ;
 
 declaration =
-    'object' @:identifier
+    'object' @:identifier ';'
     ;
 
 helper_list =
