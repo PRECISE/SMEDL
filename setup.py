@@ -64,9 +64,9 @@ setup(
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ],
 
     # What does your project relate to?
@@ -75,7 +75,7 @@ setup(
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
     #packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-    packages=['smedl', 'smedl.parser', 'smedl.c_style', 'smedl.fsm', 'smedl.architecture'],
+    packages=['smedl', 'smedl.parser', 'smedl.codegen', 'smedl.structures', 'smedl.codegen.static'],
 
     # Alternatively, if you want to distribute just a my_module.py, uncomment
     # this:
@@ -100,7 +100,9 @@ setup(
     # installed, specify them here.  If using Python 2.6 or less, then these
     # have to be included in MANIFEST.in as well.
     package_data={
-        'smedl': ['about.json', 'c_style/*.c', 'c_style/*.h', 'c_style/*.cfg'],
+        '': ['*.c', '*.h'],
+        'smedl': ['about.json'],
+        #'smedl': ['about.json', 'c_style/*.c', 'c_style/*.h', 'c_style/*.cfg'],
     },
 
     # To provide executable scripts, use entry points in preference to the
