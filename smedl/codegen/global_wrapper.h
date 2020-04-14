@@ -12,7 +12,10 @@
 void init_{{syncset}}_syncset();
 
 /* Cleanup interface - Tear down and free the resources used by this global
- * wrapper and all the local wrappers and monitors it manages */
+ * wrapper and all the local wrappers and monitors it manages. Note that if
+ * this is called while there are pending events to be exported (i.e. when a
+ * call to any of the import_*() functions has not returned yet), those events
+ * will be dropped! */
 void free_{{syncset}}_syncset();
 
 /* Global wrapper export interfaces - Called by monitors to place exported

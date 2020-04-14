@@ -6,6 +6,7 @@ Monitor Generator
 Generate code for monitors from SMEDL and architecture specifications
 """
 
+import sys
 import os.path
 import argparse
 from smedl import __about__
@@ -13,14 +14,18 @@ from parser import (smedl_parser, smedl_semantics,
         a4smedl_parser, a4smedl_semantics)
 import codegen
 
-def generate(input_file, out_dir=None, rabbitmq=False, mutexes=False):
+def generate(input_file, out_dir=None, transport=None):
     """Coordinate parsing and template filling"""
     # Initialize the code generator
-    generator = codegen.CodeGenerator(out_dir)
+    generator = codegen.CodeGenerator(out_dir, transport)
 
     # Determine whether an architecture file
     ext = os.path.splitext(input_file).lower()
     if ext == '.smedl':
+        if transport is not None:
+            print("Warning: -t/--transport option only has an effect when an "
+                    "architecture file is\ngiven", file=sys.stderr)
+
         # Parse a single monitor
         with open(input_file, "r") as f:
             input_text = f.read()
@@ -64,8 +69,10 @@ def parse_args():
             ' generated.')
     parser.add_argument('-d', '--dir', help="Directory to write the generated "
             "code to (if not current directory)")
-    #parser.add_argument('-r', '--rabbitmq', help="Generate the RabbitMQ wrapper"
-    #        " for the global wrapper", action='store_true')
+    #TODO Add ROS as a wrapper
+    parser.add_argument('-t', '--transport', choices=["rabbitmq"],
+            help="Generate an adapter for a particular asynchronous transport "
+            "method, e.g. 'rabbitmq'")
     #parser.add_argument('-t', '--thread-safe', help="Include code to enable "
     #        "thread safety (such as mutexes)", action='store_true')
     args = parser.parse_args()
@@ -73,7 +80,7 @@ def parse_args():
     return {
             'input_file': args.input,
             'out_dir': args.dir,
-            #'rabbitmq': args.rabbitmq,
+            'transport': args.transport,
             #'mutexes': args.thread_safe,
         }
 

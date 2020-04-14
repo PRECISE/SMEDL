@@ -15,16 +15,19 @@ except ModuleNotFoundError:
 
 class CodeGenerator(object):
     """Generates C code for monitors and monitor systems"""
-    def __init__(self, dest_dir):
+    def __init__(self, dest_dir, transport):
         """Initialize the code generator.
 
         Parameters:
         dest_dir - Directory to write to
+        transport - Name of the asynchronous transport mechanism
         """
         if dest_dir is None:
             self.dest_dir = '.'
         else:
             self.dest_dir = dest_dir
+
+        self.transport = transport
 
         # Initialize the Jinja2 environment
         self.env = jinja2.Environment(trim_blocks=True, lstrip_blocks=True,
@@ -62,6 +65,10 @@ class CodeGenerator(object):
         with open(out_path, "w") as f:
             f.write(text)
 
+    def _write_rabbitmq(self, system, syncset_name):
+        """Write the RabbitMQ adapter"""
+        pass #TODO
+
     def _write_wrappers(self, system, syncset_name):
         """Write the global wrapper and local wrappers for one synchronous set
 
@@ -92,6 +99,12 @@ class CodeGenerator(object):
                 values)
         self._render("global_wrapper.h", syncset_name + "_global_wrapper.h",
                 values)
+
+        # Write the transport adapter, if requested
+        if self.transport == "rabbitmq":
+            self._write_rabbitmq(system, syncset_name)
+        elif self.transport == "ros":
+            pass #TODO
 
     def _write_monitor(self, monitor_spec):
         """Write the files for one monitor specification
