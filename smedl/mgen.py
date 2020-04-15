@@ -12,7 +12,7 @@ import argparse
 from smedl import __about__
 from smedl.parser import (smedl_parser, smedl_semantics,
         a4smedl_parser, a4smedl_semantics)
-import smedl.codegen
+from smedl import codegen
 
 class MonitorGenerator(object):
     """Coordinate parsing and template filling"""
