@@ -146,6 +146,15 @@ Performance enhancements
   buckets (perhaps only for certain identity types?)
 - Another might be nested maps instead of linked list inside maps
 
+Release Stuff
+-------------
+
+- Add automated testing back to the GitLab pipeline
+- Copyright and license info
+- Make generating the parsers from the grammar a step in setup.py somehow
+- libmgen and rabbitmq directories? Can they be removed?
+- What is all the other stuff in the repo?
+
 Miscellaneous TODOs
 -------------------
 
