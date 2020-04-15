@@ -33,6 +33,11 @@ the root of the repository:
 
     pip install .
 
+TODO For development, adding the `-e` option will install SMEDL in "editable"
+mode, which means intead of installing, it will use the code from the repository
+in-place. Thus, there is no need to update the SMEDL installation every time
+you modify the code.
+
 To update the installation of `mgen` without updating its dependencies, run
 
     pip uninstall smedl
