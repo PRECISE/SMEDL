@@ -22,11 +22,7 @@ class CodeGenerator(object):
         dest_dir - Directory to write to
         transport - Name of the asynchronous transport mechanism
         """
-        if dest_dir is None:
-            self.dest_dir = '.'
-        else:
-            self.dest_dir = dest_dir
-
+        self.dest_dir = dest_dir
         self.transport = transport
 
         # Initialize the Jinja2 environment
