@@ -1,4 +1,5 @@
-@@comments :: (/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)
+#TODO Double check this regex
+@@comments :: /(\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/)|(\/\/.*)/
 
 identifier_list =
     ','.{identifier}*

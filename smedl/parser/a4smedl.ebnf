@@ -118,9 +118,9 @@ wildcard_parameter =
 
 parameter =
     kind:'#' index:natural
-    | 'Id' kind:`#` '.' index:natural
-    | kind: '$' index:natural
-    | 'Param' kind:`$` '.' index:natural
+    | 'Id' kind:`'#'` '.' index:natural
+    | kind:'$' index:natural
+    | 'Param' kind:`'$'` '.' index:natural
     ;
 
 natural =
