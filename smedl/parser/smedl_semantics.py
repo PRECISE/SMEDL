@@ -301,7 +301,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         """Convert the atom to the proper Expression type with type info"""
         if ast.type is not None:
             # Literal
-            if ast.type in ["int", "char"]
+            if ast.type in ["int", "char"]:
                 # C treats both of these as int literals
                 return expr.Literal(ast.value, expr.SmedlType.INT)
             elif ast.type == "float":

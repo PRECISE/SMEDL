@@ -16,13 +16,13 @@ start =
     ;
 
 declaration =
-    'system' @:identifier
+    'system' ~ @:identifier
     ;
 
 # Filename looks like a string literal but does not accept escape sequences
 # (similar to #include "..." in C)
 import_stmt =
-    'import' @:smedl_filename
+    'import' ~ @:smedl_filename
     ;
 
 smedl_filename =
@@ -30,12 +30,12 @@ smedl_filename =
     ;
 
 monitor_decl =
-    'monitor' name:identifier '(' params:type_list ')'
+    'monitor' ~ name:identifier '(' params:type_list ')'
     ['as' renamed:identifier]
     ;
 
 syncset_decl =
-    'syncset' name:identifier '{' monitors:identifier_list '}'
+    'syncset' ~ name:identifier '{' monitors:identifier_list '}'
     ;
 
 #TODO Proposed change: Instead of repeating source spec for each target spec,

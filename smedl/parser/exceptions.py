@@ -2,7 +2,7 @@
 Exceptions to represent various parsing and semantics errors
 """
 
-from grako.exceptions import FailedSemantics
+from tatsu.exceptions import FailedSemantics
 
 class NameCollision(FailedSemantics):
     """Raised when a name is defined when it already exists."""

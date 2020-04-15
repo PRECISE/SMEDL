@@ -10,7 +10,7 @@ from smedl.structures import expr
 # backport.
 try:
     from importlib import resources
-except ModuleNotFoundError:
+except ImportError:
     import importlib_resources as resources
 
 class CodeGenerator(object):
@@ -36,7 +36,7 @@ class CodeGenerator(object):
                 globals={'SmedlType': expr.SmedlType})
 
         # Set up some custom tests for convenience in templates
-        self.env.tests.['nonempty'] = lambda x: len(x) > 0
+        self.env.tests['nonempty'] = lambda x: len(x) > 0
 
     def _write_static_files(self):
         """Write the static code to the output directory"""

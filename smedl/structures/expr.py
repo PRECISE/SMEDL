@@ -24,6 +24,7 @@ class SmedlType(Enum):
         obj = object.__new__(cls)
         obj._value_ = smedl_type
         obj.c_type = c_type
+        return obj
 
     def __str__(self):
         """Return the SMEDL type string"""
@@ -127,7 +128,7 @@ class Expression(object):
         the left operand and the "other" is the right operand. Return the
         resulting type, or raise TypeMismatch if not compatible."""
         # If one/both operands are None and the rest are int/char, return None
-        elif (self.type is None and other.type in [
+        if (self.type is None and other.type in [
                 SmedlType.INT, SmedlType.CHAR, None]) or (
                 other.type is None and self.type in [
                 SmedlType.INT, SmedlType.CHAR]):

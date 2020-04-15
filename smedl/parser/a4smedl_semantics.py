@@ -1,7 +1,7 @@
 """
 Architecture file semantic actions
 """
-from structures import arch
+from smedl.structures import arch
 from . import common_semantics, smedl_parser, smedl_semantics
 from .exceptions import (NameCollision, NameNotDefined, ParameterError,
         ChannelMismatch, TypeMismatch, DuplicateConnection)
@@ -129,7 +129,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                 # Previous name matches, use given name
                 return name
 
-            elif saved_name[0] == '_'
+            elif saved_name[0] == '_':
                 # Previous name was auto-generated
                 # Convert all previous uses of the generated name to given name
                 if (event[0] is None and saved_name in
@@ -255,7 +255,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                         source_event_params, ast.target.event_params,
                         target_ev_types, "event " + target_ev)
 
-            elif isinstance(ast.target, arch.TargetCreation)
+            elif isinstance(ast.target, arch.TargetCreation):
                 # Validate state vars
                 for var, param in ast.target.state_vars.items():
                     # Validate that state var exists and get type
@@ -322,7 +322,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                                 'parameters ("Id."/"#") when there is no source'
                                 ' monitor'.format(ast.target.event))
 
-            elif isinstance(ast.target, arch.TargetCreation)
+            elif isinstance(ast.target, arch.TargetCreation):
                 # Validate state vars
                 for var, param in ast.target.state_vars.items():
                     # Validate that state var exists

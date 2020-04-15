@@ -2,7 +2,7 @@
 Semantic actions in common between SMEDL and architecture files
 """
 
-from structures import expr
+from smedl.structures import expr
 
 class CommonSemantics(object):
     """Semantic actions for both SMEDL and architecture files, such as

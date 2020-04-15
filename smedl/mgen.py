@@ -10,9 +10,9 @@ import sys
 import os.path
 import argparse
 from smedl import __about__
-from parser import (smedl_parser, smedl_semantics,
+from smedl.parser import (smedl_parser, smedl_semantics,
         a4smedl_parser, a4smedl_semantics)
-import codegen
+import smedl.codegen
 
 def generate(input_file, out_dir=None, transport=None):
     """Coordinate parsing and template filling"""
