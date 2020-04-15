@@ -18,10 +18,6 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
-# Get the dependencies from the requirements file
-with open(path.join(here, 'requirements.txt'), encoding='utf-8') as f:
-    __reqs__ = [line.rstrip('\n') for line in f]
-
 # Get the package details from the SMEDL about.json file
 with open(path.join(here, 'smedl', 'about.json'), encoding='utf-8') as f:
     __about__ = json.load(f)
@@ -75,7 +71,13 @@ setup(
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
     #packages=find_packages(exclude=['contrib', 'docs', 'tests']),
-    packages=['smedl', 'smedl.parser', 'smedl.codegen', 'smedl.structures', 'smedl.codegen.static'],
+    packages=[
+        'smedl',
+        'smedl.parser',
+        'smedl.codegen',
+        'smedl.structures',
+        'smedl.codegen.static'
+    ],
 
     # Alternatively, if you want to distribute just a my_module.py, uncomment
     # this:
@@ -85,7 +87,18 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=__reqs__,
+    install_requires=[
+        'tatsu>=4.4,<5',
+        'Jinja2>=2.10',
+        'importlib_resources>=1.1;python_version<"3.7"',
+        'MarkupSafe>=0.23',
+        'mccabe>=0.5',
+        'nose2',
+        'pyelftools',
+        'pika',
+        'libconf',
+        'pyparsing',
+    ],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
