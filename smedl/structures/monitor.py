@@ -213,8 +213,10 @@ class MonitorSpec(object):
         self.name = name
         # List of helper header files, with the enclosing "" or <>
         self.helpers = []
-        # State vars: list of StateVariable
-        self.state_vars = []
+        # State vars: keys are names, values are StateVariables
+        self.state_vars = dict()
+        ## State vars: list of StateVariable
+        #self.state_vars = []
         # Imported, internal, and exported events: keys are names, values are
         # lists of SmedlType representing their parameters
         self.imported_events = dict()
@@ -229,9 +231,13 @@ class MonitorSpec(object):
         self.helpers.append(helper)
 
     def add_state_var(self, name, type_, initial_value=None):
-        """Add a state variable to the monitor. If an initial value isn't
-        provided, a default will be used."""
-        self.state_vars.append(StateVariable(name, type_, initial_value))
+        """Add a state variable to the monitor after checking for duplicate
+        declaration. If an initial value isn't provided, a default will be used.
+        """
+        if name in self.state_vars:
+            raise NameCollision("State variable {} already defined".format(
+                var_name))
+        self.state_vars[name] = StateVariable(name, type_, initial_value)
 
     def add_event(self, type_, name, param_list):
         """Add an event to the monitor. The type must be a string that's either
@@ -273,13 +279,6 @@ class MonitorSpec(object):
             return self.exported_events[name]
         else:
             return None
-
-    def var_type(self, name):
-        """Get the SmedlType of the named state variable"""
-        for var in self.state_vars:
-            if var.name == name:
-                return var.type
-
 
     def __repr__(self):
         #TODO Proably do this by adding __repr__ to components and calling those

@@ -10,8 +10,6 @@ class SmedlSemantics(common_semantics.CommonSemantics):
     """Semantic actions for SMEDL parsing"""
     def __init__(self):
         """Do some basic initialization"""
-        # List of state var names (to check for duplicates)
-        self.state_vars = []
         # self.monitor is created in declaration()
 
     def start(self, ast):
@@ -54,13 +52,6 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         var_type = ast.type
         value = ast.value
 
-        # Check if already declared
-        if var_name in self.state_vars:
-            raise NameCollision("State variable {} already defined".format(
-                var_name))
-        else:
-            self.state_vars.append(var_name)
-
         # Check type of the initial value
         if (value is not None and
                 not self._initial_value_matches(var_type, value.type)):
@@ -68,7 +59,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
                     "State var {} initialized to incompatible value {}.".format(
                         var_name, value.value))
         
-        # Add to the monitor
+        # Add to the monitor (and check if already declared)
         if value is None:
             self.monitor.add_state_var(var_name, var_type)
         else:

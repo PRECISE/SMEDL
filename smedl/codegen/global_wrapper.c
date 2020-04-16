@@ -253,7 +253,8 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
     {{sys.monitor_decls[target.monitor].spec.name}}State init_state;
     default_{{sys.monitor_decls[target.monitor].spec.name}}_state(&init_state);
     {% for var, param in target.state_vars.items() %}
-    {% set param_type = sys.monitor_decls[target.monitor].spec.var_type(var) %}
+    {% set param_type =
+        sys.monitor_decls[target.monitor].spec.state_vars[var].type %}
     init_state.{{var}}_var = {%+ if param.identity -%}
         identities[{{param.index}}]
         {%- else -%}

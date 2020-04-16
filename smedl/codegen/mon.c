@@ -272,7 +272,7 @@ void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *param
 /* Fill the provided {{spec.name}}State
  * with the default initial values for the monitor */
 void default_{{spec.name}}_state({{spec.name}}State *state) {
-    {% for var in spec.state_vars %}
+    {% for var in spec.state_vars.values() %}
     {% if var.initial_value is not none %}
     state->{{var.name}}_var = {{var.initial_value}};
     {% else %}

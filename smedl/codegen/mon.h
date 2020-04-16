@@ -31,7 +31,7 @@ typedef enum {
  * Used for initialization as well as in the {{spec.name}}Monitor
  * struct. */
 typedef struct {{spec.name}}State {
-    {% for var in spec.state_vars %}
+    {% for var in spec.state_vars.values() %}
     {{var.type.c_type}} {{var.name}}_var;
     {% endfor %}
 } {{spec.name}}State;
