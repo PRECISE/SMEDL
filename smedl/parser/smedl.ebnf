@@ -223,35 +223,50 @@ multiplicative_expr =
     ;
 
 unary_expr =
-    '+' atom
-    | '-' atom
-    | '~' atom
-    | '!' atom
+    '+' ~ atom
+    | '-' ~ atom
+    | '~' ~ atom
+    | '!' ~ atom
     | atom
     ;
 
 atom =
     literal
-    | identifier '(' expression_list ')' # Helper function call
-    | identifier # State variable or parameter
-    | '(' expression ')'
-    ;
-
-signed_literal =
-    literal
-    | value:('+' integer) type:`signed_int`
-    | value:('-' integer) type:`signed_int`
-    | value:('+' float) type:`signed_float`
-    | value:('-' float) type:`signed_float`
+    | helper_call
+    | parenthesized
+    | var_or_param
     ;
 
 literal =
-    value:integer type:`int`
-    | value:float type:`float`
+    value:float type:`float`
+    | value:integer type:`int`
     | value:char type:`char`
     | value:string type:`string`
     | value:bool type:`int`
     | value:null type:`null`
+    ;
+
+helper_call =
+    function:identifier '(' ~ params:expression_list ')'
+    ;
+
+var_or_param =
+    identifier
+    ;
+
+parenthesized =
+    '(' ~ @:expression ')'
+    ;
+
+# Only meant for use in instantiations. Expressions have + and - as unary ops.
+signed_literal =
+    # Use include operation for literal as we do not want its semantic action to
+    # run
+    >literal
+    | value:('+' float) type:`signed_float`
+    | value:('-' float) type:`signed_float`
+    | value:('+' integer) type:`signed_int`
+    | value:('-' integer) type:`signed_int`
     ;
 
 integer =
@@ -259,7 +274,13 @@ integer =
     ;
 
 float =
-    /[0-9]*\.?[0-9]+/
+    # [0-9]+\.(?:[Ee][+-]?[0-9]+)?
+    #   One or more digits, dot, optional exponent
+    # [0-9]*\.[0-9]+(?:[Ee][+-]?[0-9]+)?
+    #   Optional digits, dot, one or more digits, optional exponent
+    # [0-9]+[Ee][+-]?[0-9]+
+    #   One or more digits, mandatory exponent (no dot)
+    /[0-9]+\.(?:[Ee][+-]?[0-9]+)?|[0-9]*\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+/
     ;
 
 char =

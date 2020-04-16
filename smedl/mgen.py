@@ -28,10 +28,10 @@ class MonitorGenerator(object):
             out_dir = '.'
         self.generator = codegen.CodeGenerator(out_dir, transport)
 
-    def generate(input_file):
+    def generate(self, input_file):
         """Generate code for a given input file"""
         # Determine whether input is an architecture file
-        ext = os.path.splitext(input_file).lower()
+        ext = os.path.splitext(input_file)[1].lower()
         if ext == '.smedl':
             if self.gen_transport:
                 print("Warning: -t/--transport option only has an effect when "

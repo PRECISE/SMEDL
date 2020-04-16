@@ -58,7 +58,7 @@ class SMEDLParser(Parser):
         eol_comments_re=None,
         ignorecase=None,
         left_recursion=True,
-        parseinfo=True,
+        parseinfo=False,
         keywords=None,
         namechars='',
         buffer_class=SMEDLBuffer,
@@ -596,15 +596,19 @@ class SMEDLParser(Parser):
         with self._choice():
             with self._option():
                 self._token('+')
+                self._cut()
                 self._atom_()
             with self._option():
                 self._token('-')
+                self._cut()
                 self._atom_()
             with self._option():
                 self._token('~')
+                self._cut()
                 self._atom_()
             with self._option():
                 self._token('!')
+                self._cut()
                 self._atom_()
             with self._option():
                 self._atom_()
@@ -616,69 +620,25 @@ class SMEDLParser(Parser):
             with self._option():
                 self._literal_()
             with self._option():
-                self._identifier_()
-                self._token('(')
-                self._expression_list_()
-                self._token(')')
+                self._helper_call_()
             with self._option():
-                self._identifier_()
+                self._parenthesized_()
             with self._option():
-                self._token('(')
-                self._expression_()
-                self._token(')')
+                self._var_or_param_()
             self._error('no available options')
-
-    @tatsumasu()
-    def _signed_literal_(self):  # noqa
-        with self._choice():
-            with self._option():
-                self._literal_()
-            with self._option():
-                with self._group():
-                    self._token('+')
-                    self._integer_()
-                self.name_last_node('value')
-                self._constant('signed_int')
-                self.name_last_node('type')
-            with self._option():
-                with self._group():
-                    self._token('-')
-                    self._integer_()
-                self.name_last_node('value')
-                self._constant('signed_int')
-                self.name_last_node('type')
-            with self._option():
-                with self._group():
-                    self._token('+')
-                    self._float_()
-                self.name_last_node('value')
-                self._constant('signed_float')
-                self.name_last_node('type')
-            with self._option():
-                with self._group():
-                    self._token('-')
-                    self._float_()
-                self.name_last_node('value')
-                self._constant('signed_float')
-                self.name_last_node('type')
-            self._error('no available options')
-        self.ast._define(
-            ['type', 'value'],
-            []
-        )
 
     @tatsumasu()
     def _literal_(self):  # noqa
         with self._choice():
             with self._option():
-                self._integer_()
-                self.name_last_node('value')
-                self._constant('int')
-                self.name_last_node('type')
-            with self._option():
                 self._float_()
                 self.name_last_node('value')
                 self._constant('float')
+                self.name_last_node('type')
+            with self._option():
+                self._integer_()
+                self.name_last_node('value')
+                self._constant('int')
                 self.name_last_node('type')
             with self._option():
                 self._char_()
@@ -707,12 +667,108 @@ class SMEDLParser(Parser):
         )
 
     @tatsumasu()
+    def _helper_call_(self):  # noqa
+        self._identifier_()
+        self.name_last_node('function')
+        self._token('(')
+        self._cut()
+        self._expression_list_()
+        self.name_last_node('params')
+        self._token(')')
+        self.ast._define(
+            ['function', 'params'],
+            []
+        )
+
+    @tatsumasu()
+    def _var_or_param_(self):  # noqa
+        self._identifier_()
+
+    @tatsumasu()
+    def _parenthesized_(self):  # noqa
+        self._token('(')
+        self._cut()
+        self._expression_()
+        self.name_last_node('@')
+        self._token(')')
+
+    @tatsumasu()
+    def _signed_literal_(self):  # noqa
+        with self._choice():
+            with self._option():
+                with self._choice():
+                    with self._option():
+                        self._float_()
+                        self.name_last_node('value')
+                        self._constant('float')
+                        self.name_last_node('type')
+                    with self._option():
+                        self._integer_()
+                        self.name_last_node('value')
+                        self._constant('int')
+                        self.name_last_node('type')
+                    with self._option():
+                        self._char_()
+                        self.name_last_node('value')
+                        self._constant('char')
+                        self.name_last_node('type')
+                    with self._option():
+                        self._string_()
+                        self.name_last_node('value')
+                        self._constant('string')
+                        self.name_last_node('type')
+                    with self._option():
+                        self._bool_()
+                        self.name_last_node('value')
+                        self._constant('int')
+                        self.name_last_node('type')
+                    with self._option():
+                        self._null_()
+                        self.name_last_node('value')
+                        self._constant('null')
+                        self.name_last_node('type')
+                    self._error('no available options')
+            with self._option():
+                with self._group():
+                    self._token('+')
+                    self._float_()
+                self.name_last_node('value')
+                self._constant('signed_float')
+                self.name_last_node('type')
+            with self._option():
+                with self._group():
+                    self._token('-')
+                    self._float_()
+                self.name_last_node('value')
+                self._constant('signed_float')
+                self.name_last_node('type')
+            with self._option():
+                with self._group():
+                    self._token('+')
+                    self._integer_()
+                self.name_last_node('value')
+                self._constant('signed_int')
+                self.name_last_node('type')
+            with self._option():
+                with self._group():
+                    self._token('-')
+                    self._integer_()
+                self.name_last_node('value')
+                self._constant('signed_int')
+                self.name_last_node('type')
+            self._error('no available options')
+        self.ast._define(
+            ['type', 'value'],
+            []
+        )
+
+    @tatsumasu()
     def _integer_(self):  # noqa
         self._pattern('[0-9]+')
 
     @tatsumasu()
     def _float_(self):  # noqa
-        self._pattern('[0-9]*\\.?[0-9]+')
+        self._pattern('[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+')
 
     @tatsumasu()
     def _char_(self):  # noqa
@@ -877,10 +933,19 @@ class SMEDLSemantics(object):
     def atom(self, ast):  # noqa
         return ast
 
-    def signed_literal(self, ast):  # noqa
+    def literal(self, ast):  # noqa
         return ast
 
-    def literal(self, ast):  # noqa
+    def helper_call(self, ast):  # noqa
+        return ast
+
+    def var_or_param(self, ast):  # noqa
+        return ast
+
+    def parenthesized(self, ast):  # noqa
+        return ast
+
+    def signed_literal(self, ast):  # noqa
         return ast
 
     def integer(self, ast):  # noqa

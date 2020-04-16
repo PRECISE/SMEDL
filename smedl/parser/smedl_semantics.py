@@ -63,7 +63,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
 
         # Check type of the initial value
         if (value is not None and
-                not self._inital_value_matches(var_type, value.type)):
+                not self._initial_value_matches(var_type, value.type)):
             raise TypeMismatch(
                     "State var {} initialized to incompatible value {}.".format(
                         var_name, value.value))
@@ -141,14 +141,14 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         """Step definitions may not have actions, in which case the actions
         key will store None. In that case, convert it to an empty list."""
         if ast.actions is None:
-            ast.actions = []
+            ast['actions'] = []
         return ast
 
     def else_definition(self, ast):
         """Else definitions may not have actions, in which case the actions
         key will store None. In that case, convert it to an empty list."""
         if ast.else_actions is None:
-            ast.else_actions = []
+            ast['else_actions'] = []
         return ast
 
     def else_preproc(self, ast):
@@ -297,53 +297,52 @@ class SmedlSemantics(common_semantics.CommonSemantics):
     # (as we cannot type check these); "null" if it is a null pointer (valid
     # for either POINTER or OPAQUE types; SmedlType otherwise.
 
-    def atom(self, ast):
-        """Convert the atom to the proper Expression type with type info"""
-        if ast.type is not None:
-            # Literal
-            if ast.type in ["int", "char"]:
-                # C treats both of these as int literals
-                return expr.Literal(ast.value, expr.SmedlType.INT)
-            elif ast.type == "float":
-                return expr.Literal(ast.value, expr.SmedlType.DOUBLE)
-            elif ast.type == "string":
-                return expr.Literal(ast.value, expr.SmedlType.STRING)
-            elif ast.type == "null":
-                return expr.Literal(ast.value, "null")
+    def literal(self, ast):
+        """Convert a literal to an expr.Literal"""
+        if ast.type in ["int", "char"]:
+            # C treats both of these as int literals
+            return expr.Literal(ast.value, expr.SmedlType.INT)
+        elif ast.type == "float":
+            return expr.Literal(ast.value, expr.SmedlType.DOUBLE)
+        elif ast.type == "string":
+            return expr.Literal(ast.value, expr.SmedlType.STRING)
+        elif ast.type == "null":
+            return expr.Literal(ast.value, "null")
 
-        elif isinstance(ast, str):
-            # State variable or event parameter
+    def helper_call(self, ast):
+        """Convert a helper function call to an expr.HelperCall"""
+        return expr.HelperCall(ast.function, ast.params)
+
+    def var_or_param(self, ast):
+        """Convert a state variable or event parameter to an expr.StateVar or
+        expr.EventParam"""
+        try:
+            param_idx = self.current_event_params.index(ast)
+            if self.current_event in self.monitor.imported_events:
+                param_type = self.monitor.imported_events[
+                        self.current_event]
+            elif self.current_event in self.monitor.internal_events:
+                param_type = self.monitor.internal_events[
+                        self.current_event]
+            return expr.EventParam(param_idx, param_type)
+        except ValueError:
+            # Not an event parameter. Must be a state variable.
             try:
-                param_idx = self.current_event_params.index(ast)
-                if self.current_event in self.monitor.imported_events:
-                    param_type = self.monitor.imported_events[
-                            self.current_event]
-                elif self.current_event in self.monitor.internal_events:
-                    param_type = self.monitor.internal_events[
-                            self.current_event]
-                return expr.EventParam(param_idx, param_type)
-            except ValueError:
-                # Not an event parameter. Must be a state variable.
-                try:
-                    state_var = self.monitor.state_vars[ast]
-                    type_ = state_var.type
-                    return expr.StateVar(ast, type_)
-                except KeyError:
-                    raise NameNotDefined("Variable {} is not an event parameter"
-                            " or state variable.".format(ast))
+                state_var = self.monitor.state_vars[ast]
+                type_ = state_var.type
+                return expr.StateVar(ast, type_)
+            except KeyError:
+                raise NameNotDefined("Variable {} is not an event parameter or "
+                        "state variable.".format(ast))
 
-        elif ast[0] == '(':
-            # Parenthesized expression
-            ast[1].parenthesize()
-            return ast[1]
-
-        else:
-            # Helper function call
-            return expr.HelperCall(ast[0], ast[2])
+    def parenthesized(self, ast):
+        """Parenthesize an expression"""
+        ast.parenthesize()
+        return ast
 
     def unary_expr(self, ast):
         """Type check the unary_expr and create a UnaryOp"""
-        if isinstance(ast, Expression):
+        if isinstance(ast, expr.Expression):
             return ast
         # This also does type checking
         return expr.UnaryOp(ast[0], ast[1])
@@ -353,7 +352,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         # This will receive a "tree" of 3-tuples where first element is the
         # operator, second is the left operand, and third is the right operand.
         # This must be processed recursively.
-        if isinstance(ast, Expression):
+        if isinstance(ast, expr.Expression):
             return ast
         
         left = self.expression(ast[1])
@@ -368,9 +367,15 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         """Signed literals are only used for state initialization. Join the
         signed variants into single strings."""
         if ast.type == 'signed_int':
-            ast.type = 'int'
-            ast.value = ''.join(ast.value)
+            val = ast.value
+            del ast['type']
+            del ast['value']
+            ast['type'] = 'int'
+            ast['value'] = ''.join(val)
         elif ast.type == 'signed_float':
-            ast.type = 'float'
-            ast.value = ''.join(ast.value)
+            val = ast.value
+            del ast['type']
+            del ast['value']
+            ast['type'] = 'float'
+            ast['value'] = ''.join(val)
         return ast

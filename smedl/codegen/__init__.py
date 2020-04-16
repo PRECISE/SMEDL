@@ -28,8 +28,10 @@ class CodeGenerator(object):
         # Initialize the Jinja2 environment
         self.env = jinja2.Environment(trim_blocks=True, lstrip_blocks=True,
                 keep_trailing_newline=True,
-                loader=jinja2.PackageLoader('smedl.codegen', '.'),
-                globals={'SmedlType': expr.SmedlType})
+                loader=jinja2.PackageLoader('smedl.codegen', '.'))
+
+        # Make SmedlType available to all templates
+        self.env.globals['SmedlType'] = expr.SmedlType
 
         # Set up some custom tests for convenience in templates
         self.env.tests['nonempty'] = lambda x: len(x) > 0

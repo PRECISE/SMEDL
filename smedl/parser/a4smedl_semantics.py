@@ -234,7 +234,9 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                         ast.source.event))
 
             # Validations on channel name
-            ast.name = self._connection_name_validations(ast.name,
+            tmp_name = ast.name
+            del ast['name']
+            ast['name'] = self._connection_name_validations(tmp_name,
                     (ast.source.monitor, ast.source.event))
             # Assign channel name to Target object
             ast.target.set_channel(ast.name)
@@ -298,7 +300,9 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
             # can validate.
 
             # Validations on channel name
-            ast.name = self._connection_name_validations(ast.name,
+            tmp_name = ast.name
+            del ast['name']
+            ast['name'] = self._connection_name_validations(tmp_name,
                     (None, ast.source.event))
             # Assign channel name to Target object
             ast.target.set_channel(ast.name)
@@ -370,9 +374,9 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         # If monitor_params and/or event_params were not present, add them as
         # empty lists
         if ast.monitor_params is None:
-            ast.monitor_params = []
+            ast['monitor_params'] = []
         if ast.event_params is None:
-            ast.event_params = []
+            ast['event_params'] = []
 
         # Check that number of monitor params matches
         if len(ast.monitor_params) != len(self.system.monitor_decls[

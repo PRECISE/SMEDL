@@ -58,7 +58,7 @@ class A4SMEDLParser(Parser):
         eol_comments_re=None,
         ignorecase=None,
         left_recursion=True,
-        parseinfo=True,
+        parseinfo=False,
         keywords=None,
         namechars='',
         buffer_class=A4SMEDLBuffer,
@@ -151,12 +151,14 @@ class A4SMEDLParser(Parser):
     @tatsumasu()
     def _declaration_(self):  # noqa
         self._token('system')
+        self._cut()
         self._identifier_()
         self.name_last_node('@')
 
     @tatsumasu()
     def _import_stmt_(self):  # noqa
         self._token('import')
+        self._cut()
         self._smedl_filename_()
         self.name_last_node('@')
 
@@ -167,6 +169,7 @@ class A4SMEDLParser(Parser):
     @tatsumasu()
     def _monitor_decl_(self):  # noqa
         self._token('monitor')
+        self._cut()
         self._identifier_()
         self.name_last_node('name')
         self._token('(')
@@ -185,6 +188,7 @@ class A4SMEDLParser(Parser):
     @tatsumasu()
     def _syncset_decl_(self):  # noqa
         self._token('syncset')
+        self._cut()
         self._identifier_()
         self.name_last_node('name')
         self._token('{')

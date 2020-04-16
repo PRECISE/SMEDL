@@ -1,3 +1,4 @@
+@@parseinfo :: False
 #TODO Double check this regex
 @@comments :: /(\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/)|(\/\/.*)/
 
