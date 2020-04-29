@@ -52,3 +52,17 @@ issues with the code.
 - PEDL. This was rarely used in its old form, if at all. It is not clear that it
   was even fully implemented. Further design planning and discussion will be
   necessary before reimplementation.
+
+[1.1.1] - 2019-12-13
+--------------------
+
+This is the first version in the changelog, and the last version of SMEDL 1.x.
+
+### Changed
+
+- Parts of the API have been updated for easier integration with other code
+- A synchronous interface to the global wrapper was added for less overhead
+  between the monitoring system and the target system
+
+[Unreleased]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/smedl2...v1.1.1
+[1.1.1]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/-/tags/v1.1.1
