@@ -143,11 +143,11 @@ class DeclaredMonitor(object):
         environment. This creates those implicit TargetExports."""
         for event in self.spec.exported_events.keys():
             if event not in self.connections:
-                self.connections[event] = [TargetExport()]
+                export_target = TargetExport()
                 # Set channel name using the autogenerate format from
-                # A4smedlSemantics._connection_name_validations()
-                self.connections[event].set_channel("_{}_{}".format(self.name,
-                    event))
+                # A4SmedlSemantics._connection_name_validations()
+                export_target.set_channel("_{}_{}".format(self.name, event))
+                self.connections[event] = [export_target]
 
     def is_event_intra(self, event, syncset):
         """Check if the named event has a connection that is destined within the
@@ -303,9 +303,9 @@ class MonitorSystem(object):
         their own isolated synchronous sets. Normally, these synchronous sets
         will be named after the monitor, but if that name is already taken,
         a warning will be displayed and a number appended."""
-        for mon in self.monitor_decls:
+        for mon in self.monitor_decls.values():
             if mon.syncset is None:
-                syncset = _unused_syncset(mon.name)
+                syncset = self._unused_syncset(mon.name)
                 mon.assign_syncset(syncset)
                 self.syncsets[syncset] = {mon.name}
     
@@ -313,7 +313,7 @@ class MonitorSystem(object):
         """Iterate through all the monitor declarations and create export
         targets for all the exported events that are not already the source of
         an explicit connection."""
-        for mon in self.monitor_decls:
+        for mon in self.monitor_decls.values():
             mon.create_export_connections()
 
     def get_syncset_spec_names(self, syncset):
@@ -322,4 +322,3 @@ class MonitorSystem(object):
         decls = [self.monitor_decls[mon] for mon in self.syncsets[syncset]]
         spec_names = set([decl.spec.name for decl in decls])
         return list(spec_names)
-

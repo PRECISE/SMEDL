@@ -67,11 +67,10 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                 ast.name))
 
         # If an "as" name was not given, use the actual name
-        if ast.renamed is None:
-            ast.renamed = ast.name
+        renamed = ast.name if ast.renamed is None else ast.renamed
 
-        self.system.add_monitor_decl(ast.renamed, self.monitor_specs[ast.name],
-                self.params)
+        self.system.add_monitor_decl(renamed, self.monitor_specs[ast.name],
+                ast.params)
 
     def syncset_decl(self, ast):
         """Add a synchronous set to the system"""
@@ -185,7 +184,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
 
     def _validate_param_types(self, source_mon_params, source_ev_params,
             dest_params, dest_types, dest_name):
-        """Validate source param types against the list of Parameters
+        """Validate the list of Parameters against the source param types
         
         source_mon_params - A list of SmedlType representing the parameters
           (identities) of the source monitor
@@ -193,15 +192,14 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
           of the source event
         dest_params - A list of Parameter represeting the parameters for either
           the destination monitor or event
-        dest_types - A list of SmedlType representing the target types for the
+        dest_types - A list of SmedlType representing the types for the
           dest_params
         dest_name - "monitor ___" or "event ___", to be used in the TypeMismatch
           message
           
         Returns if all parameters are valid, or raises a TypeMismatch if not."""
         for i in range(len(dest_params)):
-            param = ast.target.mon_params[i]
-            # Wildcard param inherently valid
+            param = dest_params[i]
             result = self._validate_single_type(source_mon_params,
                     source_ev_params, param, dest_types[i])
 
@@ -391,11 +389,11 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
             raise ParameterError("Expected {} parameters for event {}.{}, "
                     "got {}".format(len(self.system.monitor_decls[
                     ast.dest_monitor].spec.imported_events[ast.dest_event]),
-                    ast.dest_monitor, ast.dest_event, len(ast.monitor_params)))
+                    ast.dest_monitor, ast.dest_event, len(ast.event_params)))
 
         # Create the TargetEvent
-        return arch.TargetEvent(self.dest_monitor, self.dest_event,
-                self.monitor_params, self.event_params)
+        return arch.TargetEvent(ast.dest_monitor, ast.dest_event,
+                ast.monitor_params, ast.event_params)
 
     def monitor_initialization(self, ast):
         """Create a TargetCreation. Ensure the target monitor exists and has the
@@ -445,9 +443,9 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
     def parameter(self, ast):
         """Create a Parameter"""
         if ast.kind == '#':
-            return arch.Parameter(True, ast.index)
+            return arch.Parameter(True, int(ast.index))
         elif ast.kind == '$':
-            return arch.Parameter(False, ast.index)
+            return arch.Parameter(False, int(ast.index))
         else:
             # This should not happen. It means there is a mistake in the grammar
             raise ValueError("Internal error: Invalid parameter source")

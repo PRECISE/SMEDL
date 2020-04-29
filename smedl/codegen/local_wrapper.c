@@ -5,7 +5,7 @@
 
 {% if mon.params is nonempty %}
 /* {{mon.name}} Monitor Maps - One AVL tree for each identity */
-{% for i in range(len(mon.params)) %}
+{% for i in range(mon.params|length) %}
 static {{mon.name}}Record *monitor_map_{{i}} = NULL;
 {% endfor %}
 {% else %}
@@ -40,7 +40,7 @@ void init_{{mon.name}}_local_wrapper() {
 void free_{{mon.name}}_local_wrapper() {
     {% if mon.params is nonempty %}
     {{mon.name}}Record records;
-    {% for i in range(len(mon.params)) %}
+    {% for i in range(mon.params|length) %}
 
     {% if loop.last %}
     /* Free records, monitors, identities, and map for monitor_map_{{i}} */
@@ -82,7 +82,7 @@ void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *ini
     }
 
     /* Initialize new monitor with identities and state */
-    SMEDLValue *ids_copy = smedl_copy_array(identities, {{len(mon.params)}});
+    SMEDLValue *ids_copy = smedl_copy_array(identities, {{mon.params|length}});
     if (ids_copy == NULL) {
         //TODO Malloc failed. What do we do here?
     }
@@ -131,7 +131,7 @@ void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, 
 void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
     {{mon.name}}Record *rec;
 
-    {% for i in range(len(mon.params)) %}
+    {% for i in range(mon.params|length) %}
     /* Identity {{i}} */
     rec = malloc(sizeof({{mon.name}}Record));
     if (rec == NULL) {
@@ -161,7 +161,7 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
      * non-wildcard */
     SMEDLRecordBase *candidates = NULL;
     int all_wildcards = 0;
-    {% for i in range(len(mon.params)) %}
+    {% for i in range(mon.params|length) %}
     {%+ if not loop.last %}} else {%+ endif %}if (identities[i].t != SMEDL_NULL) {
         candidates = monitor_map_lookup(monitor_map_{{i}}, identities[{{i}}]);
     {% if loop.last %}
@@ -191,14 +191,14 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
      * wildcards), do dynamic instantiation. */
     if (result == NULL) {
         int dynamic_instantiation = 1;
-        for (size_t i = 0; i < {{len(mon.params)}}; i++) {
+        for (size_t i = 0; i < {{mon.params|length}}; i++) {
             if (identities[i].t == SMEDL_NULL) {
                 dynamic_instantiation = 0;
             }
         }
 
         if (dynamic_instantiation) {
-            SMEDLValue *ids_copy = smedl_copy_array(identities, {{len(mon.params)}});
+            SMEDLValue *ids_copy = smedl_copy_array(identities, {{mon.params|length}});
             if (ids_copy == NULL) {
                 //TODO Malloc failed. What do we do here?
             }
@@ -231,7 +231,7 @@ int check_{{mon.name}}_monitors(SMEDLValue *identities) {
  * identities must be fully specified (no wildcards). */
 void remove_{{mon.name}}_monitor(SMEDLValue *identities) {
     SMEDLRecordBase *candidates;
-    {% for i in range(len(mon.params)) %}
+    {% for i in range(mon.params|length) %}
 
     /* Fetch matching monitors from monitor map {{i}}, then iterate through to
      * find and remove the full match */

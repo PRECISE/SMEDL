@@ -112,7 +112,7 @@ parameter_list =
     ;
 
 wildcard_parameter =
-    parameter
+    @:parameter
     | kind:'*'
     ;
 

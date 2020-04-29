@@ -75,7 +75,7 @@ static void handle_{{syncset}}_intra() {
                         if target.monitor in sys.syncsets[syncset] %}
                     {
                         {% if target.mon_params is nonempty %}
-                        SMEDLValue new_identities[{{len(target.mon_params)}}] = {
+                        SMEDLValue new_identities[{{target.mon_params|length}}] = {
                                 {% for param in target.mon_params %}
                                 {% if param.index is none %}
                                 {SMEDL_NULL},
@@ -122,7 +122,7 @@ static void handle_{{syncset}}_intra() {
                         create_{{target.monitor}}_monitor(new_identities, &init_state);
                         {% elif target.target_type == 'event' %}
                         {% if target.event_params is nonempty %}
-                        SMEDLValue new_params[{{len(target.event_params)}}] = {
+                        SMEDLValue new_params[{{target.event_params|length}}] = {
                                 {% for param in target.event_params %}
                                 {% if param.identity %}
                                 identities[{{param.index}}],
@@ -136,6 +136,7 @@ static void handle_{{syncset}}_intra() {
                         {% endif %}
 
                         process_{{target.monitor}}_{{target.event}}(new_identities, new_params, aux);
+                        {% endif %}
                     }
                     {% endfor %}
                         break;
@@ -202,7 +203,7 @@ static void handle_{{syncset}}_queues() {
 void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
     {% if decl.is_event_intra(event, sys.syncsets[syncset]) %}
     /* Store on intra queue */
-    SMEDLValue *params_intra = smedl_copy_array(params, {{len(params)}});
+    SMEDLValue *params_intra = smedl_copy_array(params, {{params|length}});
     if (!push_global_event(&intra_queue, MONITOR_{{syncset}}_{{decl.name}}, identities, EVENT_{{decl.spec.name}}_{{event}}, params_intra, aux)) {
         //TODO Out of memory. What now?
     }
@@ -212,7 +213,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
     {% endif %}
     {% if decl.is_event_inter(event, sys.syncsets[syncset]) %}
     /* Store on inter queue */
-    SMEDLValue *params_inter = smedl_copy_array(params, {{len(params)}});
+    SMEDLValue *params_inter = smedl_copy_array(params, {{params|length}});
     if (!push_global_event(&inter_queue, MONITOR_{{syncset}}_{{decl.name}}, identities, EVENT_{{decl.spec.name}}_{{event}}, params_inter, aux)) {
         //TODO Out of memory. What now?
     }
@@ -234,7 +235,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
  * aux - Extra data to be passed through unchanged */
 {% macro import_handler(target) %}
     {% if target.mon_params is nonempty %}
-    SMEDLValue new_identities[{{len(target.mon_params)}}] = {
+    SMEDLValue new_identities[{{target.mon_params|length}}] = {
             {% for param in target.mon_params %}
             {% if param.index is none %}
             {SMEDL_NULL},
@@ -281,7 +282,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
     create_{{target.monitor}}_monitor(new_identities, &init_state);
     {% elif target.target_type == 'event' %}
     {% if target.event_params is nonempty %}
-    SMEDLValue new_params[{{len(target.event_params)}}] = {
+    SMEDLValue new_params[{{target.event_params|length}}] = {
             {% for param in target.event_params %}
             {% if param.identity %}
             identities[{{param.index}}],
@@ -298,8 +299,8 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
     {% endif %}
 {%- endmacro %}
 {# Events from target system #}
-{% for target_list in system.imported_connections.values() %}
-{% for target in target_list if target.monitor in system.syncsets[syncset] %}
+{% for target_list in sys.imported_connections.values() %}
+{% for target in target_list if target.monitor in sys.syncsets[syncset] %}
 
 void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
     {{import_handler(target)}}
@@ -309,9 +310,9 @@ void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *p
 {% endfor %}
 {% endfor %}
 {# Events from other synchronous sets #}
-{% for decl in system.monitor_decls if decl.syncset != syncset %}
+{% for decl in sys.monitor_decls.values() if decl.syncset != syncset %}
 {% for target_list in decl.connections.values() %}
-{% for target in target_list if target.monitor in system.syncsets[syncset] %}
+{% for target in target_list if target.monitor in sys.syncsets[syncset] %}
 
 void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
     {{import_handler(target)}}

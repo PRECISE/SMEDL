@@ -351,6 +351,7 @@ class A4SMEDLParser(Parser):
         with self._choice():
             with self._option():
                 self._parameter_()
+                self.name_last_node('@')
             with self._option():
                 self._token('*')
                 self.name_last_node('kind')
