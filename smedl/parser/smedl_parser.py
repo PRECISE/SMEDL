@@ -493,7 +493,10 @@ class SMEDLParser(Parser):
     def _bitwise_or_expr_(self):  # noqa
 
         def sep0():
-            self._token('|')
+            with self._group():
+                self._token('|')
+                with self._ifnot():
+                    self._token('|')
 
         def block0():
             self._bitwise_xor_expr_()
@@ -513,7 +516,10 @@ class SMEDLParser(Parser):
     def _bitwise_and_expr_(self):  # noqa
 
         def sep0():
-            self._token('&')
+            with self._group():
+                self._token('&')
+                with self._ifnot():
+                    self._token('&')
 
         def block0():
             self._equality_expr_()
@@ -542,13 +548,13 @@ class SMEDLParser(Parser):
             with self._group():
                 with self._choice():
                     with self._option():
-                        self._token('<')
-                    with self._option():
                         self._token('<=')
                     with self._option():
-                        self._token('>')
+                        self._token('<')
                     with self._option():
                         self._token('>=')
+                    with self._option():
+                        self._token('>')
                     self._error('no available options')
 
         def block0():
@@ -782,7 +788,7 @@ class SMEDLParser(Parser):
 
     @tatsumasu()
     def _float_(self):  # noqa
-        self._pattern('[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+')
+        self._pattern('[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+')
 
     @tatsumasu()
     def _char_(self):  # noqa

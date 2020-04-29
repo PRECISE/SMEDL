@@ -86,8 +86,10 @@ class Expression(object):
         if op in ["+", "-"] and self.type in [
                 SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR, None]:
             return self.type
-        elif op in ["~", "!"] and self.type in [
-                SmedlType.INT, SmedlType.CHAR]:
+        elif op == "~" and self.type in [SmedlType.INT, SmedlType.CHAR, None]:
+            return self.type
+        elif op == "!" and self.type in [
+                SmedlType.INT, SmedlType.CHAR, SmedlType.POINTER, None]:
             return self.type
         else:
             raise TypeMismatch("Cannot use {} on expression of type {}".format(
