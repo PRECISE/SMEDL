@@ -191,7 +191,7 @@ class Scenario(object):
             self.steps[key] = [value]
         
         # Add the else
-        self.add_else(from_state, event, else_state, else_actions)
+        self._add_else(from_state, event, else_state, else_actions)
 
     def handles_event(self, event):
         """Check if this scenario has any transitions for the specified event.
@@ -201,7 +201,7 @@ class Scenario(object):
         event - The name of the event to check for
         """
         for key in self.steps.keys():
-            if key[2] == event:
+            if key[1] == event:
                 return True
         return False
 

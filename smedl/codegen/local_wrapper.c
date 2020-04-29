@@ -162,7 +162,7 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
     SMEDLRecordBase *candidates = NULL;
     int all_wildcards = 0;
     {% for i in range(len(mon.params)) %}
-    {%+ if not loop.last +%}} else {%+ endif +%}if (identities[i].t != SMEDL_NULL) {
+    {%+ if not loop.last %}} else {%+ endif %}if (identities[i].t != SMEDL_NULL) {
         candidates = monitor_map_lookup(monitor_map_{{i}}, identities[{{i}}]);
     {% if loop.last %}
     } else {

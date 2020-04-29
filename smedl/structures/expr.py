@@ -244,6 +244,9 @@ class StateVar(Expression):
         self.name = name
         self.type = type_
 
+    def __repr__(self):
+        return "StateVar:" + self.name
+
 class EventParam(Expression):
     """An event parameter usage. Event parameters are referred to internally by
     their index in the parameter list, as the parameters can be given different
@@ -258,6 +261,9 @@ class EventParam(Expression):
         super().__init__(type_, 'param')
         self.idx = idx
 
+    def __repr__(self):
+        return "EvParam:" + str(self.idx)
+
 class Literal(Expression):
     """A literal in an expression"""
     def __init__(self, string, type_):
@@ -270,6 +276,9 @@ class Literal(Expression):
         """
         super().__init__(type_, 'literal')
         self.string = string
+
+    def __repr__(self):
+        return self.string
 
 class HelperCall(Expression):
     """A call to a helper function in an expression"""
@@ -284,6 +293,10 @@ class HelperCall(Expression):
         super().__init__(None, 'helper_call')
         self.name = name
         self.params = params
+
+    def __repr__(self):
+        return (self.name + '(' + ', '.join([repr(p) for p in self.params]) +
+                ')')
 
 class UnaryOp(Expression):
     """A unary operation in an expression"""
@@ -302,9 +315,15 @@ class UnaryOp(Expression):
     def parenthesize(self):
         self.parens = True
 
+    def __repr__(self):
+        if self.parens:
+            return ''.join(['(', self.operator, ' ', repr(self.operand), ')'])
+        else:
+            return ''.join([self.operator, ' ', repr(self.operand)])
+
 class BinaryOp(Expression):
     """A binary operation in an expression"""
-    def __init__(self, operator, left, right, type_):
+    def __init__(self, operator, left, right):
         """Initialize the BinaryOp. Raise a TypeMismatch if the types are not
         compatible.
 
@@ -320,3 +339,11 @@ class BinaryOp(Expression):
 
     def parenthesize(self):
         self.parens = True
+
+    def __repr__(self):
+        if self.parens:
+            return ''.join(['(', repr(self.left), ' ', self.operator, ' ',
+                    repr(self.right), ')'])
+        else:
+            return ''.join([repr(self.left), ' ', self.operator, ' ',
+                repr(self.right)])

@@ -51,8 +51,8 @@ Jinja provides two methods to control whitespace:
 * Plus and minus signs - When a minus sign is added after the opening percent
   or before the closing percent in a block delimiter (`{%-` or `-%}`), that
   will cause *all* preceding or trailing whitespace to be trimmed, respectively.
-  This includes any newlines. Plus signs cancel the effects of `trim_blocks` or
-  `lstrip_blocks`.
+  This includes any newlines. Plus signs cancel the effects of `lstrip_blocks`
+  when used on the opening delimiter (`{%+`).
 
 The `trim_blocks` and `lstrip_blocks` options are turned on for SMEDL code
 generation, so most block openings and closings should go on their own line and

@@ -86,7 +86,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
     {{e.name}}(
     {%- for param in e.params -%}
         {{expression(param)}}
-        {%- if not loop.last +%}, {%+ endif -%}
+        {%- if not loop.last %}, {%+ endif -%}
     {%- endfor -%}
     )
 {%- elif e.expr_type == 'unary_op' -%}
@@ -96,19 +96,19 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
     {%- if e.operand == '==' and
             (e.left.type is sameas SmedlType.STRING or
             e.right.type is sameas SmedlType.STRING) -%}
-        !strcmp({{expression(e.left)}}, {{expression(e.right}})
+        !strcmp({{expression(e.left)}}, {{expression(e.right)}})
     {%- elif e.operand == '!=' and
             (e.left.type is sameas SmedlType.STRING or
             e.right.type is sameas SmedlType.STRING) -%}
-        strcmp({{expression(e.left)}}, {{expression(e.right}})
-    {%- if e.operand == '==' and
+        strcmp({{expression(e.left)}}, {{expression(e.right)}})
+    {%- elif e.operand == '==' and
             (e.left.type is sameas SmedlType.OPAQUE or
             e.right.type is sameas SmedlType.OPAQUE) -%}
-        opaque_equals({{expression(e.left)}}, {{expression(e.right}})
+        opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
     {%- elif e.operand == '!=' and
             (e.left.type is sameas SmedlType.OPAQUE or
             e.right.type is sameas SmedlType.OPAQUE) -%}
-        !opaque_equals({{expression(e.left)}}, {{expression(e.right}})
+        !opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
     {%- else -%}
         {{expression(e.left)}} {{e.operator}} {{expression(e.right)}}
     {%- endif -%}
@@ -146,7 +146,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
             th
         {%- elif param_type is sameas SmedlType.OPAQUE -%}
             o
-        {%- endif +%} = {{expression(a.params[loop.index0])}};
+        {%- endif %} = {{expression(a.params[loop.index0])}};
         {% endfor %}
         queue_{{spec.name}}_{{a.event}}(mon, new_params, aux);
     }
@@ -154,7 +154,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
     {{a.function}}(
     {%- for param in a.params -%}
         {{expression(param)}}
-        {%- if not loop.last +%}, {%+ endif -%}
+        {%- if not loop.last %}, {%+ endif -%}
     {%- endfor -%}
     );
 {%- endif -%}
@@ -167,7 +167,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
             {% for state in scenario.all_states() if (state, event) in scenario.steps %}
             case STATE_{{spec.name}}_{{scenario.name}}_{{state}}:
                 {% for condition, dest, actions in scenario.steps[(state, event)] %}
-                {%+ if not loop.first +%}} else {%+ endif +%}if ({{expression(condition)}}) {
+                {%+ if not loop.first %}} else {%+ endif %}if ({{expression(condition)}}) {
                     {% for a in actions %}
                     {{action(a)}}
                     {% endfor %}

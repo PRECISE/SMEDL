@@ -45,7 +45,7 @@ class MonitorGenerator(object):
                     semantics=smedl_semantics.SmedlSemantics())
             
             # Generate the code
-            generator.write_one(monitor)
+            self.generator.write_one(monitor)
         else:
             # Parse an architecture file, which will also parse all monitors it
             # imports
@@ -56,7 +56,7 @@ class MonitorGenerator(object):
                     semantics=a4smedl_semantics.A4smedlSemantics())
             
             # Generate the code
-            generator.write_all(system)
+            self.generator.write_all(system)
 
 def parse_args():
     """Handle argument parsing. Return arguments as a tuple (input, options)

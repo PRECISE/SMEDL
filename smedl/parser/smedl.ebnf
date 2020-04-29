@@ -94,13 +94,13 @@ scenario =
 transition =
     start_state:identifier
     '->' steps:step_definition_list
-    '->' end_state:identifier
     [else_step:else_definition]
     ';'
     ;
 
 step_definition_list =
-    '->'.{step_definition}+
+    step:step_definition '->' rest:step_definition_list
+    | step:step_definition '->' end_state:identifier
     ;
 
 step_definition =
@@ -124,10 +124,15 @@ step_event_definition =
     ;
 
 action_list =
-    '{' (
-        @:';'.{action}+ [';']
-        | @:{}
-    ) '}'
+    '{'
+    @:action_inner_list
+    '}'
+    ;
+
+action_inner_list =
+    first:action ';' rest:action_inner_list
+    | first:action
+    | first:()
     ;
 
 action =
@@ -135,7 +140,7 @@ action =
     | increment
     | decrement
     | raise_stmt
-    | call_stmt # This should be deprecated. See structures/monitor.py.
+    | call_stmt
     ;
 
 assignment =

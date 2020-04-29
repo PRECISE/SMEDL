@@ -17,13 +17,18 @@ typedef enum {
 /* Scenario state enums */
 {% for scenario in spec.scenarios %}
 typedef enum {
+    {% if scenario.implicit_states > 0 %}
+    /* Explicit states */
+    {% endif %}
     {% for state in scenario.states %}
     STATE_{{spec.name}}_{{scenario.name}}_{{state}},
     {% endfor %}
+    {% if scenario.implicit_states > 0 %}
     /* Implicit states */
     {% for i in range(scenario.implicit_states) %}
     STATE_{{spec.name}}_{{scenario.name}}_{{i}},
     {% endfor %}
+    {% endif %}
 } {{spec.name}}_{{scenario.name}}_State;
 {% endfor %}
 

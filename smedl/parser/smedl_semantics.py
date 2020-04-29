@@ -96,21 +96,21 @@ class SmedlSemantics(common_semantics.CommonSemantics):
 
             # Loop over the steps in the transition and add to the scenario
             from_state = transition.start_state
-            for step in transition.steps[:-1]:
+            for step in transition.steps.step_list[:-1]:
                 # All steps except the last one go to an implicit state
                 to_state = scenario.get_implicit_state()
                 event_name = step.event.name
                 condition = step.condition
-                actions = step.action_list
+                actions = step.actions
                 scenario.add_step(from_state, event_name, condition, to_state,
                         actions, else_state, else_actions)
                 from_state = to_state
             # Do the last iteration separately - to_state = transition.end_state
-            step = transition.steps[-1]
-            to_state = transition.end_state
+            step = transition.steps.step_list[-1]
+            to_state = transition.steps.end_state
             event_name = step.event.name
             condition = step.condition
-            actions = step.action_list
+            actions = step.actions
             scenario.add_step(from_state, event_name, condition, to_state,
                     actions, else_state, else_actions)
         
@@ -119,14 +119,25 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         return ast
 
     def step_definition_list(self, ast):
-        """Store whether there is a single or multiple steps in this transition.
-        else_preproc will need this to determine whether to allow else actions
-        to use event parameter bindings."""
-        if len(ast) > 1:
-            self.multiple_steps = True
-        else:
+        """Transform the AST into a list of steps (ast.step_list) and an end
+        state (ast.end_state). Also store whether there is a single or multiple
+        steps in the transition, as else_preproc will need this to determine
+        whether to allow else actions to use event parameter bindings."""
+        step_list = [ast.step]
+        if ast.rest is None:
             self.multiple_steps = False
+        else:
+            self.multiple_steps = True
+            step_list.extend(ast.step_list)
+        del ast['step']
+        ast['step_list'] = step_list
         return ast
+
+        #if len(ast) > 1:
+        #    self.multiple_steps = True
+        #else:
+        #    self.multiple_steps = False
+        #return ast
 
     def step_definition(self, ast):
         """Step definitions may not have actions, in which case the actions
@@ -174,6 +185,16 @@ class SmedlSemantics(common_semantics.CommonSemantics):
                     "exported event.".format(ast.name))
 
         return ast
+
+    def action_inner_list(self, ast):
+        """Convert action_inner_lists into an actual list"""
+        if ast.first is None:
+            result = []
+        else:
+            result = [ast.first]
+        if ast.rest is not None:
+            result.extend(ast.rest)
+        return result
 
     def assignment(self, ast):
         """Verify that the state variable exists and the type matches the
@@ -311,10 +332,10 @@ class SmedlSemantics(common_semantics.CommonSemantics):
             param_idx = self.current_event_params.index(ast)
             if self.current_event in self.monitor.imported_events:
                 param_type = self.monitor.imported_events[
-                        self.current_event]
+                        self.current_event][param_idx]
             elif self.current_event in self.monitor.internal_events:
                 param_type = self.monitor.internal_events[
-                        self.current_event]
+                        self.current_event][param_idx]
             return expr.EventParam(param_idx, param_type)
         except ValueError:
             # Not an event parameter. Must be a state variable.
@@ -350,7 +371,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         right = self.expression(ast[2])
 
         # This also does type checking
-        return expr.BinaryOp(ast[0], ast[1], ast[2])
+        return expr.BinaryOp(ast[0], left, right)
 
     ###########################################################################
 

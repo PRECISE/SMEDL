@@ -47,7 +47,7 @@ class CodeGenerator(object):
                 out_path = os.path.join(self.dest_dir, f)
                 text = resources.read_text(static, f)
                 with open(out_path, "w") as outfile:
-                    f.write(text)
+                    outfile.write(text)
 
     def _render(self, template, filename, values):
         """Render the named template to the named file in the output directory

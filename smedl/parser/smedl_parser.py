@@ -273,27 +273,35 @@ class SMEDLParser(Parser):
         self._token('->')
         self._step_definition_list_()
         self.name_last_node('steps')
-        self._token('->')
-        self._identifier_()
-        self.name_last_node('end_state')
         with self._optional():
             self._else_definition_()
             self.name_last_node('else_step')
         self._token(';')
         self.ast._define(
-            ['else_step', 'end_state', 'start_state', 'steps'],
+            ['else_step', 'start_state', 'steps'],
             []
         )
 
     @tatsumasu()
     def _step_definition_list_(self):  # noqa
-
-        def sep0():
-            self._token('->')
-
-        def block0():
-            self._step_definition_()
-        self._positive_gather(block0, sep0)
+        with self._choice():
+            with self._option():
+                self._step_definition_()
+                self.name_last_node('step')
+                self._token('->')
+                self._step_definition_list_()
+                self.name_last_node('rest')
+            with self._option():
+                self._step_definition_()
+                self.name_last_node('step')
+                self._token('->')
+                self._identifier_()
+                self.name_last_node('end_state')
+            self._error('no available options')
+        self.ast._define(
+            ['end_state', 'rest', 'step'],
+            []
+        )
 
     @tatsumasu()
     def _step_definition_(self):  # noqa
@@ -348,24 +356,30 @@ class SMEDLParser(Parser):
     @tatsumasu()
     def _action_list_(self):  # noqa
         self._token('{')
-        with self._group():
-            with self._choice():
-                with self._option():
-
-                    def sep1():
-                        self._token(';')
-
-                    def block1():
-                        self._action_()
-                    self._positive_gather(block1, sep1)
-                    self.name_last_node('@')
-                    with self._optional():
-                        self._token(';')
-                with self._option():
-                    self._empty_closure()
-                    self.name_last_node('@')
-                self._error('no available options')
+        self._action_inner_list_()
+        self.name_last_node('@')
         self._token('}')
+
+    @tatsumasu()
+    def _action_inner_list_(self):  # noqa
+        with self._choice():
+            with self._option():
+                self._action_()
+                self.name_last_node('first')
+                self._token(';')
+                self._action_inner_list_()
+                self.name_last_node('rest')
+            with self._option():
+                self._action_()
+                self.name_last_node('first')
+            with self._option():
+                self._void()
+                self.name_last_node('first')
+            self._error('no available options')
+        self.ast._define(
+            ['first', 'rest'],
+            []
+        )
 
     @tatsumasu()
     def _action_(self):  # noqa
@@ -871,6 +885,9 @@ class SMEDLSemantics(object):
         return ast
 
     def action_list(self, ast):  # noqa
+        return ast
+
+    def action_inner_list(self, ast):  # noqa
         return ast
 
     def action(self, ast):  # noqa
