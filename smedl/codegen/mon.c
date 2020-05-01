@@ -59,12 +59,13 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
  *   wrapper's queuing happens when the event is actually exported.
  * export_* - Export an exported event by calling the registered callback, if
  *   any. */
+{# Event handler macros ***************************************************** #}
 {% macro expression(e) -%}
-{%- if e.parens -%}({%- endif -%}
-{%- if e.expr_type == 'state_var' -%}
-    mon->s.{{e.name}}_var
-{%- elif e.expr_type == 'param' -%}
-    params[{{e.idx}}].v.
+{% if e.parens %}({% endif -%}
+{% if e.expr_type == 'state_var' %}
+mon->s.{{e.name}}
+{%- elif e.expr_type == 'param' %}
+params[{{e.idx}}].v.
     {%- if e.type is sameas SmedlType.INT -%}
         i
     {%- elif e.type is sameas SmedlType.FLOAT -%}
@@ -79,134 +80,137 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
         th
     {%- elif e.type is sameas SmedlType.OPAQUE -%}
         o
-    {%- endif -%}
-{%- elif e.expr_type == 'literal' -%}
-    {{e.string}}
-{%- elif e.expr_type == 'helper_call' -%}
-    {{e.name}}(
+    {%- endif %}
+{%- elif e.expr_type == 'literal' %}
+{{e.string}}
+{%- elif e.expr_type == 'helper_call' %}
+{{e.name}}(
     {%- for param in e.params -%}
         {{expression(param)}}
         {%- if not loop.last %}, {%+ endif -%}
     {%- endfor -%}
     )
-{%- elif e.expr_type == 'unary_op' -%}
-    {{e.operator}}{{e.operand}}
-{%- elif e.expr_type == 'binary_op' -%}
-    {# == or != on strings and opaques requires special handling. #}
-    {%- if e.operand == '==' and
-            (e.left.type is sameas SmedlType.STRING or
-            e.right.type is sameas SmedlType.STRING) -%}
-        !strcmp({{expression(e.left)}}, {{expression(e.right)}})
-    {%- elif e.operand == '!=' and
-            (e.left.type is sameas SmedlType.STRING or
-            e.right.type is sameas SmedlType.STRING) -%}
-        strcmp({{expression(e.left)}}, {{expression(e.right)}})
-    {%- elif e.operand == '==' and
-            (e.left.type is sameas SmedlType.OPAQUE or
-            e.right.type is sameas SmedlType.OPAQUE) -%}
-        opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
-    {%- elif e.operand == '!=' and
-            (e.left.type is sameas SmedlType.OPAQUE or
-            e.right.type is sameas SmedlType.OPAQUE) -%}
-        !opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
-    {%- else -%}
-        {{expression(e.left)}} {{e.operator}} {{expression(e.right)}}
-    {%- endif -%}
-{%- endif -%}
+{%- elif e.expr_type == 'unary_op' %}
+{{e.operator}}{{expression(e.operand)}}
+{%- elif e.expr_type == 'binary_op' %}
+{# == or != on strings and opaques requires special handling. #}
+{% if e.operand == '==' and
+        (e.left.type is sameas SmedlType.STRING or
+        e.right.type is sameas SmedlType.STRING) %}
+!strcmp({{expression(e.left)}}, {{expression(e.right)}})
+{%- elif e.operand == '!=' and
+        (e.left.type is sameas SmedlType.STRING or
+        e.right.type is sameas SmedlType.STRING) %}
+strcmp({{expression(e.left)}}, {{expression(e.right)}})
+{%- elif e.operand == '==' and
+        (e.left.type is sameas SmedlType.OPAQUE or
+        e.right.type is sameas SmedlType.OPAQUE) %}
+opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
+{%- elif e.operand == '!=' and
+        (e.left.type is sameas SmedlType.OPAQUE or
+        e.right.type is sameas SmedlType.OPAQUE) %}
+!opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
+{%- else %}
+{{expression(e.left)}} {{e.operator}} {{expression(e.right)}}
+{%- endif %}
+{% endif %}
 {%- if e.parens -%}){%- endif -%}
 {%- endmacro %}
+{# -------------------------------------------------------------------------- #}
 {% macro action(a) -%}
-{%- if a.action_type == 'assignment' -%}
-    mon->s.{{a.var}}_var = {{expression(a.expr)}};
-{%- elif a.action_type == 'increment' -%}
-    mon->s.{{a.var}}_var++;
-{%- elif a.action_type == 'decrement' -%}
-    mon->s.{{a.var}}_var--;
-{%- elif a.action_type == 'raise' -%}
-    {
-        {# This is freed in handle_{{spec.name}}_queue() #}
-        SMEDLValue *new_params = malloc(sizeof(SMEDLValue) * {{spec.get_event(a.event)|length}});
-        if (new_params == NULL) {
-            /* TODO What to do if malloc fails? */
-        }
-        {% for param_type in spec.get_event(a.event) %}
-        new_params[{{loop.index0}}].t = SMEDL_{{param_type.value|upper}};
-        new_params[{{loop.index0}}].v.
-        {%- if param_type is sameas SmedlType.INT -%}
-            i
-        {%- elif param_type is sameas SmedlType.FLOAT -%}
-            d
-        {%- elif param_type is sameas SmedlType.CHAR -%}
-            c
-        {%- elif param_type is sameas SmedlType.STRING -%}
-            s
-        {%- elif param_type is sameas SmedlType.POINTER -%}
-            p
-        {%- elif param_type is sameas SmedlType.THREAD -%}
-            th
-        {%- elif param_type is sameas SmedlType.OPAQUE -%}
-            o
-        {%- endif %} = {{expression(a.params[loop.index0])}};
-        {% endfor %}
-        queue_{{spec.name}}_{{a.event}}(mon, new_params, aux);
+{% if a.action_type == 'assignment' %}
+mon->s.{{a.var}} = {{expression(a.expr)}};
+{%- elif a.action_type == 'increment' %}
+mon->s.{{a.var}}++;
+{%- elif a.action_type == 'decrement' %}
+mon->s.{{a.var}}--;
+{%- elif a.action_type == 'raise' %}
+{ /* Raise {{a.event}} */
+    {# This is freed in handle_{{spec.name}}_queue() #}
+    SMEDLValue *new_params = malloc(sizeof(SMEDLValue) * {{spec.get_event(a.event)|length}});
+    if (new_params == NULL) {
+        /* TODO What to do if malloc fails? */
     }
-{%- elif a.action_type == 'call' -%}
-    {{a.function}}(
+    {% for param_type in spec.get_event(a.event) %}
+    new_params[{{loop.index0}}].t = SMEDL_{{param_type.value|upper}};
+    new_params[{{loop.index0}}].v.
+    {%- if param_type is sameas SmedlType.INT -%}
+        i
+    {%- elif param_type is sameas SmedlType.FLOAT -%}
+        d
+    {%- elif param_type is sameas SmedlType.CHAR -%}
+        c
+    {%- elif param_type is sameas SmedlType.STRING -%}
+        s
+    {%- elif param_type is sameas SmedlType.POINTER -%}
+        p
+    {%- elif param_type is sameas SmedlType.THREAD -%}
+        th
+    {%- elif param_type is sameas SmedlType.OPAQUE -%}
+        o
+    {%- endif %} = {{expression(a.params[loop.index0])}};
+    {% endfor %}
+    queue_{{spec.name}}_{{a.event}}(mon, new_params, aux);
+}
+{%- elif a.action_type == 'call' %}
+{{a.function}}(
     {%- for param in a.params -%}
-        {{expression(param)}}
+    {{expression(param)}}
         {%- if not loop.last %}, {%+ endif -%}
     {%- endfor -%}
     );
-{%- endif -%}
+{%- endif %}
 {%- endmacro %}
-{% macro event_handler(event) %}
-    {% for scenario in spec.scenarios if scenario.handles_event(event) %}
-    /* {{scenario.name}} scenario */
-    if (mon->ef.{{scenario.name}}_flag) {
-        switch (mon->{{scenario.name}}_state) {
-            {% for state in scenario.all_states() if (state, event) in scenario.steps %}
-            case STATE_{{spec.name}}_{{scenario.name}}_{{state}}:
-                {% for condition, dest, actions in scenario.steps[(state, event)] %}
-                {%+ if not loop.first %}} else {%+ endif %}if ({{expression(condition)}}) {
-                    {% for a in actions %}
-                    {{action(a)}}
-                    {% endfor %}
-
-                    mon->{{scenario.name}}_state = STATE_{{spec.name}}_{{scenario.name}}_{{dest}};
+{# -------------------------------------------------------------------------- #}
+{% macro event_handler(event) -%}
+{% for scenario in spec.scenarios if scenario.handles_event(event) %}
+/* {{scenario.name}} scenario */
+if (mon->ef.{{scenario.name}}_flag) {
+    switch (mon->{{scenario.name}}_state) {
+        {% for state in scenario.all_states() if (state, event) in scenario.steps %}
+        case STATE_{{spec.name}}_{{scenario.name}}_{{state}}:
+            {% for condition, dest, actions in scenario.steps[(state, event)] %}
+            {%+ if not loop.first %}} else {%+ endif %}if ({{expression(condition)}}) {
+                {% for a in actions %}
+                {{action(a)|indent(16)}}
                 {% endfor %}
-                } else {
-                    {% if (state, event) in scenario.elses %}
-                    {% for a in scenario.elses[(state, event)][1] %}
-                    {{action(a)}}
-                    {% endfor %}
 
-                    mon->{{scenario.name}}_state = STATE_{{spec.name}}_{{scenario.name}}_{{scenario.elses[(state, event)][0]}};
-                    {% else %}
-                        /* XXX Do something here: Event matches but conditions
-                         * not met, no else */
-                    {% endif %}
-                }
-                break;
-
+                mon->{{scenario.name}}_state = STATE_{{spec.name}}_{{scenario.name}}_{{dest}};
             {% endfor %}
-            default:
-                /* XXX Do something here: Scenario handles this event but not
-                 * from this state */
-        }
-        mon->ef.{{scenario.name}}_flag = 1;
-    }
-    {% if not loop.last %}
+            } else {
+                {% if (state, event) in scenario.elses %}
+                {% for a in scenario.elses[(state, event)][1] %}
+                {{action(a)|indent(16)}}
+                {% endfor %}
 
-    {% endif %}
-    {% endfor %}
+                mon->{{scenario.name}}_state = STATE_{{spec.name}}_{{scenario.name}}_{{scenario.elses[(state, event)][0]}};
+                {% else %}
+                /* XXX Do something here: Event matches but conditions
+                 * not met, no else */
+                {% endif %}
+            }
+            break;
+
+        {% endfor %}
+        default:
+            /* XXX Do something here: Scenario handles this event but not
+             * from this state */
+    }
+    mon->ef.{{scenario.name}}_flag = 1;
+}
+{% if not loop.last %}
+
+{% endif %}
+{% endfor %}
 {%- endmacro %}
+{# End of event handler macros ********************************************** #}
 {% if spec.imported_events is nonempty %}
 
 /* Imported events */
 {% for event in spec.imported_events.keys() %}
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
-    {{event_handler(event)}}
+    {{event_handler(event)|indent}}
 
     /* Finish the macro-step */
     handle_{{spec.name}}_queue(mon);
@@ -219,7 +223,7 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 {% for event in spec.internal_events.keys() %}
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
-    {{event_handler(event)}}
+    {{event_handler(event)|indent}}
 }
 
 void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
@@ -235,7 +239,7 @@ void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
 {% for event in spec.exported_events.keys() %}
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
-    {{event_handler(event)}}
+    {{event_handler(event)|indent}}
 
     /* Export the event */
     export_{{spec.name}}_{{event}}(mon, params, aux);
@@ -274,7 +278,7 @@ void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *param
 void default_{{spec.name}}_state({{spec.name}}State *state) {
     {% for var in spec.state_vars.values() %}
     {% if var.initial_value is not none %}
-    state->{{var.name}}_var = {{var.initial_value}};
+    state->{{var.name}} = {{var.initial_value}};
     {% else %}
     /* state->{{var.name}} is a pthread_t. No default value. */
     {% endif %}

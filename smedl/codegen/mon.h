@@ -37,7 +37,7 @@ typedef enum {
  * struct. */
 typedef struct {{spec.name}}State {
     {% for var in spec.state_vars.values() %}
-    {{var.type.c_type}} {{var.name}}_var;
+    {{var.type.c_type}} {{var.name}};
     {% endfor %}
 } {{spec.name}}State;
 
@@ -81,36 +81,6 @@ void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLCallback c
 {% endfor %}
 
 /* Event handling functions:
- *
- * TODO Should actual export of queued exported events be postponed until all
- * queued internal events are processed? When a monitor is used with the global
- * wrapper, that is effectively what happens anyway. When an event is exported,
- * it goes into the global event queue, which is not processed until the monitor
- * returns control to the global wrapper (when the local queue is empty).
- * 
- * BUT: If a monitor is used without wrappers (as it currently is for ROS),
- * currently, exported events would currently be returned to the target system
- * before any internal events remaining in the queue are handled.
- *
- * Note that pre-global-wrapper SMEDL *did* handle all internal events before
- * any exported events. This only changed because when exported events are going
- * into a global queue anyway, it did not make sense to keep a separate local
- * queue for them. But this new version of the code makes monitors independent
- * from the global wrapper for when wrappers are not needed, such as for ROS,
- * which makes us have to consider this again.
- *
- * One other consideration I had: Exported events are currently returned via
- * callback functions. These callback functions do not "return control" to the
- * target system. There may be more than one exported event. The callback must
- * return to SMEDL and control is only reliquished back to the target system for
- * good once the original call to SMEDL returns (once the event queue is empty).
- * That means only limited processing can be done in a callback anyway before
- * returning to SMEDL. Would it be useful to have an optional "export queue"
- * adapter that can queue the exported events for the target system and allow
- * the target system to fetch them and do more involved processing once the
- * original SMEDL call returns? Then, targets that need it can use it. Targets
- * that don't need it don't have to (e.g. ROS, which just published a message
- * on a bus every time an exported event came).
  *
  * execute_* - For imported and internal events, process the event through the
  *   scenarios. For exported events, do that and then export by calling the

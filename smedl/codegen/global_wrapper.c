@@ -94,7 +94,7 @@ static void handle_{{syncset}}_intra() {
                         {{sys.monitor_decls[target.monitor].spec.name}}State init_state;
                         default_{{sys.monitor_decls[target.monitor].spec.name}}_state(&init_state);
                         {% for var, param in target.state_vars.items() %}
-                        init_state.{{var}}_var = {%+ if param.identity -%}
+                        init_state.{{var}} = {%+ if param.identity -%}
                             identities[{{param.index}}]
                             {% set param_type = decl.params[param.index] %}
                             {%- else -%}
@@ -256,7 +256,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
     {% for var, param in target.state_vars.items() %}
     {% set param_type =
         sys.monitor_decls[target.monitor].spec.state_vars[var].type %}
-    init_state.{{var}}_var = {%+ if param.identity -%}
+    init_state.{{var}} = {%+ if param.identity -%}
         identities[{{param.index}}]
         {%- else -%}
         params[{{param.index}}]
