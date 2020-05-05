@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <pthread.h>
 #include "smedl_types.h"

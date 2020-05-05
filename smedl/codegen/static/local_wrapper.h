@@ -1,6 +1,7 @@
 #ifndef LOCAL_WRAPPER_H
 #define LOCAL_WRAPPER_H
 
+#include <stdint.h>
 #include "smedl_types.h"
 
 /******************************************************************************
@@ -29,7 +30,7 @@ typedef struct SMEDLRecordBase {
     struct SMEDLRecordBase *equal_prev;
     /* The identity used as this map's key */
     SMEDLValue key;
-}
+} SMEDLRecordBase;
 
 /* Insertion function
  *
@@ -52,7 +53,7 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec);
  *
  * Returns a linked list of matching records (linked with ->equal member),
  * or NULL if there were no matches. */
-SMEDLRecordBase * monitor_map_lookup(SMEDLRecordBase *root, SMEDLValue *key);
+SMEDLRecordBase * monitor_map_lookup(SMEDLRecordBase *root, SMEDLValue key);
 
 /* Fetch all monitors
  *

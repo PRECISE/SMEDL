@@ -13,19 +13,19 @@ class StateVariable(object):
         if initial_value is not None:
             self.initial_value = initial_value
         else:
-            if self.type == 'int':
+            if self.type == expr.SmedlType.INT:
                 self.initial_value = "0"
-            elif self.type == 'float':
+            elif self.type == expr.SmedlType.FLOAT:
                 self.initial_value = "0.0"
-            elif self.type == 'char':
+            elif self.type == expr.SmedlType.CHAR:
                 self.initial_value = "'\\0'"
-            elif self.type == 'string':
+            elif self.type == expr.SmedlType.STRING:
                 self.initial_value = '""'
-            elif self.type == 'pointer':
+            elif self.type == expr.SmedlType.POINTER:
                 self.initial_value = "NULL"
-            elif self.type == 'thread':
+            elif self.type == expr.SmedlType.THREAD:
                 self.initial_value = None
-            elif self.type == 'opaque':
+            elif self.type == expr.SmedlType.OPAQUE:
                 #TODO This may cause errors converting a const char * to
                 # non-const void * in C++. (C should not complain.)
                 self.initial_value = '{"", 0}'
@@ -279,6 +279,14 @@ class MonitorSpec(object):
             return self.exported_events[name]
         else:
             return None
+
+    def needs_handler(self, event):
+        """Return True if any scenario handles the given event, False
+        otherwise."""
+        for s in self.scenarios:
+            if s.handles_event(event):
+                return True
+        return False
 
     def __repr__(self):
         #TODO Proably do this by adding __repr__ to components and calling those

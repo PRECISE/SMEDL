@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "smedl_types.h"
 #include "global_wrapper.h"
 #include "{{syncset}}_global_wrapper.h"
@@ -12,12 +13,10 @@
 static GlobalEventQueue intra_queue;
 static GlobalEventQueue inter_queue;
 
-{% for decl in mon_decls %}
-{% if loop.first %}
 /* Callback function pointers */
-{% endif %}
-{% for target in decl.connections.values() if target.monitor is none %}
-static SMEDLCallback cb_{{target.channel}};
+{% for decl in mon_decls %}
+{% for channel in decl.inter_channels(sys.syncsets[syncset]) %}
+static SMEDLCallback cb_{{channel}};
 {% endfor %}
 {% endfor %}
 
@@ -71,74 +70,71 @@ static void handle_{{syncset}}_intra() {
                     {% for event, params in decl.spec.exported_events.items()
                        if decl.is_event_intra(event, sys.syncsets[syncset]) %}
                     case EVENT_{{decl.spec.name}}_{{event}}:
-                    {% for target in decl.connections[event]
-                        if target.monitor in sys.syncsets[syncset] %}
-                    {
-                        {% if target.mon_params is nonempty %}
-                        SMEDLValue new_identities[{{target.mon_params|length}}] = {
-                                {% for param in target.mon_params %}
-                                {% if param.index is none %}
-                                {SMEDL_NULL},
-                                {% elif param.identity %}
-                                identities[{{param.index}}],
-                                {% else %}
-                                params[{{param.index}}],
-                                {% endif %}
-                                {% endfor %}
-                            };
-                        {% else %}
-                        SMEDLValue *new_identities = NULL;
-                        {% endif %}
-
-                        {% if target.target_type == 'creation' %}
-                        {{sys.monitor_decls[target.monitor].spec.name}}State init_state;
-                        default_{{sys.monitor_decls[target.monitor].spec.name}}_state(&init_state);
-                        {% for var, param in target.state_vars.items() %}
-                        init_state.{{var}} = {%+ if param.identity -%}
-                            identities[{{param.index}}]
-                            {% set param_type = decl.params[param.index] %}
-                            {%- else -%}
-                            params[{{param.index}}]
-                            {% set param_type = params[param.index] %}
-                            {%- endif -%}
-                            .v.
-                            {%- if param_type is sameas SmedlType.INT -%}
-                                i
-                            {%- elif param_type is sameas SmedlType.FLOAT -%}
-                                d
-                            {%- elif param_type is sameas SmedlType.CHAR -%}
-                                c
-                            {%- elif param_type is sameas SmedlType.STRING -%}
-                                s
-                            {%- elif param_type is sameas SmedlType.POINTER -%}
-                                p
-                            {%- elif param_type is sameas SmedlType.THREAD -%}
-                                th
-                            {%- elif param_type is sameas SmedlType.OPAQUE -%}
-                                o
-                            {%- endif %};
+                        {% for target in decl.connections[event]
+                            if target.monitor in sys.syncsets[syncset] %}
+                        {
+                            {% if target.mon_params is nonempty %}
+                            SMEDLValue new_identities[{{target.mon_params|length}}] = {
+                                    {% for param in target.mon_params %}
+                                    {% if param.index is none %}
+                                    {SMEDL_NULL},
+                                    {% elif param.identity %}
+                                    identities[{{param.index}}],
+                                    {% else %}
+                                    params[{{param.index}}],
+                                    {% endif %}
+                                    {% endfor %}
+                                };
+                            {% else %}
+                            SMEDLValue *new_identities = NULL;
+                            {% endif %}
+                            {% if target.target_type == 'creation' %}
+                            {{sys.monitor_decls[target.monitor].spec.name}}State init_state;
+                            default_{{sys.monitor_decls[target.monitor].spec.name}}_state(&init_state);
+                            {% for var, param in target.state_vars.items() %}
+                            init_state.{{var}} = {%+ if param.identity -%}
+                                identities[{{param.index}}]
+                                {% set param_type = decl.params[param.index] %}
+                                {%- else -%}
+                                params[{{param.index}}]
+                                {% set param_type = params[param.index] %}
+                                {%- endif -%}
+                                .v.
+                                {%- if param_type is sameas SmedlType.INT -%}
+                                    i
+                                {%- elif param_type is sameas SmedlType.FLOAT -%}
+                                    d
+                                {%- elif param_type is sameas SmedlType.CHAR -%}
+                                    c
+                                {%- elif param_type is sameas SmedlType.STRING -%}
+                                    s
+                                {%- elif param_type is sameas SmedlType.POINTER -%}
+                                    p
+                                {%- elif param_type is sameas SmedlType.THREAD -%}
+                                    th
+                                {%- elif param_type is sameas SmedlType.OPAQUE -%}
+                                    o
+                                {%- endif %};
+                            {% endfor %}
+                            create_{{target.monitor}}_monitor(new_identities, &init_state);
+                            {% elif target.target_type == 'event' %}
+                            {% if target.event_params is nonempty %}
+                            SMEDLValue new_params[{{target.event_params|length}}] = {
+                                    {% for param in target.event_params %}
+                                    {% if param.identity %}
+                                    identities[{{param.index}}],
+                                    {% else %}
+                                    params[{{param.index}}],
+                                    {% endif %}
+                                    {% endfor %}
+                                };
+                            {% else %}
+                            SMEDLValue *new_params = NULL;
+                            {% endif %}
+                            process_{{target.monitor}}_{{target.event}}(new_identities, new_params, aux);
+                            {% endif %}
+                        }
                         {% endfor %}
-
-                        create_{{target.monitor}}_monitor(new_identities, &init_state);
-                        {% elif target.target_type == 'event' %}
-                        {% if target.event_params is nonempty %}
-                        SMEDLValue new_params[{{target.event_params|length}}] = {
-                                {% for param in target.event_params %}
-                                {% if param.identity %}
-                                identities[{{param.index}}],
-                                {% else %}
-                                params[{{param.index}}],
-                                {% endif %}
-                                {% endfor %}
-                            };
-                        {% else %}
-                        SMEDLValue *new_params = NULL;
-                        {% endif %}
-
-                        process_{{target.monitor}}_{{target.event}}(new_identities, new_params, aux);
-                        {% endif %}
-                    }
-                    {% endfor %}
                         break;
                     {% endfor %}
                 }
@@ -233,77 +229,76 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
  *   to NULL.
  * params - An array of the source event's parameters
  * aux - Extra data to be passed through unchanged */
+{# Import interface macros ************************************************** #}
 {% macro import_handler(target) %}
-    {% if target.mon_params is nonempty %}
-    SMEDLValue new_identities[{{target.mon_params|length}}] = {
-            {% for param in target.mon_params %}
-            {% if param.index is none %}
-            {SMEDL_NULL},
-            {% elif param.identity %}
-            identities[{{param.index}}],
-            {% else %}
-            params[{{param.index}}],
-            {% endif %}
-            {% endfor %}
-        };
-    {% else %}
-    SMEDLValue *new_identities = NULL;
-    {% endif %}
-
-    {% if target.target_type == 'creation' %}
-    {{sys.monitor_decls[target.monitor].spec.name}}State init_state;
-    default_{{sys.monitor_decls[target.monitor].spec.name}}_state(&init_state);
-    {% for var, param in target.state_vars.items() %}
-    {% set param_type =
-        sys.monitor_decls[target.monitor].spec.state_vars[var].type %}
-    init_state.{{var}} = {%+ if param.identity -%}
-        identities[{{param.index}}]
-        {%- else -%}
-        params[{{param.index}}]
-        {%- endif -%}
-        .v.
-        {%- if param_type is sameas SmedlType.INT -%}
-            i
-        {%- elif param_type is sameas SmedlType.FLOAT -%}
-            d
-        {%- elif param_type is sameas SmedlType.CHAR -%}
-            c
-        {%- elif param_type is sameas SmedlType.STRING -%}
-            s
-        {%- elif param_type is sameas SmedlType.POINTER -%}
-            p
-        {%- elif param_type is sameas SmedlType.THREAD -%}
-            th
-        {%- elif param_type is sameas SmedlType.OPAQUE -%}
-            o
-        {%- endif %};
-    {% endfor %}
-
-    create_{{target.monitor}}_monitor(new_identities, &init_state);
-    {% elif target.target_type == 'event' %}
-    {% if target.event_params is nonempty %}
-    SMEDLValue new_params[{{target.event_params|length}}] = {
-            {% for param in target.event_params %}
-            {% if param.identity %}
-            identities[{{param.index}}],
-            {% else %}
-            params[{{param.index}}],
-            {% endif %}
-            {% endfor %}
-        };
-    {% else %}
-    SMEDLValue *new_params = NULL;
-    {% endif %}
-
-    process_{{target.monitor}}_{{target.event}}(new_identities, new_params, aux);
-    {% endif %}
+{% if target.mon_params is nonempty %}
+SMEDLValue new_identities[{{target.mon_params|length}}] = {
+        {% for param in target.mon_params %}
+        {% if param.index is none %}
+        {SMEDL_NULL},
+        {% elif param.identity %}
+        identities[{{param.index}}],
+        {% else %}
+        params[{{param.index}}],
+        {% endif %}
+        {% endfor %}
+    };
+{% else %}
+SMEDLValue *new_identities = NULL;
+{% endif %}
+{% if target.target_type == 'creation' %}
+{{sys.monitor_decls[target.monitor].spec.name}}State init_state;
+default_{{sys.monitor_decls[target.monitor].spec.name}}_state(&init_state);
+{% for var, param in target.state_vars.items() %}
+{% set param_type =
+    sys.monitor_decls[target.monitor].spec.state_vars[var].type %}
+init_state.{{var}} = {%+ if param.identity -%}
+    identities[{{param.index}}]
+    {%- else -%}
+    params[{{param.index}}]
+    {%- endif -%}
+    .v.
+    {%- if param_type is sameas SmedlType.INT -%}
+        i
+    {%- elif param_type is sameas SmedlType.FLOAT -%}
+        d
+    {%- elif param_type is sameas SmedlType.CHAR -%}
+        c
+    {%- elif param_type is sameas SmedlType.STRING -%}
+        s
+    {%- elif param_type is sameas SmedlType.POINTER -%}
+        p
+    {%- elif param_type is sameas SmedlType.THREAD -%}
+        th
+    {%- elif param_type is sameas SmedlType.OPAQUE -%}
+        o
+    {%- endif %};
+{% endfor %}
+create_{{target.monitor}}_monitor(new_identities, &init_state);
+{%- elif target.target_type == 'event' %}
+{% if target.event_params is nonempty %}
+SMEDLValue new_params[{{target.event_params|length}}] = {
+        {% for param in target.event_params %}
+        {% if param.identity %}
+        identities[{{param.index}}],
+        {% else %}
+        params[{{param.index}}],
+        {% endif %}
+        {% endfor %}
+    };
+{% else %}
+SMEDLValue *new_params = NULL;
+{% endif %}
+process_{{target.monitor}}_{{target.event}}(new_identities, new_params, aux);
+{%- endif %}
 {%- endmacro %}
+{# End of import interface macros ******************************************* #}
 {# Events from target system #}
 {% for target_list in sys.imported_connections.values() %}
 {% for target in target_list if target.monitor in sys.syncsets[syncset] %}
 
 void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
-    {{import_handler(target)}}
+    {{import_handler(target)|indent}}
 
     handle_{{syncset}}_queues();
 }
@@ -315,7 +310,7 @@ void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *p
 {% for target in target_list if target.monitor in sys.syncsets[syncset] %}
 
 void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
-    {{import_handler(target)}}
+    {{import_handler(target)|indent}}
 
     handle_{{syncset}}_queues();
 }
@@ -334,10 +329,10 @@ void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *p
  *   none), another array of SMEDLValue for the source event's parameters, and
  *   a SMEDLAux for passthrough data. */
 {% for decl in mon_decls %}
-{% for target in decl.connections.values() if target.monitor is none %}
+{% for channel in decl.inter_channels(sys.syncsets[syncset]) %}
 
-void callback_{{syncset}}_{{target.channel}}(SMEDLCallback cb_func) {
-    cb_{{target.channel}} = cb_func;
+void callback_{{syncset}}_{{channel}}(SMEDLCallback cb_func) {
+    cb_{{channel}} = cb_func;
 }
 {% endfor %}
 {% endfor %}

@@ -9,7 +9,7 @@ typedef struct Event {
     /* params is an array. Size is known because number of parameters for any
      * specified event is known. */
     SMEDLValue *params;
-    Aux aux;
+    SMEDLAux aux;
     struct Event *next;
 } Event;
 
@@ -27,7 +27,7 @@ typedef struct EventQueue {
  * event - Event ID (from one of the monitors' event enums)
  * params - Array of the event's parameters
  * aux - Aux data to pass through */
-int push_event(EventQueue *q, int event, SMEDLValue *params, Aux aux);
+int push_event(EventQueue *q, int event, SMEDLValue *params, SMEDLAux aux);
 
 /* Remove an event from the queue. Return 1 if successful, 0 if the queue is
  * empty.
@@ -37,6 +37,6 @@ int push_event(EventQueue *q, int event, SMEDLValue *params, Aux aux);
  * event - Pointer to store the event ID at
  * params - Pointer at which to store an array of the event's parameters
  * aux - Pointer to an Aux struct to store the aux data in */
-int pop_event(EventQueue *q, int *event, SMEDLValue **params, Aux *aux);
+int pop_event(EventQueue *q, int *event, SMEDLValue **params, SMEDLAux *aux);
 
 #endif /* MONITOR_H */

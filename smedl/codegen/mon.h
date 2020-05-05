@@ -2,7 +2,7 @@
 #define {{spec.name}}_MON_H
 
 #include "smedl_types.h"
-#include "events.h"
+#include "monitor.h"
 
 /* Internal/exported event enum for action queues */
 typedef enum {

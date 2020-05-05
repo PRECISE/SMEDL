@@ -1,6 +1,8 @@
+#include <stdlib.h>
 #include "smedl_types.h"
 #include "local_wrapper.h"
-#include "{{spec.syncset}}_global_wrapper.h"
+#include "{{mon.syncset}}_global_wrapper.h"
+#include "{{mon.name}}_local_wrapper.h"
 #include "{{spec.name}}_mon.h"
 
 {% if mon.params is nonempty %}
@@ -26,8 +28,7 @@ void init_{{mon.name}}_local_wrapper() {
     {% if mon.params is nonempty %}
     /* Reserved for future use, but no need to actually do anything at this
      * time. Monitor maps are already initialized to NULL by being of static
-     * storage duration (because they are global, not because they are declared
-     * static). */
+     * storage duration. */
     {% else %}
     /* Initialize the singleton */
     monitor = init_{{spec.name}}_monitor(NULL);
@@ -39,7 +40,7 @@ void init_{{mon.name}}_local_wrapper() {
  * wrapper and all the monitors it manages */
 void free_{{mon.name}}_local_wrapper() {
     {% if mon.params is nonempty %}
-    {{mon.name}}Record records;
+    {{mon.name}}Record *records, *next;
     {% for i in range(mon.params|length) %}
 
     {% if loop.last %}
@@ -47,14 +48,13 @@ void free_{{mon.name}}_local_wrapper() {
     {% else %}
     /* Free records and map for monitor_map_{{i}} */
     {% endif %}
-    records = ({{mon.name}}Record *) monitor_map_all(monitor_map_{{i}});
-    {{mon.name}}Record next;
+    records = ({{mon.name}}Record *) monitor_map_all((SMEDLRecordBase *) monitor_map_{{i}});
     while (records != NULL) {
         {% if loop.last %}
         free(records->mon->identities);
         free(records->mon);
         {% endif %}
-        next = ({{mon.name}}Record records->r.next;
+        next = ({{mon.name}}Record *) records->r.next;
         free(records);
         records = next;
     }
@@ -110,19 +110,18 @@ void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, 
     {% if mon.params is nonempty %}
     /* Fetch the monitors to send the event to or do dynamic instantiation if
      * necessary */
-    {{mon.name}}Record records = get_{{mon.name}}_monitors(identities);
+    {{mon.name}}Record *records = get_{{mon.name}}_monitors(identities);
 
     /* Send the event to each monitor */
     while (records != NULL) {
         {{spec.name}}Monitor *mon = records->mon;
         execute_{{spec.name}}_{{event}}(mon, params, aux);
-        records = records->r.next;
+        records = ({{mon.name}}Record *) records->r.next;
     }
     {% else %}
     /* Send event to the singleton monitor */
     execute_{{spec.name}}_{{event}}(monitor, params, aux);
     {% endif %}
-
 }
 {% endfor %}
 {% if mon.params is nonempty %}
@@ -139,7 +138,7 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
     }
     rec->mon = mon;
     rec->r.key = mon->identities[{{i}}];
-    monitor_map_insert(&monitor_map_{{i}}, rec);
+    monitor_map_insert((SMEDLRecordBase **) &monitor_map_{{i}}, (SMEDLRecordBase *) rec);
     {% if not loop.last %}
 
     {% endif %}
@@ -162,8 +161,8 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
     SMEDLRecordBase *candidates = NULL;
     int all_wildcards = 0;
     {% for i in range(mon.params|length) %}
-    {%+ if not loop.last %}} else {%+ endif %}if (identities[i].t != SMEDL_NULL) {
-        candidates = monitor_map_lookup(monitor_map_{{i}}, identities[{{i}}]);
+    {%+ if not loop.first %}} else {%+ endif %}if (identities[{{i}}].t != SMEDL_NULL) {
+        candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_{{i}}, identities[{{i}}]);
     {% if loop.last %}
     } else {
     {% endif %}
@@ -175,12 +174,12 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
     {{mon.name}}Record *result;
     if (all_wildcards) {
         /* Fetch *all* records */
-        result = ({{mon.name}}Record *) monitor_map_all(monitor_map_0);
+        result = ({{mon.name}}Record *) monitor_map_all((SMEDLRecordBase *) monitor_map_0);
     } else {
         /* Filter down to candidates that match the full identity list */
         result = NULL;
         for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
-            if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities)) {
+            if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
                 rec->next = (SMEDLRecordBase *) result;
                 result = ({{mon.name}}Record *) rec;
             }
@@ -215,11 +214,11 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
  * so, zero if not. The identities must be fully specified (no wildcards). */
 int check_{{mon.name}}_monitors(SMEDLValue *identities) {
     /* Fetch monitors with matching first identity */
-    SMEDLRecordBase *candidates = monitor_map_lookup(monitor_map_0, identities[0]);
+    SMEDLRecordBase *candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_0, identities[0]);
 
     /* Check if any of the candidates match the full identity list */
     for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
-        if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities)) {
+        if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
             return 1;
         }
     }
@@ -235,9 +234,9 @@ void remove_{{mon.name}}_monitor(SMEDLValue *identities) {
 
     /* Fetch matching monitors from monitor map {{i}}, then iterate through to
      * find and remove the full match */
-    candidates = monitor_map_lookup(monitor_map_{{i}}, identities[{{i}}]);
+    candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_{{i}}, identities[{{i}}]);
     for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
-        if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities)) {
+        if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
             monitor_map_remove(rec);
             {% if loop.last %}
             /* Free the monitor itself before freeing the last record */

@@ -5,7 +5,7 @@ SMEDL Monitor Generator
 Requirements
 ------------
 
-1. [Python 3.5](https://docs.python.org/3.5/index.html)
+1. [Python >=3.6](https://docs.python.org/3.6/index.html)
 2. [pip](https://pip.pypa.io/en/stable/)
     - [TatSu 4.4.0](https://github.com/neogeny/TatSu)
     - [Jinja2 2.8](http://jinja.pocoo.org/)
@@ -18,7 +18,7 @@ Getting started
 ---------------
 
 A [Python virtual environment](https://docs.python.org/3/library/venv.html)
-including [Python 3.5](https://docs.python.org/3.5/index.html) and all required Python
+including [Python 3.6](https://docs.python.org/3.6/index.html) and all required Python
 packages has been defined to simplify the process of getting started with the
 tool.
 

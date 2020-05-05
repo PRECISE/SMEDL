@@ -48,7 +48,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
  * aux - Extra data to be passed through unchanged */
 {# Events from target system #}
 {% for target_list in sys.imported_connections.values() %} 
-{% for target in target_list if target.monitor in sys.syncsets[syncset] %}
+{%- for target in target_list if target.monitor in sys.syncsets[syncset] %}
 void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 {% endfor %}
@@ -70,32 +70,12 @@ void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *p
  *   unregister a callback. Must accept three parameters: An array of SMEDLValue
  *   for the source monitor's identities (or NULL if the source monitor has
  *   none), another array of SMEDLValue for the source event's parameters, and
- *   a SMEDLAux for passthrough data.
- *
- * TODO Should we create a way to explicitly export events to the target system
- * in the architecture file? This would allow 1) sending events to both a
- * monitor and the target system and 2) Assigning an explicit channel name. The
- * auto-generated channel names are "_<monitor>_<event>". A possible syntax
- * might be like "ch_name: SourceMon.source_event => env;". If we do this, we
- * should likely prohibit connections that go directly from the target system to
- * the target system, as no synchronous set will take ownership of routing it
- * when none of their monitors are involved.
- */
+ *   a SMEDLAux for passthrough data. */
 {% for decl in mon_decls %}
-{% for target in decl.connections.values() if target.monitor is none %}
-void callback_{{syncset}}_{{target.channel}}(SMEDLCallback cb_func);
+{% for channel in decl.inter_channels(sys.syncsets[syncset]) %}
+void callback_{{syncset}}_{{channel}}(SMEDLCallback cb_func);
 {% endfor %}
 {% endfor %}
-
-/* NOTE: The API document calls for a "PEDL" interface in the global wrapper,
- * but I don't recall coming to a definite conclusion on how to address the
- * coexistence of the PEDL interface and synchronous sets. As best I remember,
- * the closest we came was deciding that one synchronous set should be
- * responsible for that, and it should get a dummy synchronous set if not
- * assigned otherwise, but I don't remember specifying how that should fit into
- * the architecture file format. Until that is cleared up, the PEDL interface is
- * on hold.
- */
 
 /******************************************************************************
  * End of External Interface                                                  *

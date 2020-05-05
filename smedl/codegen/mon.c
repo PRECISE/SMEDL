@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "smedl_types.h"
-#include "events.h"
+#include "monitor.h"
 #include "{{spec.name}}_mon.h"
 {% if spec.helpers is nonempty %}
 
@@ -125,7 +125,7 @@ mon->s.{{a.var}}++;
 {%- elif a.action_type == 'decrement' %}
 mon->s.{{a.var}}--;
 {%- elif a.action_type == 'raise' %}
-{ /* Raise {{a.event}} */
+{
     {# This is freed in handle_{{spec.name}}_queue() #}
     SMEDLValue *new_params = malloc(sizeof(SMEDLValue) * {{spec.get_event(a.event)|length}});
     if (new_params == NULL) {
@@ -169,6 +169,10 @@ if (mon->ef.{{scenario.name}}_flag) {
     switch (mon->{{scenario.name}}_state) {
         {% for state in scenario.all_states() if (state, event) in scenario.steps %}
         case STATE_{{spec.name}}_{{scenario.name}}_{{state}}:
+            {# Note: We don't try to do anything special if the condition is 1
+                (like disable the "else" and further "else if"s) because it
+                would complicate the template and the compiler will optimize
+                this for us anyway. #}
             {% for condition, dest, actions in scenario.steps[(state, event)] %}
             {%+ if not loop.first %}} else {%+ endif %}if ({{expression(condition)}}) {
                 {% for a in actions %}
@@ -195,10 +199,12 @@ if (mon->ef.{{scenario.name}}_flag) {
         default:
             /* XXX Do something here: Scenario handles this event but not
              * from this state */
+            ;
     }
     mon->ef.{{scenario.name}}_flag = 1;
 }
-{% if not loop.last %}
+{%- if not loop.last %}
+
 
 {% endif %}
 {% endfor %}
@@ -210,8 +216,10 @@ if (mon->ef.{{scenario.name}}_flag) {
 {% for event in spec.imported_events.keys() %}
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
+    {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
 
+    {% endif %}
     /* Finish the macro-step */
     handle_{{spec.name}}_queue(mon);
 }
@@ -223,7 +231,9 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 {% for event in spec.internal_events.keys() %}
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
+    {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
+    {% endif %}
 }
 
 void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
@@ -239,8 +249,10 @@ void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
 {% for event in spec.exported_events.keys() %}
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
+    {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
 
+    {% endif %}
     /* Export the event */
     export_{{spec.name}}_{{event}}(mon, params, aux);
 }
@@ -315,8 +327,7 @@ void default_{{spec.name}}_state({{spec.name}}State *state) {
     {% endfor %}
 
     /* Initialize event queue */
-    mon->event_queue.head = NULL;
-    mon->event_queue.tail = NULL;
+    mon->event_queue = (EventQueue){0};
 
     return mon;
 }

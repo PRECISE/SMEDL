@@ -31,7 +31,7 @@ typedef struct GlobalEventQueue {
  * params - Array of the event's parameters
  * aux - Aux data to pass through */
 int push_global_event(GlobalEventQueue *q, int mon, SMEDLValue *ids,
-        int event, SMEDLValue *params, Aux aux);
+        int event, SMEDLValue *params, SMEDLAux aux);
 
 /* Remove an event from the queue. Return 1 if successful, 0 if the queue is
  * empty.
@@ -44,6 +44,6 @@ int push_global_event(GlobalEventQueue *q, int mon, SMEDLValue *ids,
  * params - Pointer at which to store an array of the event's parameters
  * aux - Pointer to an Aux struct to store the aux data in */
 int pop_global_event(GlobalEventQueue *q, int *mon, SMEDLValue **ids,
-        int *event, SMEDLValue **params, Aux *aux);
+        int *event, SMEDLValue **params, SMEDLAux *aux);
 
 #endif /* GLOBAL_WRAPPER_H */

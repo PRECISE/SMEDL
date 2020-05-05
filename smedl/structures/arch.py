@@ -26,6 +26,14 @@ class Parameter(object):
         self.identity = identity
         self.index = index
 
+    def __repr__(self):
+        if self.index is None:
+            return '*'
+        elif self.identity:
+            return '#' + str(self.index)
+        else:
+            return '$' + str(self.index)
+
 class Target(object):
     """The target of a connection, such as an imported event or monitor
     creation. Note that this is not the same as the "target system," which is
@@ -79,6 +87,12 @@ class TargetEvent(Target):
             return False
         return super().same_as(other) and self.event == other.event
 
+    def __repr__(self):
+        mon_param_str = ', '.join([str(p) for p in self.mon_params])
+        ev_param_str = ', '.join([str(p) for p in self.event_params])
+        return ('TargetEvent:' + self.monitor + '[' + mon_param_str + '].' +
+                self.event + '(' + ev_param_str + ')')
+
 class TargetCreation(Target):
     """A monitor creation target. Note that this is not the same as the "target
     system," which is the system being monitored."""
@@ -104,6 +118,13 @@ class TargetCreation(Target):
             return False
         return super().same_as(other)
 
+    def __repr__(self):
+        mon_param_str = ', '.join([str(p) for p in self.mon_params])
+        state_var_str = ', '.join([k + '=' + str(v)
+                for k, v in self.state_vars.values()])
+        return ('TargetCreation:' + self.monitor + '(' + mon_param_str +
+                ', ' + state_var_str + ')')
+
 class TargetExport(Target):
     """An event export target, for events that are exported out of a synchronous
     set back to the target system. Note that "export target" and "target system"
@@ -112,6 +133,12 @@ class TargetExport(Target):
     def __init__(self):
         """Initialize this export target."""
         super().__init__('export', None, [])
+    
+    def __repr__(self):
+        # self.monitor should be None and self.mon_params empty, but printing
+        # them will confirm
+        mon_param_str = ', '.join([str(p) for p in self.mon_params])
+        return ('TargetExport:' + str(self.monitor) + '(' + mon_param_str + ')')
 
 class DeclaredMonitor(object):
     """A monitor delcaration from the architecture file"""
@@ -149,6 +176,7 @@ class DeclaredMonitor(object):
                 export_target.set_channel("_{}_{}".format(self.name, event))
                 self.connections[event] = [export_target]
 
+    #TODO Needed after issue #29 is implemented?
     def is_event_intra(self, event, syncset):
         """Check if the named event has a connection that is destined within the
         synchronous set and return True or False
@@ -164,6 +192,7 @@ class DeclaredMonitor(object):
             return False
         return False
 
+    #TODO Needed after issue #29 is implemented?
     def is_event_inter(self, event, syncset):
         """Check if the named event has a connection that is destined outside
         the synchronous set and return True or False
@@ -179,6 +208,7 @@ class DeclaredMonitor(object):
             return False
         return False
 
+    #TODO Needed after issue #29 is implemented?
     def has_intra_events(self, syncset):
         """Check if the monitor has any connections that are destined within the
         synchronous set and return True or False
@@ -191,6 +221,7 @@ class DeclaredMonitor(object):
                     return True
         return False
 
+    #TODO Needed after issue #29 is implemented?
     def has_inter_events(self, syncset):
         """Check if the monitor has any connections that are destined outside
         the synchronous set and return True or False
@@ -202,6 +233,32 @@ class DeclaredMonitor(object):
                 if target.monitor not in syncset:
                     return True
         return False
+
+    def intra_channels(self, syncset):
+        """Return a list of channel names that are destined to monitors inside
+        the synchronous set
+
+        syncset - List of monitor names in the synchronous set"""
+        results = []
+        for target_list in self.connections.values():
+            for target in target_list:
+                if target.monitor in syncset:
+                    results.append(target.channel)
+                    break
+        return results
+
+    def inter_channels(self, syncset):
+        """Return a list of channel names that are destined to monitors outside
+        the synchronous set
+
+        syncset - List of monitor names in the synchronous set"""
+        results = []
+        for target_list in self.connections.values():
+            for target in target_list:
+                if target.monitor not in syncset:
+                    results.append(target.channel)
+                    break
+        return results
 
     def __repr__(self):
         return "monitor {}({}) as {}".format(

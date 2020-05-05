@@ -122,7 +122,7 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     if (node->right->bal > 0) {
                         /* Right-right case */
                         node->bal = 0;
-                        node = left_rotate(&node);
+                        left_rotate(&node);
                         node->bal = 0;
                     } else {
                         /* Right-left case */
@@ -175,7 +175,7 @@ static void swap_records(SMEDLRecordBase *a, SMEDLRecordBase *b) {
     /* Put b in a's spot */
     if (a->parent != NULL && a->parent->left == a) {
         a->parent->left = b;
-    } elif (a->parent != NULL) {
+    } else if (a->parent != NULL) {
         a->parent->right = b;
     }
     if (a->left != NULL) {
@@ -194,7 +194,7 @@ static void swap_records(SMEDLRecordBase *a, SMEDLRecordBase *b) {
     /* Put a in b's spot */
     if (b->parent != NULL && b->parent->left == b) {
         b->parent->left = a;
-    } elif (b->parent != NULL) {
+    } else if (b->parent != NULL) {
         b->parent->right = a;
     }
     if (b->left != NULL) {
@@ -291,7 +291,7 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                     /* Record is root. Make child new root. */
                     rec->right->parent = NULL;
                     return rec->right;
-                if (node->left = rec) {
+                } else if (node->left = rec) {
                     node->left = rec->right;
                     rec->right->parent = node;
                     bal_change = 1;
@@ -309,7 +309,7 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                     /* Record is root. Make child new root. */
                     rec->left->parent = NULL;
                     return rec->left;
-                if (node->left = rec) {
+                } else if (node->left = rec) {
                     node->left = rec->left;
                     rec->left->parent = node;
                     bal_change = 1;
@@ -321,8 +321,8 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
             } else {
                 /* Record has two children. Find the record with the next
                  * highest key and swap with it. Then try again. */
-                for (SMEDLRecordBase *successor = rec->right;
-                        successor->left != NULL;
+                SMEDLRecordBase *successor;
+                for (successor = rec->right; successor->left != NULL;
                         successor = successor->left);
                 swap_records(rec, successor);
             }
@@ -383,12 +383,12 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 if (node->right->bal == 0) {
                     /* Right-right case */
                     node->bal = 1;
-                    node = left_rotate(&node);
+                    left_rotate(&node);
                     node->bal = -1;
                 } else if (node->right->bal > 0) {
                     /* Right-right case */
                     node->bal = 0;
-                    node = left_rotate(&node);
+                    left_rotate(&node);
                     node->bal = 0;
                 } else {
                     /* Right-left case */
@@ -426,7 +426,7 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
  * key - Key to lookup records for
  *
  * Returns a linked list of matching records (linked with ->equal member) */
-SMEDLRecordBase * monitor_map_lookup(SMEDLRecordBase *root, SMEDLValue *key) {
+SMEDLRecordBase * monitor_map_lookup(SMEDLRecordBase *root, SMEDLValue key) {
     while (root != NULL) {
         int cmp = smedl_compare(key, root->key);
 
@@ -446,12 +446,6 @@ SMEDLRecordBase * monitor_map_lookup(SMEDLRecordBase *root, SMEDLValue *key) {
     return NULL;
 }
 
-static void link_all(SMEDLRecordBase *root, SMEDLRecordBase *tail) {
-    tail->next = root;
-    if (root->left != NULL) {
-        tail
-}
-
 /* Fetch all monitors
  *
  * Return a linked list of all monitors in the map (linked with ->next
@@ -468,7 +462,7 @@ SMEDLRecordBase * monitor_map_all(SMEDLRecordBase *root) {
     SMEDLRecordBase *head = root;
     for (SMEDLRecordBase *curr = root; curr != NULL; curr = curr->next) {
         /* Add equals to the head */
-        for (SMEDLRecordBase *eq = curr->eq; eq != NULL; eq = eq->equal) {
+        for (SMEDLRecordBase *eq = curr->equal; eq != NULL; eq = eq->equal) {
             eq->next = head;
             head = eq;
         }

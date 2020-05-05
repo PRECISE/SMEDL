@@ -110,6 +110,6 @@ typedef struct {
 
 /* A callback function pointer for receiving exported events from monitors and
  * global wrappers */
-typdef void (*SMEDLCallback)(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+typedef void (*SMEDLCallback)(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
 
 #endif /* SMEDL_TYPES_H */
