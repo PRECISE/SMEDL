@@ -36,16 +36,17 @@ class CodeGenerator(object):
         # Set up some custom tests for convenience in templates
         self.env.tests['nonempty'] = lambda x: len(x) > 0
 
-    def _write_static_files(self):
-        """Write the static code to the output directory"""
-        from . import static
-        files = resources.contents(static)
+    def _write_static_files(self, module):
+        """Write the static code to the output directory. Must be provided with
+        a module that contains nothing but the static resources and __init__.py
+        """
+        files = resources.contents(module)
         for f in files:
             if f == '__init__.py':
                 continue
-            elif resources.is_resource(static, f):
+            elif resources.is_resource(module, f):
                 out_path = os.path.join(self.dest_dir, f)
-                text = resources.read_text(static, f)
+                text = resources.read_text(module, f)
                 with open(out_path, "w") as outfile:
                     outfile.write(text)
 
@@ -65,7 +66,19 @@ class CodeGenerator(object):
 
     def _write_rabbitmq(self, system, syncset_name):
         """Write the RabbitMQ adapter"""
-        pass #TODO
+        # Write static code
+        from .static import rabbitmq
+        self._write_static_files(rabbitmq)
+
+        # Write RabbitMQ adapter
+        values = {
+                "sys": system,
+                "syncset": syncset_name,
+                "mon_decls": [system.monitor_decls[mon] for mon in
+                        system.syncsets[syncset_name]]
+            }
+        self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
+        self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
 
     def _write_wrappers(self, system, syncset_name):
         """Write the global wrapper and local wrappers for one synchronous set
@@ -126,7 +139,8 @@ class CodeGenerator(object):
         Parameters:
         monitor - The MonitorSpec whose code should be generated
         """
-        self._write_static_files()
+        from . import static
+        self._write_static_files(static)
         self._write_monitor(monitor)
 
     def write_all(self, system):
@@ -135,7 +149,8 @@ class CodeGenerator(object):
         Parameters:
         system - A MonitorSystem for which code should be generated
         """
-        self._write_static_files()
+        from . import static
+        self._write_static_files(static)
 
         # Collect the monitor specs to generate
         mon_specs = dict()

@@ -235,8 +235,8 @@ class DeclaredMonitor(object):
         return False
 
     def intra_channels(self, syncset):
-        """Return a list of channel names that are destined to monitors inside
-        the synchronous set
+        """Return a list of channel names from this monitor that are destined
+        to monitors inside the synchronous set
 
         syncset - List of monitor names in the synchronous set"""
         results = []
@@ -248,8 +248,8 @@ class DeclaredMonitor(object):
         return results
 
     def inter_channels(self, syncset):
-        """Return a list of channel names that are destined to monitors outside
-        the synchronous set
+        """Return a list of channel names from this monitor that are destined
+        to monitors outside the synchronous set
 
         syncset - List of monitor names in the synchronous set"""
         results = []
@@ -379,3 +379,31 @@ class MonitorSystem(object):
         decls = [self.monitor_decls[mon] for mon in self.syncsets[syncset]]
         spec_names = set([decl.spec.name for decl in decls])
         return list(spec_names)
+
+    def imported_channels(self, syncset):
+        """Get all the channels imported to the given synchronous set as a dict
+        where keys are the channel names and values are lists of target"""
+        result = dict()
+
+        # Sort through the channels from the target system
+        for channel, targets in self.imported_connections.items():
+            target_list = []
+            for target in targets:
+                if target.monitor in self.syncsets[syncset]:
+                    target_list.append(target)
+            if len(target_list) > 0:
+                result[channel] = target_list
+
+        # Sort through channels from monitors
+        for decl in self.monitor_decls.values():
+            if decl.name in self.syncsets[syncset]:
+                continue
+            for targets in decl.connections.values():
+                target_list = []
+                for target in targets:
+                    if target.monitor in self.syncsets[syncset]:
+                        target_list.append(target)
+                if len(target_list) > 0:
+                    result[target_list[0].channel] = target_list
+
+        return result

@@ -46,19 +46,8 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
  *   to NULL.
  * params - An array of the source event's parameters
  * aux - Extra data to be passed through unchanged */
-{# Events from target system #}
-{% for target_list in sys.imported_connections.values() %} 
-{%- for target in target_list if target.monitor in sys.syncsets[syncset] %}
-void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
-{% endfor %}
-{% endfor %}
-{# Events from other synchronous sets #}
-{% for decl in sys.monitor_decls.values() if decl.syncset != syncset %}
-{% for target_list in decl.connections.values() %}
-{% for target in target_list if target.monitor in sys.syncsets[syncset] %}
-void import_{{syncset}}_{{target.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
-{% endfor %}
-{% endfor %}
+{% for channel_name in sys.imported_channels(syncset).keys() %}
+void import_{{syncset}}_{{channel_name}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 
 /* Global wrapper callback interface - Used to register callback functions to be
