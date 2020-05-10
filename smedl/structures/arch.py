@@ -256,32 +256,6 @@ class DeclaredMonitor(object):
             return False
         return False
 
-    #TODO Needed after issue #29 is implemented?
-    def has_intra_events(self, syncset):
-        """Check if the monitor has any connections that are destined within the
-        synchronous set and return True or False
-
-        syncset - List of monitor names in the synchronous set
-        """
-        for target_list in self.connections.values():
-            for target in target_list:
-                if target.monitor in syncset:
-                    return True
-        return False
-
-    #TODO Needed after issue #29 is implemented?
-    def has_inter_events(self, syncset):
-        """Check if the monitor has any connections that are destined outside
-        the synchronous set and return True or False
-
-        syncset - List of monitor names in the synchronous set
-        """
-        for target_list in self.connections.values():
-            for target in target_list:
-                if target.monitor not in syncset:
-                    return True
-        return False
-
     def intra_channels(self, syncset):
         """Return a list of channel names from this monitor that are destined
         to monitors inside the synchronous set

@@ -72,8 +72,14 @@ void callback_{{syncset}}_{{channel}}(SMEDLCallback cb_func);
 
 typedef enum {
     {% for decl in mon_decls %}
-    MONITOR_{{syncset}}_{{decl.name}},
+    {% for channel in decl.channels() %}
+    CHANNEL_{{syncset}}_{{channel}},
     {% endfor %}
-} {{syncset}}MonitorId;
+    {% endfor %}
+} {{syncset}}ChannelId;
+
+/* Intra routing function - Called by import interface functions and intra queue
+ * processing function to route events to the local wrappers */
+void route_{{syncset}}_event({{syncset}}ChannelId channel, SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
 
 #endif /* {{syncset}}_GLOBAL_WRAPPER_H */

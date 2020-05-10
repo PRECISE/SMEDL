@@ -7,23 +7,21 @@
  *
  * Parameters:
  * q - Pointer to the EventQueue to push to
- * mon - Monitor ID (from the global wrapper's monitor enum)
+ * channel - Channel ID (from the global wrapper's channel enum)
  * ids - Array of the monitor's identities
- * event - Event ID (from one of the monitors' event enums)
  * params - Array of the event's parameters
  * aux - Aux data to pass through */
-int push_global_event(GlobalEventQueue *q, int mon, SMEDLValue *ids,
-        int event, SMEDLValue *params, SMEDLAux aux) {
+int push_global_event(GlobalEventQueue *q, unsigned int channel,
+        SMEDLValue *ids, SMEDLValue *params, SMEDLAux aux) {
     /* Create the GlobalEvent */
     GlobalEvent *ge = malloc(sizeof(GlobalEvent));
     if (ge == NULL) {
         return 0;
     }
-    ge->e.event = event;
-    ge->e.params = params;
-    ge->e.aux = aux;
-    ge->mon = mon;
+    ge->channel = channel;
     ge->ids = ids;
+    ge->params = params;
+    ge->aux = aux;
     ge->next = NULL;
 
     /* Add it to the queue */
@@ -41,13 +39,12 @@ int push_global_event(GlobalEventQueue *q, int mon, SMEDLValue *ids,
  *
  * Parameters:
  * q - Pointer to the EventQueue to pop from
- * mon - Pointer to store the monitor ID at
+ * channel - Pointer to store the channel ID at
  * ids - Pointer at which to store an array of the monitor identities
- * event - Pointer to store the event ID at
  * params - Pointer at which to store an array of the event's parameters
  * aux - Pointer to an Aux struct to store the aux data in */
-int pop_global_event(GlobalEventQueue *q, int *mon, SMEDLValue **ids,
-        int *event, SMEDLValue **params, SMEDLAux *aux) {
+int pop_global_event(GlobalEventQueue *q, unsigned int *channel,
+        SMEDLValue **ids, SMEDLValue **params, SMEDLAux *aux) {
     /* Check if queue is empty */
     if (q->head == NULL) {
         return 0;
@@ -61,11 +58,10 @@ int pop_global_event(GlobalEventQueue *q, int *mon, SMEDLValue **ids,
     }
 
     /* Store the values in the pointer params */
-    *event = ge->e.event;
-    *params = ge->e.params;
-    *aux = ge->e.aux;
-    *mon = ge->mon;
+    *channel = ge->channel;
     *ids = ge->ids;
+    *params = ge->params;
+    *aux = ge->aux;
 
     free(ge);
     return 1;
