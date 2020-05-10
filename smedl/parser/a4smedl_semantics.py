@@ -35,7 +35,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
 
     def declaration(self, ast):
         """Set the monitor system name"""
-        self.system.assign_name(ast)
+        self.system.name = ast
         return ast
 
     def import_stmt(self, ast):

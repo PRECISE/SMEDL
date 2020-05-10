@@ -2,6 +2,7 @@
 Structures and types for monitoring system architectures (.a4smedl files)
 """
 
+import types
 from smedl.parser.exceptions import (NameCollision, NameNotDefined,
         AlreadyInSyncset)
 
@@ -23,16 +24,28 @@ class Parameter(object):
         If this is to be a wildcard parameter for a monitor, index should be
         None.
         """
-        self.identity = identity
-        self.index = index
+        self._identity = identity
+        self._index = index
+
+    @property
+    def identity(self):
+        """Return True if this is a monitor identity ("#x"), False if this is
+        an event parameter ("$x")."""
+        return self._identity
+
+    @property
+    def index(self):
+        """Return None if this is a wildcard parameter ("*"). Otherwise, return
+        the index of this parameter (the "x" in "$x" or "#x")."""
+        return self._index
 
     def __repr__(self):
-        if self.index is None:
+        if self._index is None:
             return '*'
-        elif self.identity:
-            return '#' + str(self.index)
+        elif self._identity:
+            return '#' + str(self._index)
         else:
-            return '$' + str(self.index)
+            return '$' + str(self._index)
 
 class Target(object):
     """The target of a connection, such as an imported event or monitor
@@ -140,29 +153,64 @@ class TargetExport(Target):
         mon_param_str = ', '.join([str(p) for p in self.mon_params])
         return ('TargetExport:' + str(self.monitor) + '(' + mon_param_str + ')')
 
+class SynchronousSet(set):
+    """A subclass of set customized to represent a Synchronous Set"""
+    def __init__(self, name, *args, **kwargs):
+        """Create a new SynchronousSet"""
+        self._name = name
+        super().__init__(*args, **kwargs)
+
+    @property
+    def name(self):
+        """Get the name of the synchronous set"""
+        return self._name
+
 class DeclaredMonitor(object):
     """A monitor delcaration from the architecture file"""
     def __init__(self, name, spec, params):
         # Name of the monitor given in the declaration (meaning the "as" name,
         # if provided)
-        self.name = name
+        self._name = name
         # The monitor.MonitorSpec to use for this monitor
-        self.spec = spec
-        # List of the parameter types to use for this monitor (as SmedlTypes)
-        self.params = params
-        # Name of the synchronous set this monitor belongs to
-        self.syncset = None
+        self._spec = spec
+        # Tuple of the parameter types to use for this monitor (as SmedlTypes)
+        self._params = tuple(params)
+        # Reference to this monitor's synchronous set
+        self._syncset = None
         # Connections that originate from this monitor. Keys are source event
         # names. Values are lists of Target.
         self.connections = dict()
 
+    @property
+    def name(self):
+        """Get the given name ("as" name) of this monitor"""
+        return self._name
+
+    @property
+    def spec(self):
+        """Get the MonitorSpec for this monitor"""
+        return self._spec
+
+    @property
+    def params(self):
+        """Get a tuple of the identity params for this monitor (as
+        SmedlTypes)"""
+        return self._params
+
+    @property
+    def syncset(self):
+        """Get the SynchronousSet that this monitor belongs to"""
+        return self._syncset
+
     def assign_syncset(self, syncset):
         """Assign the monitor to a synchronous set. If it is already in one,
         raise AlreadyInSyncset"""
-        if self.syncset is not None:
+        if self._syncset is not None:
             raise AlreadyInSyncset("Monitor {} cannot be added to a synchronous"
                     " set twice.".format(self.name))
-        self.syncset = syncset
+        self._syncset = syncset
+
+    #TODO Refactor below here
 
     def create_export_connections(self):
         """Exported events that are not explicitly the source of a connection
@@ -260,6 +308,13 @@ class DeclaredMonitor(object):
                     break
         return results
 
+    def channels(self):
+        """Return a set of channel names where this monitor is the source"""
+        results = set()
+        for target_list in self.connections.values():
+            for target in target_list:
+                results.add(target.channel)
+
     def __repr__(self):
         return "monitor {}({}) as {}".format(
                 self.spec,
@@ -269,13 +324,15 @@ class DeclaredMonitor(object):
 class MonitorSystem(object):
     """A monitor system as specified by an architecture file (a4smedl file)"""
     def __init__(self):
+        self._name = None
+
         # Monitor declarations. Keys are the "as X" names of the monitors,
         # values are DeclaredMonitors
-        self.monitor_decls = dict()
+        self._monitor_decls = dict()
 
-        # Synchronous sets. Keys are names of synchronous sets. Values are sets
-        # of monitor names.
-        self.syncsets = dict()
+        # Synchronous sets. Keys are names of synchronous sets. Values are
+        # SynchronousSets (named sets of DeclaredMonitors)
+        self._syncsets = dict()
 
         # Monitor to monitor connections are in DeclaredMonitor.connections.
         #   This allows the code generator to organize nested switches with
@@ -289,11 +346,74 @@ class MonitorSystem(object):
         #   the architecture file. Such could become either a new subclass of
         #   Target or simply a TargetEvent with the destination monitor set to
         #   None.
-        self.imported_connections = dict()
+        self._imported_connections = dict()
 
-    def assign_name(self, name):
-        """Assign a name to the monitoring system"""
-        self.name = name
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        if self._name is None:
+            self._name = value
+        else:
+            raise NameCollision("Monitoring system already named")
+
+    @property
+    def monitor_decls(self):
+        return types.MappingProxyType(self._monitor_decls)
+
+    @property
+    def syncsets(self):
+        return types.MappingProxyType(self._syncsets)
+
+    def add_syncset(self, name, monitors):
+        """Add a synchronous set to the system.
+
+        Parameters:
+        name - Name of the synchronous set
+        monitors - A list of monitor names to be added to the synchronous set.
+          Monitors must already be declared and must not already be in a
+          synchronous set.
+        """
+        # Ensure the synchronous set does not already exist
+        if name in self._syncsets:
+            raise NameCollision("Synchronous set {} is already defined".format(
+                name))
+
+        # Create the SynchronousSet
+        syncset = SynchronousSet(name)
+
+        # Iterate through the monitors, check if they exist, check if they are
+        # already in a synchronous set, and assign them to the new synchronous
+        # set
+        for monitor in monitors:
+            try:
+                self._monitor_decls[monitor].assign_syncset(syncset)
+            except KeyError:
+                raise NameNotDefined("Monitor {} has not been declared".format(
+                    monitor))
+            syncset.add(self)
+
+        # Add the syncset to the MonitorSystem
+        self._syncsets[name] = syncset
+
+    def _unused_syncset(self, monitor_name):
+        """Find an unused synchronous set name for the named monitor. If the
+        monitor name iself is not already a synchronous set, use that.
+        Otherwise, append a number."""
+        syncset = monitor_name
+        i = 1
+        while syncset in self._syncsets:
+            i += 1
+            syncset = monitor_name + str(i)
+        if syncset != monitor_name:
+            print("Warning: {} is already the name of a synchronous set. "
+                    "Monitor {} will be in synchronous set {}".format(
+                    monitor_name, syncset))
+        return syncset
+
+    #TODO Refactor below here
 
     def add_monitor_decl(self, name, target, params):
         """Add a monitor declaration to the system.
@@ -312,48 +432,6 @@ class MonitorSystem(object):
 
         # Create and store the DeclaredMonitor
         self.monitor_decls[name] = DeclaredMonitor(name, target, params)
-
-    def add_syncset(self, name, monitors):
-        """Add a synchronous set to the system.
-
-        Parameters:
-        name - Name of the synchronous set
-        monitors - A list of monitor names to be added to the synchronous set.
-          Monitors must already be declared and must not already be in a
-          synchronous set.
-        """
-        # Ensure the synchronous set does not already exist
-        if name in self.syncsets:
-            raise NameCollision("Synchronous set {} is already defined".format(
-                name))
-
-        # Iterate through the monitors, check if they exist, check if they are
-        # already in a synchronous set, and assign them to the new synchronous
-        # set
-        for monitor in monitors:
-            try:
-                self.monitor_decls[monitor].assign_syncset(name)
-            except KeyError:
-                raise NameNotDefined("Monitor {} has not been declared".format(
-                    monitor))
-
-        # Add the syncset to the MonitorSystem
-        self.syncsets[name] = set(monitors)
-
-    def _unused_syncset(self, monitor_name):
-        """Find an unused synchronous set name for the named monitor. If the
-        monitor name iself is not already a synchronous set, use that.
-        Otherwise, append a number."""
-        syncset = monitor_name
-        i = 1
-        while syncset in self.syncsets:
-            i += 1
-            syncset = monitor_name + str(i)
-        if syncset != monitor_name:
-            print("Warning: {} is already the name of a synchronous set. "
-                    "Monitor {} will be in synchronous set {}".format(
-                    monitor_name, syncset))
-        return syncset
 
     def assign_singleton_syncsets(self):
         """Assign any monitors that are not already in a synchronous set to
