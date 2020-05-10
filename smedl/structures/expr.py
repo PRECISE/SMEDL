@@ -69,10 +69,22 @@ class SmedlType(Enum):
 class Expression(object):
     """A SMEDL expression"""
     def __init__(self, type_, expr_type):
-        self.type = type_
-        self.parens = False
+        self._type = type_
+        self._parens = False
         # Needed by Jinja
-        self.expr_type = expr_type
+        self._expr_type = expr_type
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def parens(self):
+        return self._parens
+
+    @property
+    def expr_type(self):
+        return self._expr_type
 
     def parenthesize(self):
         """In child classes that are not atoms, parenthesize the expression. But
@@ -83,17 +95,17 @@ class Expression(object):
         """Check that the expression type is compatible with the given unary
         operation ("+", "-", "!", or "~"). Return the resulting type if so,
         raise TypeMismatch if not"""
-        if op in ["+", "-"] and self.type in [
+        if op in ["+", "-"] and self._type in [
                 SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR, None]:
             return self.type
-        elif op == "~" and self.type in [SmedlType.INT, SmedlType.CHAR, None]:
+        elif op == "~" and self._type in [SmedlType.INT, SmedlType.CHAR, None]:
             return self.type
-        elif op == "!" and self.type in [
+        elif op == "!" and self._type in [
                 SmedlType.INT, SmedlType.CHAR, SmedlType.POINTER, None]:
-            return self.type
+            return self._type
         else:
             raise TypeMismatch("Cannot use {} on expression of type {}".format(
-                op, self.type))
+                op, self._type))
 
     def _arithmetic_type_check(self, other):
         """Check that the type of this expression is compatible with the other
@@ -101,24 +113,24 @@ class Expression(object):
         the left operand and the "other" is the right operand. Return the
         resulting type, or raise TypeMismatch if not compatible."""
         # If one or both operands are float and all are numbers, return float
-        if (self.type == SmedlType.FLOAT and other.type in [
+        if (self._type == SmedlType.FLOAT and other._type in [
                 SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR]) or (
-                other.type == SmedlType.FLOAT and self.type in [
+                other._type == SmedlType.FLOAT and self._type in [
                 SmedlType.INT, SmedlType.CHAR]):
             return SmedlType.FLOAT
         # If one or both operands are None and the rest are numbers, return None
-        elif (self.type is None and other.type in [
+        elif (self._type is None and other._type in [
                 SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR, None]) or (
-                other.type is None and self.type in [
+                other._type is None and self._type in [
                 SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR]):
             return None
         # If one or both operands are int and all are int or char, return int
-        elif (self.type == SmedlType.INT and other.type in [
+        elif (self._type == SmedlType.INT and other._type in [
                 SmedlType.INT, SmedlType.CHAR]) or (
-                other.type == SmedlType.INT and self.type == SmedlType.CHAR):
+                other._type == SmedlType.INT and self._type == SmedlType.CHAR):
             return SmedlType.INT
         # If both operands are char, return char
-        elif self.type == SmedlType.CHAR and other.type == SmedlType.CHAR:
+        elif self._type == SmedlType.CHAR and other._type == SmedlType.CHAR:
             return SmedlType.CHAR
         # Otherwise, type mismatch
         else:
@@ -130,18 +142,18 @@ class Expression(object):
         the left operand and the "other" is the right operand. Return the
         resulting type, or raise TypeMismatch if not compatible."""
         # If one/both operands are None and the rest are int/char, return None
-        if (self.type is None and other.type in [
+        if (self._type is None and other._type in [
                 SmedlType.INT, SmedlType.CHAR, None]) or (
-                other.type is None and self.type in [
+                other._type is None and self._type in [
                 SmedlType.INT, SmedlType.CHAR]):
             return None
         # If one or both operands are int and all are int or char, return int
-        elif (self.type == SmedlType.INT and other.type in [
+        elif (self._type == SmedlType.INT and other._type in [
                 SmedlType.INT, SmedlType.CHAR]) or (
-                other.type == SmedlType.INT and self.type == SmedlType.CHAR):
+                other._type == SmedlType.INT and self._type == SmedlType.CHAR):
             return SmedlType.INT
         # If both operands are char, return char
-        elif self.type == SmedlType.CHAR and other.type == SmedlType.CHAR:
+        elif self._type == SmedlType.CHAR and other._type == SmedlType.CHAR:
             return SmedlType.CHAR
         # Otherwise, type mismatch
         else:
@@ -155,8 +167,8 @@ class Expression(object):
         the left operand and the "other" is the right operand. Return the
         resulting type, or raise TypeMismatch if not compatible."""
         # If both operands are numbers or None, return int
-        if (self.type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR, None]
-                and other.type in [SmedlType.INT, SmedlType.FLOAT,
+        if (self._type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR, None]
+                and other._type in [SmedlType.INT, SmedlType.FLOAT,
                 SmedlType.CHAR, None]):
             return SmedlType.INT
         # Otherwise, type mismatch
@@ -169,20 +181,21 @@ class Expression(object):
         the left operand and the "other" is the right operand. Return the
         resulting type, or raise TypeMismatch if not compatible."""
         # If either operand is None, other operand can be anything. Return int
-        if self.type is None or other.type is None:
+        if self._type is None or other._type is None:
             return SmedlType.INT
         # If both operands are numbers, return int
-        elif (self.type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR] and
-                other.type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR]):
+        elif (self._type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR]
+                and other._type in [
+                SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR]):
             return SmedlType.INT
         # If either operand is "null", the other can be "null" or pointer.
         # Return int
-        elif (self.type == "null" and other.type in [
+        elif (self._type == "null" and other._type in [
                 SmedlType.POINTER, "null"]) or (
-                other.type == "null" and self.type == SmedlType.POINTER):
+                other._type == "null" and self._type == SmedlType.POINTER):
             return SmedlType.INT
         # If both operands are the same type, return int
-        elif self.type == other.type:
+        elif self._type == other._type:
             return SmedlType.INT
         # Otherwise, type mismatch
         else:
@@ -220,17 +233,17 @@ class Expression(object):
         event parameters, etc. If compatible, nothing happens. If not, raise
         TypeMismatch."""
         # None is compatible with all types
-        if self.type is None:
+        if self._type is None:
             return
         # "null" is compatible with POINTER
-        elif self.type == "null" and dest_type == SmedlType.POINTER:
+        elif self._type == "null" and dest_type == SmedlType.POINTER:
             return
         # Otherwise, determine according to SmedlType.convertible_to()
-        elif self.type.convertible_to(dest_type):
+        elif self._type.convertible_to(dest_type):
             return
         # If none of the other cases matched, we have a type mismatch
         else:
-            raise TypeMismatch("{} cannot be used as a {}".format(self.type,
+            raise TypeMismatch("{} cannot be used as a {}".format(self._type,
                 dest_type))
 
 class StateVar(Expression):
@@ -243,11 +256,14 @@ class StateVar(Expression):
         name - Name of the state variable
         type_ - The SMEDL type of the state variable
         """
-        self.name = name
-        self.type = type_
+        self._name = name
+
+    @property
+    def name(self):
+        return self._name
 
     def __repr__(self):
-        return "StateVar:" + self.name
+        return "StateVar:" + self._name
 
 class EventParam(Expression):
     """An event parameter usage. Event parameters are referred to internally by
@@ -261,10 +277,14 @@ class EventParam(Expression):
         type_ - The SMEDL type of the parameter.
         """
         super().__init__(type_, 'param')
-        self.idx = idx
+        self._idx = idx
+
+    @property
+    def idx(self):
+        return self._idx
 
     def __repr__(self):
-        return "EvParam:" + str(self.idx)
+        return "EvParam:" + str(self._idx)
 
 class Literal(Expression):
     """A literal in an expression"""
@@ -277,10 +297,14 @@ class Literal(Expression):
         type_ - The SMEDL type of the literal
         """
         super().__init__(type_, 'literal')
-        self.string = string
+        self._string = string
+
+    @property
+    def string(self):
+        return self._string
 
     def __repr__(self):
-        return self.string
+        return self._string
 
 class HelperCall(Expression):
     """A call to a helper function in an expression"""
@@ -289,15 +313,23 @@ class HelperCall(Expression):
 
         Parameters:
         name - The name of the helper function
-        params - A list of Expressions to be passed as parameters to the helper
-          function
+        params - An iterable of Expressions to be passed as parameters to the
+          helper function
         """
         super().__init__(None, 'helper_call')
-        self.name = name
-        self.params = params
+        self._name = name
+        self._params = tuple(params)
+
+    @property
+    def name(self):
+        return self._name
+
+    @propert
+    def params(self):
+        return self._params
 
     def __repr__(self):
-        return (self.name + '(' + ', '.join([repr(p) for p in self.params]) +
+        return (self._name + '(' + ', '.join([repr(p) for p in self._params]) +
                 ')')
 
 class UnaryOp(Expression):
@@ -311,17 +343,25 @@ class UnaryOp(Expression):
         operand - The operand, an expression type from this module
         """
         super().__init__(operand.unary_type_check(operator), 'unary_op')
-        self.operator = operator
-        self.operand = operand
+        self._operator = operator
+        self._operand = operand
+
+    @property
+    def operator(self):
+        return self._operator
+
+    @property
+    def operand(self):
+        return self._operand
 
     def parenthesize(self):
-        self.parens = True
+        self._parens = True
 
     def __repr__(self):
-        if self.parens:
-            return ''.join(['(', self.operator, ' ', repr(self.operand), ')'])
+        if self._parens:
+            return ''.join(['(', self._operator, ' ', repr(self._operand), ')'])
         else:
-            return ''.join([self.operator, ' ', repr(self.operand)])
+            return ''.join([self._operator, ' ', repr(self._operand)])
 
 class BinaryOp(Expression):
     """A binary operation in an expression"""
@@ -335,17 +375,29 @@ class BinaryOp(Expression):
         right - The right operand, an expression from this module
         """
         super().__init__(left.binary_type_check(operator, right), 'binary_op')
-        self.operator = operator
-        self.left = left
-        self.right = right
+        self._operator = operator
+        self._left = left
+        self._right = right
+
+    @property
+    def operator(self):
+        return self._operator
+
+    @property
+    def left(self):
+        return self._left
+
+    @property
+    def right(self):
+        return self._right
 
     def parenthesize(self):
-        self.parens = True
+        self._parens = True
 
     def __repr__(self):
-        if self.parens:
-            return ''.join(['(', repr(self.left), ' ', self.operator, ' ',
-                    repr(self.right), ')'])
+        if self._parens:
+            return ''.join(['(', repr(self._left), ' ', self._operator, ' ',
+                    repr(self._right), ')'])
         else:
-            return ''.join([repr(self.left), ' ', self.operator, ' ',
-                repr(self.right)])
+            return ''.join([repr(self._left), ' ', self._operator, ' ',
+                repr(self._right)])

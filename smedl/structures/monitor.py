@@ -2,33 +2,46 @@
 Structures and types for SMEDL monitors (.smedl files)
 """
 
+import types
 from . import expr
 from smedl.parser.exceptions import NameCollision, ElseCollision
 
 class StateVariable(object):
     """Stores the information for a single state variable in a SMEDL spec"""
     def __init__(self, name, type_, initial_value=None):
-        self.name = name
-        self.type = type_ # SMEDL type
+        self._name = name
+        self._type = type_ # SMEDL type
         if initial_value is not None:
-            self.initial_value = initial_value
+            self._initial_value = initial_value
         else:
-            if self.type == expr.SmedlType.INT:
-                self.initial_value = "0"
-            elif self.type == expr.SmedlType.FLOAT:
-                self.initial_value = "0.0"
-            elif self.type == expr.SmedlType.CHAR:
-                self.initial_value = "'\\0'"
-            elif self.type == expr.SmedlType.STRING:
-                self.initial_value = '""'
-            elif self.type == expr.SmedlType.POINTER:
-                self.initial_value = "NULL"
-            elif self.type == expr.SmedlType.THREAD:
-                self.initial_value = None
-            elif self.type == expr.SmedlType.OPAQUE:
+            if self._type == expr.SmedlType.INT:
+                self._initial_value = "0"
+            elif self._type == expr.SmedlType.FLOAT:
+                self._initial_value = "0.0"
+            elif self._type == expr.SmedlType.CHAR:
+                self._initial_value = "'\\0'"
+            elif self._type == expr.SmedlType.STRING:
+                self._initial_value = '""'
+            elif self._type == expr.SmedlType.POINTER:
+                self._initial_value = "NULL"
+            elif self._type == expr.SmedlType.THREAD:
+                self._initial_value = None
+            elif self._type == expr.SmedlType.OPAQUE:
                 #TODO This may cause errors converting a const char * to
                 # non-const void * in C++. (C should not complain.)
                 self.initial_value = '{"", 0}'
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def initial_value(self):
+        return self._initial_value
 
 class Action(object):
     """A base class for all the action types that may appear in the list of
@@ -39,7 +52,11 @@ class Action(object):
         Parameters:
         action_type - A string describing the type of action for use with Jinja
         """
-        self.action_type = action_type
+        self._action_type = action_type
+
+    @property
+    def action_type(self):
+        return self._action_type
 
 class AssignmentAction(Action):
     """An action representing assigning an expression to a state variable"""
@@ -51,22 +68,38 @@ class AssignmentAction(Action):
         expr - An expr.Expression to be assigned to it
         """
         super().__init__('assignment')
-        self.var = var
-        self.expr = expr
+        self._var = var
+        self._expr = expr
+
+    @property
+    def var(self):
+        return self._var
+
+    @property
+    def expr(self):
+        return self._expr
 
 class IncrementAction(Action):
     """An action representing incrementing a state variable"""
     def __init__(self, var):
         """Initialize the increment using the provided state variable name."""
         super().__init__('increment')
-        self.var = var
+        self._var = var
+
+    @property
+    def var(self):
+        return self._var
 
 class DecrementAction(Action):
     """An action representing decrementing a state variable"""
     def __init__(self, var):
         """Initialize the decrement using the provided state variable name."""
         super().__init__('decrement')
-        self.var = var
+        self._var = var
+
+    @property
+    def var(self):
+        return self._var
 
 class RaiseAction(Action):
     """An action representing raising an event"""
@@ -75,34 +108,47 @@ class RaiseAction(Action):
 
         Parameters:
         event - The name of the event to be raised
-        params - Parameters of the event as a list of expr.Expression
+        params - Parameters of the event as an iterable of expr.Expression
         """
         super().__init__('raise')
-        self.event = event
-        self.params = params
+        self._event = event
+        self._params = tuple(params)
+
+    @property
+    def event(self):
+        return self._event
+
+    @property
+    def params(self):
+        return self._params
 
 class CallAction(Action):
     """An action representing a call to a helper function."""
-    #TODO Using a helper on its own like this should be considered deprecated.
-    # It is only useful if helpers have side effects, which is not supposed to
-    # be allowed (but we do not currently enforce).
     def __init__(self, function, params):
         """Initialize the function call action.
 
         Parameters:
         function - The name of the helper function to call
-        params - Parameters of the call as a list of expr.Expression
+        params - Parameters of the call as an iterable of expr.Expression
         """
         super().__init__('call')
-        self.function = function
-        self.params = params
+        self._function = function
+        self._params = tuple(params)
+
+    @property
+    def function(self):
+        return self._function
+
+    @property
+    def params(self):
+        return self._params
 
 class Scenario(object):
     """Stores the information for a single scenario in a SMEDL spec"""
     def __init__(self, name):
-        self.name = name
+        self._name = name
         # List of state names: The first state in the list is the initial state
-        self.states = []
+        self._states = []
         # Implicit states are created when a scenario has a transition that goes
         # directly into another transition, e.g.:
         # 
@@ -113,7 +159,7 @@ class Scenario(object):
         # track of how many exist so far.
         #
         # In the generated code, implicit states get names like "_state0"
-        self.implicit_states = 0
+        self._implicit_states = 0
         # Steps: Single steps from a transition.
         # Keys are 2-tuples (state, event name) representing the state the step
         #   leads from and the event it is for. State is either a string if it
@@ -122,35 +168,56 @@ class Scenario(object):
         #   where condition is an Expression (that should evaluate to an INT,
         #   FLOAT, or CHAR), dest state is a string or int as above, and list of
         #   actions is precisely a list of Action.
-        self.steps = dict()
+        self._steps = dict()
         # Else transitions: Keys are 2-tuples (state, event name) and
         # values are 2-tuples (dest state, list of Actions)
-        self.elses = dict()
+        self._elses = dict()
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def states(self):
+        return self._states
+
+    @property
+    def implicit_states(self):
+        return self._implicit_states
+
+    @property
+    def all_states(self):
+        """Get a list of all states, explicit and implicit"""
+        return self.states + list(range(self.implicit_states))
+
+    @property
+    def steps(self):
+        return types.MappingProxyType(self._steps)
+
+    @property
+    def elses(self):
+        return types.MappingProxyType(self._elses)
+
+    def get_implicit_state(self):
+        """Get the next unused implicit state number"""
+        state = self._implicit_states
+        self._implicit_states += 1
+        return state
 
     def _add_state(self, name):
         """Add a state to the scenario, if a string and not already present. The
         first state added becomes the initial state."""
-        if isinstance(name, str) and name not in self.states:
-            self.states.append(name)
-
-    def get_implicit_state(self):
-        """Get the next unused implicit state number"""
-        state = self.implicit_states
-        self.implicit_states += 1
-        return state
-
-    def all_states(self):
-        """Get a list of all states, explicit and implicit"""
-        return self.states + list(range(self.implicit_states))
+        if isinstance(name, str) and name not in self._states:
+            self._states.append(name)
 
     def _add_else(self, from_state, event, to_state, actions):
         """Add else actions to a particular state-event pair"""
         if to_state is not None:
             key = (from_state, event)
-            if key in self.elses:
+            if key in self._elses:
                 raise ElseCollision("An else is already defined for {}/{}"
                         .format(from_state, event))
-            self.elses[key] = (to_state, actions)
+            self._elses[key] = (to_state, actions)
 
     def add_step(self, from_state, event, condition, to_state, actions,
             else_state = None, else_actions = None):
@@ -186,9 +253,9 @@ class Scenario(object):
         key = (from_state, event)
         value = (condition, to_state, actions)
         try:
-            self.steps[key].append(value)
+            self._steps[key].append(value)
         except KeyError:
-            self.steps[key] = [value]
+            self._steps[key] = [value]
         
         # Add the else
         self._add_else(from_state, event, else_state, else_actions)
@@ -200,7 +267,7 @@ class Scenario(object):
         Parameters:
         event - The name of the event to check for
         """
-        for key in self.steps.keys():
+        for key in self._steps.keys():
             if key[1] == event:
                 return True
         return False
@@ -210,34 +277,62 @@ class MonitorSpec(object):
     def __init__(self, name):
         """Instantiate a new MonitorSpec to hold the data from a .smedl file"""
         # Name of the monitor.
-        self.name = name
+        self._name = name
         # List of helper header files, with the enclosing "" or <>
-        self.helpers = []
+        self._helpers = []
         # State vars: keys are names, values are StateVariables
-        self.state_vars = dict()
+        self._state_vars = dict()
         ## State vars: list of StateVariable
         #self.state_vars = []
         # Imported, internal, and exported events: keys are names, values are
         # lists of SmedlType representing their parameters
-        self.imported_events = dict()
-        self.internal_events = dict()
-        self.exported_events = dict()
+        self._imported_events = dict()
+        self._internal_events = dict()
+        self._exported_events = dict()
         # List of Scenarios containing the state machines themselves
-        self.scenarios = []
+        self._scenarios = []
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def helpers(self):
+        return self._helpers
+
+    @property
+    def state_vars(self):
+        return types.MappingProxyType(self._state_vars)
+
+    @property
+    def imported_events(self):
+        return types.MappingProxyType(self._imported_events)
+
+    @property
+    def internal_events(self):
+        return types.MappingProxyType(self._internal_events)
+
+    @property
+    def exported_events(self):
+        return types.MappingProxyType(self._exported_events)
+
+    @property
+    def scenarios(self):
+        return self._scenarios
 
     def add_helper(self, helper):
         """Add a header file for helper functions. helper is a string containing
         the text to come after #include, e.g. '<helper.h>' or '"helper.h"'"""
-        self.helpers.append(helper)
+        self._helpers.append(helper)
 
     def add_state_var(self, name, type_, initial_value=None):
         """Add a state variable to the monitor after checking for duplicate
         declaration. If an initial value isn't provided, a default will be used.
         """
-        if name in self.state_vars:
+        if name in self._state_vars:
             raise NameCollision("State variable {} already defined".format(
                 var_name))
-        self.state_vars[name] = StateVariable(name, type_, initial_value)
+        self._state_vars[name] = StateVariable(name, type_, initial_value)
 
     def add_event(self, type_, name, param_list):
         """Add an event to the monitor. The type must be a string that's either
