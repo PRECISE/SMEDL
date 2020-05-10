@@ -73,9 +73,7 @@ class CodeGenerator(object):
         # Write RabbitMQ adapter
         values = {
                 "sys": system,
-                "syncset": syncset_name,
-                "mon_decls": [system.monitor_decls[mon] for mon in
-                        system.syncsets[syncset_name]]
+                "syncset": syncset_name
             }
         self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
         self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
@@ -102,9 +100,7 @@ class CodeGenerator(object):
         # Write the global wrapper
         values = {
                 "sys": system,
-                "syncset": syncset_name,
-                "mon_decls": [system.monitor_decls[mon] for mon in
-                        system.syncsets[syncset_name]]
+                "syncset": syncset_name
             }
         self._render("global_wrapper.c", syncset_name + "_global_wrapper.c",
                 values)

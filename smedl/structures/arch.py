@@ -56,26 +56,46 @@ class Target(object):
         
         type_ - String describing the type of target for Jinja
         monintor - Name of the destination monitor
-        mon_params - List of Parameters for the monitor identities"""
-        self.target_type = type_
-        self.monitor = monitor
-        self.mon_params = mon_params
+        mon_params - Iterable of Parameters for the monitor identities"""
+        self._target_type = type_
+        self._monitor = monitor
+        self._mon_params = tuple(mon_params)
+        self._connection = None
 
-    def set_channel(self, channel):
-        """Set the connection (a.k.a channel) name. This is how events are
-        identified when they are sourced from outside a synchronous set (e.g.
-        from another synchronous set or from the target system). The message
-        encapsulating the event will typicall have a name within the body as
-        well, but that is mainly for human reference. It is not used by the
-        tool."""
-        self.channel = channel
+    @property
+    def target_type(self):
+        """Get a string describing the type of target, for use in Jinja"""
+        return self._target_type
+
+    @property
+    def monitor(self):
+        """Get the name of the destination monitor, or None if ExportTarget"""
+        return self._monitor
+
+    @property
+    def mon_params(self):
+        """Get a tuple of Parameters for the monitor identities"""
+        return self._mon_params
+
+    @property
+    def connection(self):
+        return self._connection
+
+    @connection.setter
+    def connection(self, conn):
+        """Store a reference to the Connection this target belongs to"""
+        if self._connection is None:
+            self._connection = conn
+        else:
+            raise Exception("Internal error: Target already added to a "
+                    "connection")
 
     def same_as(self, other):
         """Return True if the other is the same target (ignoring parameters)
         as ourselves"""
         if not isinstance(other, Target):
             return NotImplemented
-        return self.monitor == other.monitor
+        return self._monitor == other._monitor
 
 class TargetEvent(Target):
     """An imported event connection target. Note that this is not the same as
@@ -88,8 +108,18 @@ class TargetEvent(Target):
         mon_params - List of Parameters for the monitor identities
         event_params - List of Parameters for the event"""
         super().__init__('event', dest_monitor, mon_params)
-        self.event = dest_event
-        self.event_params = event_params
+        self._event = dest_event
+        self._event_params = tuple(event_params)
+
+    @property
+    def event(self):
+        """Get the name of the destination event"""
+        return self._event
+
+    @property
+    def event_params(self):
+        """Get a tuple of Parameters for the destination event"""
+        return self._event_params
 
     def same_as(self, other):
         """Return True if the other is the same target (ignoring parameters)
@@ -98,13 +128,13 @@ class TargetEvent(Target):
             return NotImplemented
         if not isinstance(other, TargetEvent):
             return False
-        return super().same_as(other) and self.event == other.event
+        return super().same_as(other) and self._event == other._event
 
     def __repr__(self):
-        mon_param_str = ', '.join([str(p) for p in self.mon_params])
-        ev_param_str = ', '.join([str(p) for p in self.event_params])
-        return ('TargetEvent:' + self.monitor + '[' + mon_param_str + '].' +
-                self.event + '(' + ev_param_str + ')')
+        mon_param_str = ', '.join([str(p) for p in self._mon_params])
+        ev_param_str = ', '.join([str(p) for p in self._event_params])
+        return ('TargetEvent:' + self._monitor + '[' + mon_param_str + '].' +
+                self._event + '(' + ev_param_str + ')')
 
 class TargetCreation(Target):
     """A monitor creation target. Note that this is not the same as the "target
@@ -120,7 +150,12 @@ class TargetCreation(Target):
           not be wildcards).
         """
         super().__init__('creation', dest_monitor, mon_params)
-        self.state_vars = state_vars
+        self._state_vars = state_vars
+
+    @property
+    def state_vars(self):
+        """Get a mapping of state var names to Parameters"""
+        return types.MappingProxyType(self._state_vars)
 
     def same_as(self, other):
         """Return True if the other is the same target (ignoring parameters)
@@ -132,10 +167,10 @@ class TargetCreation(Target):
         return super().same_as(other)
 
     def __repr__(self):
-        mon_param_str = ', '.join([str(p) for p in self.mon_params])
+        mon_param_str = ', '.join([str(p) for p in self._mon_params])
         state_var_str = ', '.join([k + '=' + str(v)
-                for k, v in self.state_vars.values()])
-        return ('TargetCreation:' + self.monitor + '(' + mon_param_str +
+                for k, v in self._state_vars.values()])
+        return ('TargetCreation:' + self._monitor + '(' + mon_param_str +
                 ', ' + state_var_str + ')')
 
 class TargetExport(Target):
@@ -146,12 +181,46 @@ class TargetExport(Target):
     def __init__(self):
         """Initialize this export target."""
         super().__init__('export', None, [])
+
+    def same_as(self, other):
+        """Return true if the other is the same target (ignoring parameters)
+        as ourselves"""
+        if not isinstance(other, Target):
+            return NotImplemented
+        return isinstance(other, TargetExport)
     
     def __repr__(self):
         # self.monitor should be None and self.mon_params empty, but printing
         # them will confirm
-        mon_param_str = ', '.join([str(p) for p in self.mon_params])
-        return ('TargetExport:' + str(self.monitor) + '(' + mon_param_str + ')')
+        mon_param_str = ', '.join([str(p) for p in self._mon_params])
+        return ('TargetExport:' + str(self._monitor) +
+                '(' + mon_param_str + ')')
+
+#TODO Incorporate this into DeclaredMonitors and MonitoringSystem.
+#TODO Have a way to look up connections by name? Would that be useful? Or how
+#  else do we need to look up connections?
+#TODO Probably also useful to be able to have `intra_connections` and
+#  `inter_connections` properties in a DeclaredMonitor
+class Connection(object):
+    """A connection between a source event and some number of targets"""
+    def __init__(self, channel, source_mon=None):
+        """Create a connection with the given channel name"""
+        # The channel name
+        self._channel = channel
+        # The source DeclaredMonitor for this connection (or None if from the
+        # target system)
+        #TODO Either set this in constructor or add a setter
+        self._source_mon = None
+        # The source event name for this connection
+        #TODO Either set this in constructor or add a setter
+        self._source_event = None
+        # A list of Targets that this connection links to
+        # TODO Have a way to add to this
+        self._targets = []
+
+    @property
+    def channel(self):
+        return self._channel
 
 class SynchronousSet(set):
     """A subclass of set customized to represent a Synchronous Set"""
@@ -177,9 +246,11 @@ class DeclaredMonitor(object):
         self._params = tuple(params)
         # Reference to this monitor's synchronous set
         self._syncset = None
-        # Connections that originate from this monitor. Keys are source event
-        # names. Values are lists of Target.
-        self.connections = dict()
+        # Connections that originate from this monitor. Keys are channel names.
+        # Values are Connections.
+        self._connections = dict()
+        # Same as above, but using event names as the key, instead.
+        self._ev_connections = dict()
 
     @property
     def name(self):
@@ -202,6 +273,16 @@ class DeclaredMonitor(object):
         """Get the SynchronousSet that this monitor belongs to"""
         return self._syncset
 
+    @property
+    def connections(self):
+        """Get this monitor's connections indexed by channel name"""
+        return types.MappingProxyType(self._connections)
+
+    @property
+    def ev_connections(self):
+        """Get this monitor's connections indexed by source event name"""
+        return types.MappingProxyType(self._ev_connections)
+
     def assign_syncset(self, syncset):
         """Assign the monitor to a synchronous set. If it is already in one,
         raise AlreadyInSyncset"""
@@ -209,6 +290,31 @@ class DeclaredMonitor(object):
             raise AlreadyInSyncset("Monitor {} cannot be added to a synchronous"
                     " set twice.".format(self.name))
         self._syncset = syncset
+
+    def add_connection(self, channel, source_event, target):
+        """Add the given target to the proper connection for the source event
+        (creating the connection if it does not exist yet).
+
+        channel - Channel name, or None to use the default (the name used in
+          another connection for this source event, or autogenerated if none)
+        source_event - Name of the source event
+        target - A Target object
+        
+        Raise a TypeMismatch if the target paramter types (or state var types
+        for creation) do not match the source parameter types.
+        
+        Raise a ParameterError if there is some other issue with target
+        parameters.
+
+        Raise a ChannelMismatch if the channel name does not match what was
+        previously used for this source event.
+        
+        Raise a DuplicateConnection if this connection matches one that already
+        exists (same source and destination, ignoring parameters)."""
+        #TODO Do all the validations, create the Connection object if necessary
+        # and add it to both dicts, then add the Target to that Connection
+        # and set the Target's connection.
+        pass #TODO
 
     #TODO Refactor below here
 
@@ -331,7 +437,7 @@ class MonitorSystem(object):
         if self._name is None:
             self._name = value
         else:
-            raise NameCollision("Monitoring system already named")
+            raise Exception("Internal error: Monitoring system already named")
 
     @property
     def monitor_decls(self):
