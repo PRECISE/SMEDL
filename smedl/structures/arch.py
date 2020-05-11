@@ -4,7 +4,8 @@ Structures and types for monitoring system architectures (.a4smedl files)
 
 import types
 from smedl.parser.exceptions import (NameCollision, NameNotDefined,
-        AlreadyInSyncset)
+        AlreadyInSyncset, ParameterError, DuplicateConnection, TypeMismatch,
+        DuplicateConnection)
 
 class Parameter(object):
     """A parameter for a target specification. May be used for either monitor
@@ -197,30 +198,112 @@ class TargetExport(Target):
                 '(' + mon_param_str + ')')
 
 #TODO Incorporate this into DeclaredMonitors and MonitoringSystem.
-#TODO Have a way to look up connections by name? Would that be useful? Or how
-#  else do we need to look up connections?
+#TODO Have a way to look up connections by name? Would that be useful? Actually,
+#  probably not, as long as we can look them up by monitor and syncset? Which
+#  ways do we need to be able to look them up?
 #TODO Probably also useful to be able to have `intra_connections` and
 #  `inter_connections` properties in a DeclaredMonitor
 class Connection(object):
     """A connection between a source event and some number of targets"""
-    def __init__(self, channel, source_mon=None):
-        """Create a connection with the given channel name"""
+    def __init__(self, sys, source_mon, source_event):
+        """Create a connection with the specified source monitor and event.
+        
+        sys - Monitoring system
+        source_mon - Source monitor decl, or None if from the target system.
+        source_event - Source event name
+        """
         # The channel name
         self._channel = channel
+        # The MonitorSystem this connection is part of
+        self._sys = sys
         # The source DeclaredMonitor for this connection (or None if from the
         # target system)
-        #TODO Either set this in constructor or add a setter
         self._source_mon = None
         # The source event name for this connection
-        #TODO Either set this in constructor or add a setter
         self._source_event = None
         # A list of Targets that this connection links to
-        # TODO Have a way to add to this
         self._targets = []
 
     @property
     def channel(self):
         return self._channel
+
+    @property
+    def source_mon(self):
+        return self._source_mon
+
+    @property
+    def source_event(self):
+        return self._source_event
+
+    @property
+    def targets(self):
+        return self._targets
+
+    def assign_name(self, channel):
+        """Do various validations and assign the channel name.
+
+        If the channel name is None:
+        1. Check if the channel already has a name. If so, do nothing.
+        2. If not, generate one like this: _monitor_event or _event
+
+        If the channel name is provided:
+        1. If there is no name already assigned, use the given one.
+        2. If there is and it matches, do nothing.
+        3. If it does not match and it was automatically generated, switch
+           to the given one.
+        4. If it does not match and the existing one was not automatically
+           generated, raise an exception.
+        """
+        if channel is None:
+            # Channel not specified
+            if self._channel is None:
+                # No previous channel name. Need to generate one.
+                if self._source_mon is None:
+                    self._channel = "_{}".format(self._source_event)
+                    self._sys.rename_connection(self, None)
+                else:
+                    self._channel = "_{}_{}".format(self._source_mon.name,
+                            self._source_event)
+                    self._source_mon.rename_connection(self, None)
+        else:
+            if self._channel is None:
+                # No previous channel name. Use the given one.
+                self._channel = channel
+                if self._source_mon is None:
+                    self._sys.rename_connection(self, None)
+                else:
+                    self._source_mon.rename_connection(self, None)
+            elif self._channel == channel:
+                # Given name matches what was already used.
+                pass
+            elif self._channel[0] == '_'
+                # Given name doesn't match, but prior name was auto-generated.
+                # Switch to the given name.
+                old_channel = self._channel
+                self._channel = channel
+                if self._source_mon is None:
+                    self._sys.rename_connection(self, old_channel)
+                else:
+                    self._source_mon.rename_connection(self, old_channel)
+            else:
+                # Previous name was not auto-generated and the provided name
+                # does not match. Exception.
+                if self._source_mon is None:
+                    event_str = self._source_event
+                else:
+                    event_str = self._source_mon.name + '.' + self._source_event
+                raise ChannelMismatch("Source event {} must always use the "
+                        "same connection name".format(event_str))
+
+    def add_target(self, target):
+        """Add a Target to this channel after verifying that it is not a
+        duplicate of any targets it already contains"""
+        for t in self._targets:
+            if target.same_as(t):
+                raise DuplicateConnection("Source and destination of "
+                        "connections cannot match.")
+        self._targets.append(target)
 
 class SynchronousSet(set):
     """A subclass of set customized to represent a Synchronous Set"""
@@ -236,7 +319,9 @@ class SynchronousSet(set):
 
 class DeclaredMonitor(object):
     """A monitor delcaration from the architecture file"""
-    def __init__(self, name, spec, params):
+    def __init__(self, sys, name, spec, params):
+        # The monitoring system this DeclaredMonitor belongs to
+        self._sys
         # Name of the monitor given in the declaration (meaning the "as" name,
         # if provided)
         self._name = name
@@ -291,6 +376,66 @@ class DeclaredMonitor(object):
                     " set twice.".format(self.name))
         self._syncset = syncset
 
+    def _validate_single_param(self, source_event, source_ev_params,
+            param, type_, dest_name):
+        """Validate type for a single parameter or state var against the
+        monitor and event parameters in this source monitor.
+        
+        source_event - Name of the source event
+        source_ev_params - List or tuple of source event parameter types
+        params - Parameter object to validate
+        type_ - SmedlType to validate against
+        dest_name - Name of the thing being validated, e.g. "parameter ___ of
+          event ___" or "state var ___ of monitor ___", to be used in exception
+          messages
+        """
+        # Wildcard params always validate
+        if param.index is None:
+            continue
+
+        if param.identity:
+            # Validate against monitor params
+            try:
+                result = self._params[param.index].convertible_to(type_)
+            except IndexError:
+                raise ParameterError("Source monitor {} does not have "
+                        "identity {}".format(self._name, param))
+            if not result:
+                raise TypeMismatch("Param {} in source monitor {} "
+                    "does not match dest {}".format(
+                    param.index, self._name, dest_name))
+        else:
+            # Validate against event params
+            try:
+                result = self.source_ev_params[param.index].convertible_to(
+                        type_)
+            except IndexError:
+                raise ParameterError("Source event {} does not have "
+                        "identity {}".format(self._name, param))
+            if not result:
+                raise TypeMismatch("Param {} in source event {} "
+                    "does not match dest {}".format(
+                    param.index, source_event, dest_name))
+
+    def _validate_param_types(self, source_event, source_ev_params,
+            dest_params, dest_param_types, dest_name):
+        """Validate types for a target parameter list against the monitor and
+        event parameters in this source monitor.
+        
+        source_event - Name of the source event
+        source_ev_params - List or tuple of source event parameter types
+        dest_params - List or tuple of Parameter for the destination
+        dest_param_types - List or tuple of destination parameter types
+        dest_name - "monitor ___" or "event ___", to be used in exception
+          messages
+        """
+        for i in range(len(dest_params)):
+            param = dest_param[i]
+            type_ = dest_param_types[i]
+
+            self._validate_single_param(source_event, source_ev_params, param,
+                    type_, "param {} in {}".format(i, dest_name))
+
     def add_connection(self, channel, source_event, target):
         """Add the given target to the proper connection for the source event
         (creating the connection if it does not exist yet).
@@ -311,10 +456,59 @@ class DeclaredMonitor(object):
         
         Raise a DuplicateConnection if this connection matches one that already
         exists (same source and destination, ignoring parameters)."""
-        #TODO Do all the validations, create the Connection object if necessary
-        # and add it to both dicts, then add the Target to that Connection
-        # and set the Target's connection.
-        pass #TODO
+        # Check that source event exists and get the params
+        try:
+            source_ev_params = self._spec.exported_events[source_event]
+        except KeyError:
+            raise NameNotDefined("Source monitor {} does not contain exported "
+                    "event {}".format(self._name, source_event))
+
+        # Get target mon decl (Must be verified to exist already)
+        dest_mon_decl = self._sys.monitor_decls[target.monitor]
+
+        # Validate destination monitor parameter types. (Count must be validated
+        # already.)
+        self._validate_param_types(source_event, source_ev_params,
+                target.mon_params, dest_mon_decl.params,
+                "monitor " + target.monitor)
+
+        # Validate additional parameters depending on Target type
+        if isinstance(target, TargetEvent):
+            # Validate destination event parameter types
+            dest_ev_types = dest_mon_decl.spec.imported_events[
+                    target.event_params]
+            self._validate_param_types(source_event, source_ev_params,
+                    target.event_params, dest_ev_types,
+                    "event " + target.event)
+        elif isinstance(target, TargetCreation):
+            # Validate state var types
+            for var, param in target.state_vars.items():
+                var_type = dest_mon_decl.spec.state_vars[var].type
+            self._validate_single_param(source_event, source_ev_params,
+                    param, var_type, "state var {} of monitor {}".format(
+                    var, target.monitor))
+
+        # Get or create Connection
+        try:
+            conn = self._ev_connections[source_event]
+        except KeyError:
+            conn = Connection(self._sys, self, source_event)
+            self._ev_connections[source_event] = conn
+
+        # Validate the channel name and name the channel (also calls
+        # rename_connection() to update the _connections dict)
+        conn.assign_name(channel)
+
+        # Add the target to the channel, if it's not a duplicate
+        conn.add_target(target)
+
+    def rename_connection(self, conn, old_channel):
+        """Put the given connection in the _connections dict under the correct
+        name. Called by Connection when it is assigned an automatic or explicit
+        name."""
+        if old_channel is not None:
+            del self._connections[old_channel]
+        self._connections[conn.channel] = conn
 
     #TODO Refactor below here
 
@@ -414,19 +608,12 @@ class MonitorSystem(object):
         # SynchronousSets (named sets of DeclaredMonitors)
         self._syncsets = dict()
 
-        # Monitor to monitor connections are in DeclaredMonitor.connections.
-        #   This allows the code generator to organize nested switches with
-        #   monitors in the outer switch and target events or creations on the
-        #   inner switch.
-        # Events imported from the target system are in this dict, where keys
-        #   are channel names and values are lists of Target.
-        # Note that events exported to the target system are identified by not
-        #   having a Target for that event in its DeclaredMonitor, but we should
-        #   consider having an explicit way to cause events to be exported in
-        #   the architecture file. Such could become either a new subclass of
-        #   Target or simply a TargetEvent with the destination monitor set to
-        #   None.
+        # Connections whose source are the target system:
+        # Using channel names as keys
         self._imported_connections = dict()
+        # Using source event names as keys
+        self._ev_imported_connections = dict()
+        # Values are Connections.
 
     @property
     def name(self):
@@ -446,6 +633,14 @@ class MonitorSystem(object):
     @property
     def syncsets(self):
         return types.MappingProxyType(self._syncsets)
+
+    @property
+    def imported_connections(self):
+        return self._imported_connections
+
+    @property
+    def ev_imported_connections(self):
+        return self._ev_imported_connections
 
     def add_syncset(self, name, monitors):
         """Add a synchronous set to the system.
@@ -493,6 +688,88 @@ class MonitorSystem(object):
                     monitor_name, syncset))
         return syncset
 
+    def _validate_no_identities(self, params, dest_name):
+        """Raise a ParameterError if any of the Parameters are identity
+        parameters.
+
+        params - An iterable of Parameter
+        dest_name - A string to use in the exception, e.g. "Monitor ___" or
+          "Event ___"
+        """
+        for param in params:
+            if param.index is None:
+                continue
+            if param.identity:
+                raise ParameterError('{} cannot use identity parameters '
+                        '("Id."/"#") when there is no source monitor'
+                        .format(dest_name))
+
+    def add_connection(self, channel, monitor, source_event, target):
+        """Add the given target to the proper connection for the source event
+        (creating the connection if it does not exist yet).
+
+        channel - Channel name, or None to use the default (the name used in
+          another connection for this source event, or autogenerated if none)
+        monitor - Declared monitor name, or None if from the target system
+        source_event - Name of the source event
+        target - A Target object
+        
+        Raise a TypeMismatch if the target paramter types (or state var types
+        for creation) do not match the source parameter types.
+        
+        Raise a ParameterError if there is some other issue with target
+        parameters.
+
+        Raise a ChannelMismatch if the channel name does not match what was
+        previously used for this source event.
+        
+        Raise a DuplicateConnection if this connection matches one that already
+        exists (same source and destination, ignoring parameters)."""
+        # If from a monitor, call that monitor's add_connection
+        if monitor is not None:
+            try:
+                decl = _monitor_decls[monitor]
+            except KeyError:
+                raise NameNotDefined("Source monitor {} is not declared"
+                        .format(monitor))
+            decl.add_connection(channel, source_event, target)
+            return
+
+        # Validate that the destination monitor parameters are all wildcards
+        # or event parameters ("$x"), not monitor parameters ("#x")
+        self._validate_no_identities(target.mon_params,
+                "Monitor " + target.monitor)
+
+        # Same for additional parameters, depending on target type
+        if isinstance(target, TargetEvent):
+            self._validate_no_identities(target.event_params,
+                    "Event " + target.event)
+        elif isinstance(target, TargetCreation):
+            self._validate_no_identities(target.state_vars.values(),
+                    "Monitor " + target.monitor)
+
+        # Get or create Connection
+        try:
+            conn = self._ev_imported_connections[source_event]
+        except KeyError:
+            conn = Connection(self, None, source_event)
+            self._ev_imported_connections[source_event] = conn
+
+        # Validate the channel name and name the channel (also calls
+        # rename_connection() to update the _imported_connections dict)
+        conn.assign_name(channel)
+
+        # Add the target to the channel, if it's not a duplicate
+        conn.add_target(target)
+
+    def rename_connection(self, conn, old_channel):
+        """Put the given connection in the _imported_connections dict under the
+        correct name. Called by Connection when it is assigned an automatic or
+        explicit name."""
+        if old_channel is not None:
+            del self._imported_connections[old_channel]
+        self._imported_connections[conn.channel] = conn
+
     #TODO Refactor below here
 
     def add_monitor_decl(self, name, target, params):
@@ -511,7 +788,7 @@ class MonitorSystem(object):
                 name))
 
         # Create and store the DeclaredMonitor
-        self.monitor_decls[name] = DeclaredMonitor(name, target, params)
+        self.monitor_decls[name] = DeclaredMonitor(self, name, target, params)
 
     def assign_singleton_syncsets(self):
         """Assign any monitors that are not already in a synchronous set to

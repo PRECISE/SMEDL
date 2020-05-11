@@ -337,18 +337,18 @@ class MonitorSpec(object):
     def add_event(self, type_, name, param_list):
         """Add an event to the monitor. The type must be a string that's either
         "imported", "internal", or "exported". The name is a string and the
-        param_list is a list of SmedlType."""
-        if (name in self.imported_events
-                or name in self.internal_events
-                or name in self.exported_events):
+        param_list is an iterable of SmedlType."""
+        if (name in self._imported_events
+                or name in self._internal_events
+                or name in self._exported_events):
             raise NameCollision("Event {} already defined".format(name))
 
         if type_ == "imported":
-            self.imported_events[name] = param_list
+            self._imported_events[name] = tuple(param_list)
         elif type_ == "internal":
-            self.internal_events[name] = param_list
+            self._internal_events[name] = tuple(param_list)
         elif type_ == "exported":
-            self.exported_events[name] = param_list
+            self._exported_events[name] = tuple(param_list)
         else:
             raise ValueError("Unexpected event type {}".format(type_))
 
@@ -356,7 +356,7 @@ class MonitorSpec(object):
         """Add a Scenario to the monitor. If a scenario with the same name is
         already present, raise NameCollision."""
         # Check for name collisions
-        for s in self.scenarios:
+        for s in self._scenarios:
             if s.name == scenario.name:
                 raise NameCollision("A scenario with name {} already exists"
                         .format(scenario.name))
@@ -366,19 +366,19 @@ class MonitorSpec(object):
         """Retrieve the list of SmedlType representing an events parameters,
         whether it be an imported, internal, or exported event. Return None
         if the name is not a valid event."""
-        if name in self.imported_events:
-            return self.imported_events[name]
-        elif name in self.internal_events:
-            return self.internal_events[name]
-        elif name in self.exported_events:
-            return self.exported_events[name]
+        if name in self._imported_events:
+            return self._imported_events[name]
+        elif name in self._internal_events:
+            return self._internal_events[name]
+        elif name in self._exported_events:
+            return self._exported_events[name]
         else:
             return None
 
     def needs_handler(self, event):
         """Return True if any scenario handles the given event, False
         otherwise."""
-        for s in self.scenarios:
+        for s in self._scenarios:
             if s.handles_event(event):
                 return True
         return False
