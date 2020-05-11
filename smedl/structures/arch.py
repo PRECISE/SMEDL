@@ -510,19 +510,18 @@ class DeclaredMonitor(object):
             del self._connections[old_channel]
         self._connections[conn.channel] = conn
 
-    #TODO Refactor below here
-
     def create_export_connections(self):
         """Exported events that are not explicitly the source of a connection
         in the architecture specification implicitly get exported back to the
         environment. This creates those implicit TargetExports."""
-        for event in self.spec.exported_events.keys():
-            if event not in self.connections:
-                export_target = TargetExport()
-                # Set channel name using the autogenerate format from
-                # A4SmedlSemantics._connection_name_validations()
-                export_target.set_channel("_{}_{}".format(self.name, event))
-                self.connections[event] = [export_target]
+        for event in self._spec.exported_events.keys():
+            if event not in self._ev_connections:
+                conn = Connection(self._sys, self, event)
+                self._ev_connections[event] = conn
+                conn.assign_name(None)
+                conn.add_target(TargetExport())
+
+    #TODO Refactor below here
 
     #TODO Needed after issue #29 is implemented?
     def is_event_intra(self, event, syncset):
@@ -647,8 +646,8 @@ class MonitorSystem(object):
 
         Parameters:
         name - Name of the synchronous set
-        monitors - A list of monitor names to be added to the synchronous set.
-          Monitors must already be declared and must not already be in a
+        monitors - An iterable of monitor names to be added to the synchronous
+          set. Monitors must already be declared and must not already be in a
           synchronous set.
         """
         # Ensure the synchronous set does not already exist
@@ -770,8 +769,6 @@ class MonitorSystem(object):
             del self._imported_connections[old_channel]
         self._imported_connections[conn.channel] = conn
 
-    #TODO Refactor below here
-
     def add_monitor_decl(self, name, target, params):
         """Add a monitor declaration to the system.
 
@@ -788,25 +785,26 @@ class MonitorSystem(object):
                 name))
 
         # Create and store the DeclaredMonitor
-        self.monitor_decls[name] = DeclaredMonitor(self, name, target, params)
+        self._monitor_decls[name] = DeclaredMonitor(self, name, target, params)
 
     def assign_singleton_syncsets(self):
         """Assign any monitors that are not already in a synchronous set to
         their own isolated synchronous sets. Normally, these synchronous sets
         will be named after the monitor, but if that name is already taken,
         a warning will be displayed and a number appended."""
-        for mon in self.monitor_decls.values():
+        for mon in self._monitor_decls.values():
             if mon.syncset is None:
                 syncset = self._unused_syncset(mon.name)
-                mon.assign_syncset(syncset)
-                self.syncsets[syncset] = {mon.name}
-    
+                self.add_syncset(syncset, (mon,))
+
     def create_export_connections(self):
         """Iterate through all the monitor declarations and create export
         targets for all the exported events that are not already the source of
         an explicit connection."""
-        for mon in self.monitor_decls.values():
+        for mon in self._monitor_decls.values():
             mon.create_export_connections()
+
+    #TODO Refactor below here
 
     def get_syncset_spec_names(self, syncset):
         """Get a list of monitor specification names for all monitors in a
