@@ -34,9 +34,10 @@
  *   "<monitor>.<event>" for exported events. ("<event>" is recommended for
  *   events from the target system.)
  * - "identities", an array of the monitor identities. For events from the
- *   target system, this should be set to null.
+ *   target system, this should be omitted.
  * - "params", an array of the event parameters.
- * - "aux", which may consist of arbitrary JSON data.
+ * - "aux", which may consist of arbitrary JSON data. If not needed, it should
+ *   be set to null.
  *
  * Here is how the various SMEDL types are represented in JSON:
  * - int - Number
@@ -175,7 +176,8 @@ static int check_reply(InitStatus *init_status, RabbitMQState *rmq_state,
 static int verify_fmt_version(cJSON *fmt) {
     cJSON *fmt_item;
     if (!cJSON_IsArray(fmt)) {
-        err("Bad message (no 'fmt_version')");
+        err("Bad message ('fmt_version' not present as an array of two "
+                "numbers)");
         return 0;
     }
 
@@ -233,7 +235,8 @@ int handle_message(amqp_envelope_t *envelope) {
         return 1;
     }
     
-    {% set ch_len = (sys.imported_channels.keys()|map('length')|max) + 2 %}
+    {% set ch_len = (sys.imported_channels(syncset)|map(attribute='channel')|
+            map('length')|max) + 2 %}
     /* Get channel name using routing key
      * Max channel length is 2 greater than the longest channel name we
      * are interested in (to account for null terminator and at least one extra
@@ -257,10 +260,30 @@ int handle_message(amqp_envelope_t *envelope) {
         return 0;
     }
 
-    {% for channel, target_list in sys.imported_channels(syncset).items() %}
+    /* Get event parameters */
+    cJSON *params = cJSON_GetObjectItemCaseSensitive(msg, "params");
+    if (!cJSON_IsArray(params)) {
+        err("Bad message ('params' not present as an array)");
+        return 0;
+    }
+
+    /* Get aux data and convert to SMEDLAux */
+    SMEDLAux aux;
+    cJSON *aux_json = cJSON_GetObjectItemCaseSensitive(msg, "aux");
+    if (aux_json == NULL) {
+        err("Bad message ('aux' not present)");
+        return 0;
+    }
+    /* The returned JSON string is null-terminated, so no need for aux.len */
+    aux.data = cJSON_PrintUnformatted(aux_json);
+    if (aux.data == NULL) {
+        err("Could not serialize aux data");
+    }
+
+    {% for conn in sys.imported_channels(syncset) %}
     //TODO Need source mon identity types and source event param types
     {%+ if not loop.first %}} else {%+ endif -%}
-    if (!strcmp(channel, "{{channel}}")) {
+    if (!strcmp(channel, "{{conn.channel}}")) {
         //TODO
     }
     {% endfor %}
@@ -427,13 +450,13 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     init_status->queue = 1;
 
     /* Bind our queue to routing keys starting with channel names we import */
-    {% for channel_name in sys.imported_channels(syncset).keys() %}
+    {% for conn in sys.imported_channels(syncset) %}
     amqp_queue_bind(rmq_state->conn, rmq_state->channel, rmq_state->queue,
             amqp_cstring_bytes(exchange),
-            amqp_cstring_bytes("{{channel_name}}.#"), amqp_empty_table);
+            amqp_cstring_bytes("{{conn.channel}}.#"), amqp_empty_table);
     reply = amqp_get_rpc_reply(rmq_state->conn);
     if (!check_reply(init_status, rmq_state, reply,
-                "Could not bind queue for {{channel_name}}")) {
+                "Could not bind queue for {{conn.channel}}")) {
         return 0;
     }
     {% endfor %}

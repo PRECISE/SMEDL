@@ -102,6 +102,9 @@ SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len);
 /*
  * Auxiliary data is passed through monitors untouched. It might be used for
  * provenance info or any other attachment to events.
+ *
+ * A length field is provided in case it may be helpful, but SMEDL never reads
+ * auxiliary data, so it need not be used (e.g. if data is null-terminated).
  */
 typedef struct {
     void *data;
