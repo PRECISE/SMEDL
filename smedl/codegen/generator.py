@@ -4,7 +4,11 @@ Code generation and template filling
 
 import os.path
 import jinja2
+from jinja2 import nodes
+from jinja2 import ext
+from jinja2.exceptions import TemplateRuntimeError
 from smedl.structures import expr
+from smedl.parser.exceptions import SmedlException
 
 # importlib.resources is only available in python>=3.7, but is available as a
 # backport.
@@ -12,6 +16,32 @@ try:
     from importlib import resources
 except ImportError:
     import importlib_resources as resources
+
+class UnsupportedFeature(TemplateRuntimeError, SmedlException):
+    """Raised when a particular feature of SMEDL is incompatible with the
+    chosen generation options (e.g. a particular transport adapter)"""
+
+class UnsupportedFeatureExtension(ext.Extension):
+    """Jinja2 extension to create an "unsupported" tag that raises
+    UnsupportedFeature. Use like this:
+
+    {% unsupported "Some message here" %}
+    """
+    tags = set(['unsupported'])
+
+    def _raise_unsupported(self, msg, caller):
+        raise UnsupportedFeature(msg)
+
+    def parse(self, parser):
+        lineno = next(parser.stream).lineno
+        # Parse the argument (the message)
+        args = [parser.parse_expression()]
+        # Return an ExprStmt (evals an expression and discards it) where the
+        # expression is a call to _raise_unsupported
+        return nodes.ExprStmt(
+                self.call_method('_raise_unsupported', args, lineno=lineno),
+                lineno=lineno
+            )
 
 class CodeGenerator(object):
     """Generates C code for monitors and monitor systems"""
@@ -28,6 +58,7 @@ class CodeGenerator(object):
         # Initialize the Jinja2 environment
         self.env = jinja2.Environment(trim_blocks=True, lstrip_blocks=True,
                 keep_trailing_newline=True,
+                extensions=[UnsupportedFeatureExtension],
                 loader=jinja2.PackageLoader('smedl.codegen', '.'))
 
         # Make SmedlType available to all templates

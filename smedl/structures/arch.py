@@ -279,7 +279,7 @@ class Connection(object):
             elif self._channel == channel:
                 # Given name matches what was already used.
                 pass
-            elif self._channel[0] == '_'
+            elif self._channel[0] == '_':
                 # Given name doesn't match, but prior name was auto-generated.
                 # Switch to the given name.
                 old_channel = self._channel
@@ -323,7 +323,7 @@ class DeclaredMonitor(object):
     """A monitor delcaration from the architecture file"""
     def __init__(self, sys, name, spec, params):
         # The monitoring system this DeclaredMonitor belongs to
-        self._sys
+        self._sys = sys
         # Name of the monitor given in the declaration (meaning the "as" name,
         # if provided)
         self._name = name
@@ -373,9 +373,13 @@ class DeclaredMonitor(object):
     def __eq__(self, other):
         """Test for equality with the monitor name"""
         if isinstance(other, DeclaredMonitor):
-            return self.name == other.name
+            return self._name == other.name
         else:
             return False
+
+    def __hash__(self):
+        """Hash by monitor name"""
+        return hash(self._name)
 
     def assign_syncset(self, syncset):
         """Assign the monitor to a synchronous set. If it is already in one,
@@ -400,7 +404,7 @@ class DeclaredMonitor(object):
         """
         # Wildcard params always validate
         if param.index is None:
-            continue
+            return
 
         if param.identity:
             # Validate against monitor params
@@ -416,7 +420,7 @@ class DeclaredMonitor(object):
         else:
             # Validate against event params
             try:
-                result = self.source_ev_params[param.index].convertible_to(
+                result = source_ev_params[param.index].convertible_to(
                         type_)
             except IndexError:
                 raise ParameterError("Source event {} does not have "
@@ -439,7 +443,7 @@ class DeclaredMonitor(object):
           messages
         """
         for i in range(len(dest_params)):
-            param = dest_param[i]
+            param = dest_params[i]
             type_ = dest_param_types[i]
 
             self._validate_single_param(source_event, source_ev_params, param,
@@ -476,7 +480,7 @@ class DeclaredMonitor(object):
         # already.)
         self._validate_param_types(source_event, source_ev_params,
                 target.mon_params, target.monitor.params,
-                "monitor " + target.monitor)
+                "monitor " + target.monitor.name)
 
         # Validate additional parameters depending on Target type
         if isinstance(target, TargetEvent):
@@ -492,7 +496,7 @@ class DeclaredMonitor(object):
                 var_type = target.monitor.spec.state_vars[var].type
             self._validate_single_param(source_event, source_ev_params,
                     param, var_type, "state var {} of monitor {}".format(
-                    var, target.monitor))
+                    var, target.monitor.name))
 
         # Get or create Connection
         try:
@@ -637,7 +641,7 @@ class MonitorSystem(object):
             except KeyError:
                 raise NameNotDefined("Monitor {} has not been declared".format(
                     monitor))
-            syncset.add(self)
+            syncset.add(monitor)
 
         # Add the syncset to the MonitorSystem
         self._syncsets[name] = syncset
@@ -697,7 +701,7 @@ class MonitorSystem(object):
         # If from a monitor, call that monitor's add_connection
         if monitor is not None:
             try:
-                decl = _monitor_decls[monitor]
+                decl = self._monitor_decls[monitor]
             except KeyError:
                 raise NameNotDefined("Source monitor {} is not declared"
                         .format(monitor))
@@ -707,7 +711,7 @@ class MonitorSystem(object):
         # Validate that the destination monitor parameters are all wildcards
         # or event parameters ("$x"), not monitor parameters ("#x")
         self._validate_no_identities(target.mon_params,
-                "Monitor " + target.monitor)
+                "Monitor " + target.monitor.name)
 
         # Same for additional parameters, depending on target type
         if isinstance(target, TargetEvent):
@@ -715,7 +719,7 @@ class MonitorSystem(object):
                     "Event " + target.event)
         elif isinstance(target, TargetCreation):
             self._validate_no_identities(target.state_vars.values(),
-                    "Monitor " + target.monitor)
+                    "Monitor " + target.monitor.name)
 
         # Get or create Connection
         try:

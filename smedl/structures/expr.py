@@ -324,7 +324,7 @@ class HelperCall(Expression):
     def name(self):
         return self._name
 
-    @propert
+    @property
     def params(self):
         return self._params
 

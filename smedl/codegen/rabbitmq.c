@@ -44,12 +44,17 @@
  * - char - Number
  * - float - Number
  * - string - String
- * - pointer - Number (by converting to uintptr_t)
- * - thread - TODO
+ * - pointer - String (by converting to uintptr_t and then rendering that in
+ *   hexadecimal)
+ * - thread - Not supported. Raises UnsupportedFeature.
  *   opaque - String
  */
+#include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdint.h>
+#include <string.h>
+#include <errno.h>
 
 #include <amqp.h>
 #include <amqp_framing.h>
@@ -257,39 +262,183 @@ int handle_message(amqp_envelope_t *envelope) {
     /* Verify fmt_version */
     cJSON *fmt = cJSON_GetObjectItemCaseSensitive(msg, "fmt_version");
     if (!verify_fmt_version(fmt)) {
-        return 0;
+        goto fail;
     }
 
-    /* Get event parameters */
-    cJSON *params = cJSON_GetObjectItemCaseSensitive(msg, "params");
-    if (!cJSON_IsArray(params)) {
+    /* Get event parameters JSON */
+    cJSON *params_json = cJSON_GetObjectItemCaseSensitive(msg, "params");
+    if (!cJSON_IsArray(params_json)) {
         err("Bad message ('params' not present as an array)");
-        return 0;
+        goto fail;
     }
 
-    /* Get aux data and convert to SMEDLAux */
+    /* Get aux data JSON and convert to SMEDLAux */
     SMEDLAux aux;
     cJSON *aux_json = cJSON_GetObjectItemCaseSensitive(msg, "aux");
     if (aux_json == NULL) {
         err("Bad message ('aux' not present)");
-        return 0;
+        goto fail;
     }
     /* The returned JSON string is null-terminated, so no need for aux.len */
     aux.data = cJSON_PrintUnformatted(aux_json);
     if (aux.data == NULL) {
         err("Could not serialize aux data");
+        goto fail;
     }
-
     {% for conn in sys.imported_channels(syncset) %}
-    //TODO Need source mon identity types and source event param types
+
+    {% if conn.source_mon is not none %}
+    /* Import {{conn.source_mon.name}}.{{conn.source_event}} */
+    {% else %}
+    /* Import {{conn.source_event}} (from target system) */
+    {% endif %}
     {%+ if not loop.first %}} else {%+ endif -%}
     if (!strcmp(channel, "{{conn.channel}}")) {
+        //TODO Need source mon identity types and source event param types
+        {% if conn.source_mon is not none %}
+        /* Get monitor identities JSON and convert to SMEDLValue array */
+        cJSON *id_json;
+        cJSON *identities_json = cJSON_GetObjectItemCaseSensitive(msg, "identities");
+        if (!cJSON_IsArray(identities_json)) {
+            err("Bad message ('identities' not present as an array)");
+            goto fail;
+        }
+        SMEDLValue identities[{{conn.source_mon.params|length}}];
+        {% for param in conn.source_mon.params %}
+        {% if loop.first %}
+        {% set get_next -%}
+        cJSON_ArrayFirst(identities_json, id_json)
+        {%- endset %}
+        {% else %}
+        {% set get_next -%}
+        cJSON_ArrayNext(id_json)
+        {%- endset %}
+        {% endif %}
+        {% if param is sameas SmedlType.INT %}
+        if ({{get_next}} && cJSON_IsNumber(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_INT;
+            identities[{{loop.index0}}].v.i = id_json->valueint;
+        {% elif param is sameas SmedlType.FLOAT %}
+        if ({{get_next}} && cJSON_IsNumber(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_FLOAT;
+            identities[{{loop.index0}}].v.d = id_json->valuedouble;
+        {% elif param is sameas SmedlType.CHAR %}
+        if ({{get_next}} && cJSON_IsNumber(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_CHAR;
+            identities[{{loop.index0}}].v.c = id_json->valueint;
+        {% elif param is sameas SmedlType.STRING %}
+        if ({{get_next}} && cJSON_IsString(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_STRING;
+            identities[{{loop.index0}}].v.s = id_json->valuestring;
+        {% elif param is sameas SmedlType.POINTER %}
+        if ({{get_next}} && cJSON_IsString(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_POINTER;
+            char *endptr;
+            errno = 0;
+            uintptr_t ptr = strtol(id_json->valuestring, &endptr, 16);
+            if (errno) {
+                err("Could not extract pointer from 'identities': Overflow");
+                goto fail;
+            } else if (id_json->valuestring[0] == '\0' || *end_ptr != '\0') {
+                err("Bad message (Pointer in 'identities' expects "
+                        "hexadecimal string)");
+                goto fail;
+            }
+            identities[{{loop.index0}}].v.p = (void *) ptr;
+        {% elif param is sameas SmedlType.THREAD %}
+        {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
+        {% elif param is sameas SmedlType.OPAQUE %}
+        if ({{get_next}} && cJSON_IsString(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_OPAQUE;
+            identities[{{loop.index0}}].v.o.data = id_json->valuestring;
+            identities[{{loop.index0}}].v.o.size = strlen(id_json->valuestring);
+        {% endif %}
+        } else {
+            err("Bad message (Bad 'identities' array)");
+            goto fail;
+        }
+        {% endfor %}
+        if (!cJSON_ArrayNext(id_json)) {
+            err("Bad message (Too many elements in 'identities' array)");
+            goto fail;
+        }
+        {% else %}
+        SMEDLValue *identities = NULL;
+        {% endif %}
+
+        /* Convert event parameters to SMEDLValue array */
+        //TODO We have a problem. Some events come from the target system. We
+        // don't have types for those events.
+        SMEDLValue params[{{conn.source_mon.params|length}}];
+        {% for param in conn.source_mon.params %}
+        {% if loop.first %}
+        {% set get_next -%}
+        cJSON_ArrayFirst(identities_json, id_json)
+        {%- endset %}
+        {% else %}
+        {% set get_next -%}
+        cJSON_ArrayNext(id_json)
+        {%- endset %}
+        {% endif %}
+        {% if param is sameas SmedlType.INT %}
+        if ({{get_next}} && cJSON_IsNumber(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_INT;
+            identities[{{loop.index0}}].v.i = id_json->valueint;
+        {% elif param is sameas SmedlType.FLOAT %}
+        if ({{get_next}} && cJSON_IsNumber(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_FLOAT;
+            identities[{{loop.index0}}].v.d = id_json->valuedouble;
+        {% elif param is sameas SmedlType.CHAR %}
+        if ({{get_next}} && cJSON_IsNumber(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_CHAR;
+            identities[{{loop.index0}}].v.c = id_json->valueint;
+        {% elif param is sameas SmedlType.STRING %}
+        if ({{get_next}} && cJSON_IsString(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_STRING;
+            identities[{{loop.index0}}].v.s = id_json->valuestring;
+        {% elif param is sameas SmedlType.POINTER %}
+        if ({{get_next}} && cJSON_IsString(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_POINTER;
+            char *endptr;
+            errno = 0;
+            uintptr_t ptr = strtol(id_json->valuestring, &endptr, 16);
+            if (errno) {
+                err("Could not extract pointer from 'identities': Overflow");
+                goto fail;
+            } else if (id_json->valuestring[0] == '\0' || *end_ptr != '\0') {
+                err("Bad message (Pointer in 'identities' expects "
+                        "hexadecimal string)");
+                goto fail;
+            }
+            identities[{{loop.index0}}].v.p = (void *) ptr;
+        {% elif param is sameas SmedlType.THREAD %}
+        {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
+        {% elif param is sameas SmedlType.OPAQUE %}
+        if ({{get_next}} && cJSON_IsString(id_json)) {
+            identities[{{loop.index0}}].t = SMEDL_OPAQUE;
+            identities[{{loop.index0}}].v.o.data = id_json->valuestring;
+            identities[{{loop.index0}}].v.o.size = strlen(id_json->valuestring);
+        {% endif %}
+        } else {
+            err("Bad message (Bad 'identities' array)");
+            goto fail;
+        }
+        {% endfor %}
+        if (!cJSON_ArrayNext(id_json)) {
+            err("Bad message (Too many elements in 'identities' array)");
+            goto fail;
+        }
         //TODO
     }
     {% endfor %}
 
     /* Cleanup */
     cJSON_Delete(msg);
+    return 1;
+
+fail:
+    cJSON_Delete(msg);
+    return 0;
 }
 
 /* While waiting for a regular message, occasionally a non-Basic.Deliver frame

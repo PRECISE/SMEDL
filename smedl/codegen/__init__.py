@@ -2,4 +2,4 @@
 Code generation and template filling
 """
 
-from .generator import CodeGenerator
+from .generator import CodeGenerator, UnsupportedFeature
