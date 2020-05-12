@@ -46,8 +46,8 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
  *   to NULL.
  * params - An array of the source event's parameters
  * aux - Extra data to be passed through unchanged */
-{% for channel_name in sys.imported_channels(syncset).keys() %}
-void import_{{syncset}}_{{channel_name}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+{% for conn in sys.imported_channels(syncset) %}
+void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
 {% endfor %}
 
 /* Global wrapper callback interface - Used to register callback functions to be
@@ -61,8 +61,8 @@ void import_{{syncset}}_{{channel_name}}(SMEDLValue *identities, SMEDLValue *par
  *   none), another array of SMEDLValue for the source event's parameters, and
  *   a SMEDLAux for passthrough data. */
 {% for decl in mon_decls %}
-{% for channel in decl.inter_channels(sys.syncsets[syncset]) %}
-void callback_{{syncset}}_{{channel}}(SMEDLCallback cb_func);
+{% for conn in decl.inter_connections %}
+void callback_{{syncset}}_{{conn.channel}}(SMEDLCallback cb_func);
 {% endfor %}
 {% endfor %}
 
@@ -72,14 +72,21 @@ void callback_{{syncset}}_{{channel}}(SMEDLCallback cb_func);
 
 typedef enum {
     {% for decl in mon_decls %}
-    {% for channel in decl.channels() %}
+    {% for channel in decl.connections.keys() %}
     CHANNEL_{{syncset}}_{{channel}},
     {% endfor %}
     {% endfor %}
 } {{syncset}}ChannelId;
 
-/* Intra routing function - Called by import interface functions and intra queue
- * processing function to route events to the local wrappers */
-void route_{{syncset}}_event({{syncset}}ChannelId channel, SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+/* Intra routing functions - Called by import interface functions and intra
+ * queue processing function to route events to the local wrappers */
+{% for conn in sys.imported_channels(syncset) %}
+void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+{% endfor %}
+{% for decl in mon_decls %}
+{% for conn in decl.intra_connections %}
+void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+{% endfor %}
+{% endfor %}
 
 #endif /* {{syncset}}_GLOBAL_WRAPPER_H */

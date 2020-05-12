@@ -117,8 +117,8 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                     ast.dest_monitor, ast.dest_event, len(ast.event_params)))
 
         # Create the TargetEvent
-        return arch.TargetEvent(ast.dest_monitor, ast.dest_event,
-                ast.monitor_params, ast.event_params)
+        return arch.TargetEvent(self.system.monitor_decls[ast.dest_monitor],
+                ast.dest_event, ast.monitor_params, ast.event_params)
 
     def monitor_initialization(self, ast):
         """Create a TargetCreation. Ensure the target monitor exists and has the
@@ -157,8 +157,8 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
             state_vars[initializer.var_name] = initializer.value
 
         # Create the TargetCreation
-        return arch.TargetCreation(ast.dest_monitor, ast.monitor_params,
-                state_vars)
+        return arch.TargetCreation(self.system.monitor_decls[ast.dest_monitor],
+                ast.monitor_params, state_vars)
 
     def wildcard_parameter(self, ast):
         """Create a Parameter that might be a wildcard"""

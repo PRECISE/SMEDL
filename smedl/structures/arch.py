@@ -56,7 +56,8 @@ class Target(object):
         """Initialize the Target object.
         
         type_ - String describing the type of target for Jinja
-        monintor - Name of the destination monitor
+        monintor - DeclaredMonitor for the destination monitor, or None if this
+          is a TargetExport
         mon_params - Iterable of Parameters for the monitor identities"""
         self._target_type = type_
         self._monitor = monitor
@@ -91,7 +92,7 @@ class Target(object):
             raise Exception("Internal error: Target already added to a "
                     "connection")
 
-    def same_as(self, other):
+    def __eq__(self, other):
         """Return True if the other is the same target (ignoring parameters)
         as ourselves"""
         if not isinstance(other, Target):
@@ -104,7 +105,7 @@ class TargetEvent(Target):
     def __init__(self, dest_monitor, dest_event, mon_params, event_params):
         """Initialize this target event.
         
-        dest_monitor - Name of the destination monitor
+        dest_monitor - DeclaredMonitor for the destination monitor
         dest_event - Name of the destination monitor's imported event
         mon_params - List of Parameters for the monitor identities
         event_params - List of Parameters for the event"""
@@ -122,20 +123,20 @@ class TargetEvent(Target):
         """Get a tuple of Parameters for the destination event"""
         return self._event_params
 
-    def same_as(self, other):
+    def __eq__(self, other):
         """Return True if the other is the same target (ignoring parameters)
         as ourselves"""
         if not isinstance(other, Target):
             return NotImplemented
         if not isinstance(other, TargetEvent):
             return False
-        return super().same_as(other) and self._event == other._event
+        return super().__eq__(other) and self._event == other._event
 
     def __repr__(self):
         mon_param_str = ', '.join([str(p) for p in self._mon_params])
         ev_param_str = ', '.join([str(p) for p in self._event_params])
-        return ('TargetEvent:' + self._monitor + '[' + mon_param_str + '].' +
-                self._event + '(' + ev_param_str + ')')
+        return ('TargetEvent:' + self._monitor.name + '[' + mon_param_str +
+                '].' + self._event + '(' + ev_param_str + ')')
 
 class TargetCreation(Target):
     """A monitor creation target. Note that this is not the same as the "target
@@ -143,7 +144,7 @@ class TargetCreation(Target):
     def __init__(self, dest_monitor, mon_params, state_vars):
         """Initialize this target creation event.
 
-        dest_monitor - Name of the monitor to be created
+        dest_monitor - DeclaredMonitor for the monitor to be created
         mon_params - List of Parameters for the monitor identities. None may be
           wildcard parameters.
         state_vars - Dict containing any state variable initializations, where
@@ -158,20 +159,20 @@ class TargetCreation(Target):
         """Get a mapping of state var names to Parameters"""
         return types.MappingProxyType(self._state_vars)
 
-    def same_as(self, other):
+    def __eq__(self, other):
         """Return True if the other is the same target (ignoring parameters)
         as ourselves"""
         if not isinstance(other, Target):
             return NotImplemented
         if not isinstance(other, TargetCreation):
             return False
-        return super().same_as(other)
+        return super().__eq__(other)
 
     def __repr__(self):
         mon_param_str = ', '.join([str(p) for p in self._mon_params])
         state_var_str = ', '.join([k + '=' + str(v)
                 for k, v in self._state_vars.values()])
-        return ('TargetCreation:' + self._monitor + '(' + mon_param_str +
+        return ('TargetCreation:' + self._monitor.name + '(' + mon_param_str +
                 ', ' + state_var_str + ')')
 
 class TargetExport(Target):
@@ -183,7 +184,7 @@ class TargetExport(Target):
         """Initialize this export target."""
         super().__init__('export', None, [])
 
-    def same_as(self, other):
+    def __eq__(self, other):
         """Return true if the other is the same target (ignoring parameters)
         as ourselves"""
         if not isinstance(other, Target):
@@ -197,12 +198,6 @@ class TargetExport(Target):
         return ('TargetExport:' + str(self._monitor) +
                 '(' + mon_param_str + ')')
 
-#TODO Incorporate this into DeclaredMonitors and MonitoringSystem.
-#TODO Have a way to look up connections by name? Would that be useful? Actually,
-#  probably not, as long as we can look them up by monitor and syncset? Which
-#  ways do we need to be able to look them up?
-#TODO Probably also useful to be able to have `intra_connections` and
-#  `inter_connections` properties in a DeclaredMonitor
 class Connection(object):
     """A connection between a source event and some number of targets"""
     def __init__(self, sys, source_mon, source_event):
@@ -213,7 +208,7 @@ class Connection(object):
         source_event - Source event name
         """
         # The channel name
-        self._channel = channel
+        self._channel = None
         # The MonitorSystem this connection is part of
         self._sys = sys
         # The source DeclaredMonitor for this connection (or None if from the
@@ -239,6 +234,13 @@ class Connection(object):
     @property
     def targets(self):
         return self._targets
+
+    def __eq__(self, other):
+        """Test for equality with the channel name"""
+        if isinstance(other, Connection):
+            return self.channel is not None and self.channel == other.channel
+        else:
+            return False
 
     def assign_name(self, channel):
         """Do various validations and assign the channel name.
@@ -300,7 +302,7 @@ class Connection(object):
         """Add a Target to this channel after verifying that it is not a
         duplicate of any targets it already contains"""
         for t in self._targets:
-            if target.same_as(t):
+            if target == t:
                 raise DuplicateConnection("Source and destination of "
                         "connections cannot match.")
         self._targets.append(target)
@@ -367,6 +369,13 @@ class DeclaredMonitor(object):
     def ev_connections(self):
         """Get this monitor's connections indexed by source event name"""
         return types.MappingProxyType(self._ev_connections)
+
+    def __eq__(self, other):
+        """Test for equality with the monitor name"""
+        if isinstance(other, DeclaredMonitor):
+            return self.name == other.name
+        else:
+            return False
 
     def assign_syncset(self, syncset):
         """Assign the monitor to a synchronous set. If it is already in one,
@@ -463,19 +472,16 @@ class DeclaredMonitor(object):
             raise NameNotDefined("Source monitor {} does not contain exported "
                     "event {}".format(self._name, source_event))
 
-        # Get target mon decl (Must be verified to exist already)
-        dest_mon_decl = self._sys.monitor_decls[target.monitor]
-
         # Validate destination monitor parameter types. (Count must be validated
         # already.)
         self._validate_param_types(source_event, source_ev_params,
-                target.mon_params, dest_mon_decl.params,
+                target.mon_params, target.monitor.params,
                 "monitor " + target.monitor)
 
         # Validate additional parameters depending on Target type
         if isinstance(target, TargetEvent):
             # Validate destination event parameter types
-            dest_ev_types = dest_mon_decl.spec.imported_events[
+            dest_ev_types = target.monitor.spec.imported_events[
                     target.event_params]
             self._validate_param_types(source_event, source_ev_params,
                     target.event_params, dest_ev_types,
@@ -483,7 +489,7 @@ class DeclaredMonitor(object):
         elif isinstance(target, TargetCreation):
             # Validate state var types
             for var, param in target.state_vars.items():
-                var_type = dest_mon_decl.spec.state_vars[var].type
+                var_type = target.monitor.spec.state_vars[var].type
             self._validate_single_param(source_event, source_ev_params,
                     param, var_type, "state var {} of monitor {}".format(
                     var, target.monitor))
@@ -521,78 +527,35 @@ class DeclaredMonitor(object):
                 conn.assign_name(None)
                 conn.add_target(TargetExport())
 
-    #TODO Refactor below here
-
-    #TODO Needed after issue #29 is implemented?
-    def is_event_intra(self, event, syncset):
-        """Check if the named event has a connection that is destined within the
-        synchronous set and return True or False
-
-        event - Name of the event
-        syncset - List of monitor names in the synchronous set
-        """
-        try:
-            for target in self.connections[event]:
-                if target.monitor in syncset:
-                    return True
-        except KeyError:
-            return False
-        return False
-
-    #TODO Needed after issue #29 is implemented?
-    def is_event_inter(self, event, syncset):
-        """Check if the named event has a connection that is destined outside
-        the synchronous set and return True or False
-
-        event - Name of the event
-        syncset - List of monitor names in the synchronous set
-        """
-        try:
-            for target in self.connections[event]:
-                if target.monitor not in syncset:
-                    return True
-        except KeyError:
-            return False
-        return False
-
-    def intra_channels(self, syncset):
-        """Return a list of channel names from this monitor that are destined
-        to monitors inside the synchronous set
-
-        syncset - List of monitor names in the synchronous set"""
-        results = []
-        for target_list in self.connections.values():
-            for target in target_list:
-                if target.monitor in syncset:
-                    results.append(target.channel)
+    @property
+    def intra_connections(self):
+        """Return a list of connections where this monitor is the source and
+        at least one destination is in the same synchronous set"""
+        result = []
+        for conn in self._connections.values():
+            for target in conn.targets:
+                if target.monitor in self._syncset:
+                    result.append(conn)
                     break
-        return results
+        return result
 
-    def inter_channels(self, syncset):
-        """Return a list of channel names from this monitor that are destined
-        to monitors outside the synchronous set
-
-        syncset - List of monitor names in the synchronous set"""
-        results = []
-        for target_list in self.connections.values():
-            for target in target_list:
-                if target.monitor not in syncset:
-                    results.append(target.channel)
+    @property
+    def inter_connections(self):
+        """Return a list of connections where this monitor is the source and
+        at least one destination is not in the same synchronous set"""
+        result = []
+        for conn in self._connections.values():
+            for target in conn.targets:
+                if target.monitor not in self._syncset:
+                    result.append(conn)
                     break
-        return results
-
-    def channels(self):
-        """Return a set of channel names where this monitor is the source"""
-        results = set()
-        for target_list in self.connections.values():
-            for target in target_list:
-                results.add(target.channel)
+        return result
 
     def __repr__(self):
         return "monitor {}({}) as {}".format(
-                self.spec,
-                ", ".join(self.params),
-                self.name)+eagfedj0omme0
+                self._spec.name,
+                ", ".join(self._params),
+                self._name)
 
 class MonitorSystem(object):
     """A monitor system as specified by an architecture file (a4smedl file)"""
@@ -640,6 +603,13 @@ class MonitorSystem(object):
     @property
     def ev_imported_connections(self):
         return self._ev_imported_connections
+
+    def __eq__(self, other):
+        """Test for equality with the system name"""
+        if isinstance(other, MonitorSystem):
+            return self.name is not None and self.name == other.name
+        else:
+            return False
 
     def add_syncset(self, name, monitors):
         """Add a synchronous set to the system.
@@ -804,39 +774,36 @@ class MonitorSystem(object):
         for mon in self._monitor_decls.values():
             mon.create_export_connections()
 
-    #TODO Refactor below here
-
-    def get_syncset_spec_names(self, syncset):
-        """Get a list of monitor specification names for all monitors in a
-        synchronous set"""
-        decls = [self.monitor_decls[mon] for mon in self.syncsets[syncset]]
-        spec_names = set([decl.spec.name for decl in decls])
-        return list(spec_names)
-
     def imported_channels(self, syncset):
-        """Get all the channels imported to the given synchronous set as a dict
-        where keys are the channel names and values are lists of target"""
-        result = dict()
+        """Get a list of Connections with sources not in the given synchronous
+        set and destinations in it
+        
+        syncset - Name of the synchronous set"""
+        result = []
 
         # Sort through the channels from the target system
-        for channel, targets in self.imported_connections.items():
-            target_list = []
-            for target in targets:
-                if target.monitor in self.syncsets[syncset]:
-                    target_list.append(target)
-            if len(target_list) > 0:
-                result[channel] = target_list
+        for conn in self._imported_connections.values():
+            for target in conn.targets:
+                if target.monitor in self._syncsets[syncset]:
+                    result.append(conn)
+                    break
 
         # Sort through channels from monitors
-        for decl in self.monitor_decls.values():
-            if decl.name in self.syncsets[syncset]:
-                continue
-            for targets in decl.connections.values():
-                target_list = []
-                for target in targets:
-                    if target.monitor in self.syncsets[syncset]:
-                        target_list.append(target)
-                if len(target_list) > 0:
-                    result[target_list[0].channel] = target_list
+        for decl in self._monitor_decls.values():
+            if decl not in self._syncsets[syncset]:
+                for conn in decl.connections.values():
+                    for target in conn.targets:
+                        if target.monitor in self._syncsets[syncset]:
+                            result.append(conn)
+                            break
 
+        return result
+
+    def syncset_spec_names(self, syncset):
+        """Get a set of the MonitorSpec names for the named syncset
+
+        syncset - Name of the synchronous set"""
+        result = set()
+        for decl in self._syncsets[syncset]:
+            result.add(decl.spec.name)
         return result

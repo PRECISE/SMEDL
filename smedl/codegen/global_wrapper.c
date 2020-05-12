@@ -5,7 +5,7 @@
 {% for decl in mon_decls %}
 #include "{{decl.name}}_local_wrapper.h"
 {% endfor %}
-{% for spec_name in sys.get_syncset_spec_names(syncset) %}
+{% for spec_name in sys.syncset_spec_names(syncset) %}
 #include "{{spec_name}}_mon.h"
 {% endfor %}
 
@@ -15,8 +15,8 @@ static GlobalEventQueue inter_queue;
 
 /* Callback function pointers */
 {% for decl in mon_decls %}
-{% for channel in decl.inter_channels(sys.syncsets[syncset]) %}
-static SMEDLCallback cb_{{channel}};
+{% for conn in decl.inter_connections %}
+static SMEDLCallback cb_{{conn.channel}};
 {% endfor %}
 {% endfor %}
 
@@ -57,86 +57,86 @@ void free_{{syncset}}_syncset() {
 
 /* Intra routing function - Called by import interface functions and intra queue
  * processing function to route events to the local wrappers */
-void route_{{syncset}}_event({{syncset}}ChannelId channel,
-        SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
-    switch (channel) {
-        {% for decl in mon_decls %}
-        {% for event, params in decl.spec.exported_events.items() %}
-        {% for target in decl.connections[event]
-            if target.monitor in sys.syncsets[syncset] %}
-        {% if loop.first %}
-        case CHANNEL_{{syncset}}_{{target.channel}}:
-        {% endif %}
-            {
-                {% if target.mon_params is nonempty %}
-                SMEDLValue new_identities[{{target.mon_params|length}}] = {
-                        {% for param in target.mon_params %}
-                        {% if param.index is none %}
-                        {SMEDL_NULL},
-                        {% elif param.identity %}
-                        identities[{{param.index}}],
-                        {% else %}
-                        params[{{param.index}}],
-                        {% endif %}
-                        {% endfor %}
-                    };
-                {% else %}
-                SMEDLValue *new_identities = NULL;
-                {% endif %}
-                {% if target.target_type == 'creation' %}
-                {{sys.monitor_decls[target.monitor].spec.name}}State init_state;
-                default_{{sys.monitor_decls[target.monitor].spec.name}}_state(&init_state);
-                {% for var, param in target.state_vars.items() %}
-                init_state.{{var}} = {%+ if param.identity -%}
-                    identities[{{param.index}}]
-                    {% set param_type = decl.params[param.index] %}
-                    {%- else -%}
-                    params[{{param.index}}]
-                    {% set param_type = params[param.index] %}
-                    {%- endif -%}
-                    .v.
-                    {%- if param_type is sameas SmedlType.INT -%}
-                        i
-                    {%- elif param_type is sameas SmedlType.FLOAT -%}
-                        d
-                    {%- elif param_type is sameas SmedlType.CHAR -%}
-                        c
-                    {%- elif param_type is sameas SmedlType.STRING -%}
-                        s
-                    {%- elif param_type is sameas SmedlType.POINTER -%}
-                        p
-                    {%- elif param_type is sameas SmedlType.THREAD -%}
-                        th
-                    {%- elif param_type is sameas SmedlType.OPAQUE -%}
-                        o
-                    {%- endif %};
-                {% endfor %}
-                create_{{target.monitor}}_monitor(new_identities, &init_state);
-                {% elif target.target_type == 'event' %}
-                {% if target.event_params is nonempty %}
-                SMEDLValue new_params[{{target.event_params|length}}] = {
-                        {% for param in target.event_params %}
-                        {% if param.identity %}
-                        identities[{{param.index}}],
-                        {% else %}
-                        params[{{param.index}}],
-                        {% endif %}
-                        {% endfor %}
-                    };
-                {% else %}
-                SMEDLValue *new_params = NULL;
-                {% endif %}
-                process_{{target.monitor}}_{{target.event}}(new_identities, new_params, aux);
-                {% endif %}
-            }
-            {% if loop.last %}
-            break;
+{# Routing function macro *************************************************** #}
+{% macro route(conn) -%}
+{% for target in conn.targets if target.monitor in mon_decls -%}
+{%- endfor %}
+{
+    {% if target.mon_params is nonempty %}
+    SMEDLValue new_identities[{{target.mon_params|length}}] = {
+            {% for param in target.mon_params %}
+            {% if param.index is none %}
+            {SMEDL_NULL},
+            {% elif param.identity %}
+            identities[{{param.index}}],
+            {% else %}
+            params[{{param.index}}],
             {% endif %}
-        {% endfor %}
-        {% endfor %}
-        {% endfor %}
-    }
+            {% endfor %}
+        };
+    {% else %}
+    SMEDLValue *new_identities = NULL;
+    {% endif %}
+    {% if target.target_type == 'creation' %}
+    {{target.monitor.spec.name}}State init_state;
+    default_{{target.monitor.spec.name}}_state(&init_state);
+    {% for var, param in target.state_vars.items() %}
+    init_state.{{var}} = {%+ if param.identity -%}
+        identities[{{param.index}}]
+        {% set param_type = decl.params[param.index] %}
+        {%- else -%}
+        params[{{param.index}}]
+        {% set param_type = params[param.index] %}
+        {%- endif -%}
+        .v.
+        {%- if param_type is sameas SmedlType.INT -%}
+            i
+        {%- elif param_type is sameas SmedlType.FLOAT -%}
+            d
+        {%- elif param_type is sameas SmedlType.CHAR -%}
+            c
+        {%- elif param_type is sameas SmedlType.STRING -%}
+            s
+        {%- elif param_type is sameas SmedlType.POINTER -%}
+            p
+        {%- elif param_type is sameas SmedlType.THREAD -%}
+            th
+        {%- elif param_type is sameas SmedlType.OPAQUE -%}
+            o
+        {%- endif %};
+    {% endfor %}
+    create_{{target.monitor.name}}_monitor(new_identities, &init_state);
+    {% elif target.target_type == 'event' %}
+    {% if target.event_params is nonempty %}
+    SMEDLValue new_params[{{target.event_params|length}}] = {
+            {% for param in target.event_params %}
+            {% if param.identity %}
+            identities[{{param.index}}],
+            {% else %}
+            params[{{param.index}}],
+            {% endif %}
+            {% endfor %}
+        };
+    {% else %}
+    SMEDLValue *new_params = NULL;
+    {% endif %}
+    process_{{target.monitor.name}}_{{target.event}}(new_identities, new_params, aux);
+    {% endif %}
 }
+{%- endmacro %}
+{# End of routing function macro********************************************* #}
+{% for conn in sys.imported_channels(syncset) %}
+void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
+    {{route(conn)|indent}}
+}
+{% endfor %}
+{% for decl in mon_decls %}
+{% for conn in decl.intra_connections %}
+void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
+    {{route(conn)|indent}}
+}
+{% endfor %}
+{% endfor %}
 
 /* Intra queue processing function - Route events to the local wrappers */
 static void handle_{{syncset}}_intra() {
@@ -145,7 +145,15 @@ static void handle_{{syncset}}_intra() {
     SMEDLAux aux;
 
     while (pop_global_event(&intra_queue, &channel, &identities, &params, &aux)) {
-        route_{{syncset}}_event(channel, identities, params, aux);
+        switch (channel) {
+            {% for decl in mon_decls %}
+            {% for conn in decl.intra_connections %}
+            case CHANNEL_{{syncset}}_{{conn.channel}}:
+                route_{{syncset}}_{{conn.channel}}(identities, params, aux);
+                break;
+            {% endfor %}
+            {% endfor %}
+        }
 
         /* Event params were malloc'd. They are no longer needed. */
         free(params);
@@ -161,17 +169,10 @@ static void handle_{{syncset}}_inter() {
     while (pop_global_event(&inter_queue, &channel, &identities, &params, &aux)) {
         switch (channel) {
             {% for decl in mon_decls %}
-            {% for event, params in decl.spec.exported_events.items() %}
-            {% for target in decl.connections[event]
-                if target.monitor not in sys.syncsets[syncset] %}
-            {% if loop.first %}
-            case CHANNEL_{{syncset}}_{{target.channel}}:
-            {% endif %}
-                cb_{{target.channel}}(identities, params, aux);
-                {% if loop.last %}
+            {% for conn in decl.inter_connections %}
+            case CHANNEL_{{syncset}}_{{conn.channel}}:
+                cb_{{conn.channel}}(identities, params, aux);
                 break;
-                {% endif %}
-            {% endfor %}
             {% endfor %}
             {% endfor %}
         }
@@ -200,23 +201,20 @@ static void handle_{{syncset}}_queues() {
  *   exported event
  */
 {% for decl in mon_decls %}
-{% for event, params in decl.spec.exported_events.items() %}
-
+{% for event, conn in decl.ev_connections.items() %}
 void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
-    {% if decl.is_event_intra(event, sys.syncsets[syncset]) %}
+    {% set params_len = decl.spec.exported_events[event]|length %}
+    {% if conn in decl.intra_connections %}
     /* Store on intra queue */
-    SMEDLValue *params_intra = smedl_copy_array(params, {{params|length}});
-    if (!push_global_event(&intra_queue, CHANNEL_{{syncset}}_{{decl.connections[event][0].channel}}, identities, params_intra, aux)) {
+    SMEDLValue *params_intra = smedl_copy_array(params, {{params_len}});
+    if (!push_global_event(&intra_queue, CHANNEL_{{syncset}}_{{conn.channel}}, identities, params_intra, aux)) {
         //TODO Out of memory. What now?
     }
-    {% if decl.is_event_inter(event, sys.syncsets[syncset]) %}
-
     {% endif %}
-    {% endif %}
-    {% if decl.is_event_inter(event, sys.syncsets[syncset]) %}
+    {% if conn in decl.inter_connections %}
     /* Store on inter queue */
-    SMEDLValue *params_inter = smedl_copy_array(params, {{params|length}});
-    if (!push_global_event(&inter_queue, CHANNEL_{{syncset}}_{{decl.connections[event][0].channel}}, identities, params_inter, aux)) {
+    SMEDLValue *params_inter = smedl_copy_array(params, {{params_len}});
+    if (!push_global_event(&inter_queue, CHANNEL_{{syncset}}_{{conn.channel}}, identities, params_inter, aux)) {
         //TODO Out of memory. What now?
     }
     {% endif %}
@@ -235,10 +233,10 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
  *   to NULL.
  * params - An array of the source event's parameters
  * aux - Extra data to be passed through unchanged */
-{% for channel in sys.imported_channels(syncset).keys() %}
+{% for conn in sys.imported_channels(syncset) %}
 
-void import_{{syncset}}_{{channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
-    route_{{syncset}}_event(CHANNEL_{{syncset}}_{{channel}}, identities, params, aux);
+void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
+    route_{{syncset}}_{{conn.channel}}(identities, params, aux);
     handle_{{syncset}}_queues();
 }
 {% endfor %}
@@ -254,10 +252,10 @@ void import_{{syncset}}_{{channel}}(SMEDLValue *identities, SMEDLValue *params, 
  *   none), another array of SMEDLValue for the source event's parameters, and
  *   a SMEDLAux for passthrough data. */
 {% for decl in mon_decls %}
-{% for channel in decl.inter_channels(sys.syncsets[syncset]) %}
+{% for conn in decl.inter_connections %}
 
-void callback_{{syncset}}_{{channel}}(SMEDLCallback cb_func) {
-    cb_{{channel}} = cb_func;
+void callback_{{syncset}}_{{conn.channel}}(SMEDLCallback cb_func) {
+    cb_{{conn.channel}} = cb_func;
 }
 {% endfor %}
 {% endfor %}
