@@ -213,11 +213,16 @@ class Connection(object):
         self._sys = sys
         # The source DeclaredMonitor for this connection (or None if from the
         # target system)
-        self._source_mon = None
+        self._source_mon = source_mon
         # The source event name for this connection
-        self._source_event = None
+        self._source_event = source_event
         # A list of Targets that this connection links to
         self._targets = []
+        # Need to track source event param types when there is no source
+        # monitor to provide them explicitly. Keys are ints (param indices),
+        # values are SmedlType
+        if source_mon is None:
+            self._source_ev_params = dict()
 
     @property
     def channel(self):
@@ -230,6 +235,12 @@ class Connection(object):
     @property
     def source_event(self):
         return self._source_event
+
+    @property
+    def source_event_params(self):
+        """Return a TODO of the source event params' SmedlTypes (or for a
+        connection from the target system, those that are known)"""
+        #TODO
 
     @property
     def targets(self):
@@ -298,13 +309,116 @@ class Connection(object):
                 raise ChannelMismatch("Source event {} must always use the "
                         "same connection name".format(event_str))
 
+    def _typecheck_dest_param(self, dest_param, dest_type, dest_name):
+        """Do type verification on a single destination Parameter.
+ 
+        If this connection is from the target system, the actual parameter
+        types are unknown, but if the same parameter is used in multiple
+        destinations, verify that it matches. And store the type for later
+        use by templates.
+
+        dest_param - The Parameter to verify
+        dest_type - The SmedlType to verify against
+        dest_name - Name of what's being typechecked, e.g. "parameter ___ of
+          event ___" or "state var ___ of monitor ___", to be used in exception
+          messages
+        """
+        # Wilcdard params match any type
+        if dest_param.index is None:
+            return
+
+        # Identity params ("#x"/"Id.x")
+        if dest_param.identity:
+            if self._source_mon is None:
+                raise ParameterError('Cannot use identity parameters ("Id."/'
+                        '"#") for {} when there is no source monitor'
+                        .format(dest_name))
+            else:
+                try:
+                    source_type = self._source_mon.params[dest_param.index]
+                except IndexError:
+                    raise ParameterError("Source monitor {} does not have "
+                            "identity {}".format(self._source_mon.name,
+                            dest_param.index))
+                if not source_type.convertible_to(dest_type):
+                    raise TypeMismatch("Param {} in source monitor {} does "
+                            "not match dest {}".format(dest_param.index,
+                            self._source_mon.name, dest_name))
+
+        # Event params ("$x"/"Param.x")
+        else:
+            if self._source_mon is None:
+                try:
+                    #TODO Do we always use the same type?
+                    source_type = self._source_ev_params[dest_param.index]
+                except KeyError:
+                    self._source_ev_params[dest_param.index] = dest_type
+                    return
+                if not source_type.convertible_to(dest_type):
+                    raise TypeMismatch(...) #TODO
+                else:
+                    #TODO Figure out what type to use
+            else:
+                source_ev_params = self._source_mon.spec.exported_events[
+                        self._source_event]
+                try:
+                    source_type = source_ev_params[dest_param.index]
+                except IndexError:
+                    raise ParameterError("Source event {} does not have "
+                            "parameter {}".format(self._source_mon.name,
+                            dest_param.index))
+                if not source_type.convertible_to(dest_type):
+                    raise TypeMismatch("Param {} in source event {} does "
+                            "not match dest {}".format(dest_param.index,
+                            self._source_event, dest_name))
+
+    def _typecheck_dest_params(self, dest_params, dest_param_types, dest_name):
+        """Do type verification on a destination parameter list from this
+        connection's source monitor and event parameters.
+ 
+        If this connection is from the target system, the actual parameter
+        types are unknown, but if the same parameter is used in multiple
+        destinations, verify that it matches. And store the type for later
+        use by templates.
+
+        dest_params - An interable of Parameters
+        dest_param_types - The SmedlTypes of the dest_params
+        dest_name - Name of what's being typechecked, e.g. "monitor ___"
+          or "event ___", to be used in exception messages
+        """
+        for i in range(len(dest_params)):
+            self.typecheck_dest_param(dest_params[i], dest_param_types[i],
+                    "param {} in {}".format(i, dest_name))
+
+    def _typecheck_target(self, target):
+        """Do type verification on all monitor identities, event parameters,
+        and state variables in the provided Target"""
+        # Typecheck monitor params
+        self._typecheck_dest_params(target.mon_params, target.monitor.params,
+                "monitor " + target.monitor.name)
+
+        if isinstance(target, TargetEvent):
+            # Typecheck destination event parameter types
+            self._typecheck_dest_params(target.event_params,
+                    target.monitor.spec.imported_events[target.event],
+                    "event " + target.event)
+        elif isinstance(target, TargetCreation):
+            # Typecheck destination state var types
+            for var, param in target.state_vars.items():
+                var_type = target.monitor.spec.state_vars[var].type
+            self._typecheck_dest_param(param, var_type,
+                    "state var {} of monitor {}".format(var,
+                    target.monitor.name))
+
     def add_target(self, target):
         """Add a Target to this channel after verifying that it is not a
-        duplicate of any targets it already contains"""
+        duplicate of any targets it already contains and typechecking all
+        its parameters/state vars"""
         for t in self._targets:
             if target == t:
                 raise DuplicateConnection("Source and destination of "
                         "connections cannot match.")
+        self._typecheck_target(target)
         self._targets.append(target)
 
 class SynchronousSet(set):
@@ -389,66 +503,6 @@ class DeclaredMonitor(object):
                     " set twice.".format(self.name))
         self._syncset = syncset
 
-    def _validate_single_param(self, source_event, source_ev_params,
-            param, type_, dest_name):
-        """Validate type for a single parameter or state var against the
-        monitor and event parameters in this source monitor.
-        
-        source_event - Name of the source event
-        source_ev_params - List or tuple of source event parameter types
-        params - Parameter object to validate
-        type_ - SmedlType to validate against
-        dest_name - Name of the thing being validated, e.g. "parameter ___ of
-          event ___" or "state var ___ of monitor ___", to be used in exception
-          messages
-        """
-        # Wildcard params always validate
-        if param.index is None:
-            return
-
-        if param.identity:
-            # Validate against monitor params
-            try:
-                result = self._params[param.index].convertible_to(type_)
-            except IndexError:
-                raise ParameterError("Source monitor {} does not have "
-                        "identity {}".format(self._name, param))
-            if not result:
-                raise TypeMismatch("Param {} in source monitor {} "
-                    "does not match dest {}".format(
-                    param.index, self._name, dest_name))
-        else:
-            # Validate against event params
-            try:
-                result = source_ev_params[param.index].convertible_to(
-                        type_)
-            except IndexError:
-                raise ParameterError("Source event {} does not have "
-                        "identity {}".format(self._name, param))
-            if not result:
-                raise TypeMismatch("Param {} in source event {} "
-                    "does not match dest {}".format(
-                    param.index, source_event, dest_name))
-
-    def _validate_param_types(self, source_event, source_ev_params,
-            dest_params, dest_param_types, dest_name):
-        """Validate types for a target parameter list against the monitor and
-        event parameters in this source monitor.
-        
-        source_event - Name of the source event
-        source_ev_params - List or tuple of source event parameter types
-        dest_params - List or tuple of Parameter for the destination
-        dest_param_types - List or tuple of destination parameter types
-        dest_name - "monitor ___" or "event ___", to be used in exception
-          messages
-        """
-        for i in range(len(dest_params)):
-            param = dest_params[i]
-            type_ = dest_param_types[i]
-
-            self._validate_single_param(source_event, source_ev_params, param,
-                    type_, "param {} in {}".format(i, dest_name))
-
     def add_connection(self, channel, source_event, target):
         """Add the given target to the proper connection for the source event
         (creating the connection if it does not exist yet).
@@ -457,46 +511,11 @@ class DeclaredMonitor(object):
           another connection for this source event, or autogenerated if none)
         source_event - Name of the source event
         target - A Target object
-        
-        Raise a TypeMismatch if the target paramter types (or state var types
-        for creation) do not match the source parameter types.
-        
-        Raise a ParameterError if there is some other issue with target
-        parameters.
-
-        Raise a ChannelMismatch if the channel name does not match what was
-        previously used for this source event.
-        
-        Raise a DuplicateConnection if this connection matches one that already
-        exists (same source and destination, ignoring parameters)."""
+        """
         # Check that source event exists and get the params
-        try:
-            source_ev_params = self._spec.exported_events[source_event]
-        except KeyError:
+        if source_event not in self._spec_exported_events
             raise NameNotDefined("Source monitor {} does not contain exported "
                     "event {}".format(self._name, source_event))
-
-        # Validate destination monitor parameter types. (Count must be validated
-        # already.)
-        self._validate_param_types(source_event, source_ev_params,
-                target.mon_params, target.monitor.params,
-                "monitor " + target.monitor.name)
-
-        # Validate additional parameters depending on Target type
-        if isinstance(target, TargetEvent):
-            # Validate destination event parameter types
-            dest_ev_types = target.monitor.spec.imported_events[
-                    target.event_params]
-            self._validate_param_types(source_event, source_ev_params,
-                    target.event_params, dest_ev_types,
-                    "event " + target.event)
-        elif isinstance(target, TargetCreation):
-            # Validate state var types
-            for var, param in target.state_vars.items():
-                var_type = target.monitor.spec.state_vars[var].type
-            self._validate_single_param(source_event, source_ev_params,
-                    param, var_type, "state var {} of monitor {}".format(
-                    var, target.monitor.name))
 
         # Get or create Connection
         try:
@@ -661,22 +680,6 @@ class MonitorSystem(object):
                     monitor_name, syncset))
         return syncset
 
-    def _validate_no_identities(self, params, dest_name):
-        """Raise a ParameterError if any of the Parameters are identity
-        parameters.
-
-        params - An iterable of Parameter
-        dest_name - A string to use in the exception, e.g. "Monitor ___" or
-          "Event ___"
-        """
-        for param in params:
-            if param.index is None:
-                continue
-            if param.identity:
-                raise ParameterError('{} cannot use identity parameters '
-                        '("Id."/"#") when there is no source monitor'
-                        .format(dest_name))
-
     def add_connection(self, channel, monitor, source_event, target):
         """Add the given target to the proper connection for the source event
         (creating the connection if it does not exist yet).
@@ -686,18 +689,7 @@ class MonitorSystem(object):
         monitor - Declared monitor name, or None if from the target system
         source_event - Name of the source event
         target - A Target object
-        
-        Raise a TypeMismatch if the target paramter types (or state var types
-        for creation) do not match the source parameter types.
-        
-        Raise a ParameterError if there is some other issue with target
-        parameters.
-
-        Raise a ChannelMismatch if the channel name does not match what was
-        previously used for this source event.
-        
-        Raise a DuplicateConnection if this connection matches one that already
-        exists (same source and destination, ignoring parameters)."""
+        """
         # If from a monitor, call that monitor's add_connection
         if monitor is not None:
             try:
@@ -707,19 +699,6 @@ class MonitorSystem(object):
                         .format(monitor))
             decl.add_connection(channel, source_event, target)
             return
-
-        # Validate that the destination monitor parameters are all wildcards
-        # or event parameters ("$x"), not monitor parameters ("#x")
-        self._validate_no_identities(target.mon_params,
-                "Monitor " + target.monitor.name)
-
-        # Same for additional parameters, depending on target type
-        if isinstance(target, TargetEvent):
-            self._validate_no_identities(target.event_params,
-                    "Event " + target.event)
-        elif isinstance(target, TargetCreation):
-            self._validate_no_identities(target.state_vars.values(),
-                    "Monitor " + target.monitor.name)
 
         # Get or create Connection
         try:
