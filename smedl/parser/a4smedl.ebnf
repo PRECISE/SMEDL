@@ -9,6 +9,7 @@ start =
     {(
         import_stmt
         | monitor_decl
+        | event_decl
         | syncset_decl
         | connection_defn
     )';'}*
@@ -32,6 +33,10 @@ smedl_filename =
 monitor_decl =
     'monitor' ~ name:identifier '(' params:type_list ')'
     ['as' renamed:identifier]
+    ;
+
+event_decl =
+    'event' ~ name:identifier '(' params:type_list ')'
     ;
 
 syncset_decl =

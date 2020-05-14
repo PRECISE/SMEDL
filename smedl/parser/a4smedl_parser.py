@@ -140,6 +140,8 @@ class A4SMEDLParser(Parser):
                     with self._option():
                         self._monitor_decl_()
                     with self._option():
+                        self._event_decl_()
+                    with self._option():
                         self._syncset_decl_()
                     with self._option():
                         self._connection_defn_()
@@ -182,6 +184,21 @@ class A4SMEDLParser(Parser):
             self.name_last_node('renamed')
         self.ast._define(
             ['name', 'params', 'renamed'],
+            []
+        )
+
+    @tatsumasu()
+    def _event_decl_(self):  # noqa
+        self._token('event')
+        self._cut()
+        self._identifier_()
+        self.name_last_node('name')
+        self._token('(')
+        self._type_list_()
+        self.name_last_node('params')
+        self._token(')')
+        self.ast._define(
+            ['name', 'params'],
             []
         )
 
@@ -425,6 +442,9 @@ class A4SMEDLSemantics(object):
         return ast
 
     def monitor_decl(self, ast):  # noqa
+        return ast
+
+    def event_decl(self, ast):  # noqa
         return ast
 
     def syncset_decl(self, ast):  # noqa

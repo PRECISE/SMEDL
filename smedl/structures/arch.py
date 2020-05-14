@@ -200,12 +200,15 @@ class TargetExport(Target):
 
 class Connection(object):
     """A connection between a source event and some number of targets"""
-    def __init__(self, sys, source_mon, source_event):
+    def __init__(self, sys, source_mon, source_event, source_event_params=None):
         """Create a connection with the specified source monitor and event.
         
         sys - Monitoring system
         source_mon - Source monitor decl, or None if from the target system.
         source_event - Source event name
+        source_event_params - An iterable of SmedlTypes for the source event's
+          parameters. Only used for events from the target system and if the
+          event was declared in the architecture file.
         """
         # The channel name
         self._channel = None
@@ -218,11 +221,21 @@ class Connection(object):
         self._source_event = source_event
         # A list of Targets that this connection links to
         self._targets = []
-        # Need to track source event param types when there is no source
-        # monitor to provide them explicitly. Keys are ints (param indices),
-        # values are SmedlType
+        # Need to store the source event param types here when there is no
+        # source monitor to provide them.
+        # Keys for self._source_ev_params are int (source param index), values
+        # are SmedlType
         if source_mon is None:
-            self._source_ev_params = dict()
+            if source_event_params is None:
+                # If the event was not declared in the architecture file, we
+                # need to infer the source parameter types.
+                self._infer_source_params = True
+                self._source_ev_params = dict()
+            else:
+                # Otherwise, use source_event_params to populate the dict.
+                self._infer_source_params = False
+                self._source_ev_params = dict(zip(
+                        range(len(source_event_params)), source_event_params))
 
     @property
     def channel(self):
@@ -349,15 +362,25 @@ class Connection(object):
         else:
             if self._source_mon is None:
                 try:
-                    #TODO Do we always use the same type?
                     source_type = self._source_ev_params[dest_param.index]
                 except KeyError:
-                    self._source_ev_params[dest_param.index] = dest_type
-                    return
+                    if self._infer_source_params:
+                        # Type inference: Store the destination param type
+                        self._source_ev_params[dest_param.index] = dest_type
+                        return
+                    else:
+                        raise ParameterError("Source event {} does not have "
+                                "parameter {}".format(self._source_ev,
+                                dest_param.index))
                 if not source_type.convertible_to(dest_type):
-                    raise TypeMismatch(...) #TODO
-                else:
-                    #TODO Figure out what type to use
+                    raise TypeMismatch("Param {} in source event {} does not "
+                            "match dest {}".format(dest_param.index,
+                            self._source_event, dest_name))
+                elif self._infer_source_params:
+                    # Type inference: If the types don't match, use the one
+                    # that takes precedence
+                    self._source_ev_params[dest_param.index] = (
+                            SmedlType.inference(source_type, dest_type))
             else:
                 source_ev_params = self._source_mon.spec.exported_events[
                         self._source_event]
@@ -503,7 +526,7 @@ class DeclaredMonitor(object):
                     " set twice.".format(self.name))
         self._syncset = syncset
 
-    def add_connection(self, channel, source_event, target):
+    def add_target(self, channel, source_event, target):
         """Add the given target to the proper connection for the source event
         (creating the connection if it does not exist yet).
 
@@ -680,7 +703,21 @@ class MonitorSystem(object):
                     monitor_name, syncset))
         return syncset
 
-    def add_connection(self, channel, monitor, source_event, target):
+    def add_connection(self, source_ev, params):
+        """Add an empty connection for a source event from the target system
+
+        source_ev - Name of the source event
+        params - An iterable of SmedlType for the event's parameters
+        """
+        # Check if it already exists
+        if source_ev in self._ev_imported_connections:
+            raise NameCollision("Event {} already declared".format(source_ev))
+
+        # Create it
+        conn = Connection(self, None, source_ev, params)
+        conn.assign_name(None)
+
+    def add_target(self, channel, monitor, source_event, target):
         """Add the given target to the proper connection for the source event
         (creating the connection if it does not exist yet).
 
@@ -690,14 +727,14 @@ class MonitorSystem(object):
         source_event - Name of the source event
         target - A Target object
         """
-        # If from a monitor, call that monitor's add_connection
+        # If from a monitor, call that monitor's add_target
         if monitor is not None:
             try:
                 decl = self._monitor_decls[monitor]
             except KeyError:
                 raise NameNotDefined("Source monitor {} is not declared"
                         .format(monitor))
-            decl.add_connection(channel, source_event, target)
+            decl.add_target(channel, source_event, target)
             return
 
         # Get or create Connection

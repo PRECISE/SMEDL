@@ -50,6 +50,18 @@ class SmedlType(Enum):
             return True
         else:
             return False
+    
+    @classmethod
+    def inference(cls, t1, t2):
+        """Return the type that should be inferred between the two SmedlType"""
+        if t1 is t2:
+            return t1
+        elif (t1 is cls.FLOAT and t2 in (cls.INT, cls.CHAR)) or (
+                t1 in (cls.INT, cls.CHAR) and t2 is cls.FLOAT):
+            return cls.FLOAT
+        elif (t1 is cls.INT and t2 is cls.CHAR) or (
+                t1 is cls.CHAR and t2 is cls.INT):
+            return cls.INT
 
     # Useful in Jinja templates
     def is_a(self, name):
