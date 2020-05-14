@@ -70,21 +70,24 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
 
         self.system.add_monitor_decl(renamed, self.monitor_specs[ast.name],
                 ast.params)
+        return ast
 
     def event_decl(self, ast):
         """Add an event declaration from the target system to the monitor
         system"""
         self.system.add_connection(ast.name, ast.params)
-        #TODO return ast, and everywhere else too
+        return ast
 
     def syncset_decl(self, ast):
         """Add a synchronous set to the system"""
         self.system.add_syncset(ast.name, ast.monitors)
+        return ast
 
     def connection_defn(self, ast):
         """Do various validations and add the connection to the system"""
         self.system.add_target(ast.name, ast.source.monitor,
                 ast.source.event, ast.target)
+        return ast
 
     def target_event(self, ast):
         """Create a TargetEvent. Ensure the target monitor and event exist and

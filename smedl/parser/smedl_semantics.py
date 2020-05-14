@@ -133,12 +133,6 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         ast['step_list'] = step_list
         return ast
 
-        #if len(ast) > 1:
-        #    self.multiple_steps = True
-        #else:
-        #    self.multiple_steps = False
-        #return ast
-
     def step_definition(self, ast):
         """Step definitions may not have actions, in which case the actions
         key will store None. In that case, convert it to an empty list."""
