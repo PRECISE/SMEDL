@@ -50,8 +50,9 @@ typedef struct {{mon.name}}Record {
     {{spec.name}}Monitor *mon;
 } {{mon.name}}Record;
 
-/* Add the provided monitor to the monitor maps */
-void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
+/* Add the provided monitor to the monitor maps. Return a
+ * {{mon.name}}Record. */
+{{mon.name}}Record * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
 
 /* Fetch a list of monitor instances matching the given identities.
  *

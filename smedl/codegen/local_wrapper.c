@@ -126,8 +126,9 @@ void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, 
 {% endfor %}
 {% if mon.params is nonempty %}
 
-/* Add the provided monitor to the monitor maps */
-void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
+/* Add the provided monitor to the monitor maps. Return a
+ * {{mon.name}}Record. */
+{{mon.name}}Record * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
     {{mon.name}}Record *rec;
 
     {% for i in range(mon.params|length) %}
@@ -143,6 +144,8 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
 
     {% endif %}
     {% endfor %}
+
+    return rec;
 }
 
 /* Fetch a list of monitor instances matching the given identities.
@@ -203,7 +206,8 @@ void add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
             }
             {{spec.name}}Monitor *mon = init_{{spec.name}}_monitor(ids_copy);
             setup_{{mon.name}}_callbacks(mon);
-            add_{{mon.name}}_monitor(mon);
+            result = add_{{mon.name}}_monitor(mon);
+            result->r.next = NULL;
         }
     }
     
