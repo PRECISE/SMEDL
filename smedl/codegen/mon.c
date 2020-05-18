@@ -25,7 +25,7 @@ void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLCallback c
 static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
     int event;
     SMEDLValue *params;
-    SMEDLAux aux;
+    void *aux;
 
     while (pop_event(&mon->event_queue, &event, &params, &aux)) {
         switch (event) {
@@ -215,7 +215,7 @@ if (mon->ef.{{scenario.name}}_flag) {
 /* Imported events */
 {% for event in spec.imported_events.keys() %}
 
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
+void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
     {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
 
@@ -230,13 +230,13 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 /* Internal events */
 {% for event in spec.internal_events.keys() %}
 
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
+void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
     {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
     {% endif %}
 }
 
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
+void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
     if (!push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux)) {
         //TODO Out of memory. What now?
     }
@@ -248,7 +248,7 @@ void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
 /* Exported events */
 {% for event in spec.exported_events.keys() %}
 
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
+void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
     {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
 
@@ -257,13 +257,13 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
     export_{{spec.name}}_{{event}}(mon, params, aux);
 }
 
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
+void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
     if (!push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux)) {
         //TODO Out of memory. What now?
     }
 }
 
-void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, SMEDLAux aux) {
+void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
     if (mon->callback_{{event}} != NULL) {
         (mon->callback_{{event}})(mon->identities, params, aux);
     }

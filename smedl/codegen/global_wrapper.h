@@ -31,7 +31,7 @@ void free_{{syncset}}_syncset();
  */
 {% for decl in mon_decls %}
 {% for event in decl.spec.exported_events.keys() %}
-void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
 
@@ -47,7 +47,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
  * params - An array of the source event's parameters
  * aux - Extra data to be passed through unchanged */
 {% for conn in sys.imported_channels(syncset) %}
-void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 
 /* Global wrapper callback interface - Used to register callback functions to be
@@ -59,7 +59,7 @@ void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *par
  *   unregister a callback. Must accept three parameters: An array of SMEDLValue
  *   for the source monitor's identities (or NULL if the source monitor has
  *   none), another array of SMEDLValue for the source event's parameters, and
- *   a SMEDLAux for passthrough data. */
+ *   a void * for passthrough data. */
 {% for decl in mon_decls %}
 {% for conn in decl.inter_connections %}
 void callback_{{syncset}}_{{conn.channel}}(SMEDLCallback cb_func);
@@ -81,11 +81,11 @@ typedef enum {
 /* Intra routing functions - Called by import interface functions and intra
  * queue processing function to route events to the local wrappers */
 {% for conn in sys.imported_channels(syncset) %}
-void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% for decl in mon_decls %}
 {% for conn in decl.intra_connections %}
-void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
 

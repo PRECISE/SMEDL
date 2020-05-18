@@ -12,7 +12,7 @@
  * params - Array of the event's parameters
  * aux - Aux data to pass through */
 int push_global_event(GlobalEventQueue *q, unsigned int channel,
-        SMEDLValue *ids, SMEDLValue *params, SMEDLAux aux) {
+        SMEDLValue *ids, SMEDLValue *params, void *aux) {
     /* Create the GlobalEvent */
     GlobalEvent *ge = malloc(sizeof(GlobalEvent));
     if (ge == NULL) {
@@ -42,9 +42,9 @@ int push_global_event(GlobalEventQueue *q, unsigned int channel,
  * channel - Pointer to store the channel ID at
  * ids - Pointer at which to store an array of the monitor identities
  * params - Pointer at which to store an array of the event's parameters
- * aux - Pointer to an Aux struct to store the aux data in */
+ * aux - Pointer to an Aux pointer to store the aux data in */
 int pop_global_event(GlobalEventQueue *q, unsigned int *channel,
-        SMEDLValue **ids, SMEDLValue **params, SMEDLAux *aux) {
+        SMEDLValue **ids, SMEDLValue **params, void **aux) {
     /* Check if queue is empty */
     if (q->head == NULL) {
         return 0;

@@ -9,7 +9,7 @@
  * event - Event ID (from one of the monitors' event enums)
  * params - Array of the event's parameters
  * aux - Aux data to pass through */
-int push_event(EventQueue *q, int event, SMEDLValue *params, SMEDLAux aux) {
+int push_event(EventQueue *q, int event, SMEDLValue *params, void *aux) {
     /* Create the Event */
     Event *e = malloc(sizeof(Event));
     if (e == NULL) {
@@ -37,8 +37,8 @@ int push_event(EventQueue *q, int event, SMEDLValue *params, SMEDLAux aux) {
  * q - Pointer to the EventQueue to pop from
  * event - Pointer to store the event ID at
  * params - Pointer at which to store an array of the event's parameters
- * aux - Pointer to an Aux struct to store the aux data in */
-int pop_event(EventQueue *q, int *event, SMEDLValue **params, SMEDLAux *aux) {
+ * aux - Pointer to an Aux pointer to store the aux data in */
+int pop_event(EventQueue *q, int *event, SMEDLValue **params, void **aux) {
     /* Check if queue is empty */
     if (q->head == NULL) {
         return 0;

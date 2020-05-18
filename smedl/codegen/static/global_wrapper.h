@@ -11,7 +11,7 @@ typedef struct GlobalEvent {
     SMEDLValue *ids;
     /* Same for params (event parameters) */
     SMEDLValue *params;
-    SMEDLAux aux;
+    void *aux;
     struct GlobalEvent *next;
 } GlobalEvent;
 
@@ -31,7 +31,7 @@ typedef struct GlobalEventQueue {
  * params - Array of the event's parameters
  * aux - Aux data to pass through */
 int push_global_event(GlobalEventQueue *q, unsigned int channel,
-        SMEDLValue *ids, SMEDLValue *params, SMEDLAux aux);
+        SMEDLValue *ids, SMEDLValue *params, void *aux);
 
 /* Remove an event from the queue. Return 1 if successful, 0 if the queue is
  * empty.
@@ -41,8 +41,8 @@ int push_global_event(GlobalEventQueue *q, unsigned int channel,
  * channel - Pointer to store the channel ID at
  * ids - Pointer at which to store an array of the monitor identities
  * params - Pointer at which to store an array of the event's parameters
- * aux - Pointer to an Aux struct to store the aux data in */
+ * aux - Pointer to an Aux pointer to store the aux data in */
 int pop_global_event(GlobalEventQueue *q, unsigned int *channel,
-        SMEDLValue **ids, SMEDLValue **params, SMEDLAux *aux);
+        SMEDLValue **ids, SMEDLValue **params, void **aux);
 
 #endif /* GLOBAL_WRAPPER_H */

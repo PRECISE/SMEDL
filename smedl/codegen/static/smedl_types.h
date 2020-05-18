@@ -100,19 +100,10 @@ int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len);
 SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len);
 
 /*
- * Auxiliary data is passed through monitors untouched. It might be used for
- * provenance info or any other attachment to events.
- *
- * A length field is provided in case it may be helpful, but SMEDL never reads
- * auxiliary data, so it need not be used (e.g. if data is null-terminated).
+ * A callback function pointer for receiving exported events from monitors and
+ * global wrappers
  */
-typedef struct {
-    void *data;
-    size_t len;
-} SMEDLAux;
-
-/* A callback function pointer for receiving exported events from monitors and
- * global wrappers */
-typedef void (*SMEDLCallback)(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux);
+typedef void (*SMEDLCallback)(SMEDLValue *identities, SMEDLValue *params,
+        void *aux);
 
 #endif /* SMEDL_TYPES_H */

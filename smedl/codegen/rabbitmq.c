@@ -263,28 +263,27 @@ int handle_message(amqp_envelope_t *envelope) {
     /* Verify fmt_version */
     cJSON *fmt = cJSON_GetObjectItemCaseSensitive(msg, "fmt_version");
     if (!verify_fmt_version(fmt)) {
-        goto fail;
+        goto fail1;
     }
 
     /* Get event parameters JSON */
     cJSON *params_json = cJSON_GetObjectItemCaseSensitive(msg, "params");
     if (!cJSON_IsArray(params_json)) {
         err("Bad message ('params' not present as an array)");
-        goto fail;
+        goto fail1;
     }
 
-    /* Get aux data JSON and convert to SMEDLAux */
-    SMEDLAux aux;
+    /* Get aux data JSON and render as string for later output */
+    char *aux;
     cJSON *aux_json = cJSON_GetObjectItemCaseSensitive(msg, "aux");
     if (aux_json == NULL) {
         err("Bad message ('aux' not present)");
-        goto fail;
+        goto fail1;
     }
-    /* The returned JSON string is null-terminated, so no need for aux.len */
-    aux.data = cJSON_PrintUnformatted(aux_json);
-    if (aux.data == NULL) {
+    aux = cJSON_PrintUnformatted(aux_json);
+    if (aux == NULL) {
         err("Could not serialize aux data");
-        goto fail;
+        goto fail1;
     }
     {% for conn in sys.imported_channels(syncset) %}
 
@@ -301,7 +300,7 @@ int handle_message(amqp_envelope_t *envelope) {
         cJSON *identities_json = cJSON_GetObjectItemCaseSensitive(msg, "identities");
         if (!cJSON_IsArray(identities_json)) {
             err("Bad message ('identities' not present as an array)");
-            goto fail;
+            goto fail2;
         }
         SMEDLValue identities[{{conn.source_mon.params|length}}];
         {% for param in conn.source_mon.params %}
@@ -338,11 +337,11 @@ int handle_message(amqp_envelope_t *envelope) {
             uintptr_t ptr = strtol(id_json->valuestring, &endptr, 16);
             if (errno) {
                 err("Could not extract pointer from 'identities': Overflow");
-                goto fail;
+                goto fail2;
             } else if (id_json->valuestring[0] == '\0' || *end_ptr != '\0') {
                 err("Bad message (Pointer in 'identities' expects "
                         "hexadecimal string)");
-                goto fail;
+                goto fail2;
             }
             identities[{{loop.index0}}].v.p = (void *) ptr;
         {% elif param is sameas SmedlType.THREAD %}
@@ -355,12 +354,12 @@ int handle_message(amqp_envelope_t *envelope) {
         {% endif %}
         } else {
             err("Bad message (Bad 'identities' array)");
-            goto fail;
+            goto fail2;
         }
         {% endfor %}
         if (!cJSON_ArrayNext(id_json)) {
             err("Bad message (Too many elements in 'identities' array)");
-            goto fail;
+            goto fail2;
         }
         {% else %}
         SMEDLValue *identities = NULL;
@@ -402,11 +401,11 @@ int handle_message(amqp_envelope_t *envelope) {
             uintptr_t ptr = strtol(param_json->valuestring, &endptr, 16);
             if (errno) {
                 err("Could not extract pointer from 'params': Overflow");
-                goto fail;
+                goto fail2;
             } else if (param_json->valuestring[0] == '\0' || *end_ptr != '\0') {
                 err("Bad message (Pointer in 'params' expects hexadecimal "
                         "string)");
-                goto fail;
+                goto fail2;
             }
             params[{{loop.index0}}].v.p = (void *) ptr;
         {% elif param is sameas SmedlType.THREAD %}
@@ -423,13 +422,13 @@ int handle_message(amqp_envelope_t *envelope) {
         {% endif %}
         } else {
             err("Bad message (Bad 'params' array)");
-            goto fail;
+            goto fail2;
         }
         {% endfor %}
         {% if not conn.event_params_inferred %}
         if (!cJSON_ArrayNext(id_json)) {
             err("Bad message (Too many elements in 'params' array)");
-            goto fail;
+            goto fail2;
         }
         {% endif %}
 
@@ -439,10 +438,13 @@ int handle_message(amqp_envelope_t *envelope) {
     }
 
     /* Cleanup */
+    free(aux);
     cJSON_Delete(msg);
     return 1;
 
-fail:
+fail2:
+    free(aux);
+fail1:
     cJSON_Delete(msg);
     return 0;
 }
@@ -545,7 +547,7 @@ int send_message(const char *routing_key, const char *msg, size_t len) {
 {% for conn in decl.inter_connections %}
 
 void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
-        SMEDLValue *params, SMEDLAux aux) {
+        SMEDLValue *params, void *aux) {
     char ptr[40];
     char *opaque;
     int status;

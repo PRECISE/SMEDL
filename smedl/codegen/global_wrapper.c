@@ -46,7 +46,7 @@ void free_{{syncset}}_syncset() {
     /* Clear queues */
     int mon, event;
     SMEDLValue *identities, *params;
-    SMEDLAux aux;
+    void *aux;
     while (pop_global_event(&intra_queue, &mon, &identities, &event, &params, &aux)) {
         free(params);
     }
@@ -126,13 +126,13 @@ void free_{{syncset}}_syncset() {
 {%- endmacro %}
 {# End of routing function macro********************************************* #}
 {% for conn in sys.imported_channels(syncset) %}
-void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
+void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     {{route(conn)|indent}}
 }
 {% endfor %}
 {% for decl in mon_decls %}
 {% for conn in decl.intra_connections %}
-void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
+void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     {{route(conn)|indent}}
 }
 {% endfor %}
@@ -142,7 +142,7 @@ void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *para
 static void handle_{{syncset}}_intra() {
     unsigned int channel;
     SMEDLValue *identities, *params;
-    SMEDLAux aux;
+    void *aux;
 
     while (pop_global_event(&intra_queue, &channel, &identities, &params, &aux)) {
         switch (channel) {
@@ -164,7 +164,7 @@ static void handle_{{syncset}}_intra() {
 static void handle_{{syncset}}_inter() {
     unsigned int channel;
     SMEDLValue *identities, *params;
-    SMEDLAux aux;
+    void *aux;
 
     while (pop_global_event(&inter_queue, &channel, &identities, &params, &aux)) {
         switch (channel) {
@@ -202,7 +202,7 @@ static void handle_{{syncset}}_queues() {
  */
 {% for decl in mon_decls %}
 {% for event, conn in decl.ev_connections.items() %}
-void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
+void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     {% set params_len = decl.spec.exported_events[event]|length %}
     {% if conn in decl.intra_connections %}
     /* Store on intra queue */
@@ -235,7 +235,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, S
  * aux - Extra data to be passed through unchanged */
 {% for conn in sys.imported_channels(syncset) %}
 
-void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, SMEDLAux aux) {
+void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     route_{{syncset}}_{{conn.channel}}(identities, params, aux);
     handle_{{syncset}}_queues();
 }
@@ -250,7 +250,7 @@ void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *par
  *   unregister a callback. Must accept three parameters: An array of SMEDLValue
  *   for the source monitor's identities (or NULL if the source monitor has
  *   none), another array of SMEDLValue for the source event's parameters, and
- *   a SMEDLAux for passthrough data. */
+ *   a void * for passthrough data. */
 {% for decl in mon_decls %}
 {% for conn in decl.inter_connections %}
 
