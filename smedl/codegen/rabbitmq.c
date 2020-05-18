@@ -56,6 +56,7 @@
 #include <string.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <signal.h>
 
 #include <amqp.h>
 #include <amqp_framing.h>
@@ -66,16 +67,28 @@
 #include "{{syncset}}_global_wrapper.h"
 #include "{{syncset}}_rabbitmq.h"
 
-/* TODO This is how the main program identifies that a SIGTERM has been
- * received. Modify as necessary to work on Windows and write the signal
- * handler. */
-static volatile int interrupted = 0;
+/* How the main loop identifies that a SIGINT or SIGTERM has been received.
+ * If set to 1, it has. If set to 2, there was also an error reinstating the
+ * signal handler. Otherwise, it will remain 0. */
+static volatile sig_atomic_t interrupted = 0;
 
-/* Return nonzero if the program has been asked to terminate (e.g. by SIGTERM
- * on Unix-like systems), zero otherwise. Determines when the main loop should
- * end. */
-int is_interrupted() {
-    return interrupted;
+/* Signal handler for SIGINT and SIGTERM. Set the interrupted flag to nonzero
+ * (1 normally, 2 if there was also an error reinstating the signal handler.) */
+void set_interrupted(int signum) {
+    /* Windows and some other platforms reset the signal handler to the default
+     * when a signal is received. Set it back to this function. This creates a
+     * race condition on these platforms, but more reliable functions are not
+     * cross platform (not that all platforms handle signal() the same way
+     * either, or even use SIGINT and SIGTERM at all, but at least they are
+     * standard C). Anyway, the worst case scenario is two SIGINT/SIGTERM
+     * arrive back to back, the second arrives before the signal handler is
+     * set back to this function, and the program is terminated immediately
+     * instead of shutting down cleanly. The only thing lost is notifying the
+     * server of our exit so it can clean up before it notices we died. */
+    if (signal(signum, set_interrupted) == SIG_ERR) {
+        interrupted = 2;
+    }
+    interrupted = 1;
 }
 
 /* Print a message to stderr followed by a newline. Arguments like printf. */
@@ -233,8 +246,11 @@ static void routing_key_to_channel(amqp_bytes_t routing_key, char *buf,
 
 /* Handle an incoming message by calling the proper global wrapper import
  * function. Return nonzero on success, zero on failure. */
-int handle_message(amqp_envelope_t *envelope) {
-    //TODO ACK
+int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
+    //T    if (signal(signum, handler) == SIG_ERR) {
+        /* Handle error */
+      }
+ODO ACK
 
     /* Skip redeliveries */
     if (envelope->redelivered) {
@@ -273,18 +289,19 @@ int handle_message(amqp_envelope_t *envelope) {
         goto fail1;
     }
 
-    /* Get aux data JSON and render as string for later output */
-    char *aux;
+    /* Get aux data JSON, render as string, and form RabbitMQAux */
+    RabbitMQAux aux;
     cJSON *aux_json = cJSON_GetObjectItemCaseSensitive(msg, "aux");
     if (aux_json == NULL) {
         err("Bad message ('aux' not present)");
         goto fail1;
     }
-    aux = cJSON_PrintUnformatted(aux_json);
-    if (aux == NULL) {
+    aux.aux = cJSON_PrintUnformatted(aux_json);
+    if (aux.aux == NULL) {
         err("Could not serialize aux data");
         goto fail1;
     }
+    aux.state = rmq_state;
     {% for conn in sys.imported_channels(syncset) %}
 
     {% if conn.source_mon is not none %}
@@ -438,12 +455,12 @@ int handle_message(amqp_envelope_t *envelope) {
     }
 
     /* Cleanup */
-    free(aux);
+    free(aux.aux);
     cJSON_Delete(msg);
     return 1;
 
 fail2:
-    free(aux);
+    free(aux.aux);
 fail1:
     cJSON_Delete(msg);
     return 0;
@@ -501,7 +518,7 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
     }
 
     /* MAIN LOOP */
-    while (!is_interrupted() && !error) {
+    while (!interrupted && !error) {
         /* Clean up a little */
         amqp_maybe_release_buffers(rmq_state->conn);
 
@@ -523,7 +540,7 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
         } else if (check_reply(init_status, rmq_state, reply,
                     "Could not consume message")) {
             /* Message successfully received. Handle it. */
-            if (!handle_message(&envelope)) {
+            if (!handle_message(rmq_state, &envelope)) {
                 error = 1;
             }
             amqp_destroy_envelope(&envelope);
@@ -536,9 +553,25 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
     return 1;
 }
 
-/* Send a message over RabbitMQ */
-int send_message(const char *routing_key, const char *msg, size_t len) {
-    //TODO
+/* Send a message over RabbitMQ. Return nonzero on success, zero on failure. */
+int send_message(RabbitMQState *rmq_state, const char *routing_key,
+        const char *msg, size_t len) {
+    int status;
+
+    /* Construct RabbitMQ message */
+    amqp_bytes_t routing_key_bytes, msg_bytes;
+    routing_key_bytes = amqp_cstring_bytes(routing_key);
+    msg_bytes.len = len;
+    msg_bytes.bytes = msg;
+
+    /* Send the message */
+    status = amqp_basic_publish(rmq_state->conn, rmq_state->channel,
+            rmq_state->exchange, routing_key_bytes, 0, 0, NULL, msg_bytes);
+    if (!check_status(status, "Could not send message")) {
+        return 0;
+    }
+
+    return 1;
 }
 
 /* Message send functions - Send an exported message. To be used as the
@@ -555,19 +588,37 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
     cJSON *msg_json;
     msg_json = cJSON_CreateObject();
     if (msg_json == NULL) {
+        err("Could not create JSON object for message serialization");
         //TODO malloc fail. What now?
         return;
     }
+    cJSON *fmt_version = cJSON_AddArrayToObject(msg_json, "fmt_version");
+    if (fmt_version == NULL) {
+        err("Could not add fmt_version to JSON for message serialization");
+        goto fail;
+    }
+    cJSON *fmt_major = cJSON_CreateNumber(FMT_VERSION_MAJOR);
+    if (fmt_major == NULL) {
+        err("Could not create fmt_version JSON for message serialization");
+        goto fail;
+    }
+    cJSON_AddItemToArray(fmt_version, fmt_major);
+    cJSON *fmt_minor = cJSON_CreateNumber(FMT_VERSION_MINOR);
+    if (fmt_minor == NULL) {
+        err("Could not create fmt_version JSON for message serialization");
+        goto fail;
+    }
+    cJSON_AddItemToArray(fmt_version, fmt_minor);
     if (cJSON_AddStringToObject(msg_json, "name", "{{conn.source_mon.name}}.{{conn.source_event}}") == NULL) {
-        //TODO malloc fail. What now?
-        goto cleanup;
+        err("Could not add event name to JSON for message serialization");
+        goto fail;
     }
     
     /* Add the identities */
     cJSON *ids_json = cJSON_AddArrayToObject(msg_json, "identities");
     if (ids_json == NULL) {
-        //TODO malloc fail. What now?
-        goto cleanup;
+        err("Could not add identities array to JSON for message serialization");
+        goto fail;
     }
     cJSON id;
     {% for param in conn.source_mon.params %}
@@ -582,8 +633,8 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
     {% elif param is sameas SmedlType.POINTER %}
     status = snprintf(ptr, sizeof(ptr), "%" PRIxPTR, (uintptr_t) identities[{{loop.index0}}].v.p);
     if (status < 0 || status >= sizeof(ptr)) {
-        //TODO snprintf fail. What now?
-        goto cleanup;
+        err("Could not convert pointer to string for message serialization");
+        goto fail;
     }
     id = cJSON_CreateString(ptr);
     {% elif param is sameas SmedlType.THREAD %}
@@ -591,7 +642,8 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
     {% elif param is sameas SmedlType.OPAQUE %}
     opaque = malloc(identities[{{loop.index0}}].v.o.size + 1);
     if (opaque == NULL) {
-        //TODO malloc fail. What now?
+        err("Could not convert opaque to string for message serialization");
+        goto fail;
     }
     memcpy(opaque, identities[{{loop.index0}}].v.o.data, identities[{{loop.index0}}].v.o.size);
     opaque[identities[{{loop.index0}}].v.o.size] = '\0';
@@ -599,8 +651,8 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
     free(opaque);
     {% endif %}
     if (id == NULL) {
-        //TODO malloc fail. What now?
-        goto cleanup;
+        err("Could not add identity to JSON array for message serialization");
+        goto fail;
     }
     cJSON_AddItemToArray(ids_json, id);
     {% endfor %}
@@ -608,8 +660,8 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
     /* Add the event params */
     cJSON *params_json = cJSON_AddArrayToObject(msg_json, "params");
     if (params_json == NULL) {
-        //TODO malloc fail. What now?
-        goto cleanup;
+        err("Could not add params array to JSON for message serialization");
+        goto fail;
     }
     cJSON *param;
     {% for param in conn.source_event_params %}
@@ -624,8 +676,8 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
     {% elif param is sameas SmedlType.POINTER %}
     status = snprintf(ptr, sizeof(ptr), "%" PRIxPTR, (uintptr_t) params[{{loop.index0}}].v.p);
     if (status < 0 || status >= sizeof(ptr)) {
-        //TODO snprintf fail. What now?
-        goto cleanup;
+        err("Could not convert pointer to string for message serialization");
+        goto fail;
     }
     param = cJSON_CreateString(ptr);
     {% elif param is sameas SmedlType.THREAD %}
@@ -633,7 +685,8 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
     {% elif param is sameas SmedlType.OPAQUE %}
     opaque = malloc(params[{{loop.index0}}].v.o.size + 1);
     if (opaque == NULL) {
-        //TODO malloc fail. What now?
+        err("Could not convert opaque to string for message serialization");
+        goto fail;
     }
     memcpy(opaque, params[{{loop.index0}}].v.o.data, params[{{loop.index0}}].v.o.size);
     opaque[params[{{loop.index0}}].v.o.size] = '\0';
@@ -641,28 +694,33 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
     free(opaque);
     {% endif %}
     if (param == NULL) {
-        //TODO malloc fail. What now?
-        goto cleanup;
+        err("Could not add param to JSON array for message serialization");
+        goto fail;
     }
     cJSON_AddItemToArray(params_json, param);
     {% endfor %}
 
     /* Add the Aux data */
     if (cJSON_AddRawToObject(msg_json, "aux", aux.data) == NULL) {
-        //TODO malloc fail. What now?
-        goto cleanup;
+        err("Could not add aux data to JSON for message serialization");
+        goto fail;
     }
 
     char *msg = cJSON_Print(msg_json);
     if (msg == NULL) {
-        //TODO malloc fail. What now?
-        goto cleanup;
+        err("Could not convert JSON to string for message serialization");
+        goto fail;
     }
 
     send_message("{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}", msg, strlen(msg));
 
-cleanup:
     cJSON_Delete(msg_json);
+    return;
+
+fail:
+    //TODO Malloc or snprintf fail. What now?
+    cJSON_Delete(msg_json);
+    return;
 }
 {% endfor %}
 {% endfor %}
@@ -713,9 +771,10 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     init_status->channel = 1;
 
     /* Declare the exchange, ensuring it exists */
+    rmq_state->exchange = amqp_cstring_bytes(rmq_config->exchange);
     amqp_exchange_declare(rmq_state->conn, rmq_state->channel,
-            amqp_cstring_bytes(rmq_config->exchange),
-            amqp_cstring_bytes("topic"), 0, 0, 1, 0, amqp_empty_table);
+            rmq_state->exchange, amqp_cstring_bytes("topic"), 0, 0, 1, 0,
+            amqp_empty_table);
     reply = amqp_get_rpc_reply(rmq_state->conn);
     if (!check_reply(init_status, rmq_state, reply,
                 "Could not declare exchange")) {
@@ -831,10 +890,9 @@ int cleanup(InitStatus *init_status, RabbitMQState *rmq_state) {
 }
 
 int main(int argc, char **argv) {
-    int status;
+    int status = 1;
     InitStatus init_status = {0};
     RabbitMQState rmq_state = {.channel = 1};
-    //TODO Read RabbitMQ config somehow
     RabbitMQConfig rmq_config = {
         .hostname = "localhost",
         .port = 5672,
@@ -844,8 +902,20 @@ int main(int argc, char **argv) {
         .vhost = "/"
     };
 
-    /* Initialize */
-    status = init(&init_status, &rmq_state, &rmq_config);
+    /* Set signal handlers - see note in set_interrupted() */
+    if (signal(SIGINT, set_interrupted) == SIG_ERR) {
+        status = 0;
+    }
+    if (signal(SIGTERM, set_interrupted) == SIG_ERR) {
+        status = 0;
+    }
+
+    //TODO Read RabbitMQ config somehow
+
+    /* Initialize if reading config was successful */
+    if (status) {
+        status = init(&init_status, &rmq_state, &rmq_config);
+    }
 
     /* Start consuming events if initialization was successful */
     if (status) {

@@ -23,6 +23,7 @@ typedef struct {
 typedef struct {
     amqp_connection_state_t conn;
     amqp_channel_t channel;
+    amqp_bytes_t exchange;
     amqp_bytes_t queue;
 } RabbitMQState;
 
@@ -36,14 +37,21 @@ typedef struct {
     const char *vhost;
 } RabbitMQConfig;
 
-/* Return nonzero if the program has been asked to terminate (e.g. by SIGTERM
- * on Unix-like systems), zero otherwise. Determines when the main loop should
- * end. */
-int is_interrupted();
+/* A struct to hold stored aux data from an incoming message and
+ * RabbitMQState, needed when later sending a message out. Used as the aux
+ * parameter for SMEDL API calls. */
+typedef struct {
+    RabbitMQState *state;
+    void *aux;
+} RabbitMQAux;
+
+/* Signal handler for SIGINT and SIGTERM. Set the interrupted flag to nonzero
+ * (1 normally, 2 if there was also an error reinstating the signal handler.) */
+void set_interrupted(int signum);
 
 /* Handle an incoming message by calling the proper global wrapper import
  * function. Return nonzero on success, zero on failure. */
-int handle_message(amqp_envelope_t *envelope);
+int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope);
 
 /* Main loop: Start consuming events. Return nonzero on success (when triggered
  * by a signal), zero on failure. */
@@ -54,8 +62,9 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state);
  * does that. Returns nonzero on success, zero on failure. */
 int handle_other_frame(InitStatus *init_status, RabbitMQState *rmq_state);
 
-/* Send a message over RabbitMQ */
-int send_message(const char *routing_key, const char *msg, size_t len);
+/* Send a message over RabbitMQ. Return nonzero on success, zero on failure. */
+int send_message(RabbitMQState *rmq_state, const char *routing_key,
+        const char *msg, size_t len);
 
 /* Message send functions - Send an exported message. To be used as the
  * callbacks in the global wrapper. */
