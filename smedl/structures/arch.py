@@ -616,6 +616,9 @@ class DeclaredMonitor(object):
         name."""
         if old_channel is not None:
             del self._connections[old_channel]
+        if self._sys.channel_name_taken(conn.channel):
+            raise NameCollision("Channel name {} must always be used for the "
+                    "same source event".format(conn.channel))
         self._connections[conn.channel] = conn
 
     def create_export_connections(self):
@@ -813,7 +816,19 @@ class MonitorSystem(object):
         explicit name."""
         if old_channel is not None:
             del self._imported_connections[old_channel]
+        if self.channel_name_taken(conn.channel):
+            raise NameCollision("Channel name {} must always be used for the "
+                    "same source event".format(conn.channel))
         self._imported_connections[conn.channel] = conn
+
+    def channel_name_taken(self, channel):
+        """Return True if the channel name is already used, False otherwise"""
+        if channel in self._imported_connections:
+            return True
+        for decl in self._monitor_decls.values():
+            if channel in decl.connections:
+                return True
+        return False
 
     def add_monitor_decl(self, name, target, params):
         """Add a monitor declaration to the system.
