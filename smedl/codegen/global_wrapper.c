@@ -57,74 +57,99 @@ void free_{{syncset}}_syncset() {
 
 /* Intra routing function - Called by import interface functions and intra queue
  * processing function to route events to the local wrappers */
-{# Routing function macro *************************************************** #}
+{# Routing function macros ************************************************** #}
+{% macro param_converter(array_name, param, dest_type) -%}
+{% if dest_type is sameas param.source_type %}
+{{array_name}}[{{param.index}}]
+{%- else %}
+{# Numeric types can convert, so we must do that #}
+{
+    {%- if dest_type is sameas SmedlType.INT %}
+    SMEDL_INT, {.i
+    {%- elif dest_type is sameas SmedlType.FLOAT %}
+    SMEDL_FLOAT, {.d
+    {%- elif dest_type is sameas SmedlType.FLOAT %}
+    SMEDL_CHAR, {.c
+    {%- endif %} = {{array_name}}[{{param.index}}].v.
+    {%- if param.source_type is sameas SmedlType.INT %}
+    i}
+    {%- elif param.source_type is sameas SmedlType.FLOAT %}
+    d}
+    {%- elif param.source_type is sameas SmedlType.CHAR %}
+    c}
+    {%- endif %}
+}
+{%- endif %}
+{%- endmacro %}
+{# -------------------------------------------------------------------------- #}
+{% macro param_initializer(param, dest_type) -%}
+{% if param.index is none %}
+{SMEDL_NULL}
+{%- elif param.identity %}
+{{param_converter("identities", param, dest_type)}}
+{%- else %}
+{{param_converter("params", param, dest_type)}}
+{%- endif %}
+{%- endmacro %}
+{# -------------------------------------------------------------------------- #}
 {% macro route(conn) -%}
 {% for target in conn.targets if target.monitor in mon_decls -%}
-{%- endfor %}
 {
     {% if target.mon_params is nonempty %}
     SMEDLValue new_identities[{{target.mon_params|length}}] = {
-            {% for param in target.mon_params %}
-            {% if param.index is none %}
-            {SMEDL_NULL},
-            {% elif param.identity %}
-            identities[{{param.index}}],
-            {% else %}
-            params[{{param.index}}],
-            {% endif %}
+            {% for param, dest_type in target.mon_params_w_types %}
+            {{param_initializer(param, dest_type)|indent(12)}},
             {% endfor %}
         };
     {% else %}
     SMEDLValue *new_identities = NULL;
     {% endif %}
+
     {% if target.target_type == 'creation' %}
     {{target.monitor.spec.name}}State init_state;
     default_{{target.monitor.spec.name}}_state(&init_state);
     {% for var, param in target.state_vars.items() %}
     init_state.{{var}} = {%+ if param.identity -%}
         identities[{{param.index}}]
-        {% set param_type = decl.params[param.index] %}
         {%- else -%}
         params[{{param.index}}]
-        {% set param_type = params[param.index] %}
         {%- endif -%}
         .v.
-        {%- if param_type is sameas SmedlType.INT -%}
+        {%- if param.source_type is sameas SmedlType.INT -%}
             i
-        {%- elif param_type is sameas SmedlType.FLOAT -%}
+        {%- elif param.source_type is sameas SmedlType.FLOAT -%}
             d
-        {%- elif param_type is sameas SmedlType.CHAR -%}
+        {%- elif param.source_type is sameas SmedlType.CHAR -%}
             c
-        {%- elif param_type is sameas SmedlType.STRING -%}
+        {%- elif param.source_type is sameas SmedlType.STRING -%}
             s
-        {%- elif param_type is sameas SmedlType.POINTER -%}
+        {%- elif param.source_type is sameas SmedlType.POINTER -%}
             p
-        {%- elif param_type is sameas SmedlType.THREAD -%}
+        {%- elif param.source_type is sameas SmedlType.THREAD -%}
             th
-        {%- elif param_type is sameas SmedlType.OPAQUE -%}
+        {%- elif param.source_type is sameas SmedlType.OPAQUE -%}
             o
         {%- endif %};
     {% endfor %}
+
     create_{{target.monitor.name}}_monitor(new_identities, &init_state);
     {% elif target.target_type == 'event' %}
     {% if target.event_params is nonempty %}
     SMEDLValue new_params[{{target.event_params|length}}] = {
-            {% for param in target.event_params %}
-            {% if param.identity %}
-            identities[{{param.index}}],
-            {% else %}
-            params[{{param.index}}],
-            {% endif %}
+            {% for param, dest_type in target.event_params_w_types %}
+            {{param_initializer(param, dest_type)|indent(12)}},
             {% endfor %}
         };
     {% else %}
     SMEDLValue *new_params = NULL;
     {% endif %}
+
     process_{{target.monitor.name}}_{{target.event}}(new_identities, new_params, aux);
     {% endif %}
 }
+{%- endfor %}
 {%- endmacro %}
-{# End of routing function macro********************************************* #}
+{# End of routing function macros ******************************************* #}
 {% for conn in sys.imported_channels(syncset) %}
 void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     {{route(conn)|indent}}

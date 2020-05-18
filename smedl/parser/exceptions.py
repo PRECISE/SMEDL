@@ -4,6 +4,10 @@ Exceptions to represent various parsing and semantics errors
 
 #from tatsu.exceptions import FailedSemantics
 
+class InternalError(Exception):
+    """Raised if an internal error occurs during parsing. If that ever happens,
+    there is a bug."""
+
 class SmedlException(Exception):
     """Base class for all SMEDL exceptions"""
 

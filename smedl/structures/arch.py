@@ -5,7 +5,7 @@ Structures and types for monitoring system architectures (.a4smedl files)
 import types
 from smedl.parser.exceptions import (NameCollision, NameNotDefined,
         AlreadyInSyncset, ParameterError, DuplicateConnection, TypeMismatch,
-        DuplicateConnection)
+        DuplicateConnection, InternalError)
 
 class Parameter(object):
     """A parameter for a target specification. May be used for either monitor
@@ -27,6 +27,8 @@ class Parameter(object):
         """
         self._identity = identity
         self._index = index
+        # The Target that this parameter belongs to
+        self._target = None
 
     @property
     def identity(self):
@@ -39,6 +41,30 @@ class Parameter(object):
         """Return None if this is a wildcard parameter ("*"). Otherwise, return
         the index of this parameter (the "x" in "$x" or "#x")."""
         return self._index
+
+    @property
+    def target(self):
+        return self._target
+
+    @target.setter
+    def target(self, value):
+        """Set the target if not already set"""
+        if self._target is None:
+            self._target = value
+        else:
+            raise InternalError("Adding more than one Target to a Parameter")
+
+    @property
+    def source_type(self):
+        """Get the type of whichever parameter this Parameter is a reference
+        to"""
+        if self._index is None:
+            raise InternalError("Trying to take 'source_type' of a wildcard "
+                    "Parameter")
+        if self._identity:
+            return self._target.connection.source_mon.params[self._index]
+        else:
+            return self._target.connection.source_event_params[self._index]
 
     def __repr__(self):
         if self._index is None:
@@ -61,6 +87,8 @@ class Target(object):
         mon_params - Iterable of Parameters for the monitor identities"""
         self._target_type = type_
         self._monitor = monitor
+        for param in mon_params:
+            param.target = self
         self._mon_params = tuple(mon_params)
         self._connection = None
 
@@ -71,13 +99,19 @@ class Target(object):
 
     @property
     def monitor(self):
-        """Get the name of the destination monitor, or None if ExportTarget"""
+        """Get the destination DeclaredMonitor, or None if ExportTarget"""
         return self._monitor
 
     @property
     def mon_params(self):
         """Get a tuple of Parameters for the monitor identities"""
         return self._mon_params
+
+    @property
+    def mon_params_w_types(self):
+        """Get a sequence of (Parameter, SmedlType) tuples for the monitor
+        identities"""
+        return zip(self._mon_params, self._monitor.params)
 
     @property
     def connection(self):
@@ -89,8 +123,7 @@ class Target(object):
         if self._connection is None:
             self._connection = conn
         else:
-            raise Exception("Internal error: Target already added to a "
-                    "connection")
+            raise InternalError("Target already added to a connection")
 
     def __eq__(self, other):
         """Return True if the other is the same target (ignoring parameters)
@@ -111,6 +144,8 @@ class TargetEvent(Target):
         event_params - List of Parameters for the event"""
         super().__init__('event', dest_monitor, mon_params)
         self._event = dest_event
+        for param in event_params:
+            param.target = self
         self._event_params = tuple(event_params)
 
     @property
@@ -122,6 +157,13 @@ class TargetEvent(Target):
     def event_params(self):
         """Get a tuple of Parameters for the destination event"""
         return self._event_params
+
+    @property
+    def event_params_w_types(self):
+        """Get a sequence of (Parameter, SmedlType) tuples for the destination
+        event"""
+        return zip(self._event_params,
+                self._monitor.spec.imported_events[self._event])
 
     def __eq__(self, other):
         """Return True if the other is the same target (ignoring parameters)
@@ -152,6 +194,8 @@ class TargetCreation(Target):
           not be wildcards).
         """
         super().__init__('creation', dest_monitor, mon_params)
+        for param in state_vars.values():
+            param.target = self
         self._state_vars = state_vars
 
     @property
@@ -644,7 +688,7 @@ class MonitorSystem(object):
         if self._name is None:
             self._name = value
         else:
-            raise Exception("Internal error: Monitoring system already named")
+            raise InternalError("Monitoring system already named")
 
     @property
     def monitor_decls(self):

@@ -282,10 +282,8 @@ class MonitorSpec(object):
         self._helpers = []
         # State vars: keys are names, values are StateVariables
         self._state_vars = dict()
-        ## State vars: list of StateVariable
-        #self.state_vars = []
         # Imported, internal, and exported events: keys are names, values are
-        # lists of SmedlType representing their parameters
+        # tuples of SmedlType representing their parameters
         self._imported_events = dict()
         self._internal_events = dict()
         self._exported_events = dict()
