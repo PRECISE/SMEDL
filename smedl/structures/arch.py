@@ -251,9 +251,21 @@ class Connection(object):
 
     @property
     def source_event_params(self):
-        """Return a TODO of the source event params' SmedlTypes (or for a
-        connection from the target system, those that are known)"""
-        #TODO
+        """Return a sequence of the source event params' SmedlTypes (or for a
+        connection from the target system, None for those that are not known)"""
+        if self._source_mon is None:
+            result = list()
+            for i in range(max(self._source_ev_params.keys())):
+                result.append(self._source_ev_params.get(i))
+            return result
+        else:
+            return self._source_mon.spec.exported_events[self._source_event]
+
+    @property
+    def event_params_inferred(self):
+        """Return True if source_event_params was determined through inferral,
+        false if from monitor specifications or event declarations."""
+        return self._source_mon is None and self._infer_source_params
 
     @property
     def targets(self):

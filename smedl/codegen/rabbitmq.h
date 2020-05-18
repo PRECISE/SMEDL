@@ -54,6 +54,17 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state);
  * does that. Returns nonzero on success, zero on failure. */
 int handle_other_frame(InitStatus *init_status, RabbitMQState *rmq_state);
 
+/* Send a message over RabbitMQ */
+int send_message(const char *routing_key, const char *msg, size_t len);
+
+/* Message send functions - Send an exported message. To be used as the
+ * callbacks in the global wrapper. */
+{% for decl in mon_decls %}
+{% for conn in decl.inter_connections %}
+void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, void *aux);
+{% endfor %}
+{% endfor %}
+
 /* Do all initialization. Return nonzero on success, zero on failure */
 int init(InitStatus *init_status, RabbitMQState *rmq_state,
         RabbitMQConfig *rmq_config);

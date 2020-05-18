@@ -55,6 +55,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <amqp.h>
 #include <amqp_framing.h>
@@ -294,7 +295,6 @@ int handle_message(amqp_envelope_t *envelope) {
     {% endif %}
     {%+ if not loop.first %}} else {%+ endif -%}
     if (!strcmp(channel, "{{conn.channel}}")) {
-        //TODO Need source mon identity types and source event param types
         {% if conn.source_mon is not none %}
         /* Get monitor identities JSON and convert to SMEDLValue array */
         cJSON *id_json;
@@ -367,70 +367,76 @@ int handle_message(amqp_envelope_t *envelope) {
         {% endif %}
 
         /* Convert event parameters to SMEDLValue array */
-        //TODO We have a problem. Some events come from the target system. We
-        // don't have types for those events.
-        SMEDLValue params[{{conn.source_mon.params|length}}];
-        {% for param in conn.source_mon.params %}
+        SMEDLValue params[{{conn.source_event_params|length}}];
+        {% for param in conn.source_event_params %}
         {% if loop.first %}
         {% set get_next -%}
-        cJSON_ArrayFirst(identities_json, id_json)
+        cJSON_ArrayFirst(params_json, param_json)
         {%- endset %}
         {% else %}
         {% set get_next -%}
-        cJSON_ArrayNext(id_json)
+        cJSON_ArrayNext(param_json)
         {%- endset %}
         {% endif %}
         {% if param is sameas SmedlType.INT %}
-        if ({{get_next}} && cJSON_IsNumber(id_json)) {
-            identities[{{loop.index0}}].t = SMEDL_INT;
-            identities[{{loop.index0}}].v.i = id_json->valueint;
+        if ({{get_next}} && cJSON_IsNumber(param_json)) {
+            params[{{loop.index0}}].t = SMEDL_INT;
+            params[{{loop.index0}}].v.i = param_json->valueint;
         {% elif param is sameas SmedlType.FLOAT %}
-        if ({{get_next}} && cJSON_IsNumber(id_json)) {
-            identities[{{loop.index0}}].t = SMEDL_FLOAT;
-            identities[{{loop.index0}}].v.d = id_json->valuedouble;
+        if ({{get_next}} && cJSON_IsNumber(param_json)) {
+            params[{{loop.index0}}].t = SMEDL_FLOAT;
+            params[{{loop.index0}}].v.d = param_json->valuedouble;
         {% elif param is sameas SmedlType.CHAR %}
-        if ({{get_next}} && cJSON_IsNumber(id_json)) {
-            identities[{{loop.index0}}].t = SMEDL_CHAR;
-            identities[{{loop.index0}}].v.c = id_json->valueint;
+        if ({{get_next}} && cJSON_IsNumber(param_json)) {
+            params[{{loop.index0}}].t = SMEDL_CHAR;
+            params[{{loop.index0}}].v.c = param_json->valueint;
         {% elif param is sameas SmedlType.STRING %}
-        if ({{get_next}} && cJSON_IsString(id_json)) {
-            identities[{{loop.index0}}].t = SMEDL_STRING;
-            identities[{{loop.index0}}].v.s = id_json->valuestring;
+        if ({{get_next}} && cJSON_IsString(param_json)) {
+            params[{{loop.index0}}].t = SMEDL_STRING;
+            params[{{loop.index0}}].v.s = param_json->valuestring;
         {% elif param is sameas SmedlType.POINTER %}
-        if ({{get_next}} && cJSON_IsString(id_json)) {
-            identities[{{loop.index0}}].t = SMEDL_POINTER;
+        if ({{get_next}} && cJSON_IsString(param_json)) {
+            params[{{loop.index0}}].t = SMEDL_POINTER;
             char *endptr;
             errno = 0;
-            uintptr_t ptr = strtol(id_json->valuestring, &endptr, 16);
+            uintptr_t ptr = strtol(param_json->valuestring, &endptr, 16);
             if (errno) {
-                err("Could not extract pointer from 'identities': Overflow");
+                err("Could not extract pointer from 'params': Overflow");
                 goto fail;
-            } else if (id_json->valuestring[0] == '\0' || *end_ptr != '\0') {
-                err("Bad message (Pointer in 'identities' expects "
-                        "hexadecimal string)");
+            } else if (param_json->valuestring[0] == '\0' || *end_ptr != '\0') {
+                err("Bad message (Pointer in 'params' expects hexadecimal "
+                        "string)");
                 goto fail;
             }
-            identities[{{loop.index0}}].v.p = (void *) ptr;
+            params[{{loop.index0}}].v.p = (void *) ptr;
         {% elif param is sameas SmedlType.THREAD %}
         {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
         {% elif param is sameas SmedlType.OPAQUE %}
-        if ({{get_next}} && cJSON_IsString(id_json)) {
-            identities[{{loop.index0}}].t = SMEDL_OPAQUE;
-            identities[{{loop.index0}}].v.o.data = id_json->valuestring;
-            identities[{{loop.index0}}].v.o.size = strlen(id_json->valuestring);
+        if ({{get_next}} && cJSON_IsString(param_json)) {
+            params[{{loop.index0}}].t = SMEDL_OPAQUE;
+            params[{{loop.index0}}].v.o.data = param_json->valuestring;
+            params[{{loop.index0}}].v.o.size = strlen(param_json->valuestring);
+        {% elif param is none %}
+        if ({{get_next}}) {
+            /* Parameter {{loop.index0}} not needed (thus type not inferred) */
+            params[{{loop.index0}}].t = SMEDL_NULL;
         {% endif %}
         } else {
-            err("Bad message (Bad 'identities' array)");
+            err("Bad message (Bad 'params' array)");
             goto fail;
         }
         {% endfor %}
+        {% if not conn.event_params_inferred %}
         if (!cJSON_ArrayNext(id_json)) {
-            err("Bad message (Too many elements in 'identities' array)");
+            err("Bad message (Too many elements in 'params' array)");
             goto fail;
         }
-        //TODO
-    }
+        {% endif %}
+
+        /* Send to global wrapper */
+        import_{{syncset}}_{{conn.channel}(identities, params, aux);
     {% endfor %}
+    }
 
     /* Cleanup */
     cJSON_Delete(msg);
@@ -528,6 +534,137 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
     return 1;
 }
 
+/* Send a message over RabbitMQ */
+int send_message(const char *routing_key, const char *msg, size_t len) {
+    //TODO
+}
+
+/* Message send functions - Send an exported message. To be used as the
+ * callbacks in the global wrapper. */
+{% for decl in mon_decls %}
+{% for conn in decl.inter_connections %}
+
+void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
+        SMEDLValue *params, SMEDLAux aux) {
+    char ptr[40];
+    char *opaque;
+    int status;
+    /* Construct the JSON message */
+    cJSON *msg_json;
+    msg_json = cJSON_CreateObject();
+    if (msg_json == NULL) {
+        //TODO malloc fail. What now?
+        return;
+    }
+    if (cJSON_AddStringToObject(msg_json, "name", "{{conn.source_mon.name}}.{{conn.source_event}}") == NULL) {
+        //TODO malloc fail. What now?
+        goto cleanup;
+    }
+    
+    /* Add the identities */
+    cJSON *ids_json = cJSON_AddArrayToObject(msg_json, "identities");
+    if (ids_json == NULL) {
+        //TODO malloc fail. What now?
+        goto cleanup;
+    }
+    cJSON id;
+    {% for param in conn.source_mon.params %}
+    {% if param is sameas SmedlType.INT %}
+    id = cJSON_CreateNumber(identities[{{loop.index0}}].v.i);
+    {% elif param is sameas SmedlType.FLOAT %}
+    id = cJSON_CreateNumber(identities[{{loop.index0}}].v.d);
+    {% elif param is sameas SmedlType.CHAR %}
+    id = cJSON_CreateNumber(identities[{{loop.index0}}].v.c);
+    {% elif param is sameas SmedlType.STRING %}
+    id = cJSON_CreateString(identities[{{loop.index0}}].v.s);
+    {% elif param is sameas SmedlType.POINTER %}
+    status = snprintf(ptr, sizeof(ptr), "%" PRIxPTR, (uintptr_t) identities[{{loop.index0}}].v.p);
+    if (status < 0 || status >= sizeof(ptr)) {
+        //TODO snprintf fail. What now?
+        goto cleanup;
+    }
+    id = cJSON_CreateString(ptr);
+    {% elif param is sameas SmedlType.THREAD %}
+    {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
+    {% elif param is sameas SmedlType.OPAQUE %}
+    opaque = malloc(identities[{{loop.index0}}].v.o.size + 1);
+    if (opaque == NULL) {
+        //TODO malloc fail. What now?
+    }
+    memcpy(opaque, identities[{{loop.index0}}].v.o.data, identities[{{loop.index0}}].v.o.size);
+    opaque[identities[{{loop.index0}}].v.o.size] = '\0';
+    id = cJSON_CreateString(opaque);
+    free(opaque);
+    {% endif %}
+    if (id == NULL) {
+        //TODO malloc fail. What now?
+        goto cleanup;
+    }
+    cJSON_AddItemToArray(ids_json, id);
+    {% endfor %}
+
+    /* Add the event params */
+    cJSON *params_json = cJSON_AddArrayToObject(msg_json, "params");
+    if (params_json == NULL) {
+        //TODO malloc fail. What now?
+        goto cleanup;
+    }
+    cJSON *param;
+    {% for param in conn.source_event_params %}
+    {% if param is sameas SmedlType.INT %}
+    param = cJSON_CreateNumber(params[{{loop.index0}}].v.i);
+    {% elif param is sameas SmedlType.FLOAT %}
+    param = cJSON_CreateNumber(params[{{loop.index0}}].v.d);
+    {% elif param is sameas SmedlType.CHAR %}
+    param = cJSON_CreateNumber(params[{{loop.index0}}].v.c);
+    {% elif param is sameas SmedlType.STRING %}
+    param = cJSON_CreateString(params[{{loop.index0}}].v.s);
+    {% elif param is sameas SmedlType.POINTER %}
+    status = snprintf(ptr, sizeof(ptr), "%" PRIxPTR, (uintptr_t) params[{{loop.index0}}].v.p);
+    if (status < 0 || status >= sizeof(ptr)) {
+        //TODO snprintf fail. What now?
+        goto cleanup;
+    }
+    param = cJSON_CreateString(ptr);
+    {% elif param is sameas SmedlType.THREAD %}
+    {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
+    {% elif param is sameas SmedlType.OPAQUE %}
+    opaque = malloc(params[{{loop.index0}}].v.o.size + 1);
+    if (opaque == NULL) {
+        //TODO malloc fail. What now?
+    }
+    memcpy(opaque, params[{{loop.index0}}].v.o.data, params[{{loop.index0}}].v.o.size);
+    opaque[params[{{loop.index0}}].v.o.size] = '\0';
+    param = cJSON_CreateString(opaque);
+    free(opaque);
+    {% endif %}
+    if (param == NULL) {
+        //TODO malloc fail. What now?
+        goto cleanup;
+    }
+    cJSON_AddItemToArray(params_json, param);
+    {% endfor %}
+
+    /* Add the Aux data */
+    if (cJSON_AddRawToObject(msg_json, "aux", aux.data) == NULL) {
+        //TODO malloc fail. What now?
+        goto cleanup;
+    }
+
+    char *msg = cJSON_Print(msg_json);
+    if (msg == NULL) {
+        //TODO malloc fail. What now?
+        goto cleanup;
+    }
+
+    send_message("{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}", msg, strlen(msg));
+
+cleanup:
+    cJSON_Delete(msg_json);
+}
+{% endfor %}
+{% endfor %}
+
 /* Initialize RabbitMQ. Return nonzero on success, zero on failure. */
 int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
         RabbitMQConfig *rmq_config) {
@@ -624,6 +761,14 @@ int init(InitStatus *init_status, RabbitMQState *rmq_state,
     /* If successful, initialize the synchronous set */
     init_{{syncset}}_syncset();
     init_status->syncset = 1;
+
+    /* Register callbacks with the synchronous set */
+    {% for decl in mon_decls %}
+    {% for conn in decl.inter_connections %}
+    callback_{{syncset}}_{{conn.channel}}(send_{{syncset}}_{{conn.channel}});
+    {% endfor %}
+    {% endfor %}
+
     return 1;
 }
 
