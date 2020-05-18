@@ -247,10 +247,14 @@ static void routing_key_to_channel(amqp_bytes_t routing_key, char *buf,
 /* Handle an incoming message by calling the proper global wrapper import
  * function. Return nonzero on success, zero on failure. */
 int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
-    //T    if (signal(signum, handler) == SIG_ERR) {
-        /* Handle error */
-      }
-ODO ACK
+    int status;
+    /* ACK the message */
+    status = amqp_basic_ack(rmq_state->conn, rmq_state->channel,
+            envelope->delivery_tag, 0);
+    if (!check_status(status, "Could not ack message %lx",
+                envelope->delivery_tag)) {
+        return 0;
+    }
 
     /* Skip redeliveries */
     if (envelope->redelivered) {
@@ -889,8 +893,194 @@ int cleanup(InitStatus *init_status, RabbitMQState *rmq_state) {
     return status;
 }
 
+/* Read a string configuration item into the char pointer, if the item is in the
+ * parsed configuration */
+static int read_config_string(cJSON *conf, const char *name,
+        char **dest, char **buf, size_t *size) {
+    cJSON *item;
+    char *new_buf;
+    size_t pos = *size;
+
+    /* Try and look up item */
+    item = cJSON_GetObjectItemCaseSensitive(conf, name);
+    if (cJSON_IsString(item)) {
+        /* Found. Extend the buffer. */
+        *size += strlen(item->valuestring) + 1;
+        if (*size == pos) {
+            err("Config strings cannot be empty");
+            return 0;
+        }
+        new_buf = realloc(*buf, *size);
+        if (new_buf == NULL) {
+            err("Out of memory reading config file");
+            return 0;
+        }
+        *buf = new_buf;
+
+        /* Copy the string into the buffer. */
+        strcpy(*buf + pos, item->valuestring);
+
+        /* Update the dest. */
+        *dest = *buf + pos;
+    }
+
+    return 1;
+}
+
+/* Read an int configuration item into the int pointer, if the item is in the
+ * parsed configuration */
+static int read_config_int(cJSON *conf, const char *name, unsigned int *dest) {
+    cJSON *item;
+
+    /* Try and look up item */
+    item = cJSON_GetObjectItemCaseSensitive(conf, name);
+    if (cJSON_IsNumber(item)) {
+        /* Update the dest. */
+        *dest = item->valueint;
+    }
+
+    return 1;
+}
+
+/* Open the file named "fname" in the current directory, if it exists. Strip
+ * out any C++-style comments that are the first non-whitespace on their line.
+ * Parse the result as JSON and update the config with any values that were
+ * read.
+ *
+ * If successful, the caller must free the pointer returned through out_buf
+ * when the configuration is no longer needed (unless it is NULL).
+ *
+ * Return nonzero on success or if the file cannot be read, return zero
+ * on failure. */
+int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf) {
+    *out_buf = NULL;
+    /* Try to open */
+    FILE *f = fopen(fname, "r");
+    if (f == NULL) {
+        err("Warning: Could not open config file %s. Using defaults.", fname);
+        return 1;
+    }
+
+    /* Read the file */
+    size_t size = 0;
+    char *buf = NULL;
+    char *new_buf;
+    do {
+        size_t chunk_len;
+
+        size += 256;
+        new_buf = realloc(buf, size + 1);
+        if (new_buf == NULL) {
+            err("Out of memory reading config file");
+            free(buf);
+            fclose(f);
+            return 0;
+        }
+        buf = new_buf;
+
+        chunk_len = fread(buf, 1, size, f);
+        if (chunk_len < 256) {
+            size -= 256 - chunk_len;
+        }
+
+        if (ferror(f)) {
+            err("Warning: Could not read config file %s. Using defaults.",
+                    fname);
+            free(buf);
+            fclose(f);
+            return 1;
+        }
+    } while (!feof(f));
+    fclose(f);
+    buf[size] = '\0';
+
+    /* Clear any comments that are at the beginning of their line (except
+     * whitespace) */
+    int in_whitespace_prefix = 1;
+    int in_comment = 0;
+    char *end = buf + size;
+    for (char *c = buf; c < end; c++) {
+        switch (*c) {
+            case '\n':
+                in_whitespace_prefix = 1;
+                in_comment = 0;
+                break;
+            case '\r':
+            case '\t':
+            case ' ':
+                break;
+            case '/':
+                if (in_comment) {
+                    *c = ' ';
+                } else if (in_whitespace_prefix) {
+                    if (c + 1 < end && *(c + 1) == '/') {
+                        *c = ' ';
+                        c++;
+                        *c = ' ';
+                        in_comment = 1;
+                    }
+                    in_whitespace_prefix = 0;
+                }
+                break;
+            default:
+                if (in_comment) {
+                    *c = ' ';
+                } else {
+                    in_whitespace_prefix = 0;
+                }
+        }
+    }
+
+    /* Parse the config */
+    cJSON *conf = cJSON_Parse(buf);
+    free(buf);
+    if (conf == NULL) {
+        err("Config file %s is not well-formed", fname);
+        return 0;
+    }
+
+    /* Update the config from the parsed data */
+    size = 0;
+    buf = NULL;
+    int status = 1;
+    if (status) {
+        status = read_config_string(conf, "hostname", &rmq_config->hostname,
+                &buf, &size);
+    }
+    if (status) {
+        status = read_config_int(conf, "port", &rmq_config->port);
+    }
+    if (status) {
+        status = read_config_string(conf, "username", &rmq_config->username,
+                &buf, &size);
+    }
+    if (status) {
+        status = read_config_string(conf, "password", &rmq_config->password,
+                &buf, &size);
+    }
+    if (status) {
+        status = read_config_string(conf, "exchange", &rmq_config->exchange,
+                &buf, &size);
+    }
+    if (status) {
+        status = read_config_string(conf, "vhost", &rmq_config->vhost,
+                &buf, &size);
+    }
+
+    /* Cleanup and return */
+    cJSON_Delete(conf);
+    if (status) {
+        *out_buf = buf;
+        return 0;
+    } else {
+        free(buf);
+        return 1;
+    }
+}
+
 int main(int argc, char **argv) {
     int status = 1;
+    char *conf_buf;
     InitStatus init_status = {0};
     RabbitMQState rmq_state = {.channel = 1};
     RabbitMQConfig rmq_config = {
@@ -910,7 +1100,10 @@ int main(int argc, char **argv) {
         status = 0;
     }
 
-    //TODO Read RabbitMQ config somehow
+    /* Read config, if present */
+    if (status) {
+        status = read_config("{{sys.name}}.cfg", &rmq_config, &conf_buf);
+    }
 
     /* Initialize if reading config was successful */
     if (status) {
@@ -929,6 +1122,7 @@ int main(int argc, char **argv) {
         /* Program was terminated. Clean up. */
         status = cleanup(&init_status, &rmq_state, &rmq_config);
     }
+    free(conf_buf);
 
     return !status;
 }

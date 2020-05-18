@@ -109,6 +109,7 @@ class CodeGenerator(object):
             }
         self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
         self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
+        self._render("rabbitmq.cfg", system.name + ".cfg", values)
 
     def _write_wrappers(self, system, syncset_name):
         """Write the global wrapper and local wrappers for one synchronous set

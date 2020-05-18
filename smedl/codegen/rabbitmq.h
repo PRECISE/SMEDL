@@ -74,6 +74,18 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, void *aux);
 {% endfor %}
 {% endfor %}
 
+/* Open the file named "fname" in the current directory, if it exists. Strip
+ * out any C++-style comments that are the first non-whitespace on their line.
+ * Parse the result as JSON and update the config with any values that were
+ * read.
+ *
+ * If successful, the caller must free the pointer returned through out_buf
+ * when the configuration is no longer needed (unless it is NULL).
+ *
+ * Return nonzero on success or if the file cannot be read, return zero
+ * on failure. */
+int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf);
+
 /* Do all initialization. Return nonzero on success, zero on failure */
 int init(InitStatus *init_status, RabbitMQState *rmq_state,
         RabbitMQConfig *rmq_config);
