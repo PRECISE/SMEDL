@@ -29,7 +29,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
 
     while (pop_event(&mon->event_queue, &event, &params, &aux)) {
         switch (event) {
-            {% for event, params in (spec.internal_events.items() +
+            {% for event, params in chain(spec.internal_events.items(),
                    spec.exported_events.items()) %}
             case EVENT_{{spec.name}}_{{event}}:
                 execute_{{spec.name}}_{{event}}(mon, params, aux);
@@ -38,6 +38,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
                 free(params[{{loop.index0}}].v.s);
                 {% elif param_type is sameas SmedlType.OPAQUE %}
                 free(params[{{loop.index0}}].v.o.data);
+                {% endif %}
                 {% endfor %}
                 break;
             {% endfor %}
@@ -186,7 +187,7 @@ mon->s.{{a.var}}--;
 /* {{scenario.name}} scenario */
 if (mon->ef.{{scenario.name}}_flag) {
     switch (mon->{{scenario.name}}_state) {
-        {% for state in scenario.all_states() if (state, event) in scenario.steps %}
+        {% for state in scenario.all_states if (state, event) in scenario.steps %}
         case STATE_{{spec.name}}_{{scenario.name}}_{{state}}:
             {# Note: We don't try to do anything special if the condition is 1
                 (like disable the "else" and further "else if"s) because it
@@ -320,7 +321,7 @@ void default_{{spec.name}}_state({{spec.name}}State *state) {
     if (!smedl_assign_string(&state->{{var.name}}, {{var.initial_value}})) {
         /* TODO Out of memory. What now? */
     }
-    {% if var.type is sameas SmedlType.OPAQUE %}
+    {% elif var.type is sameas SmedlType.OPAQUE %}
     if (!smedl_assign_opaque(&state->{{var.name}}, {{var.initial_value}})) {
         /* TODO Out of memory. What now? */
     }

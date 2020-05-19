@@ -473,8 +473,9 @@ class Connection(object):
         """Do type verification on all monitor identities, event parameters,
         and state variables in the provided Target"""
         # Typecheck monitor params
-        self._typecheck_dest_params(target.mon_params, target.monitor.params,
-                "monitor " + target.monitor.name)
+        if target.monitor is not None:
+            self._typecheck_dest_params(target.mon_params,
+                    target.monitor.params, "monitor " + target.monitor.name)
 
         if isinstance(target, TargetEvent):
             # Typecheck destination event parameter types
@@ -659,7 +660,7 @@ class DeclaredMonitor(object):
     def __repr__(self):
         return "monitor {}({}) as {}".format(
                 self._spec.name,
-                ", ".join(self._params),
+                ", ".join([str(p) for p in self._params]),
                 self._name)
 
 class MonitorSystem(object):
@@ -742,7 +743,7 @@ class MonitorSystem(object):
             except KeyError:
                 raise NameNotDefined("Monitor {} has not been declared".format(
                     monitor))
-            syncset.add(monitor)
+            syncset.add(self._monitor_decls[monitor])
 
         # Add the syncset to the MonitorSystem
         self._syncsets[name] = syncset

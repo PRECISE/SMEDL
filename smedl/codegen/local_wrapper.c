@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "smedl_types.h"
 #include "local_wrapper.h"
-#include "{{mon.syncset}}_global_wrapper.h"
+#include "{{mon.syncset.name}}_global_wrapper.h"
 #include "{{mon.name}}_local_wrapper.h"
 #include "{{spec.name}}_mon.h"
 

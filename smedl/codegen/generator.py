@@ -3,6 +3,7 @@ Code generation and template filling
 """
 
 import os.path
+import itertools
 import jinja2
 from jinja2 import nodes
 from jinja2 import ext
@@ -63,6 +64,7 @@ class CodeGenerator(object):
 
         # Make SmedlType available to all templates
         self.env.globals['SmedlType'] = expr.SmedlType
+        self.env.globals['chain'] = itertools.chain
 
         # Set up some custom tests for convenience in templates
         self.env.tests['nonempty'] = lambda x: len(x) > 0
@@ -120,14 +122,14 @@ class CodeGenerator(object):
           generated
         """
         # Write the local wrappers
-        for mon_name in system.syncsets[syncset_name]:
+        for mon in system.syncsets[syncset_name]:
             values = {
-                    "mon": system.monitor_decls[mon_name],
-                    "spec": system.monitor_decls[mon_name].spec,
+                    "mon": mon,
+                    "spec": mon.spec,
                 }
-            self._render("local_wrapper.c", mon_name + "_local_wrapper.c",
+            self._render("local_wrapper.c", mon.name + "_local_wrapper.c",
                     values)
-            self._render("local_wrapper.h", mon_name + "_local_wrapper.h",
+            self._render("local_wrapper.h", mon.name + "_local_wrapper.h",
                     values)
 
         # Write the global wrapper

@@ -165,6 +165,7 @@ static void handle_{{syncset}}_intra() {
                 free(params[{{loop.index0}}].v.s);
                 {% elif param_type is sameas SmedlType.OPAQUE %}
                 free(params[{{loop.index0}}].v.o.data);
+                {% endif %}
                 {% endfor %}
                 break;
             {% endfor %}
@@ -194,6 +195,7 @@ static void handle_{{syncset}}_inter() {
                 free(params[{{loop.index0}}].v.s);
                 {% elif param_type is sameas SmedlType.OPAQUE %}
                 free(params[{{loop.index0}}].v.o.data);
+                {% endif %}
                 {% endfor %}
                 break;
             {% endfor %}
