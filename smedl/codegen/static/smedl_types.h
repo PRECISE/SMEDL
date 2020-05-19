@@ -41,9 +41,6 @@ typedef struct {
     size_t size;
 } SMEDLOpaque;
 
-//TODO Should string in SMEDLValue be const char * and data in SMEDLOpaque be
-// const void *?
-
 /*
  * A single SMEDL value
  */
@@ -59,6 +56,10 @@ typedef struct {
         SMEDLOpaque o;
     } v;
 } SMEDLValue;
+
+/* Compare two opaque values for equality only. Return nonzero if equal, zero
+ * if not */
+int opaque_equals(SMEDLOpaque o1, SMEDLOpaque o2);
 
 /*
  * Compare two SMEDLValue and return <0 if the first is less than the second,
@@ -92,12 +93,17 @@ int smedl_equal(SMEDLValue v1, SMEDLValue v2);
 int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len);
 
 /* 
- * Make a copy of the SMEDLValue array with the given length. This is a shallow
- * copy: strings and opaques will still point to the original data.
+ * Make a copy of the SMEDLValue array with the given length. This is a deep
+ * copy: new buffers will be malloc'd for strings and opaques.
  *
  * Return the copy, or NULL if it could not be made.
  */
 SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len);
+
+/*
+ * Free the array of SMEDLValue and any strings and opaques it contains
+ */
+void smedl_free_array(SMEDLValue *array, size_t len);
 
 /*
  * A callback function pointer for receiving exported events from monitors and

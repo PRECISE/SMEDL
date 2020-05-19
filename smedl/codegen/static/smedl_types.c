@@ -4,6 +4,15 @@
 #include <pthread.h>
 #include "smedl_types.h"
 
+/* Compare two opaque values for equality only. Return nonzero if equal, zero
+ * if not */
+int opaque_equals(SMEDLOpaque o1, SMEDLOpaque o2) {
+    if (o1.size != o2.size) {
+        return 0;
+    }
+    return !memcmp(o1.data, o2.data, o1.size);
+}
+
 /* Compare two opaque values */
 static int compare_opaque(void *data1, size_t len1, void *data2, size_t len2) {
     size_t i = 0;
@@ -170,8 +179,8 @@ int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len) {
 }
 
 /* 
- * Make a copy of the SMEDLValue array with the given length. This is a shallow
- * copy: strings and opaques will still point to the original data.
+ * Make a copy of the SMEDLValue array with the given length. This is a deep
+ * copy: new buffers will be malloc'd for strings and opaques.
  *
  * Return the copy, or NULL if it could not be made.
  */
@@ -183,6 +192,34 @@ SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len) {
 
     for (size_t i = 0; i < len; i++) {
         copy[i] = array[i];
+        if (copy[i].t == SMEDL_STRING) {
+            copy[i].v.s = malloc(strlen(array[i].v.s + 1));
+            if (copy[i].v.s == NULL) {
+                smedl_free_array(copy, i);
+                return NULL;
+            }
+            strcpy(copy[i].v.s, array[i].v.s);
+        } else if (copy[i].t == SMEDL_OPAQUE) {
+            copy[i].v.o.data = malloc(copy[i].v.o.size);
+            if (copy[i].v.o.data == NULL) {
+                smedl_free_array(copy, i);
+                return NULL;
+            }
+        }
     }
     return copy;
+}
+
+/*
+ * Free the array of SMEDLValue and any strings and opaques it contains
+ */
+void smedl_free_array(SMEDLValue *array, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        if (array[i].t == SMEDL_STRING) {
+            free(array[i].v.s);
+        } else if (array[i].t == SMEDL_OPAQUE) {
+            free(array[i].v.o.data);
+        }
+    }
+    free(array);
 }
