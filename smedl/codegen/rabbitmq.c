@@ -454,7 +454,7 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
         {% endif %}
 
         /* Send to global wrapper */
-        import_{{syncset}}_{{conn.channel}(identities, params, aux);
+        import_{{syncset}}_{{conn.channel}}(identities, params, aux);
     {% endfor %}
     }
 
@@ -583,8 +583,7 @@ int send_message(RabbitMQState *rmq_state, const char *routing_key,
 {% for decl in mon_decls %}
 {% for conn in decl.inter_connections %}
 
-void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities,
-        SMEDLValue *params, void *aux) {
+void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     char ptr[40];
     char *opaque;
     int status;
