@@ -7,10 +7,7 @@
 /* Compare two opaque values for equality only. Return nonzero if equal, zero
  * if not */
 int opaque_equals(SMEDLOpaque o1, SMEDLOpaque o2) {
-    if (o1.size != o2.size) {
-        return 0;
-    }
-    return !memcmp(o1.data, o2.data, o1.size);
+    return o1.size == o2.size && !memcmp(o1.data, o2.data, o1.size);
 }
 
 /* Compare two opaque values */
@@ -132,26 +129,18 @@ int smedl_equal(SMEDLValue v1, SMEDLValue v2) {
     switch (v1.t) {
         case SMEDL_INT:
             return v1.v.i == v2.v.i;
-            break;
         case SMEDL_FLOAT:
             return v1.v.d == v2.v.d;
-            break;
         case SMEDL_CHAR:
             return v1.v.c == v2.v.c;
-            break;
         case SMEDL_STRING:
             return strcmp(v1.v.s, v2.v.s) == 0;
-            break;
         case SMEDL_POINTER:
             return v1.v.p == v2.v.p;
-            break;
         case SMEDL_THREAD:
             return pthread_equal(v1.v.th, v2.v.th);
-            break;
         case SMEDL_OPAQUE:
-            return v1.v.o.size == v2.v.o.size &&
-                memcmp(v1.v.o.data, v2.v.o.data, v1.v.o.size) == 0;
-            break;
+            return opaque_equals(v1.v.o, v2.v.o);
         case SMEDL_NULL:
             return 1;
         default:
@@ -175,6 +164,54 @@ int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len) {
             return 0;
         }
     }
+    return 1;
+}
+
+/* Make a copy of the src string in dest (does not free the old value!) */
+int smedl_assign_string(char **dest, char *src) {
+    char *tmp = malloc(strlen(src) + 1);
+    if (tmp == NULL) {
+        return 0;
+    }
+    *dest = tmp;
+    strcopy(*dest, src);
+    return 1;
+}
+
+/* Make a copy of the src opaque in dest (does not free the old value!) */
+int smedl_assign_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
+    void *tmp = malloc(src.size);
+    if (tmp == NULL) {
+        return 0;
+    }
+    (*dest).data = tmp;
+    (*dest).size = src.size;
+    memcpy((*dest).data, src.data);
+    return 1;
+}
+
+/* Free the old dest and make a copy of the src string in dest */
+int smedl_replace_string(char **dest, char *src) {
+    char *tmp = malloc(strlen(src) + 1);
+    if (tmp == NULL) {
+        return 0;
+    }
+    free(*dest);
+    *dest = tmp;
+    strcopy(*dest, src);
+    return 1;
+}
+
+/* Free the old dest and make a copy of the src opaque in dest */
+int smedl_replace_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
+    void *tmp = malloc(src.size);
+    if (tmp == NULL) {
+        return 0;
+    }
+    free((*dest).data);
+    (*dest).data = tmp;
+    (*dest).size = src.size;
+    memcpy((*dest).data, src.data);
     return 1;
 }
 
@@ -211,7 +248,10 @@ SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len) {
 }
 
 /*
- * Free the array of SMEDLValue and any strings and opaques it contains
+ * Free the array of SMEDLValue and any strings and opaques it contains.
+ * This works without knowing the types beforehand, but if the types are known,
+ * freeing the strings and opaque data individually and then free(array) will
+ * be more efficient.
  */
 void smedl_free_array(SMEDLValue *array, size_t len) {
     for (size_t i = 0; i < len; i++) {

@@ -27,9 +27,7 @@ class StateVariable(object):
             elif self._type == expr.SmedlType.THREAD:
                 self._initial_value = None
             elif self._type == expr.SmedlType.OPAQUE:
-                #TODO This may cause errors converting a const char * to
-                # non-const void * in C++. (C should not complain.)
-                self.initial_value = '{"", 0}'
+                self.initial_value = '(SMEDLOpaque) {NULL, 0}'
 
     @property
     def name(self):

@@ -33,26 +33,12 @@ void init_{{syncset}}_syncset() {
 }
 
 /* Cleanup interface - Tear down and free the resources used by this global
- * wrapper and all the local wrappers and monitors it manages. Note that if
- * this is called while there are pending events to be exported (i.e. when a
- * call to any of the import_*() functions has not returned yet), those events
- * will be dropped! */
+ * wrapper and all the local wrappers and monitors it manages. */
 void free_{{syncset}}_syncset() {
     /* Free local wrappers */
     {% for decl in mon_decls %}
     free_{{decl.name}}_local_wrapper();
     {% endfor %}
-
-    /* Clear queues */
-    int mon, event;
-    SMEDLValue *identities, *params;
-    void *aux;
-    while (pop_global_event(&intra_queue, &mon, &identities, &event, &params, &aux)) {
-        free(params);
-    }
-    while (pop_global_event(&inter_queue, &mon, &identities, &event, &params, &aux)) {
-        free(params);
-    }
 }
 
 /* Intra routing function - Called by import interface functions and intra queue
@@ -109,27 +95,26 @@ void free_{{syncset}}_syncset() {
     {{target.monitor.spec.name}}State init_state;
     default_{{target.monitor.spec.name}}_state(&init_state);
     {% for var, param in target.state_vars.items() %}
-    init_state.{{var}} = {%+ if param.identity -%}
-        identities[{{param.index}}]
-        {%- else -%}
-        params[{{param.index}}]
-        {%- endif -%}
-        .v.
-        {%- if param.source_type is sameas SmedlType.INT -%}
-            i
-        {%- elif param.source_type is sameas SmedlType.FLOAT -%}
-            d
-        {%- elif param.source_type is sameas SmedlType.CHAR -%}
-            c
-        {%- elif param.source_type is sameas SmedlType.STRING -%}
-            s
-        {%- elif param.source_type is sameas SmedlType.POINTER -%}
-            p
-        {%- elif param.source_type is sameas SmedlType.THREAD -%}
-            th
-        {%- elif param.source_type is sameas SmedlType.OPAQUE -%}
-            o
-        {%- endif %};
+    {% set array_name = "identities" if param.identity else "params" %}
+    {% if param.source_type is sameas SmedlType.INT %}
+    init_state.{{var}} = {{array_name}}[{{param.index}}].v.i;
+    {% elif param.source_type is sameas SmedlType.FLOAT %}
+    init_state.{{var}} = {{array_name}}[{{param.index}}].v.d;
+    {% elif param.source_type is sameas SmedlType.CHAR %}
+    init_state.{{var}} = {{array_name}}[{{param.index}}].v.c;
+    {% elif param.source_type is sameas SmedlType.STRING %}
+    if (!smedl_replace_string(&init_state.{{var}}, {{array_name}}[{{param.index}}].v.s)) {
+        /* TODO Out of memory. What now? */
+    }
+    {% elif param.source_type is sameas SmedlType.POINTER %}
+    init_state.{{var}} = {{array_name}}[{{param.index}}].v.p;
+    {% elif param.source_type is sameas SmedlType.THREAD %}
+    init_state.{{var}} = {{array_name}}[{{param.index}}].v.th;
+    {% elif param.source_type is sameas SmedlType.OPAQUE %}
+    if (!smedl_replace_string(&init_state.{{var}}, {{array_name}}[{{param.index}}].v.o)) {
+        /* TODO Out of memory. What now? */
+    }
+    {% endif %};
     {% endfor %}
 
     create_{{target.monitor.name}}_monitor(new_identities, &init_state);
@@ -175,13 +160,20 @@ static void handle_{{syncset}}_intra() {
             {% for conn in decl.intra_connections %}
             case CHANNEL_{{syncset}}_{{conn.channel}}:
                 route_{{syncset}}_{{conn.channel}}(identities, params, aux);
+                {% for param_type in conn.source_event_params %}
+                {% if param_type is sameas SmedlType.STRING %}
+                free(params[{{loop.index0}}].v.s);
+                {% elif param_type is sameas SmedlType.OPAQUE %}
+                free(params[{{loop.index0}}].v.o.data);
+                {% endfor %}
                 break;
             {% endfor %}
             {% endfor %}
         }
 
-        /* Event params were malloc'd. They are no longer needed. */
-        free(params);
+        /* Event params were malloc'd. They are no longer needed. (String and
+         * opaque data were already free'd in the switch.) */
+        array(params);
     }
 }
 
@@ -197,12 +189,19 @@ static void handle_{{syncset}}_inter() {
             {% for conn in decl.inter_connections %}
             case CHANNEL_{{syncset}}_{{conn.channel}}:
                 cb_{{conn.channel}}(identities, params, aux);
+                {% for param_type in conn.source_event_params %}
+                {% if param_type is sameas SmedlType.STRING %}
+                free(params[{{loop.index0}}].v.s);
+                {% elif param_type is sameas SmedlType.OPAQUE %}
+                free(params[{{loop.index0}}].v.o.data);
+                {% endfor %}
                 break;
             {% endfor %}
             {% endfor %}
         }
 
-        /* Event params were malloc'd. They are no longer needed. */
+        /* Event params were malloc'd. They are no longer needed. (String and
+         * opaque data were already free'd in the switch.) */
         free(params);
     }
 }

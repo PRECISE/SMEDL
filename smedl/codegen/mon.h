@@ -112,7 +112,11 @@ void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *param
 {{spec.name}}Monitor * init_{{spec.name}}_monitor(SMEDLValue *identities);
 
 /* Fill the provided {{spec.name}}State
- * with the default initial values for the monitor */
+ * with the default initial values for the monitor. Note that strings and
+ * opaque data must be free()'d if they are reassigned! The following two
+ * functions from smedl_types.h make that simple:
+ * - smedl_replace_string()
+ * - smedl_replace_opaque() */
 void default_{{spec.name}}_state({{spec.name}}State *state);
 
 /* Initialize a {{spec.name}} monitor with the provided state.

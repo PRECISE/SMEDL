@@ -61,6 +61,18 @@ typedef struct {
  * if not */
 int opaque_equals(SMEDLOpaque o1, SMEDLOpaque o2);
 
+/* Make a copy of the src string in dest (does not free the old value!) */
+int smedl_assign_string(char **dest, char *src);
+
+/* Make a copy of the src opaque in dest (does not free the old value!) */
+int smedl_assign_opaque(SMEDLOpaque *dest, SMEDLOpaque src);
+
+/* Free the old dest and make a copy of the src string in dest */
+int smedl_replace_string(char **dest, char *src);
+
+/* Free the old dest and make a copy of the src opaque in dest */
+int smedl_replace_opaque(SMEDLOpaque *dest, SMEDLOpaque src);
+
 /*
  * Compare two SMEDLValue and return <0 if the first is less than the second,
  * 0 if they are identical, >0 if the first is greater than the second

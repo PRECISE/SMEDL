@@ -29,14 +29,16 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
 
     while (pop_event(&mon->event_queue, &event, &params, &aux)) {
         switch (event) {
-            {% for event in spec.internal_events.keys() %}
+            {% for event, params in (spec.internal_events.items() +
+                   spec.exported_events.items()) %}
             case EVENT_{{spec.name}}_{{event}}:
                 execute_{{spec.name}}_{{event}}(mon, params, aux);
-                break;
-            {% endfor %}
-            {% for event in spec.exported_events.keys() %}
-            case EVENT_{{spec.name}}_{{event}}:
-                execute_{{spec.name}}_{{event}}(mon, params, aux);
+                {% for param_type in params %}
+                {% if param_type is sameas SmedlType.STRING %}
+                free(params[{{loop.index0}}].v.s);
+                {% elif param_type is sameas SmedlType.OPAQUE %}
+                free(params[{{loop.index0}}].v.o.data);
+                {% endfor %}
                 break;
             {% endfor %}
         }
@@ -119,8 +121,20 @@ opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
 {# -------------------------------------------------------------------------- #}
 {% macro action(a) -%}
 {% if a.action_type == 'assignment' %}
+{# String and opaque state vars must be free'd and malloc'd when reassigned. See
+    issues #37 and #48 #}
+{% if spec.state_vars[a.var].type is sameas SmedlType.STRING %}
+if (!smedl_replace_string(&mon->s.{{a.var}}, {{expression(a.expr)}})) {
+    /* TODO What to do if malloc fails? */
+}
+{%- elif spec.state_vars[a.var].type is sameas SmedlType.STRING %}
+if (!smedl_replace_opaque(&mon->s.{{a.var}}, {{expression(a.expr)}})) {
+    /* TODO What to do if malloc fails? */
+}
+{%- else %}
 mon->s.{{a.var}} = {{expression(a.expr)}};
-{%- elif a.action_type == 'increment' %}
+{%- endif %}
+{% elif a.action_type == 'increment' %}
 mon->s.{{a.var}}++;
 {%- elif a.action_type == 'decrement' %}
 mon->s.{{a.var}}--;
@@ -133,22 +147,27 @@ mon->s.{{a.var}}--;
     }
     {% for param_type in spec.get_event(a.event) %}
     new_params[{{loop.index0}}].t = SMEDL_{{param_type.value|upper}};
-    new_params[{{loop.index0}}].v.
-    {%- if param_type is sameas SmedlType.INT -%}
-        i
-    {%- elif param_type is sameas SmedlType.FLOAT -%}
-        d
-    {%- elif param_type is sameas SmedlType.CHAR -%}
-        c
-    {%- elif param_type is sameas SmedlType.STRING -%}
-        s
-    {%- elif param_type is sameas SmedlType.POINTER -%}
-        p
-    {%- elif param_type is sameas SmedlType.THREAD -%}
-        th
-    {%- elif param_type is sameas SmedlType.OPAQUE -%}
-        o
-    {%- endif %} = {{expression(a.params[loop.index0])}};
+    {% if param_type is sameas SmedlType.INT %}
+    new_params[{{loop.index0}}].v.i = {{expression(a.params[loop.index0])}};
+    {% elif param_type is sameas SmedlType.FLOAT %}
+    new_params[{{loop.index0}}].v.d = {{expression(a.params[loop.index0])}};
+    {% elif param_type is sameas SmedlType.CHAR %}
+    new_params[{{loop.index0}}].v.c = {{expression(a.params[loop.index0])}};
+    {% elif param_type is sameas SmedlType.STRING %}
+        //TODO Need to malloc a copy and later free
+    if (!smedl_assign_string(&new_params[{{loop.index0}}].v.s, {{expression(a.params[loop.index0])}})) {
+        /* TODO What to do if malloc fails? */
+    }
+    {% elif param_type is sameas SmedlType.POINTER %}
+    new_params[{{loop.index0}}].v.p = {{expression(a.params[loop.index0])}};
+    {% elif param_type is sameas SmedlType.THREAD %}
+    new_params[{{loop.index0}}].v.th = {{expression(a.params[loop.index0])}};
+    {% elif param_type is sameas SmedlType.OPAQUE %}
+        //TODO need to malloc a copy and later free
+    if (!smedl_assign_opaque(&new_params[{{loop.index0}}].v.o, {{expression(a.params[loop.index0])}})) {
+        /* TODO What to do if malloc fails? */
+    }
+    {% endif %}
     {% endfor %}
     queue_{{spec.name}}_{{a.event}}(mon, new_params, aux);
 }
@@ -286,13 +305,28 @@ void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *param
 }
 
 /* Fill the provided {{spec.name}}State
- * with the default initial values for the monitor */
+ * with the default initial values for the monitor. Note that strings and
+ * opaque data must be free()'d if they are reassigned! The following two
+ * functions from smedl_types.h make that simple:
+ * - smedl_replace_string()
+ * - smedl_replace_opaque() */
 void default_{{spec.name}}_state({{spec.name}}State *state) {
     {% for var in spec.state_vars.values() %}
     {% if var.initial_value is not none %}
-    state->{{var.name}} = {{var.initial_value}};
+    {# Strings and opaques must be malloc'd because when they are reassigned,
+        the old value is free'd and the new value malloc'd again. See issue
+        #48 #}
+    {% if var.type is sameas SmedlType.STRING %}
+    if (!smedl_assign_string(&state->{{var.name}}, {{var.initial_value}})) {
+        /* TODO Out of memory. What now? */
+    }
+    {% if var.type is sameas SmedlType.OPAQUE %}
+    if (!smedl_assign_opaque(&state->{{var.name}}, {{var.initial_value}})) {
+        /* TODO Out of memory. What now? */
+    }
     {% else %}
-    /* state->{{var.name}} is a pthread_t. No default value. */
+    state->{{var.name}} = {{var.initial_value}};
+    {% endif %}
     {% endif %}
     {% endfor %}
 }
@@ -334,5 +368,12 @@ void default_{{spec.name}}_state({{spec.name}}State *state) {
 
 /* Free a {{spec.name}} monitor */
 void free_{{spec.name}}_monitor({{spec.name}}Monitor *mon) {
+    {% for var in spec.state_vars.values() %}
+    {% if var.type is sameas SmedlType.STRING %}
+    free(mon->s.{{var.name}});
+    {% elif var.type is sameas SmedlType.OPAQUE %}
+    free(mon->s.{{var.name}}.data);
+    {% endif %}
+    {% endfor %}
     free(mon);
 }

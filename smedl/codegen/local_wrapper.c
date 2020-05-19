@@ -245,7 +245,7 @@ void remove_{{mon.name}}_monitor(SMEDLValue *identities) {
             {% if loop.last %}
             /* Free the monitor itself before freeing the last record */
             {{spec.name}}Monitor *mon = (({{mon.name}}Record *) rec)->mon;
-            free(mon->identities);
+            smedl_free_array(mon->identities, {{mon.params|length}});
             free(mon);
             {% endif %}
             free(rec);
