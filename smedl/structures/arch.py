@@ -466,7 +466,7 @@ class Connection(object):
           or "event ___", to be used in exception messages
         """
         for i in range(len(dest_params)):
-            self.typecheck_dest_param(dest_params[i], dest_param_types[i],
+            self._typecheck_dest_param(dest_params[i], dest_param_types[i],
                     "param {} in {}".format(i, dest_name))
 
     def _typecheck_target(self, target):
@@ -592,7 +592,7 @@ class DeclaredMonitor(object):
         target - A Target object
         """
         # Check that source event exists and get the params
-        if source_event not in self._spec_exported_events
+        if source_event not in self._spec.exported_events:
             raise NameNotDefined("Source monitor {} does not contain exported "
                     "event {}".format(self._name, source_event))
 
@@ -856,7 +856,7 @@ class MonitorSystem(object):
         for mon in self._monitor_decls.values():
             if mon.syncset is None:
                 syncset = self._unused_syncset(mon.name)
-                self.add_syncset(syncset, (mon,))
+                self.add_syncset(syncset, (mon.name,))
 
     def create_export_connections(self):
         """Iterate through all the monitor declarations and create export
