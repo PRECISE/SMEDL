@@ -94,19 +94,19 @@ params[{{e.idx}}].v.
 {{e.operator}}{{expression(e.operand)}}
 {%- elif e.expr_type == 'binary_op' %}
 {# == or != on strings and opaques requires special handling. #}
-{% if e.operand == '==' and
+{% if e.operator == '==' and
         (e.left.type is sameas SmedlType.STRING or
         e.right.type is sameas SmedlType.STRING) %}
 !strcmp({{expression(e.left)}}, {{expression(e.right)}})
-{%- elif e.operand == '!=' and
+{%- elif e.operator == '!=' and
         (e.left.type is sameas SmedlType.STRING or
         e.right.type is sameas SmedlType.STRING) %}
 strcmp({{expression(e.left)}}, {{expression(e.right)}})
-{%- elif e.operand == '==' and
+{%- elif e.operator == '==' and
         (e.left.type is sameas SmedlType.OPAQUE or
         e.right.type is sameas SmedlType.OPAQUE) %}
 opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
-{%- elif e.operand == '!=' and
+{%- elif e.operator == '!=' and
         (e.left.type is sameas SmedlType.OPAQUE or
         e.right.type is sameas SmedlType.OPAQUE) %}
 !opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
