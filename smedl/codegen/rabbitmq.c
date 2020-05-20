@@ -62,6 +62,19 @@
 #include <amqp_framing.h>
 #include <amqp_tcp_socket.h>
 
+/* winsock2.h or sys/time.h is necessary to get struct timeval */
+#if ((defined(_WIN32)) || (defined(__MINGW32__)) || (defined(__MINGW64__)))
+#ifndef WINVER
+#define WINVER 0x0502
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <winsock2.h>
+#else
+#include <sys/time.h>
+#endif
+
 #include "cJSON.h"
 #include "smedl_types.h"
 #include "{{syncset}}_global_wrapper.h"
@@ -149,8 +162,8 @@ static int check_reply(InitStatus *init_status, RabbitMQState *rmq_state,
             amqp_channel_close_t *details =
                 (amqp_channel_close_t *) reply.reply.decoded;
             fprintf(stderr, ": Channel error from server: %u %.*s\n",
-                    details->reply_code, details->reply_text.len,
-                    details->reply_text.bytes);
+                    details->reply_code, (int) details->reply_text.len,
+                    (char *) details->reply_text.bytes);
             /* Respond */
             amqp_channel_close_ok_t close_ok;
             int status = amqp_send_method(rmq_state->conn, rmq_state->channel,
@@ -163,9 +176,9 @@ static int check_reply(InitStatus *init_status, RabbitMQState *rmq_state,
             /* Connection error from server */
             amqp_connection_close_t *details =
                 (amqp_connection_close_t *) reply.reply.decoded;
-            fprintf(stderr, ": Connection error from server: %u %.*s\n"
-                    details->reply_code, details->reply_text.len,
-                    details->reply_text.bytes);
+            fprintf(stderr, ": Connection error from server: %u %.*s\n",
+                    details->reply_code, (int) details->reply_text.len,
+                    (char *) details->reply_text.bytes);
             /* Respond */
             amqp_connection_close_ok_t close_ok;
             int status = amqp_send_method(rmq_state->conn, 0,
@@ -269,7 +282,7 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
      * char in case e.g. a channel is named "mychannel" and the routing key is
      * "mychannelislonger") */
     char channel[{{ch_len}}];
-    routing_key_to_channel(envelope->routing_key, routing_key, {{ch_len}});
+    routing_key_to_channel(envelope->routing_key, channel, {{ch_len}});
 
     /* Parse JSON */
     //TODO Remove null chars from data?
@@ -387,6 +400,7 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
         {% endif %}
 
         /* Convert event parameters to SMEDLValue array */
+        cJSON *param_json;
         SMEDLValue params[{{conn.source_event_params|length}}];
         {% for param in conn.source_event_params %}
         {% if loop.first %}
@@ -454,7 +468,7 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
         {% endif %}
 
         /* Send to global wrapper */
-        import_{{syncset}}_{{conn.channel}}(identities, params, aux);
+        import_{{syncset}}_{{conn.channel}}(identities, params, &aux);
     {% endfor %}
     }
 
@@ -492,7 +506,7 @@ int handle_other_frame(InitStatus *init_status, RabbitMQState *rmq_state) {
     }
 #ifdef DEBUG
     if (frame.frame_type == AMQP_FRAME_METHOD) {
-        printf("Received unexpected frame: id %u\n", froma.payload.method.id);
+        printf("Received unexpected frame: id %u\n", frame.payload.method.id);
     }
 #endif //DEBUG
 
@@ -516,7 +530,7 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
     amqp_basic_consume(rmq_state->conn, rmq_state->channel, rmq_state->queue,
             amqp_empty_bytes, 0, 0, 0, amqp_empty_table);
     reply = amqp_get_rpc_reply(rmq_state->conn);
-    if (!check_reply(init_status, rms_state, reply,
+    if (!check_reply(init_status, rmq_state, reply,
                 "Could not start consuming events")) {
         return 0;
     }
@@ -527,8 +541,8 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
         amqp_maybe_release_buffers(rmq_state->conn);
 
         /* Try to consume a message */
-        timeval.tv_sec = 5;
-        timeval.tv_usec = 0;
+        timeout.tv_sec = 5;
+        timeout.tv_usec = 0;
         reply = amqp_consume_message(rmq_state->conn, &envelope, &timeout, 0);
 
         /* Check for timeout, unexpected frame, and errors */
@@ -536,7 +550,7 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
                 reply.library_error == AMQP_STATUS_TIMEOUT) {
             /* Timeout. Nothing to do. */
         } else if (reply.reply_type == AMQP_RESPONSE_LIBRARY_EXCEPTION &&
-                reply.library_error == AMQP_STATUS_UNEXPECTED_FRAME) {
+                reply.library_error == AMQP_STATUS_UNEXPECTED_STATE) {
             /* Received some frame besides Basic.Deliver. Handle it. */
             if (!handle_other_frame(init_status, rmq_state)) {
                 error = 1;
@@ -566,7 +580,7 @@ int send_message(RabbitMQState *rmq_state, const char *routing_key,
     amqp_bytes_t routing_key_bytes, msg_bytes;
     routing_key_bytes = amqp_cstring_bytes(routing_key);
     msg_bytes.len = len;
-    msg_bytes.bytes = msg;
+    msg_bytes.bytes = (char *) msg;
 
     /* Send the message */
     status = amqp_basic_publish(rmq_state->conn, rmq_state->channel,
@@ -583,10 +597,11 @@ int send_message(RabbitMQState *rmq_state, const char *routing_key,
 {% for decl in mon_decls %}
 {% for conn in decl.inter_connections %}
 
-void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux_void) {
     char ptr[40];
     char *opaque;
     int status;
+    RabbitMQAux *aux = aux_void;
     /* Construct the JSON message */
     cJSON *msg_json;
     msg_json = cJSON_CreateObject();
@@ -623,7 +638,7 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
         err("Could not add identities array to JSON for message serialization");
         goto fail;
     }
-    cJSON id;
+    cJSON *id;
     {% for param in conn.source_mon.params %}
     {% if param is sameas SmedlType.INT %}
     id = cJSON_CreateNumber(identities[{{loop.index0}}].v.i);
@@ -704,7 +719,7 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
     {% endfor %}
 
     /* Add the Aux data */
-    if (cJSON_AddRawToObject(msg_json, "aux", aux.data) == NULL) {
+    if (cJSON_AddRawToObject(msg_json, "aux", aux->aux) == NULL) {
         err("Could not add aux data to JSON for message serialization");
         goto fail;
     }
@@ -715,7 +730,7 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
         goto fail;
     }
 
-    send_message("{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}", msg, strlen(msg));
+    send_message(aux->state, "{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}", msg, strlen(msg));
 
     cJSON_Delete(msg_json);
     return;
@@ -802,8 +817,8 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     /* Bind our queue to routing keys starting with channel names we import */
     {% for conn in sys.imported_channels(syncset) %}
     amqp_queue_bind(rmq_state->conn, rmq_state->channel, rmq_state->queue,
-            amqp_cstring_bytes(exchange),
-            amqp_cstring_bytes("{{conn.channel}}.#"), amqp_empty_table);
+            rmq_state->exchange, amqp_cstring_bytes("{{conn.channel}}.#"),
+            amqp_empty_table);
     reply = amqp_get_rpc_reply(rmq_state->conn);
     if (!check_reply(init_status, rmq_state, reply,
                 "Could not bind queue for {{conn.channel}}")) {
@@ -1119,7 +1134,7 @@ int main(int argc, char **argv) {
         cleanup(&init_status, &rmq_state);
     } else {
         /* Program was terminated. Clean up. */
-        status = cleanup(&init_status, &rmq_state, &rmq_config);
+        status = cleanup(&init_status, &rmq_state);
     }
     free(conf_buf);
 

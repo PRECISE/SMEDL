@@ -48,20 +48,21 @@ void free_{{syncset}}_syncset() {
 {% if dest_type is sameas param.source_type %}
 {{array_name}}[{{param.index}}]
 {%- else %}
+{{param.source_type}}
 {# Numeric types can convert, so we must do that #}
 {
-    {%- if dest_type is sameas SmedlType.INT %}
+    {%- if dest_type is sameas SmedlType.INT -%}
     SMEDL_INT, {.i
-    {%- elif dest_type is sameas SmedlType.FLOAT %}
+    {%- elif dest_type is sameas SmedlType.FLOAT -%}
     SMEDL_FLOAT, {.d
-    {%- elif dest_type is sameas SmedlType.FLOAT %}
+    {%- elif dest_type is sameas SmedlType.FLOAT -%}
     SMEDL_CHAR, {.c
     {%- endif %} = {{array_name}}[{{param.index}}].v.
-    {%- if param.source_type is sameas SmedlType.INT %}
+    {%- if param.source_type is sameas SmedlType.INT -%}
     i}
-    {%- elif param.source_type is sameas SmedlType.FLOAT %}
+    {%- elif param.source_type is sameas SmedlType.FLOAT -%}
     d}
-    {%- elif param.source_type is sameas SmedlType.CHAR %}
+    {%- elif param.source_type is sameas SmedlType.CHAR -%}
     c}
     {%- endif %}
 }
@@ -174,7 +175,7 @@ static void handle_{{syncset}}_intra() {
 
         /* Event params were malloc'd. They are no longer needed. (String and
          * opaque data were already free'd in the switch.) */
-        array(params);
+        free(params);
     }
 }
 

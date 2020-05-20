@@ -174,7 +174,7 @@ int smedl_assign_string(char **dest, char *src) {
         return 0;
     }
     *dest = tmp;
-    strcopy(*dest, src);
+    strcpy(*dest, src);
     return 1;
 }
 
@@ -186,7 +186,7 @@ int smedl_assign_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     }
     (*dest).data = tmp;
     (*dest).size = src.size;
-    memcpy((*dest).data, src.data);
+    memcpy((*dest).data, src.data, src.size);
     return 1;
 }
 
@@ -198,7 +198,7 @@ int smedl_replace_string(char **dest, char *src) {
     }
     free(*dest);
     *dest = tmp;
-    strcopy(*dest, src);
+    strcpy(*dest, src);
     return 1;
 }
 
@@ -211,7 +211,7 @@ int smedl_replace_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     free((*dest).data);
     (*dest).data = tmp;
     (*dest).size = src.size;
-    memcpy((*dest).data, src.data);
+    memcpy((*dest).data, src.data, src.size);
     return 1;
 }
 

@@ -57,8 +57,11 @@ class CodeGenerator(object):
         self.transport = transport
 
         # Initialize the Jinja2 environment
-        self.env = jinja2.Environment(trim_blocks=True, lstrip_blocks=True,
+        self.env = jinja2.Environment(
+                trim_blocks=True,
+                lstrip_blocks=True,
                 keep_trailing_newline=True,
+                undefined=jinja2.StrictUndefined,
                 extensions=[UnsupportedFeatureExtension],
                 loader=jinja2.PackageLoader('smedl.codegen', '.'))
 

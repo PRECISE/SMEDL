@@ -29,12 +29,12 @@ typedef struct {
 
 /* A struct to hold all the config data necessary for RabbitMQ */
 typedef struct {
-    const char *hostname;
+    char *hostname;
     unsigned int port;
-    const char *username;
-    const char *password;
-    const char *exchange;
-    const char *vhost;
+    char *username;
+    char *password;
+    char *exchange;
+    char *vhost;
 } RabbitMQConfig;
 
 /* A struct to hold stored aux data from an incoming message and
@@ -70,7 +70,7 @@ int send_message(RabbitMQState *rmq_state, const char *routing_key,
  * callbacks in the global wrapper. */
 {% for decl in mon_decls %}
 {% for conn in decl.inter_connections %}
-void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, void *aux);
+void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
 

@@ -64,7 +64,10 @@ class Parameter(object):
         if self._identity:
             return self._target.connection.source_mon.params[self._index]
         else:
-            return self._target.connection.source_event_params[self._index]
+            try:
+                return self._target.connection.source_event_params[self._index]
+            except BaseException as e:
+                raise Exception() from e
 
     def __repr__(self):
         if self._index is None:
@@ -299,7 +302,7 @@ class Connection(object):
         connection from the target system, None for those that are not known)"""
         if self._source_mon is None:
             result = list()
-            for i in range(max(self._source_ev_params.keys())):
+            for i in range(max(self._source_ev_params.keys()) + 1):
                 result.append(self._source_ev_params.get(i))
             return result
         else:
@@ -500,6 +503,15 @@ class Connection(object):
                         "connections cannot match.")
         self._typecheck_target(target)
         self._targets.append(target)
+        target.connection = self
+
+    def __repr__(self):
+        if self._source_mon is None:
+            return "Connection({}: {} => ...)".format(self._channel,
+                    self._source_event)
+        else: 
+            return "Connection({}: {}.{} => ...)".format(self._channel,
+                    self._source_mon.name, self._source_event)
 
 class SynchronousSet(set):
     """A subclass of set customized to represent a Synchronous Set"""
