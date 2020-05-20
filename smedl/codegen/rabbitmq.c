@@ -30,7 +30,7 @@
  *
  * The other keys:
  *
- * - "name", which is for human reference only but will be
+ * - "event", which is for human reference only but will be
  *   "<monitor>.<event>" for exported events. ("<event>" is recommended for
  *   events from the target system.)
  * - "identities", an array of the monitor identities. For events from the
@@ -285,7 +285,6 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
     routing_key_to_channel(envelope->routing_key, channel, {{ch_len}});
 
     /* Parse JSON */
-    //TODO Remove null chars from data?
     cJSON *msg = cJSON_ParseWithLength(envelope->message.body.bytes,
             envelope->message.body.len);
     if (msg == NULL) {
@@ -627,7 +626,7 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
         goto fail;
     }
     cJSON_AddItemToArray(fmt_version, fmt_minor);
-    if (cJSON_AddStringToObject(msg_json, "name", "{{conn.source_mon.name}}.{{conn.source_event}}") == NULL) {
+    if (cJSON_AddStringToObject(msg_json, "event", "{{conn.source_mon.name}}.{{conn.source_event}}") == NULL) {
         err("Could not add event name to JSON for message serialization");
         goto fail;
     }
