@@ -100,21 +100,38 @@ class CodeGenerator(object):
         with open(out_path, "w") as f:
             f.write(text)
 
-    def _write_rabbitmq(self, system, syncset_name):
-        """Write the RabbitMQ adapter"""
+    def _write_file_adapters(self, system):
+        """Write the file adapters"""
+        # Write static code
+        from .static import file
+        self._write_static_files(file)
+
+        # Write file adapters
+        for syncset_name in system.syncsets.keys():
+            values = {
+                    "sys": system,
+                    "mon_decls": system.monitor_decls,
+                    "syncsets": system.syncsets,
+                }
+            self._render("file.c", system.name + "_file.c", values)
+            self._render("file.h", system.name + "_file.h", values)
+
+    def _write_rabbitmq_adapters(self, system):
+        """Write the RabbitMQ adapters"""
         # Write static code
         from .static import rabbitmq
         self._write_static_files(rabbitmq)
 
-        # Write RabbitMQ adapter
-        values = {
-                "sys": system,
-                "syncset": syncset_name,
-                "mon_decls": system.syncsets[syncset_name],
-            }
-        self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
-        self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
-        self._render("rabbitmq.cfg", system.name + ".cfg", values)
+        # Write RabbitMQ adapters
+        for syncset_name in system.syncsets.keys():
+            values = {
+                    "sys": system,
+                    "syncset": syncset_name,
+                    "mon_decls": system.syncsets[syncset_name],
+                }
+            self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
+            self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
+            self._render("rabbitmq.cfg", system.name + ".cfg", values)
 
     def _write_wrappers(self, system, syncset_name):
         """Write the global wrapper and local wrappers for one synchronous set
@@ -145,12 +162,6 @@ class CodeGenerator(object):
                 values)
         self._render("global_wrapper.h", syncset_name + "_global_wrapper.h",
                 values)
-
-        # Write the transport adapter, if requested
-        if self.transport == "rabbitmq":
-            self._write_rabbitmq(system, syncset_name)
-        elif self.transport == "ros":
-            pass #TODO
 
     def _write_monitor(self, monitor_spec):
         """Write the files for one monitor specification
@@ -200,3 +211,11 @@ class CodeGenerator(object):
         # Generate wrappers
         for syncset_name in system.syncsets.keys():
             self._write_wrappers(system, syncset_name)
+
+        # Generate transport adapters, if requested
+        if self.transport == "rabbitmq":
+            self._write_rabbitmq_adapters(system)
+        elif self.transport == "file":
+            self._write_file_adapters(system)
+        elif self.transport == "ros":
+            pass #TODO

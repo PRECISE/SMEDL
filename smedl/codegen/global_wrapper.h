@@ -73,7 +73,7 @@ typedef enum {
     CHANNEL_{{syncset}}_{{channel}},
     {% endfor %}
     {% endfor %}
-} {{syncset}}ChannelId;
+} {{syncset}}ChannelID;
 
 /* Intra routing functions - Called by import interface functions and intra
  * queue processing function to route events to the local wrappers */
