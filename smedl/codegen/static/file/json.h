@@ -5,12 +5,12 @@
  * ensure the #defines are all correct */
 
 #define JSMN_HEADER
-#ifndef JSMN_STRICT
-#define JSMN_STRICT
-#endif /* JSMN_STRICT */
-#ifndef JSMN_PARENT_LINKS
-#define JSMN_PARENT_LINKS
-#endif /* JSMN_PARENT_LINKS */
+#ifndef JSMN_UNSIGNED
+#define JSMN_UNSIGNED size_t
+#endif /* JSMN_UNSIGNED */
+#ifndef JSMN_SINGLE
+#define JSMN_SINGLE
+#endif /* JSMN_SINGLE */
 #include "jsmn.h"
 
 /* Lookup a key and return a pointer to the value token. This is most efficient
@@ -24,7 +24,7 @@
  *   look up from the same object in subsequent calls.
  * key - The key to look up, as an escaped string
  */
-jsmntok_t * json_lookup(jsmntok_t *object, const char *key);
+jsmntok_t * json_lookup(const char *str, jsmntok_t *object, const char *key);
 
 /* Move token to point at the next sibling. Does not check to see if there
  * actually is a next sibling to point to. */
@@ -34,9 +34,15 @@ void json_next(jsmntok_t **token);
  * Does not check to see if there actually is a next key to point to. */
 void json_next_key(jsmntok_t **token);
 
-/* Convert a regular string to an escaped string (or return NULL on failure) */
-char * json_escape(const char * str);
-
-/* Functions to convert tokens to int, double, string */
+/* Functions to convert tokens to int, double, string. Return nonzero on
+ * success, zero on failure. For json_to_string(), and if return is negative
+ * for json_to_string_len(), free() the string after use. */
+int json_to_int(const char *str, jsmntok_t *token, int *val);
+int json_to_double(const char *str, jsmntok_t *token, double *val);
+/* Null-terminated */
+int json_to_string(const char *str, jsmntok_t *token, char **val);
+/* Not null-terminated (Will not malloc if there are not escapes) */
+int json_to_string_len(const char *str, jsmntok_t *token, char **val,
+        size_t *len);
 
 #end /* JSON_H */

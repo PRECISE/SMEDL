@@ -28,7 +28,7 @@ typedef struct JSONParser {
     size_t buf_rpos; /* Buffer read position (end of most recent object) */
 
     /* The following can be queried after init_parser */
-    unsigned int msg_count; /* Number of messages that have been parsed */
+    size_t msg_count; /* Number of messages that have been parsed */
     JSONStatus status; /* Will indicate why next_message() returned NULL */
 } JSONParser;
 
