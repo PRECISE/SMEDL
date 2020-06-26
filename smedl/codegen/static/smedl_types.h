@@ -113,9 +113,18 @@ int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len);
 SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len);
 
 /*
- * Free the array of SMEDLValue and any strings and opaques it contains
+ * Free the array of SMEDLValue and any strings and opaques it contains.
+ * This works without knowing the types beforehand, but if the types are known,
+ * freeing the strings and opaque data individually and then free(array) will
+ * be more efficient.
  */
 void smedl_free_array(SMEDLValue *array, size_t len);
+
+/*
+ * Free just the strings and opaques contained in a SMEDLValue array. See note
+ * for smedl_free_array() above.
+ */
+void smedl_free_array_contents(SMEDLValue *array, size_t len);
 
 /*
  * A callback function pointer for receiving exported events from monitors and

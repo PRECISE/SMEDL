@@ -19,7 +19,7 @@
  * the key is not found.
  *
  * Parameters:
- * str - The string containing JSON data
+ * str - The string containing JSON data. May be NULL if object is NULL.
  * object - A pointer to the object token. For efficient lookups, use NULL to
  *   look up from the same object in subsequent calls.
  * key - The key to look up, as an escaped string
@@ -34,14 +34,41 @@ void json_next(jsmntok_t **token);
  * Does not check to see if there actually is a next key to point to. */
 void json_next_key(jsmntok_t **token);
 
-/* Functions to convert tokens to int, double, string. Return nonzero on
- * success, zero on failure. For json_to_string(), and if return is negative
- * for json_to_string_len(), free() the string after use. */
+/* Convert token to int. Returns nonzero on success, zero if:
+ * - Token type is not JSMN_PRIMITIVE
+ * - Token contains "null"
+ * - Integer overflows (in which case INT_MIN or INT_MAX will be stored in
+ *   val).
+ * "true" and "false" will be converted to 1 and 0, respectively. */
 int json_to_int(const char *str, jsmntok_t *token, int *val);
+
+/* Convert token to double. Returns nonzero on success, zero if:
+ * - Token type is not JSMN_PRIMITIVE
+ * - Token contains "true", "false", or "null"
+ * - Double overflows or underflows (in which case HUGE_VAL, 0, or -HUGE_VAL
+ *   will be stored in val). */
 int json_to_double(const char *str, jsmntok_t *token, double *val);
-/* Null-terminated */
+
+/* Convert token to string. Returns nonzero on success, zero if:
+ * - Token type is not JSMN_STRING
+ * - Out-of-memory
+ * Free the string after it is no longer needed. The resulting string will be
+ * null-terminated. */
 int json_to_string(const char *str, jsmntok_t *token, char **val);
-/* Not null-terminated (Will not malloc if there are not escapes) */
+
+/* Convert token to string. Returns nonzero on success, zero if:
+ * - Token type is not JSMN_STRING
+ * - Out-of-memory
+ * Free the string after it is no longer needed. The resulting string will be
+ * null-terminated but may contain NULL. */
+int json_to_opaque(const char *str, jsmntok_t *token, char **val, size_t *len);
+
+/* Convert token to string. Returns nonzero on success, zero if:
+ * - Token is not JSMN_STRING
+ * - Out-of-memory
+ * If return is negative, free() the string after it is no longer needed.
+ * The resulting string will not be null-terminated. If there are no escapes,
+ * it will simply be a pointer to the original string in the token. */
 int json_to_string_len(const char *str, jsmntok_t *token, char **val,
         size_t *len);
 

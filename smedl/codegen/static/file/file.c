@@ -18,11 +18,15 @@ void err(const char *fmt, ...) {
 /* Initialize a parser reading from the named file. Returns nonzero if
  * successful, zero on failure. Cleanup with free_parser(). */
 int init_parser(JSONParser *parser, const char *fname) {
-    /* Open the file */
-    parser->f = fopen(fname, "r");
-    if (parser->f == NULL) {
-        err("Could not open %s for reading", fname);
-        return 0;
+    /* Open the file or use stdin */
+    if (fname != NULL) {
+        parser->f = fopen(fname, "r");
+        if (parser->f == NULL) {
+            err("Could not open %s for reading", fname);
+            return 0;
+        }
+    } else {
+        parser->f = stdin;
     }
 
     /* Initial token allocation */
@@ -57,8 +61,12 @@ int init_parser(JSONParser *parser, const char *fname) {
 /* Fetch the next message. If successful, returns an array of jsmntok_t
  * containing the parsed message. If there is an error or no more tokens,
  * return NULL. The reason for a NULL return can be determined by checking
- * parser->status. */
-jsmntok_t * next_message(JSONParser *parser) {
+ * parser->status.
+ *
+ * parser - Pointer to the JSONParser to use
+ * str - Pointer to string that will be pointed to the JSON text that was
+ *   parsed */
+jsmntok_t * next_message(JSONParser *parser, char **str) {
     int result;
     parser->msg_count++;
 
@@ -129,6 +137,7 @@ jsmntok_t * next_message(JSONParser *parser) {
     /* Success */
     msg_count++;
     parser->buf_rpos += parser->tokens[0].end;
+    *str = parser->buf;
     return parser->tokens;
 }
 
@@ -142,4 +151,37 @@ int free_parser(JSONParser *parser) {
         return 0;
     }
     return 1;
+}
+
+/* Print a null-terminated string with characters escaped if JSON requires it */
+void print_escaped(const char *str) {
+    fputc('\"', stdout);
+    while (*str != '\0') {
+        if (*str < 0x32) {
+            printf("\\u%.4x", (unsigned) *str);
+        } else if (*str == '\\' || *str == '\"') {
+            fputc('\\', stdout);
+            fputc(*str, stdout);
+        } else {
+            fputc(*str, stdout);
+        }
+        str++;
+    }
+    fputc('\"', stdout);
+}
+
+/* Print a string of given length with characters escaped if JSON requires it */
+void print_escaped_len(const char *str, size_t len) {
+    fputc('\"', stdout);
+    for (size_t i = 0; i < len; i++) {
+        if (str[i] < 0x32) {
+            printf("\\u%.4x", (unsigned) str[i]);
+        } else if (str[i] == '\\' || str[i] == '\"') {
+            fputc('\\', stdout);
+            fputc(str[i], stdout);
+        } else {
+            fputc(str[i], stdout);
+        }
+    }
+    fputc('\"', stdout);
 }

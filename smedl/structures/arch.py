@@ -318,6 +318,26 @@ class Connection(object):
     def targets(self):
         return self._targets
 
+    @property
+    def inter_syncsets(self):
+        """Return a sequence of the SynchronousSets the source event is routed
+        to, not including its own. If the source event is routed to the
+        environment, the sequence will include None."""
+        exported = False
+        source_set = (None if self._source_mon is None else
+                self._source_mon.syncset)
+        sets = []
+        for target in self._targets:
+            if target.monitor is None:
+                exported = True
+                continue
+            dest_set = target.monitor.syncset
+            if dest_set != source_set and dest_set not in sets:
+                sets.append(dest_set)
+        if exported:
+            sets.append(None)
+        return sets
+
     def __eq__(self, other):
         """Test for equality with the channel name"""
         if isinstance(other, Connection):

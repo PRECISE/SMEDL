@@ -59,6 +59,7 @@ void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *par
  *   a void * for passthrough data. */
 {% for decl in mon_decls %}
 {% for conn in decl.inter_connections %}
+//TODO Can this result in duplicates?
 void callback_{{syncset}}_{{conn.channel}}(SMEDLCallback cb_func);
 {% endfor %}
 {% endfor %}

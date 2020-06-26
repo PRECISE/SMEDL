@@ -32,16 +32,34 @@ typedef struct JSONParser {
     JSONStatus status; /* Will indicate why next_message() returned NULL */
 } JSONParser;
 
+/* Struct to store aux data */
+typedef struct {
+    const char *data;
+    size_t len;
+} AuxData;
+
 /* Initialize a parser reading from the named file. Returns nonzero if
  * successful, zero on failure. Cleanup with free_parser(). */
 int init_parser(JSONParser *parser, const char *fname);
 
 /* Fetch the next message. If successful, returns an array of jsmntok_t
- * containing the parsed message. If not, returns NULL. */
-jsmntok_t * next_message(JSONParser *parser);
+ * containing the parsed message. If there is an error or no more tokens,
+ * return NULL. The reason for a NULL return can be determined by checking
+ * parser->status.
+ *
+ * parser - Pointer to the JSONParser to use
+ * str - Pointer to string that will be pointed to the JSON text that was
+ *   parsed */
+jsmntok_t * next_message(JSONParser *parser, char **str);
 
 /* Clean up the provided parser. Returns nonzero if successful, zero on failure.
  */
 int free_parser(JSONParser *parser);
+
+/* Print a null-terminated string with characters escaped if JSON requires it */
+void print_escaped(const char *str);
+
+/* Print a string of given length with characters escaped if JSON requires it */
+void print_escaped_len(const char *str, size_t len);
 
 #endif /* FILE_H */

@@ -254,6 +254,15 @@ SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len) {
  * be more efficient.
  */
 void smedl_free_array(SMEDLValue *array, size_t len) {
+    smedl_free_array_contents(array, len);
+    free(array);
+}
+
+/*
+ * Free just the strings and opaques contained in a SMEDLValue array. See note
+ * for smedl_free_array() above.
+ */
+void smedl_free_array_contents(SMEDLValue *array, size_t len) {
     for (size_t i = 0; i < len; i++) {
         if (array[i].t == SMEDL_STRING) {
             free(array[i].v.s);
@@ -261,5 +270,4 @@ void smedl_free_array(SMEDLValue *array, size_t len) {
             free(array[i].v.o.data);
         }
     }
-    free(array);
 }
