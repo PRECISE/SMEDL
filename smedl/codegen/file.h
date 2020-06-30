@@ -1,7 +1,6 @@
 #ifndef {{sys.name}}_FILE_H
 #define {{sys.name}}_FILE_H
 
-#include "system.h"
 #include "file.h"
 
 /* Current message format version. Increment the major version whenever making
@@ -34,10 +33,22 @@
  *  } 
  */
 
+/* System-wide channel enum */
+typedef enum {
+    {% for channel in sys.imported_connections.keys() %}
+    SYSCHANNEL_{{channel}},
+    {% endfor %}
+    {% for decl in mon_decls %}
+    {% for channel in decl.connections.keys() %}
+    SYSCHANNEL_{{channel}},
+    {% endfor %}
+    {% endfor %}
+} ChannelID;
+
 /* Queue processing function - Pop events off the queue and send them to the
  * proper synchronous sets (or to be written to the output file) until the
  * queue is empty */
-void handle_queue(SystemEventQueue *q);
+void handle_queue();
 
 /* "Callbacks" (not used as such) for events read from the input file and
  * callbacks for events exported from global wrappers */

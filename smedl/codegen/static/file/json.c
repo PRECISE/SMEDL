@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <limits.h>
 #include <errno.h>
 #ifdef DEBUG
@@ -317,7 +318,7 @@ int json_to_string_len(const char *str, jsmntok_t *token, char **val,
 
     char *result = NULL;
     size_t res_copied = 0, str_copied = 0;
-    str += token->start
+    str += token->start;
     size_t tok_len = token->end - token->start;
     for (size_t i = 0; i < tok_len; i++) {
         if (str[i] == '\\') {

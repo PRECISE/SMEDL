@@ -77,14 +77,15 @@ jsmntok_t * next_message(JSONParser *parser, char **str) {
     }
 
     /* Shift the previous message out of the buffer */
-    memmove(parser->buf, parser->buf + parser->buf_rpos);
+    memmove(parser->buf, parser->buf + parser->buf_rpos,
+            parser->buf_size - parser->buf_rpos);
     parser->buf_wpos -= parser->buf_rpos;
     parser->buf_rpos = 0;
 
     do {
         /* Try to fill the buffer */
         parser->buf_wpos += fread(parser->buf + parser->buf_wpos, 1,
-                parser->buf_size - parser->buf_wpos; parser->f);
+                parser->buf_size - parser->buf_wpos, parser->f);
         if (ferror(parser->f)) {
             err("Read error on input file");
             parser->status = JSONSTATUS_READERR;
@@ -135,7 +136,6 @@ jsmntok_t * next_message(JSONParser *parser, char **str) {
     }
 
     /* Success */
-    msg_count++;
     parser->buf_rpos += parser->tokens[0].end;
     *str = parser->buf;
     return parser->tokens;

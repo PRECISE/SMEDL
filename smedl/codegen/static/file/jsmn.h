@@ -58,7 +58,7 @@ extern "C" {
 #endif
 #endif
 
-#ifndef JMSN_UNSIGNED
+#ifndef JSMN_UNSIGNED
 #define JSMN_UNSIGNED unsigned int
 #endif
 

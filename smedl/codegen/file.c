@@ -1,9 +1,10 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <errno.h>
-#include "system.h"
+#include "global_event_queue.h"
 #include "file.h"
 #include "json.h"
 {% for syncset in sys.syncsets.values() %}
@@ -11,7 +12,7 @@
 {% endfor %}
 #include "{{sys.name}}_file.h"
 
-static SystemEventQueue queue = {0};
+static GlobalEventQueue queue = {0};
 
 /* Queue processing function - Pop events off the queue and send them to the
  * proper synchronous sets (or to be written to the output file) until the
@@ -30,20 +31,20 @@ import_{{syncset.name}}_{{conn.channel}}(identities, params, aux);
 {% for param in conn.source_event_params %}
 {% if param is sameas SmedlType.STRING %}
 
-free(params[{{loop.index0}}].v.s;
+free(params[{{loop.index0}}].v.s);
 {%- elif param is sameas SmedlType.OPAQUE %}
 
-free(params[{{loop.index0}}].v.o.data;
+free(params[{{loop.index0}}].v.o.data);
 {%- endif %}
 {% endfor %}
 {% endmacro %}
 {# ************************************************************************** #}
 void handle_queue() {
-    ChannelID channel;
+    unsigned int channel;
     SMEDLValue *identities, *params;
     void *aux;
 
-    while (pop_system_event(&queue, &channel, &identities, &params, &aux)) {
+    while (pop_global_event(&queue, &channel, &identities, &params, &aux)) {
         switch (channel) {
             {% for conn in sys.imported_connections.values() %}
             case SYSCHANNEL_{{conn.channel}}:{# Jinja whitespace control -#}
@@ -73,7 +74,7 @@ void handle_queue() {
 void enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
         void *aux) {
     SMEDLValue *params_copy = smedl_copy_array(params, {{conn.source_event_params|length}});
-    if (!push_system_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
+    if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
         //TODO Out of memory. What now?
     }
 }
@@ -84,7 +85,7 @@ void enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
 void enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
         void *aux) {
     SMEDLValue *params_copy = smedl_copy_array(params, {{conn.source_event_params|length}});
-    if (!push_system_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
+    if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
         //TODO Out of memory. What now?
     }
 }
@@ -149,7 +150,7 @@ int write_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux
     {% endfor %}
     AuxData *aux_data = aux;
     printf("],\n"
-        "\t\"aux\": %.*s\n", aux_data->len, aux_data->data);
+        "\t\"aux\": %.*s\n", (int) aux_data->len, aux_data->data);
     printf("}\n");
 }
 {% endfor %}
@@ -223,7 +224,7 @@ void read_events(JSONParser *parser) {
         char *chan;
         size_t chan_len;
         int ch_result = json_to_string_len(str, chan_tok, &chan, &chan_len);
-        if (!result) {
+        if (!ch_result) {
             err("\nStopping: Out of memory.");
             break;
         }
@@ -294,7 +295,7 @@ void read_events(JSONParser *parser) {
             {% endfor %}
 
             /* Process the event */
-            enqueue_{{conn.channel}}_(NULL, params, &aux);
+            enqueue_{{conn.channel}}(NULL, params, &aux);
             smedl_free_array_contents(params, {{conn.source_event_params|length}});
             handle_queue();
         {% endfor %}
@@ -313,7 +314,7 @@ void read_events(JSONParser *parser) {
     } else if (parser->status == JSONSTATUS_EOF) {
         err("\nFinished.");
     }
-    err("Processed %d messages.", parser->msg_count)
+    err("Processed %d messages.", parser->msg_count);
 }
 
 /* Initialize the global wrappers and register callback functions with them. */
@@ -333,8 +334,8 @@ void init_global_wrappers() {
 }
 
 /* Print a help message to stderr */
-static void usage() {
-    err("Usage: %s [--] [input.json]", argv[0]);
+static void usage(const char *name) {
+    err("Usage: %s [--] [input.json]", name);
     err("Read messages from the provided input file (or stdin if not provided) "
             "and print\nthe messages emitted back to the environment");
 }
@@ -344,13 +345,13 @@ int main(int argc, char **argv) {
     const char *fname = NULL;
     if (argc >= 2) {
         if (!strcmp(argv[1], "--help")) {
-            usage();
+            usage(argv[0]);
             return 0;
         } else if (!strcmp(argv[1], "--")) {
             if (argc == 3) {
-                fname = argc[2];
+                fname = argv[2];
             } else {
-                usage();
+                usage(argv[0]);
                 return 1;
             }
         }
