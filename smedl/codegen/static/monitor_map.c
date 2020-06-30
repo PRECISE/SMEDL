@@ -1,5 +1,5 @@
 #include "smedl_types.h"
-#include "local_wrapper.h"
+#include "monitor_map.h"
 
 /* BST right rotate operation */
 static void right_rotate(SMEDLRecordBase **node) {

@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "smedl_types.h"
-#include "global_wrapper.h"
+#include "global_event_queue.h"
 #include "{{syncset}}_global_wrapper.h"
 {% for decl in mon_decls %}
 #include "{{decl.name}}_local_wrapper.h"

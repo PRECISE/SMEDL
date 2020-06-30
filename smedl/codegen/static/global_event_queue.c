@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include "smedl_types.h"
-#include "global_wrapper.h"
+#include "global_event_queue.h"
 
 /* Add an event to the queue. Return 1 if successful, 0 if malloc fails.
  *

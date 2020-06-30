@@ -1,5 +1,5 @@
-#ifndef LOCAL_WRAPPER_H
-#define LOCAL_WRAPPER_H
+#ifndef MONITOR_MAP_H
+#define MONITOR_MAP_H
 
 #include <stdint.h>
 #include "smedl_types.h"
@@ -61,4 +61,4 @@ SMEDLRecordBase * monitor_map_lookup(SMEDLRecordBase *root, SMEDLValue key);
  * member) */
 SMEDLRecordBase * monitor_map_all(SMEDLRecordBase *root);
 
-#endif /* LOCAL_WRAPPER_H */
+#endif /* MONITOR_MAP_H */

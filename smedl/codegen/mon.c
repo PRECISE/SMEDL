@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "smedl_types.h"
-#include "monitor.h"
+#include "event_queue.h"
 #include "{{spec.name}}_mon.h"
 {% if spec.helpers is nonempty %}
 

@@ -1,5 +1,5 @@
-#ifndef GLOBAL_WRAPPER_H
-#define GLOBAL_WRAPPER_H
+#ifndef GLOBAL_EVENT_QUEUE_H
+#define GLOBAL_EVENT_QUEUE_H
 
 #include "smedl_types.h"
 
@@ -45,4 +45,4 @@ int push_global_event(GlobalEventQueue *q, unsigned int channel,
 int pop_global_event(GlobalEventQueue *q, unsigned int *channel,
         SMEDLValue **ids, SMEDLValue **params, void **aux);
 
-#endif /* GLOBAL_WRAPPER_H */
+#endif /* GLOBAL_EVENT_QUEUE_H */

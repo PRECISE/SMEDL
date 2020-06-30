@@ -1,5 +1,5 @@
-#ifndef MONITOR_H
-#define MONITOR_H
+#ifndef EVENT_QUEUE_H
+#define EVENT_QUEUE_H
 
 #include "smedl_types.h"
 
@@ -39,4 +39,4 @@ int push_event(EventQueue *q, int event, SMEDLValue *params, void *aux);
  * aux - Pointer to an Aux pointer to store the aux data in */
 int pop_event(EventQueue *q, int *event, SMEDLValue **params, void **aux);
 
-#endif /* MONITOR_H */
+#endif /* EVENT_QUEUE_H */

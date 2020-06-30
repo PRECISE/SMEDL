@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "smedl_types.h"
-#include "local_wrapper.h"
+#include "monitor_map.h"
 #include "{{spec.name}}_mon.h"
 
 /******************************************************************************
