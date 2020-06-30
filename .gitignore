@@ -5,7 +5,7 @@ dist/
 lib/
 man/
 .settings/
-.env/
+.env*/
 
 # Ignored files
 *~

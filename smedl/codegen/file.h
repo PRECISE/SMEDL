@@ -45,14 +45,18 @@ void handle_queue(SystemEventQueue *q);
 void enqueue_{{channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% for decl in mon_decls %}
-{% for channel in decl.connections.keys() %}
-void enqueue_{{channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% for conn in decl.connections.values() if conn.inter_syncsets is nonempty %}
+void enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
 
 /* Output functions for events that are "sent back to the target system."
  * Return nonzero on success, zero on failure. */
-int write_{{channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% for decl in mon_decls %}
+{% for conn in decl.connections.values() if none in conn.inter_syncsets %}
+int write_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% endfor %}
+{% endfor %}
 
 /* Initialize the global wrappers and register callback functions with them. */
 void init_global_wrappers();

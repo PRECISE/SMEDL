@@ -7,7 +7,7 @@
 #include "file.h"
 #include "json.h"
 {% for syncset in sys.syncsets.values() %}
-#include "{{syncset}}_global_wrapper.h"
+#include "{{syncset.name}}_global_wrapper.h"
 {% endfor %}
 #include "{{sys.name}}_file.h"
 
@@ -24,10 +24,10 @@ static SystemEventQueue queue = {0};
 write_{{conn.channel}}(identities, params, aux);
 {%- else %}
 
-import_{{syncset}}_{{conn.channel}}(identities, params, aux);
+import_{{syncset.name}}_{{conn.channel}}(identities, params, aux);
 {%- endif %}
 {% endfor %}
-{% for param in source_event_params %}
+{% for param in conn.source_event_params %}
 {% if param is sameas SmedlType.STRING %}
 
 free(params[{{loop.index0}}].v.s;
@@ -51,7 +51,7 @@ void handle_queue() {
                 break;
             {% endfor %}
             {% for decl in mon_decls %}
-            {% for conn in decl.connections.values() %}
+            {% for conn in decl.connections.values() if conn.inter_syncsets is nonempty %}
             case SYSCHANNEL_{{conn.channel}}:{# Jinja whitespace control -#}
                 {{handle(conn)|indent(16)}}
                 break;
@@ -79,7 +79,7 @@ void enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
 }
 {% endfor %}
 {% for decl in mon_decls %}
-{% for conn in decl.connections.values() %}
+{% for conn in decl.connections.values() if conn.inter_syncsets is nonempty %}
 
 void enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
         void *aux) {
@@ -105,20 +105,20 @@ int write_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux
         FMT_VERSION_MAJOR, FMT_VERSION_MINOR);
     {% for param in conn.source_mon.params %}
     {% if param is sameas SmedlType.INT %}
-    printf("%d", params[{{loop.index0}}].v.i);
+    printf("%d", identities[{{loop.index0}}].v.i);
     {% elif param is sameas SmedlType.FLOAT %}
-    printf("%f", params[{{loop.index0}}].v.d);
+    printf("%f", identities[{{loop.index0}}].v.d);
     {% elif param is sameas SmedlType.CHAR %}
-    printf("%d", params[{{loop.index0}}].v.c);
+    printf("%d", identities[{{loop.index0}}].v.c);
     {% elif param is sameas SmedlType.STRING %}
-    print_escaped(params[{{loop.index0}}].v.s);
+    print_escaped(identities[{{loop.index0}}].v.s);
     {% elif param is sameas SmedlType.POINTER %}
-    printf("\"%" PRIxPTR "\"", (uintptr_t) params[{{loop.index0}}].v.p);
+    printf("\"%" PRIxPTR "\"", (uintptr_t) identities[{{loop.index0}}].v.p);
     {% elif param is sameas SmedlType.THREAD %}
     {% unsupported "'thread' type cannot be transported via file" %}
     {% elif param is sameas SmedlType.OPAQUE %}
-    print_escaped_len(params[{{loop.index0}}].v.o.data,
-            params[{{loop.index0}}].v.o.size);
+    print_escaped_len(identities[{{loop.index0}}].v.o.data,
+            identities[{{loop.index0}}].v.o.size);
     {% endif %}
     {% if not loop.last %}
     printf(", ");
@@ -290,7 +290,7 @@ void read_events(JSONParser *parser) {
                 smedl_free_array_contents(params, {{loop.index0}});
                 continue;
             }
-            {% end if %}
+            {% endif %}
             {% endfor %}
 
             /* Process the event */
@@ -320,10 +320,10 @@ void read_events(JSONParser *parser) {
 void init_global_wrappers() {
     {% for syncset in sys.syncsets.values() %}
     /* {{syncset.name}} syncset */
-    init_{{syncset}}_syncset();
+    init_{{syncset.name}}_syncset();
     {% for decl in syncset %}
     {% for conn in decl.inter_connections %}
-    callback_{{syncset}}_{{conn.channel}}(enqueue_{{conn.channel}});
+    callback_{{syncset.name}}_{{conn.channel}}(enqueue_{{conn.channel}});
     {% endfor %}
     {% endfor %}
     {% if not loop.last %}

@@ -1,18 +1,6 @@
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-/* System-wide channel enum */
-typedef enum {
-    {% for channel in sys.imported_connections.keys() %}
-    SYSCHANNEL_{{channel}},
-    {% endfor %}
-    {% for decl in mon_decls %}
-    {% for channel in decl.connections.keys() %}
-    SYSCHANNEL_{{channel}},
-    {% endfor %}
-    {% endfor %}
-} ChannelID;
-
 /* System-wide event queue item */
 typedef struct SystemEvent {
     ChannelID channel;

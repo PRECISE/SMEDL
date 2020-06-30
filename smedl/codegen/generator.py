@@ -110,7 +110,7 @@ class CodeGenerator(object):
         for syncset_name in system.syncsets.keys():
             values = {
                     "sys": system,
-                    "mon_decls": system.monitor_decls,
+                    "mon_decls": system.monitor_decls.values(),
                     "syncsets": system.syncsets,
                 }
             self._render("file.c", system.name + "_file.c", values)

@@ -82,7 +82,7 @@ def parse_args():
     parser.add_argument('-d', '--dir', help="Directory to write the generated "
             "code to (if not current directory)")
     #TODO Add ROS as a wrapper
-    parser.add_argument('-t', '--transport', choices=["rabbitmq"],
+    parser.add_argument('-t', '--transport', choices=['rabbitmq', 'file'],
             help="Generate an adapter for the given asynchronous transport "
             "method")
     #parser.add_argument('-t', '--thread-safe', help="Include code to enable "

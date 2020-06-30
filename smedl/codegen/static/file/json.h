@@ -72,4 +72,4 @@ int json_to_opaque(const char *str, jsmntok_t *token, char **val, size_t *len);
 int json_to_string_len(const char *str, jsmntok_t *token, char **val,
         size_t *len);
 
-#end /* JSON_H */
+#endif /* JSON_H */
