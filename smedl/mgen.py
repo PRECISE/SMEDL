@@ -17,7 +17,12 @@ from smedl import codegen
 class MonitorGenerator(object):
     """Coordinate parsing and template filling"""
     def __init__(self, out_dir=None, transport=None):
-        """Initialize the MonitorGenerator with the selected options"""
+        """Initialize the MonitorGenerator with the selected options
+
+        out_dir - A string or path-like object for the directory where the
+          generated files are to be placed, or None for the current directory
+        transport - The name of the transport mechanism to generate (e.g.
+          'rabbitmq', 'ros', 'file')"""
         # Keep track of if we are generating a transport adapter so we can warn
         # when generating just a monitor (which does not include the transport
         # adapter)
@@ -29,7 +34,8 @@ class MonitorGenerator(object):
         self.generator = codegen.CodeGenerator(out_dir, transport)
 
     def generate(self, input_file):
-        """Generate code for a given input file"""
+        """Generate code for a given input file (which may be a string or a
+        path-like object)"""
         # Determine whether input is an architecture file
         ext = os.path.splitext(input_file)[1].lower()
         if ext == '.smedl':
@@ -41,22 +47,22 @@ class MonitorGenerator(object):
             with open(input_file, "r") as f:
                 input_text = f.read()
             parser = smedl_parser.SMEDLParser()
-            monitor = parser.parse(input_text, rule_name='start',
+            self.monitor = parser.parse(input_text, rule_name='start',
                     semantics=smedl_semantics.SmedlSemantics())
             
             # Generate the code
-            self.generator.write_one(monitor)
+            self.generator.write_one(self.monitor)
         else:
             # Parse an architecture file, which will also parse all monitors it
             # imports
             with open(input_file, "r") as f:
                 input_text = f.read()
             parser = a4smedl_parser.A4SMEDLParser()
-            system = parser.parse(input_text, rule_name='start',
+            self.system = parser.parse(input_text, rule_name='start',
                     semantics=a4smedl_semantics.A4smedlSemantics())
             
             # Generate the code
-            self.generator.write_all(system)
+            self.generator.write_all(self.system)
 
 def parse_args():
     """Handle argument parsing. Return arguments as a tuple (input, options)
