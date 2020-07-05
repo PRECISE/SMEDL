@@ -1,0 +1,15 @@
+system MultiAverages;
+
+import "frontend.smedl";
+import "averager.smedl";
+
+monitor Frontend();
+monitor Averager(int); //id
+
+syncset MultiAve {Frontend, Averager};
+
+in: measurement => Frontend.newMeasurement();
+in: measurement => Averager[$0].measurement($1);
+notify: Averager.created => Frontend.newObject();
+request: Frontend.requestAverages => Averager[*].averageRequest();
+response: Averager.sendAverage => Frontend.averageResponse($0);

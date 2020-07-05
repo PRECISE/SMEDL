@@ -43,6 +43,11 @@ write a SMEDL monitoring system. Here is a description of each one:
 - `simple`: A simple monitor with one imported event and one exported event. It
   raised the exported event every time it receives the imported event. A "hello
   world" monitor of sorts.
+- `multi_moving_ave`: An example monitor that computes moving averages for
+  multiple objects (using dynamic instantiation) and raises an alarm if the
+  sum of the all the averages rises above a threshold.
+
+Some of these may have additional notes in their directory.
 
 TODO
 ----

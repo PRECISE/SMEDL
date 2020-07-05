@@ -1,0 +1,71 @@
+object Frontend;
+
+state:
+    int numObjects = 0;
+    int measurementsSinceGather = 0;
+    int numResponses = 0;
+    float sum = 0;
+
+events:
+    imported newObject();
+    imported newMeasurement();
+    internal checkMeasurementCount();
+    exported requestAverages();
+    imported averageResponse(float);
+    internal checkSum();
+    exported raiseAlarm();
+    exported resetAlarm();
+
+scenarios:
+    countObjects:
+        idle
+            -> newObject() {numObjects++;}
+            -> idle;
+
+    countMeasurements:
+        idle
+            -> newMeasurement() {
+                measurementsSinceGather++;
+                raise checkMeasurementCount();
+            }
+            -> idle;
+
+    gatherAverages:
+        /* If we assume incoming measurements are distributed roughly evenly
+           among the objects, then when there have been numObjects measurements
+           since the last gather, roughly every object will have had another
+           measurement */
+        idle
+            -> checkMeasurementCount()
+                when (measurementsSinceGather >= numObjects) {
+                    measurementsSinceGather = 0;
+                    numResponses = 1;
+                    sum = 0;
+                    raise requestAverages();
+            }
+            -> awaiting_responses
+            else
+            -> idle;
+        awaiting_responses
+            -> averageResponse(average) when (numResponses < numObjects) {
+                sum = sum + average;
+                numResponses++;
+            }
+            -> awaiting_responses;
+        awaiting_responses
+            -> averageResponse(average) when (numResponses == numObjects) {
+                sum = sum + average;
+                raise checkSum();
+            }
+            -> idle;
+
+    handleAlarms:
+        /* Alarm if the sum of the averages rises above 10 */
+        no_alarm -> checkSum() when (sum < 10) -> no_alarm;
+        no_alarm -> checkSum() when (sum >= 10) {
+            raise raiseAlarm();
+        } -> yes_alarm;
+        yes_alarm -> checkSum() when (sum < 10) {
+            raise resetAlarm();
+        } -> no_alarm;
+        yes_alarm -> checkSum() when (sum >= 10) -> yes_alarm;
