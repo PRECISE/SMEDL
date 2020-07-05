@@ -3,6 +3,7 @@ Code generation and template filling
 """
 
 import os.path
+import shutil
 import itertools
 import jinja2
 from jinja2 import nodes
@@ -52,7 +53,9 @@ class CodeGenerator(object):
         Parameters:
         dest_dir - Directory to write to
         transport - Name of the asynchronous transport mechanism
-        makefile - Whether a Makefile should be written with a monitor system
+        makefile - Whether a Makefile should be written with write_all.
+          True=yes (if a transport was given), False=no, None=only if not
+          already present in the destination
         helpers - Whether or not to copy helper headers to the out_dir (helpers
           are never copied if out_dir is the same directory they already
           reside in)
@@ -63,6 +66,11 @@ class CodeGenerator(object):
             self.makefile = False
         else:
             self.makefile = makefile
+        if self.makefile is None:
+            if os.path.exists(os.path.join(dest_dir, 'Makefile')):
+                self.makefile = False
+            else:
+                self.makefile = True
         self.helpers = helpers
 
         # Initialize the Jinja2 environment
@@ -112,11 +120,14 @@ class CodeGenerator(object):
     def _copy_files(self, files=[]):
         """Copy the list of files to the destination directory, if the
         destination directory isn't the same as where each file is being copied
-        from"""
+        from. Skip any files that don't exist or cannot be copied."""
         for f in files:
             src_dir = os.path.dirname(f)
-            if not os.path.samefile(src_dir, self.dest_dir):
-                shutil.copy(f, self.dest_dir)
+            try:
+                if not os.path.samefile(src_dir, self.dest_dir):
+                    shutil.copy(f, self.dest_dir)
+            except OSError:
+                pass
 
     def _write_file_adapters(self, system):
         """Write the file adapters"""
@@ -308,9 +319,9 @@ class CodeGenerator(object):
             pass #TODO
 
         # Copy helpers that are in the same directory as the .smedl file
-        if self.helpers
+        if self.helpers:
             full_helpers = []
-            for spec in mon_specs.values:
+            for spec in mon_specs.values():
                 helpers = self._get_helpers(spec)
                 self._append_paths(full_helpers, helpers, spec.path)
             self._copy_files(full_helpers)

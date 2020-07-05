@@ -16,7 +16,7 @@ from smedl import codegen
 
 class MonitorGenerator(object):
     """Coordinate parsing and template filling"""
-    def __init__(self, out_dir=None, transport=None, makefile=True,
+    def __init__(self, out_dir=None, transport=None, makefile=None,
             helpers=True):
         """Initialize the MonitorGenerator with the selected options
 
@@ -24,7 +24,9 @@ class MonitorGenerator(object):
           generated files are to be placed, or None for the current directory
         transport - The name of the transport mechanism to generate (e.g.
           'rabbitmq', 'ros', 'file')
-        makefile - Whether or not to generate a Makefile for monitor systems
+        makefile - Whether or not to generate a Makefile for monitor systems.
+          True=yes (if an architecture file and transport are given), False=no,
+          None=only if not already present in the destination
         helpers - Whether or not to copy helper headers to the out_dir (helpers
           are never copied if out_dir is the same directory they already
           reside in)
@@ -99,9 +101,15 @@ def parse_args():
     parser.add_argument('-t', '--transport', choices=['rabbitmq', 'file'],
             help="Generate an adapter for the given asynchronous transport "
             "method")
-    parser.add_argument('-m', '--no-makefile', action='store_false',
-            help="Do not generate a makefile (makefiles are never generated if "
-            "-t/--transport is not specified)", dest='makefile')
+    m_group = parser.add_mutually_exclusive_group()
+    m_group.add_argument('-m', '--makefile', action='store_const', const=True,
+            help="Generate a Makefile even if it would overwrite one already "
+            "present in the destination directory (Makefiles are never "
+            "generated if an .a4smedl file is not provided or no "
+            "-t/--transport option is given)")
+    m_group.add_argument('--no-makefile', action='store_const', const=False,
+            default=argparse.SUPPRESS, dest='makefile',
+            help="Never generate a Makefile")
     parser.add_argument('-n', '--no-copy-helpers', action='store_false',
             help="Do not copy helper headers (helper headers are never copied "
             "if the destination is the same directory they already reside in)",

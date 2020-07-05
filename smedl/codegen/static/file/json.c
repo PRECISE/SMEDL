@@ -380,7 +380,7 @@ str_copied = i + 1;
         *val = result;
     } else {
         *len = tok_len;
-        *val = str;
+        *val = (char *) str;
     }
     return 1;
 }

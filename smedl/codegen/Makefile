@@ -1,71 +1,135 @@
-CC=cc
-CPPFLAGS=
-CFLAGS=
-LDFLAGS=
-LDLIBS=
+# Uncomment to customize these variables
+#CC=cc
+#CXX=g++
+#CPPFLAGS:=$(CPPFLAGS)
+#CFLAGS:=$(CFLAGS)
+#LDFLAGS:=$(LDFLAGS)
+#LDLIBS:=$(LDLIBS)
+#RM=rm -f
+
+# Extra C/C++ source code files to be linked in with the monitors (must be .c,
+# .cc, .cpp, or .C files)
+{% if transport == 'file' %}
+EXTRA_SOURCES=
+{% else %}
+{% for spec in spec_names %}
+EXTRA_SOURCES_{{spec}}=
+{% endfor %}
+{% endif %}
 
 # Uncomment the first for a debug build. Uncomment the second for a release
 # (optimized) build.
 CFLAGS:=-g -DDEBUG $(CFLAGS)
 #CFLAGS:=-O2 $(CFLAGS)
 
+# Where to place all object files, dependency makefiles, and executables.
+# For example, to place everything in a "build" directory:
+#BUILD_DIR=./build
+BUILD_DIR=.
+
 # Changes below this line not recommended
 ###############################################################################
 
-#CPPFLAGS:=-D_XOPEN_SOURCE=500 $(CPPFLAGS)
-CFLAGS:=-std=c99 $(CFLAGS)
-{% if transport == 'rabbitmq' %}
-LDLIBS:=$(LDLIBS) -lrabbitmq
-{% endif %}
-COMMONOBJS=smedl_types.o event_queue.o monitor_map.o global_event_queue.o
+COMMON_SOURCES=smedl_types.c event_queue.c monitor_map.c global_event_queue.c
 {%- if transport == 'file' %}
- file.o json.o
+ file.c json.c
 {% elif transport == 'rabbitmq' %}
- cJSON.o
+ cJSON.c
 {% endif %}
-SOURCES:=smedl_types.c event_queue.c monitor_map.c global_event_queue.c
-{%- for spec in spec_names %} {{spec}}_mon.c{% endfor %}
-{%- for mon in mon_names %} {{mon}}_local_wrapper.c{% endfor %}
-{%- for syncset in syncsets %} {{syncset}}_global_wrapper.c{% endfor %}
-{%- if transport == 'file' %} file.c json.c {{system}}_file.c
-{% elif transport == 'rabbitmq' %} cJSON.c
-{%- for syncset in syncsets %} {{syncset}}_rabbitmq.c{% endfor %}
-{% endif %}
-
-{% if transport == 'file' %}
-all: {{system}}
-{% elif transport == 'rabbitmq' %}
-all:{% for syncset in syncsets %} {{syncset}}{% endfor %}
-{% endif %}
-
-.PHONY: all clean
-
-clean:
-	rm -f *.d *.d.* *.o
-{%- if transport == 'file' %}
-{{system}}
-
-{{system}}: $(SOURCES:.c=.o)
-	$(CC) $(CFLAGS) $(LDFLAGS) $+ $(LDLIBS) -o $@
-{% elif transport == 'rabbitmq' %}
-{% for syncset in syncsets %} {{syncset}}{% endfor %}
 {% for syncset in syncsets %}
+SOURCES_{{syncset}}=
+{%- for spec in syncset_specs[syncset] %}{% if not loop.first %} {% endif %}{{spec}}_mon.c{% endfor %}
+{%- for mon in syncset_mons[syncset] %} {{mon}}_local_wrapper.c{% endfor %}
+ {{syncset}}_global_wrapper.c
+{%- if transport == 'rabbitmq' %} {{syncset}}_rabbitmq.c{% endif %}
 
-{{syncset}}: $(COMMONOBJS)
-{%- for spec in syncset_specs[syncset] %} {{spec}}_mon.o
-{%- endfor %}
-{%- for mon in syncset_mons[syncset] %} {{mon}}_local_wrapper.o
-{%- endfor %} {{syncset}}_global_wrapper.o {{syncset}}_rabbitmq.o
-	$(CC) $(CFLAGS) $(LDFLAGS) $+ $(LDLIBS) -o $@
+{% endfor %}
+SMEDL_SOURCES=$(COMMON_SOURCES){% if transport == 'file' %} {{system}}_file.c{% endif %}
+{%- for syncset in syncsets %} $(SOURCES_{{syncset}}){% endfor %}
+
+
+SMEDL_OBJS=$(SMEDL_SOURCES:.c=.o)
+SMEDL_OBJS:=$(SMEDL_OBJS:%=$(BUILD_DIR)/%)
+{% if transport != 'file' %}
+
+{% for syncset in syncsets %}
+OBJS_{{syncset}}=$(COMMON_SOURCES) $(EXTRA_SOURCES_{{syncset}}) $(SOURCES_{{syncset}})
+OBJS_{{syncset}}:=$(OBJS_{{syncset}}:.c=.o)
+OBJS_{{syncset}}:=$(OBJS_{{syncset}}:.cc=.o)
+OBJS_{{syncset}}:=$(OBJS_{{syncset}}:.cpp=.o)
+OBJS_{{syncset}}:=$(OBJS_{{syncset}}:.C=.o)
+OBJS_{{syncset}}:=$(OBJS_{{syncset}}:%=$(BUILD_DIR)/%)
 {% endfor %}
 {% endif %}
 
-%.d: %.c
-        @set -e; rm -f $@; \
-        $(CC) -M $(CPPFLAGS) $< > $@.$$$$; \
-        sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-        rm -f $@.$$$$
+{% if transport != 'file' %}
+EXTRA_SOURCES=
+{%- for syncset in syncsets %}
+{% if not loop.first %} {% endif %}$(EXTRA_SOURCES_{{syncset}})
+{% endfor %}
+EXTRA_SOURCES:=$(sort $(EXTRA_SOURCES))
+{% endif %}
+EXTRA_OBJS=$(EXTRA_SOURCES)
+EXTRA_OBJS:=$(EXTRA_OBJS:.c=.o)
+EXTRA_OBJS:=$(EXTRA_OBJS:.cc=.o)
+EXTRA_OBJS:=$(EXTRA_OBJS:.cpp=.o)
+EXTRA_OBJS:=$(EXTRA_OBJS:.C=.o)
+EXTRA_OBJS:=$(EXTRA_OBJS:%=$(BUILD_DIR)/%)
 
-$(info ** Note: Messages saying "*.d: No such file or directory" are okay. The files will)
-$(info **       be automatically generated.)
-include $(SOURCES:.c=.d)
+SOURCES=$(SMEDL_SOURCES) $(EXTRA_SOURCES)
+OBJS=$(SMEDL_OBJS) $(EXTRA_OBJS)
+DEPS=$(OBJS:.o=.d)
+
+{% if transport == 'file' %}
+all: {{system}}
+
+.PHONY: all clean {{system}}
+
+{{system}}: $(BUILD_DIR)/{{system}}
+
+$(BUILD_DIR)/{{system}}: $(OBJS)
+	mkdir -p $(@D)
+	$(CC) $(LDFLAGS) $+ $(LDLIBS) -o $@
+{% else %}
+all:{% for syncset in syncsets %} {{syncset}}{% endfor %}
+
+.PHONY: all clean {% for syncset in syncsets %} {{syncset}}{% endfor %}
+{% for syncset in syncsets %}
+
+{{syncset}}: $(BUILD_DIR)/{{syncset}}
+
+$(BUILD_DIR)/{{syncset}}: $(OBJS_{{syncset}})
+	mkdir -p $(@D)
+	$(CC) $(LDFLAGS) $+ $(LDLIBS) -o $@
+{% endfor %}
+{% endif %}
+
+$(SMEDL_OBJS): $(BUILD_DIR)/%.o: %.c
+	mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) -MMD -MP $(CFLAGS) -std=c99 -c $< -o $@
+
+$(BUILD_DIR)/%.o: %.c
+	mkdir -p $(@D)
+	$(CC) $(CPPFLAGS) -MMD -MP $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: %.cc
+	mkdir -p $(@D)
+	$(CXX) $(CPPFLAGS) -MMD -MP $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: %.cpp
+	mkdir -p $(@D)
+	$(CXX) $(CPPFLAGS) -MMD -MP $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: %.C
+	mkdir -p $(@D)
+	$(CXX) $(CPPFLAGS) -MMD -MP $(CXXFLAGS) -c $< -o $@
+
+clean:
+	$(RM) $(OBJS) $(DEPS)
+{%- if transport == 'file' %}
+ $(BUILD_DIR)/{{system}}
+{% else %}
+{% for syncset in syncsets %} $(BUILD_DIR)/{{syncset}}{% endfor %}
+{% endif %}
+
+-include $(DEPS)
