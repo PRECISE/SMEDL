@@ -8,8 +8,11 @@ from .exceptions import TypeMismatch, NameNotDefined, NameCollision
 
 class SmedlSemantics(common_semantics.CommonSemantics):
     """Semantic actions for SMEDL parsing"""
-    def __init__(self):
-        """Do some basic initialization"""
+    def __init__(self, path):
+        """Do some basic initialization
+        
+        path - The directory the .smedl file resides in"""
+        self.path = path
         # self.monitor is created in declaration()
 
     def start(self, ast):
@@ -18,7 +21,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
 
     def declaration(self, ast):
         """Create the MonitorSpec object"""
-        self.monitor = monitor.MonitorSpec(ast)
+        self.monitor = monitor.MonitorSpec(ast, self.path)
         return ast
 
     def helper_definition(self, ast):

@@ -272,10 +272,13 @@ class Scenario(object):
 
 class MonitorSpec(object):
     """A monitor specification from a .smedl file"""
-    def __init__(self, name):
+    def __init__(self, name, path):
         """Instantiate a new MonitorSpec to hold the data from a .smedl file"""
         # Name of the monitor.
         self._name = name
+        # Path where the monitor resides (used to try and locate helpers during
+        # generation)
+        self._path = path
         # List of helper header files, with the enclosing "" or <>
         self._helpers = []
         # State vars: keys are names, values are StateVariables
@@ -291,6 +294,10 @@ class MonitorSpec(object):
     @property
     def name(self):
         return self._name
+
+    @property
+    def path(self):
+        return self._path
 
     @property
     def helpers(self):

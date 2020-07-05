@@ -1,6 +1,8 @@
 """
 Architecture file semantic actions
 """
+import os.path
+
 from smedl.structures import arch
 from . import common_semantics, smedl_parser, smedl_semantics
 from .exceptions import NameCollision, NameNotDefined, ParameterError
@@ -8,7 +10,10 @@ from .exceptions import NameCollision, NameNotDefined, ParameterError
 class A4smedlSemantics(common_semantics.CommonSemantics):
     """Semantic actions for A4SMEDL parsing"""
 
-    def __init__(self):
+    def __init__(self, path):
+        # Store the path which imported monitors will be relative to
+        self.path = path
+
         # Initialize an empty system specification
         self.system = arch.MonitorSystem()
 
@@ -40,15 +45,16 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
     def import_stmt(self, ast):
         """Parse the named SMEDL file and store the spec for use in monitor
         declarations"""
-        # Strip the opening and closing quotes
-        filename = ast[1:-1]
+        # Strip the opening and closing quotes and join with the path
+        filename = os.path.join(self.path, ast[1:-1])
+        dirname = os.path.dirname(filename)
 
         # Read and parse the monitor from the named file
         with open(filename, "r") as f:
             smedl_spec = f.read()
         parser = smedl_parser.SMEDLParser()
         monitor_spec = parser.parse(smedl_spec, rule_name='start',
-                semantics=smedl_semantics.SmedlSemantics())
+                semantics=smedl_semantics.SmedlSemantics(dirname))
 
         # Make sure monitor name is not already taken
         if monitor_spec.name in self.monitor_specs:

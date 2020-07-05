@@ -46,15 +46,24 @@ class UnsupportedFeatureExtension(ext.Extension):
 
 class CodeGenerator(object):
     """Generates C code for monitors and monitor systems"""
-    def __init__(self, dest_dir, transport):
+    def __init__(self, dest_dir, transport, makefile, helpers):
         """Initialize the code generator.
 
         Parameters:
         dest_dir - Directory to write to
         transport - Name of the asynchronous transport mechanism
+        makefile - Whether a Makefile should be written with a monitor system
+        helpers - Whether or not to copy helper headers to the out_dir (helpers
+          are never copied if out_dir is the same directory they already
+          reside in)
         """
         self.dest_dir = dest_dir
         self.transport = transport
+        if transport is None:
+            self.makefile = False
+        else:
+            self.makefile = makefile
+        self.helpers = helpers
 
         # Initialize the Jinja2 environment
         self.env = jinja2.Environment(
@@ -100,6 +109,15 @@ class CodeGenerator(object):
         with open(out_path, "w") as f:
             f.write(text)
 
+    def _copy_files(self, files=[]):
+        """Copy the list of files to the destination directory, if the
+        destination directory isn't the same as where each file is being copied
+        from"""
+        for f in files:
+            src_dir = os.path.dirname(f)
+            if not os.path.samefile(src_dir, self.dest_dir):
+                shutil.copy(f, self.dest_dir)
+
     def _write_file_adapters(self, system):
         """Write the file adapters"""
         # Write static code
@@ -132,6 +150,36 @@ class CodeGenerator(object):
             self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
             self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
             self._render("rabbitmq.cfg", system.name + ".cfg", values)
+
+    def _write_makefile(self, system):
+        """Write the Makefile
+
+        Parameters:
+        system - A MonitorSystem whose Makefile is to be written
+        """
+        syncset_mons = dict()
+        for syncset in system.syncsets.values():
+            syncset_mons[syncset.name] = [decl.name for decl in syncset]
+
+        syncset_specs = dict()
+        for syncset in system.syncsets.values():
+            specs = []
+            for decl in syncset:
+                if decl.spec.name not in specs:
+                    specs.append(decl.spec.name)
+            syncset_specs[syncset.name] = specs
+
+        values = {
+                "transport": self.transport,
+                "system": system.name,
+                "syncsets": system.syncsets.keys(),
+                "syncset_mons": syncset_mons,
+                "syncset_specs": syncset_specs,
+                "mon_names": system.monitor_decls.keys(),
+                "spec_names": [decl.spec.name for decl in
+                    system.monitor_decls.values()]
+            }
+        self._render("Makefile", "Makefile", values)
 
     def _write_wrappers(self, system, syncset_name):
         """Write the global wrapper and local wrappers for one synchronous set
@@ -178,6 +226,38 @@ class CodeGenerator(object):
         self._render("mon.c", monitor_spec.name + "_mon.c", values)
         self._render("mon.h", monitor_spec.name + "_mon.h", values)
 
+    def _get_helpers(self, monitor):
+        """Get a list of helper headers from the monitor that are #included
+        with quotes and no subdirectories"""
+        result = []
+        for helper in monitor.helpers:
+            if helper[0] != '"':
+                continue
+            if os.path.dirname(helper[1:-1]) == "":
+                result.append(helper[1:-1])
+        return result
+
+    def _append_paths(self, orig, to_add, dirname):
+        """Extend the list of paths
+
+        orig - The list to extend
+        to_add - A list of paths to extend with
+        dirname - A directory to join each path in to_add with
+
+        Each path in to_add is only added if it's not a file already in orig
+        """
+        for fname in to_add:
+            path = os.path.join(dirname, fname)
+            append = True
+            for existing in orig:
+                try:
+                    if os.path.samefile(existing, path):
+                        append = False
+                except OSError:
+                    append = False
+            if append:
+                orig.append(path)
+
     def write_one(self, monitor):
         """Write all C files for the single monitor described by the provided
         specification
@@ -188,6 +268,13 @@ class CodeGenerator(object):
         from . import static
         self._write_static_files(static)
         self._write_monitor(monitor)
+
+        # Copy helpers that are in the same directory as the .smedl file
+        if self.helpers:
+            helpers = self._get_helpers(monitor)
+            full_helpers = []
+            self._append_paths(full_helpers, helpers, monitor.path)
+            self._copy_files(full_helpers)
 
     def write_all(self, system):
         """Write all C files for the provided monitoring system
@@ -219,3 +306,15 @@ class CodeGenerator(object):
             self._write_file_adapters(system)
         elif self.transport == "ros":
             pass #TODO
+
+        # Copy helpers that are in the same directory as the .smedl file
+        if self.helpers
+            full_helpers = []
+            for spec in mon_specs.values:
+                helpers = self._get_helpers(spec)
+                self._append_paths(full_helpers, helpers, spec.path)
+            self._copy_files(full_helpers)
+
+        # Generate Makefile, if requested
+        if self.makefile:
+            self._write_makefile(system)
