@@ -7,8 +7,8 @@
 
 start =
     name:declaration
-    helpers:helper_list
-    state_vars:state_section
+    [helpers:helper_list]
+    [state_vars:state_section]
     events:event_section
     scenarios:scenario_section
     $
@@ -23,7 +23,7 @@ helper_list =
     ;
 
 helper_definition =
-    '#include' @:helper_filename
+    '#include' ~ @:helper_filename
     ;
 
 helper_filename =
@@ -31,7 +31,7 @@ helper_filename =
     ;
 
 state_section =
-    'state:' @:{state_declaration}*
+    'state:' ~ @:{state_declaration}*
     ;
 
 state_declaration =
@@ -41,7 +41,7 @@ state_declaration =
     ;
 
 event_section =
-    'events:' @:{event_declaration}*
+    'events:' ~ @:{event_declaration}*
     ;
 
 event_declaration =
@@ -56,7 +56,7 @@ event_signature =
     ;
 
 scenario_section =
-    'scenarios:' @:{scenario}*
+    'scenarios:' ~ @:{scenario}*
     ;
 
 scenario =

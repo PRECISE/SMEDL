@@ -131,10 +131,12 @@ class SMEDLParser(Parser):
     def _start_(self):  # noqa
         self._declaration_()
         self.name_last_node('name')
-        self._helper_list_()
-        self.name_last_node('helpers')
-        self._state_section_()
-        self.name_last_node('state_vars')
+        with self._optional():
+            self._helper_list_()
+            self.name_last_node('helpers')
+        with self._optional():
+            self._state_section_()
+            self.name_last_node('state_vars')
         self._event_section_()
         self.name_last_node('events')
         self._scenario_section_()
@@ -162,6 +164,7 @@ class SMEDLParser(Parser):
     @tatsumasu()
     def _helper_definition_(self):  # noqa
         self._token('#include')
+        self._cut()
         self._helper_filename_()
         self.name_last_node('@')
 
@@ -172,6 +175,7 @@ class SMEDLParser(Parser):
     @tatsumasu()
     def _state_section_(self):  # noqa
         self._token('state:')
+        self._cut()
 
         def block1():
             self._state_declaration_()
@@ -197,6 +201,7 @@ class SMEDLParser(Parser):
     @tatsumasu()
     def _event_section_(self):  # noqa
         self._token('events:')
+        self._cut()
 
         def block1():
             self._event_declaration_()
@@ -245,6 +250,7 @@ class SMEDLParser(Parser):
     @tatsumasu()
     def _scenario_section_(self):  # noqa
         self._token('scenarios:')
+        self._cut()
 
         def block1():
             self._scenario_()
