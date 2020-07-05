@@ -30,6 +30,10 @@ BUILD_DIR=.
 # Changes below this line not recommended
 ###############################################################################
 
+{% if transport == 'rabbitmq' %}
+LDLIBS:=$(LDLIBS) -lrabbitmq
+{% endif %}
+
 COMMON_SOURCES=smedl_types.c event_queue.c monitor_map.c global_event_queue.c
 {%- if transport == 'file' %}
  file.c json.c
@@ -80,23 +84,17 @@ SOURCES=$(SMEDL_SOURCES) $(EXTRA_SOURCES)
 OBJS=$(SMEDL_OBJS) $(EXTRA_OBJS)
 DEPS=$(OBJS:.o=.d)
 
+.PHONY: all clean
+
 {% if transport == 'file' %}
-all: {{system}}
-
-.PHONY: all clean {{system}}
-
-{{system}}: $(BUILD_DIR)/{{system}}
+all: $(BUILD_DIR)/{{system}}
 
 $(BUILD_DIR)/{{system}}: $(OBJS)
 	mkdir -p $(@D)
 	$(CC) $(LDFLAGS) $+ $(LDLIBS) -o $@
 {% else %}
-all:{% for syncset in syncsets %} {{syncset}}{% endfor %}
-
-.PHONY: all clean {% for syncset in syncsets %} {{syncset}}{% endfor %}
+all:{% for syncset in syncsets %} $(BUILD_DIR)/{{syncset}}{% endfor %}
 {% for syncset in syncsets %}
-
-{{syncset}}: $(BUILD_DIR)/{{syncset}}
 
 $(BUILD_DIR)/{{syncset}}: $(OBJS_{{syncset}})
 	mkdir -p $(@D)
