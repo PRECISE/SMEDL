@@ -15,6 +15,7 @@ import smedl
 
 class TestingError(Exception):
     """Raised when there was an internal error in testing"""
+    __test__ = False
 
 def _is_whitespace(c):
     return c in (' ', '\t', '\n', '\r')
@@ -235,7 +236,7 @@ class GeneratedMonitor:
     """Generates a monitor in a temporary directory on instantiation. Can run
     the monitor on demand."""
 
-    def __init__(input_path, transport):
+    def __init__(self, input_path, transport):
         """Generate the monitor.
 
         input_path - Path to the .a4smedl file to use
@@ -248,7 +249,7 @@ class GeneratedMonitor:
         self.system = self.generator.system
         self.procs = None
 
-    def build():
+    def build(self):
         """Build the monitor. Raise subprocess.CalledProcessError on failure.
         Return the path to the temp directory in case any config needs to be
         written."""
@@ -256,7 +257,7 @@ class GeneratedMonitor:
         self.procs = []
         return self.gen_dir
 
-    def run(capture_output, env=None, text=True):
+    def run(self, capture_output, env=None, text=True):
         """Run the monitor. Finds every executable in the build directory and
         runs them all. Returns a list of the executables.
 
@@ -297,7 +298,7 @@ class GeneratedMonitor:
                         universal_newlines=text
                     ))
 
-    def communicate(input_list=None, timeout=None):
+    def communicate(self, input_list=None, timeout=None):
         """Provide stdin to the monitor processes and read stdout/stderr (if
         capture_output was true). Blocks until all monitor processes exit. To
         then get their exit statuses, use wait().
@@ -328,7 +329,7 @@ class GeneratedMonitor:
                     input_list[i], timeout=timeout))
         return result
 
-    def wait(timeout=None):
+    def wait(self, timeout=None):
         """Wait for monitor processes to complete and get their exit statuses.
         Returns a list of exit statuses in the same order as the return from
         run()."""
@@ -340,7 +341,7 @@ class GeneratedMonitor:
                 proc.wait(timeout)
         return [proc.returncode for proc in self.procs]
 
-    def terminate():
+    def terminate(self):
         """Terminate the monitor processes. Wait two seconds and then kill any
         remaining processes."""
         for proc in self.procs:
