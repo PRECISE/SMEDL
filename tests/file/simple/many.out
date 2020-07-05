@@ -1,0 +1,38 @@
+{
+    "fmt_version": [2, 0],
+    "channel": "_simple_out",
+    "event": "simple.out",
+    "params": [1],
+    "aux": {
+        "arbitrary": "json data"
+     }
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "_simple_out",
+    "event": "simple.out",
+    "params": [2],
+    "aux": [1, 2, 3]
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "_simple_out",
+    "event": "simple.out",
+    "params": [3],
+    "aux": "foo"
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "_simple_out",
+    "event": "simple.out",
+    "params": [4],
+    "aux": 36
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "_simple_out",
+    "event": "simple.out",
+    "params": [5],
+    "aux": {
+    }
+} 
