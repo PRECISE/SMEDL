@@ -34,6 +34,16 @@ is simply a directory that contains all testing-related files. The various test
 scripts are in fact executed as top-level modules (e.g. `test_monitors`, not
 `tests.test_monitors`).
 
+Monitor Descriptions
+--------------------
+
+The monitors in the `monitors/` directory can be useful examples of how to
+write a SMEDL monitoring system. Here is a description of each one:
+
+- `simple`: A simple monitor with one imported event and one exported event. It
+  raised the exported event every time it receives the imported event. A "hello
+  world" monitor of sorts.
+
 TODO
 ----
 

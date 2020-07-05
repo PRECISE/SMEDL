@@ -2,6 +2,24 @@ SMEDL Monitor Generator
 =======================
 ### Version 2.0.0
 
+TODO: New TOC:
+
+Summary
+- Prerequisites
+  - Additional prerequisites for testing
+- Installation
+  - Installing for Development
+  - Updating
+- Invocation
+  - Transports
+  - Makefile Generation and Compiling
+- Examples: See tests/ and README-tests.md
+- Testing
+- Further Reading
+  - SMEDL Language
+  - Monitor API
+- Copyright, License, Contact info
+
 Requirements
 ------------
 
