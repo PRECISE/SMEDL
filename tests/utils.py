@@ -10,6 +10,7 @@ import stat
 import time
 import subprocess
 import tempfile
+import json
 
 import smedl
 
@@ -17,220 +18,58 @@ class TestingError(Exception):
     """Raised when there was an internal error in testing"""
     __test__ = False
 
-def _is_whitespace(c):
-    return c in (' ', '\t', '\n', '\r')
+def json_find_diff(actual, expected):
+    """Return None if the two strings represent matching sequences of JSON
+    objects (with multiple objects separated by whitespace).
 
-def _is_number(c):
-    return c in ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+',
-            '-', '.', 'e', 'E')
+    If they do not match, return the index (starting with 0) of the first
+    object in "actual" that does not match "expected" or is invalid JSON.
 
-def _is_number_start(c):
-    return c in ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+',
-            '-', '.', 'e', 'E')
-
-class _MantissaExp:
-    """A number in a floating point format converted from JSON string"""
-    def __init__(self, num_str):
-        self.positive = True
-        self.mantissa = 0
-        self.exponent = -1
-
-        i = 0
-        end = len(num_str)
-        if end == 0:
-            raise ValueError('Empty string')
-
-        # Check if negative
-        if num_str[i] == '-':
-            self.positive = False
-            i += 1
-
-        if i == end:
-            raise ValueError('No integer part')
-
-        # Leading zero only allowed if integer part is zero
-        if num_str[i] != '0':
-            self.exponent = 0
-            self.mantissa = ord(num_str[i]) - ord('0')
-            if not 0 < self.mantissa <= 9:
-                raise ValueError('Invalid integer part')
-
-            while True:
-                i += 1
-                if i == end:
-                    return
-                digit = ord(num_str[i]) - ord('0')
-                if not 0 <= digit <= 9:
-                    break
-                self.mantissa = self.mantissa * 10 + digit
-                self.exponent += 1
-        else:
-            i += 1
-
-        # Check if fraction part
-        if i + 1 < end and num_str[i] == '.':
-            i += 1
-            digit = ord(num_str[i]) - ord('0')
-            if not 0 <= digit <= 9:
-                raise ValueError('Invalid fraction part')
-            self.mantissa = self.mantissa * 10 + digit
-
-            while True:
-                i += 1
-                if i == end:
-                    return
-                digit = ord(num_str[i]) - ord('0')
-                if not 0 <= digit <= 9:
-                    break
-                self.mantissa = self.mantissa * 10 + digit
-
-        # Check if exponent part
-        if i + 1 < end and num_str[i] in ('e', 'E'):
-            i += 1
-            if num_str[i] == '+':
-                exp_positive = True
-                i += 1
-            elif num_str[i] == '-':
-                exp_positive = False
-                i += 1
-            else:
-                exp_positive = True
-
-            if i == end:
-                raise ValueError('Invalid exponent part')
-
-            exp = 0
-            while True:
-                digit = ord(num_str[i]) - ord('0')
-                if not 0 <= digit <= 9:
-                    raise ValueError('Invalid exponent part')
-                exp = exp * 10 + digit
-                i += 1
-                if i == end:
-                    break
-
-            if exp_positive:
-                self.exponent += exp
-            else:
-                self.exponent -= exp
-
-        if i < end:
-            raise ValueError('Invalid number')
-
-    def __eq__(self, other):
-        if isinstance(other, _MantissaExp):
-            if self.mantissa == 0 == other.mantissa:
-                return True
-            if self.positive != other.positive:
-                return False
-            if self.exponent < other.exponent:
-                diff = other.exponent - self.exponent
-                return self.mantissa * 10 ** diff == other.mantissa
-            elif self.exponent > other.exponent:
-                diff = self.exponent - other.exponent
-                return other.mantissa * 10 ** diff == self.mantissa
-            return other.mantissa == self.mantissa
-        return False
-
-def _number_matches(actual, expected):
-    """Compare two JSON numbers for equality"""
-    try:
-        acutal = _MantissaExp(actual)
-        expected = _MantissaExp(expected)
-        return actual == expected
-    except ValueError:
-        return False
-
-def json_matches(actual, expected):
-    """Return True if the two strings represent matching sequences of JSON
-    objects, False otherwise. Multiple JSON objects are to be separated by
-    whitespace. Object members must appear in the same order.
-
-    expected - The object(s) to compare against. Assumed to be valid JSON.
-    actual - The object(s) that must match. If not valid JSON, False will be
-      returned.
-
-    Limitations: Numbers must match precisely, no rounding error. Escape
-    sequences in strings are not expanded and must match verbatim. Some invalid
-    number formats may not be rejected.
+    "expected" is assumed to be valid and an exception will be raised if it is
+    not.
     """
+    actual = actual.strip()
+    expected = expected.strip()
+    decoder = json.JSONDecoder()
 
-    i, j = 0, 0
-    end_i = len(actual)
-    end_j = len(expected)
+    count = 0
+    while len(expected) > 0:
+        try:
+            actual_json, actual_end = decoder.raw_decode(actual)
+        except json.JSONDecodeError:
+            return count
+        expected_json, expected_end = decoder.raw_decode(expected)
 
-    in_string = False
-    backslash = False
-    num_start_i = None  # Start of current number in actual
-    num_start_j = None  # Start of current number in expected
-    keyword = 0  # Number of chars left in current keyword (true, false, null)
+        if actual_json != expected_json:
+            return count
 
-    while i < end_i and j < end_j:
-        if in_string:
-            # Strings must match perfectly. 
-            if backslash:
-                backslash = False
-            else:
-                if expected[j] == '\\':
-                    backslash = True
-                elif expected[j] == '"':
-                    in_string = False
-            if actual[i] != expected[j]:
-                return False
+        actual = actual[actual_end:].lstrip()
+        expected = expected[expected_end:].lstrip()
+        count += 1
 
-        elif num_start_j is not None:
-            # In a number.
-            if not _is_number(expected[j]):
-                if not _number_matches(actual[num_start_i:i],
-                        expected[num_start_j:j]):
-                    return False
-                num_start_i = None
-                num_start_j = None
-                # Go back to the top of the while so the last elif is entered
-                continue
+    if len(actual) > 0:
+        return count
 
-        elif keyword > 0:
-            # In a keyword
-            if actual[i] != expected[j]:
-                return False
-            keyword -= 1
+def parse_multiple_json(text):
+    """Parse multiple JSON objects, separated by whitespace, from the input
+    string. Return a list of the parsed objects. If the input string contains
+    invalid JSON, a json.JSONDecodeError will be raised."""
+    result = []
+    decoder = json.JSONDecoder()
+    text.strip()
+    count = 0
+    while len(text) > 0:
+        try:
+            obj, end = decoder.raw_decode(text)
+        except json.JSONDecodeError as e:
+            raise json.JSONDecodeError("Object {}: ".format(count) + e.msg,
+                    e.doc, e.pos) from e
 
-        elif _is_whitespace(expected[j]):
-            # Skip whitespace in expected and actual
-            while _is_whitespace(expected[j]) and j < end_j:
-                j += 1
-            while _is_whitespace(actual[i]) and i < end_i:
-                i += 1
-        elif _is_whitespace(actual[i]):
-            # Skip whitespace in actual (expected had none_
-            while _is_whitespace(actual[i]) and i < end_i:
-                i += 1
+        result.append(obj)
+        text = text[end:].lstrip()
+        count += 1
 
-        else:
-            # Not currently in a number or a string.
-            if expected[j] == '"':
-                in_string = True
-            elif expected[j] == 't' or expected[j] == 'n':
-                keyword = 3
-            elif expected[j] == 'f':
-                keyword = 4
-            elif _is_number(expected[j]):
-                num_start_i = i
-                num_start_j = j
-                # Go back to the top of the while so the number elif is entered
-                continue
-            if actual[i] != expected[j]:
-                return False
-
-        i += 1
-        j += 1
-
-    # May have been in a number at the end of the string. Make sure it matches.
-    if num_start_j is not None:
-        if not _number_matches(actual[num_start_i:i], expected[num_start_j:j]):
-            return False
-
-    return i == end_i and j == end_j
+    return result
 
 class GeneratedMonitor:
     """Generates a monitor in a temporary directory on instantiation. Can run

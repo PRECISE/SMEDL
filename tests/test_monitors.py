@@ -47,7 +47,11 @@ def test_monitor(generated_file_monitor, test_case):
 
     generated_file_monitor.run(capture_output=True)
     stdout, stderr = generated_file_monitor.communicate([stdin], timeout=15)[0]
-    assert json_matches(stdout, expected), \
+    print(stderr, file=sys.stderr)
+
+    actual_json = parse_multiple_json(stdout)
+    expected_json = parse_multiple_json(expected)
+    assert actual_json == expected_json, \
             'Output messages did not match expected'
     #assert stderr == ''
 

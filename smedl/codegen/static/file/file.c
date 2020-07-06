@@ -69,17 +69,17 @@ int init_parser(JSONParser *parser, const char *fname) {
 jsmntok_t * next_message(JSONParser *parser, char **str) {
     int result;
 
-    /* Is there any more data? */
-    if (feof(parser->f)) {
-        parser->status = JSONSTATUS_EOF;
-        return NULL;
-    }
-
     /* Shift the previous message out of the buffer */
     memmove(parser->buf, parser->buf + parser->buf_rpos,
             parser->buf_size - parser->buf_rpos);
     parser->buf_wpos -= parser->buf_rpos;
     parser->buf_rpos = 0;
+
+    /* Is there any more data? */
+    if (feof(parser->f) && parser->buf_wpos == 0) {
+        parser->status = JSONSTATUS_EOF;
+        return NULL;
+    }
 
     do {
         /* Try to fill the buffer */
