@@ -59,7 +59,7 @@ typedef struct {
 
 /* Compare two opaque values for equality only. Return nonzero if equal, zero
  * if not */
-int opaque_equals(SMEDLOpaque o1, SMEDLOpaque o2);
+int smedl_opaque_equals(SMEDLOpaque o1, SMEDLOpaque o2);
 
 /* Make a copy of the src string in dest (does not free the old value!) */
 int smedl_assign_string(char **dest, char *src);

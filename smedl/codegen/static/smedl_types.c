@@ -6,7 +6,7 @@
 
 /* Compare two opaque values for equality only. Return nonzero if equal, zero
  * if not */
-int opaque_equals(SMEDLOpaque o1, SMEDLOpaque o2) {
+int smedl_opaque_equals(SMEDLOpaque o1, SMEDLOpaque o2) {
     return o1.size == o2.size && !memcmp(o1.data, o2.data, o1.size);
 }
 
@@ -140,7 +140,7 @@ int smedl_equal(SMEDLValue v1, SMEDLValue v2) {
         case SMEDL_THREAD:
             return pthread_equal(v1.v.th, v2.v.th);
         case SMEDL_OPAQUE:
-            return opaque_equals(v1.v.o, v2.v.o);
+            return smedl_opaque_equals(v1.v.o, v2.v.o);
         case SMEDL_NULL:
             return 1;
         default:

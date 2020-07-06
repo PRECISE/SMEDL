@@ -111,11 +111,11 @@ strcmp({{expression(e.left)}}, {{expression(e.right)}})
 {%- elif e.operator == '==' and
         (e.left.type is sameas SmedlType.OPAQUE or
         e.right.type is sameas SmedlType.OPAQUE) %}
-opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
+smedl_opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
 {%- elif e.operator == '!=' and
         (e.left.type is sameas SmedlType.OPAQUE or
         e.right.type is sameas SmedlType.OPAQUE) %}
-!opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
+!smedl_opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
 {%- else %}
 {{expression(e.left)}} {{e.operator}} {{expression(e.right)}}
 {%- endif %}
