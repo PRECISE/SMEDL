@@ -1,3 +1,6 @@
+#if DEBUG > 0
+#include <stdio.h>
+#endif
 #include <stdlib.h>
 #include "smedl_types.h"
 #include "global_event_queue.h"
@@ -80,6 +83,9 @@ void free_{{syncset}}_syncset() {
 {%- endmacro %}
 {# -------------------------------------------------------------------------- #}
 {% macro route(conn) -%}
+#if DEBUG >= 4
+fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}'\n");
+#endif
 {% for target in conn.targets if target.monitor in mon_decls -%}
 {
     {% if target.mon_params is nonempty %}
@@ -190,7 +196,12 @@ static void handle_{{syncset}}_inter() {
             {% for decl in mon_decls %}
             {% for conn in decl.inter_connections %}
             case CHANNEL_{{syncset}}_{{conn.channel}}:
-                cb_{{conn.channel}}(identities, params, aux);
+#if DEBUG >= 4
+                fprintf(stderr, "Global wrapper '{{syncset}}' exporting for conn '{{conn.channel}}\n");
+#endif
+                if (cb_{{conn.channel}} != NULL) {
+                    cb_{{conn.channel}}(identities, params, aux);
+                }
                 {% for param_type in conn.source_event_params %}
                 {% if param_type is sameas SmedlType.STRING %}
                 free(params[{{loop.index0}}].v.s);

@@ -45,11 +45,11 @@ def test_monitor(generated_file_monitor, test_case):
     with open(os.path.join(path, test_case + '.out'), 'r') as f:
         expected = f.read()
 
-    gen_mon.run(capture_output=True)
-    stdout, stderr = generated_file_monitor.communicate([stdin], timeout=15)
-    assert (json_matches(stdout, expected),
-            'Output messages did not match expected')
-    assert stderr == ''
+    generated_file_monitor.run(capture_output=True)
+    stdout, stderr = generated_file_monitor.communicate([stdin], timeout=15)[0]
+    assert json_matches(stdout, expected), \
+            'Output messages did not match expected'
+    #assert stderr == ''
 
 #TODO C unit tests here? In a test_c_units.py might be better
 

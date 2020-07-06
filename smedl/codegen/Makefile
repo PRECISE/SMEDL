@@ -18,8 +18,13 @@ EXTRA_SOURCES_{{spec}}=
 {% endif %}
 
 # Uncomment the first for a debug build. Uncomment the second for a release
-# (optimized) build.
-CFLAGS:=-g -DDEBUG $(CFLAGS)
+# (optimized) build. DEBUG flag can be adjusted as necessary:
+# -DDEBUG=0: Debug off (same as not defining DEBUG at all)
+# -DDEBUG=1: Errors only (Serious errors will be printed even with debug off)
+# -DDEBUG=2: Warnings (Non-serious abnormal conditions)
+# -DDEBUG=3: Notice (Significant but normal occurrences)
+# -DDEBUG=4: Debug (All debug messages on)
+CFLAGS:=-g -DDEBUG=4 $(CFLAGS)
 #CFLAGS:=-O2 $(CFLAGS)
 
 # Where to place all object files, dependency makefiles, and executables.

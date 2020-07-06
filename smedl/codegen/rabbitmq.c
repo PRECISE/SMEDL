@@ -503,11 +503,11 @@ int handle_other_frame(InitStatus *init_status, RabbitMQState *rmq_state) {
     } else if (!check_status(status, "Could not retrieve frame")) {
         return 0;
     }
-#ifdef DEBUG
+#if DEBUG >= 2
     if (frame.frame_type == AMQP_FRAME_METHOD) {
         printf("Received unexpected frame: id %u\n", frame.payload.method.id);
     }
-#endif //DEBUG
+#endif
 
     //TODO If using publisher confirms, those will likely end up here. Either
     // adjust this function or the main loop to handle it.

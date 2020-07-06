@@ -230,7 +230,7 @@ def json_matches(actual, expected):
         if not _number_matches(actual[num_start_i:i], expected[num_start_j:j]):
             return False
 
-    return i == end1 and j == end2
+    return i == end_i and j == end_j
 
 class GeneratedMonitor:
     """Generates a monitor in a temporary directory on instantiation. Can run
@@ -241,9 +241,10 @@ class GeneratedMonitor:
 
         input_path - Path to the .a4smedl file to use
         """
-        self.gen_dir = tempfile.TemporaryDirectory()
+        self.tmp_dir = tempfile.TemporaryDirectory()
+        self.gen_dir = self.tmp_dir.name
         self.fname = os.path.splitext(os.path.basename(input_path))[0]
-        self.generator = smedl.MonitorGenerator(out_dir=self.gen_dir.name,
+        self.generator = smedl.MonitorGenerator(out_dir=self.gen_dir,
                 transport=transport)
         self.generator.generate(input_path)
         self.system = self.generator.system
@@ -289,7 +290,7 @@ class GeneratedMonitor:
             mode = entry.stat().st_mode
             if stat.S_ISREG(mode) and (mode & stat.S_IXUSR):
                 self.procs.append(subprocess.Popen(
-                        entry.name,
+                        os.path.join('.', entry.name),
                         stdin=subprocess.PIPE,
                         stdout=stdout,
                         stderr=stderr,

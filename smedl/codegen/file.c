@@ -168,24 +168,39 @@ int get_json_components(const char *str, jsmntok_t *msg,
     if (fmt_version == NULL ||
             fmt_version->type != JSMN_ARRAY ||
             fmt_version->size != 2) {
+#if DEBUG >= 2
+        err("fmt_version not present, not array, or not size 2");
+#endif
         return 0;
     }
     if (!json_to_int(str, fmt_version + 1, &version) ||
             version != FMT_VERSION_MAJOR) {
+#if DEBUG >= 2
+        err("Major fmt_version does not match");
+#endif
         return 0;
     }
     if (!json_to_int(str, fmt_version + 2, &version) ||
             version < FMT_VERSION_MINOR) {
+#if DEBUG >= 2
+        err("Minor fmt_version too low");
+#endif
         return 0;
     }
 
     /* Extract other components */
     *channel = json_lookup(NULL, NULL, "channel");
     if (*channel == NULL || (*channel)->type != JSMN_STRING) {
+#if DEBUG >= 2
+        err("channel not present or not a string");
+#endif
         return 0;
     }
     *params = json_lookup(NULL, NULL, "params");
     if (*params == NULL || (*params)->type != JSMN_ARRAY) {
+#if DEBUG >= 2
+        err("params not present or not an array");
+#endif
         return 0;
     }
     *aux = json_lookup(NULL, NULL, "aux");

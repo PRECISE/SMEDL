@@ -68,7 +68,6 @@ int init_parser(JSONParser *parser, const char *fname) {
  *   parsed */
 jsmntok_t * next_message(JSONParser *parser, char **str) {
     int result;
-    parser->msg_count++;
 
     /* Is there any more data? */
     if (feof(parser->f)) {
@@ -130,7 +129,7 @@ jsmntok_t * next_message(JSONParser *parser, char **str) {
         return NULL;
     } else if (result == JSMN_ERROR_INVAL) {
         /* Invalid JSON. Give up. */
-        err("JSON message #%d is invalid", parser->msg_count);
+        err("JSON message #%d is invalid", parser->msg_count + 1);
         parser->status = JSONSTATUS_INVALID;
         return NULL;
     }
@@ -138,6 +137,7 @@ jsmntok_t * next_message(JSONParser *parser, char **str) {
     /* Success */
     parser->buf_rpos += parser->tokens[0].end;
     *str = parser->buf;
+    parser->msg_count++;
     return parser->tokens;
 }
 

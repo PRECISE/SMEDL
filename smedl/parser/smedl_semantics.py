@@ -312,7 +312,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
             # C treats both of these as int literals
             return expr.Literal(ast.value, expr.SmedlType.INT)
         elif ast.type == "float":
-            return expr.Literal(ast.value, expr.SmedlType.DOUBLE)
+            return expr.Literal(ast.value, expr.SmedlType.FLOAT)
         elif ast.type == "string":
             return expr.Literal(ast.value, expr.SmedlType.STRING)
         elif ast.type == "null":

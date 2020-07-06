@@ -3,9 +3,9 @@
 #include <stdint.h>
 #include <limits.h>
 #include <errno.h>
-#ifdef DEBUG
+#if DEBUG > 0
 #include <stdio.h>
-#endif /* DEBUG */
+#endif
 
 #ifndef JSMN_UNSIGNED
 #define JSMN_UNSIGNED size_t
@@ -38,17 +38,22 @@ jsmntok_t * json_lookup(const char *str, jsmntok_t *object, const char *key) {
     /* If object was provided, reset everything */
     if (object != NULL) {
         if (object->type != JSMN_OBJECT) {
-#ifdef DEBUG
+#if DEBUG >= 1
             fprintf(stderr, "Called json_lookup on a non-object token\n");
-#endif /* DEBUG */
+#endif
             return NULL;
         }
         string = str;
-        start = object;
-        curr = object;
+        start = object + 1;
+        curr = object + 1;
         index = 0;
         /* Size is number of key/value pairs */
         size = object->size;
+    }
+
+    /* Special case for size zero */
+    if (size == 0) {
+        return NULL;
     }
 
     /* Search for the key */
@@ -59,9 +64,9 @@ jsmntok_t * json_lookup(const char *str, jsmntok_t *object, const char *key) {
     do {
         result = json_to_string_len(string, curr, &curr_key, &curr_len);
         if (!result) {
-#ifdef DEBUG
+#if DEBUG >= 1
             fprintf(stderr, "Could not un-escape string token\n");
-#endif /* DEBUG */
+#endif
             return NULL;
         }
         if (strlen(key) == curr_len && /* Don't match "foo" with "foobar" */
@@ -122,14 +127,14 @@ void json_next_key(jsmntok_t **token) {
 int json_to_int(const char *str, jsmntok_t *token, int *val) {
     /* Check if a non-primitive, true, false, or null */
     if (token->type != JSMN_PRIMITIVE) {
-#ifdef DEBUG
+#if DEBUG >= 1
         fprintf(stderr, "Called json_to_int on a non-primitive token\n");
-#endif /* DEBUG */
+#endif
         return 0;
     } else if (str[token->start] == 'n') {
-#ifdef DEBUG
+#if DEBUG >= 1
         fprintf(stderr, "Called json_to_int on 'null'\n");
-#endif /* DEBUG */
+#endif
         return 0;
     } else if (str[token->start] == 't') {
         *val = 1;
@@ -161,16 +166,16 @@ int json_to_int(const char *str, jsmntok_t *token, int *val) {
 int json_to_double(const char *str, jsmntok_t *token, double *val) {
     /* Check if a non-primitive, true, false, or null */
     if (token->type != JSMN_PRIMITIVE) {
-#ifdef DEBUG
+#if DEBUG >= 1
         fprintf(stderr, "Called json_to_double on a non-primitive token\n");
-#endif /* DEBUG */
+#endif
         return 0;
     } else if (str[token->start] == 'n' ||
             str[token->start] == 't' ||
             str[token->start] == 'f') {
-#ifdef DEBUG
+#if DEBUG >= 1
         fprintf(stderr, "Called json_to_int on 'true'/'false'/'null'\n");
-#endif /* DEBUG */
+#endif
         return 0;
     }
 
@@ -310,9 +315,9 @@ int json_to_string_len(const char *str, jsmntok_t *token, char **val,
     size_t *len) {
     /* Check if a non-string */
     if (token->type != JSMN_STRING) {
-#ifdef DEBUG
+#if DEBUG >= 1
         fprintf(stderr, "Called json_to_string(_len) on a non-string token\n");
-#endif /* DEBUG */
+#endif
         return 0;
     }
 

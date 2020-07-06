@@ -1,3 +1,6 @@
+#if DEBUG > 0
+#include <stdio.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include "smedl_types.h"
@@ -185,7 +188,7 @@ mon->s.{{a.var}}--;
 {% macro event_handler(event) -%}
 {% for scenario in spec.scenarios if scenario.handles_event(event) %}
 /* {{scenario.name}} scenario */
-if (mon->ef.{{scenario.name}}_flag) {
+if (!mon->ef.{{scenario.name}}_flag) {
     switch (mon->{{scenario.name}}_state) {
         {% for state in scenario.all_states if (state, event) in scenario.steps %}
         case STATE_{{spec.name}}_{{scenario.name}}_{{state}}:
@@ -236,6 +239,10 @@ if (mon->ef.{{scenario.name}}_flag) {
 {% for event in spec.imported_events.keys() %}
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+#if DEBUG >= 4
+    fprintf(stderr, "Monitor '{{spec.name}}' handling imported event '{{event}}'\n");
+#endif
+
     {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
 
@@ -251,12 +258,20 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 {% for event in spec.internal_events.keys() %}
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+#if DEBUG >= 4
+    fprintf(stderr, "Monitor '{{spec.name}}' handling internal event '{{event}}'\n");
+#endif
+
     {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
     {% endif %}
 }
 
 void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+#if DEBUG >= 4
+    fprintf(stderr, "Monitor '{{spec.name}}' queuing raised internal event '{{event}}'\n");
+#endif
+
     if (!push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux)) {
         //TODO Out of memory. What now?
     }
@@ -269,6 +284,10 @@ void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
 {% for event in spec.exported_events.keys() %}
 
 void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+#if DEBUG >= 4
+    fprintf(stderr, "Monitor '{{spec.name}}' handling exported event '{{event}}'\n");
+#endif
+
     {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
 
@@ -278,6 +297,10 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 }
 
 void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+#if DEBUG >= 4
+    fprintf(stderr, "Monitor '{{spec.name}}' queuing raised exported event '{{event}}'\n");
+#endif
+
     if (!push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux)) {
         //TODO Out of memory. What now?
     }

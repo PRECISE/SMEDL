@@ -1,3 +1,6 @@
+#if DEBUG > 0
+#include <stdio.h>
+#endif
 #include <stdlib.h>
 #include "smedl_types.h"
 #include "monitor_map.h"
@@ -107,6 +110,9 @@ void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *ini
 {% for event in spec.imported_events.keys() %}
 
 void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+#if DEBUG >= 4
+    fprintf(stderr, "Local wrapper '{{mon.name}}' processing event '{{event}}'\n");
+#endif
     {% if mon.params is nonempty %}
     /* Fetch the monitors to send the event to or do dynamic instantiation if
      * necessary */
@@ -200,6 +206,9 @@ void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, 
         }
 
         if (dynamic_instantiation) {
+#if DEBUG >= 4
+            fprintf(stderr, "Dynamic instantiation for '{{mon.name}}'\n");
+#endif
             SMEDLValue *ids_copy = smedl_copy_array(identities, {{mon.params|length}});
             if (ids_copy == NULL) {
                 //TODO Malloc failed. What do we do here?
