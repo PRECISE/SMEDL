@@ -4,7 +4,7 @@ Python module for C unit tests
 
 build_vars = {
     'CC': 'cc'
-    'CPPFLAGS': []
+    'CPPFLAGS': ['-DUNITY_INCLUDE_CONFIG_H']
     'CFLAGS': ['std=c99']
     'LDFLAGS': []
     'LDLIBS': []
@@ -68,7 +68,7 @@ def parse_unity_results(output):
     for line in lines:
         if line == '':
             break
-        parts = line.split(':')
+        parts = line.split(':', maxsplit=4)
         if len(parts) == 4:
             parts.append(None)
         else:
@@ -85,14 +85,19 @@ def build_and_run_tests(cwd, c_files, CC='cc', CPPFLAGS=[], CFLAGS=[],
             '-o', 'test.out', cwd=cwd, check=True)
 
     # Run unit tests
-    result = subprocess.run('./test.out', cwd=cwd, capture_output=True,
-            universal_newlines=True)
+    # Unity doesn't write to stderr, but redirect to stdout for completeness
+    result = subprocess.run('./test.out', cwd=cwd, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, universal_newlines=True)
+
+    # Print full results for visibility with -v
+    print(result.stdout, end='')
 
     assert result.returncode >= 0, 'Unit tests terminated by signal'
 
     for test in parse_unity_results(result.stdout):
-        msg = 'Test {} ({}:{}) failed: {}'.format(test[2], test[0], test[1],
-                test[4])
+        msg = 'Test {} ({}:{}) failed'.format(test[2], test[0], test[1])
+        if test[4] is not None:
+            msg += ': {}'.format(test[4])
         assert test[3] != 'FAIL', msg
 
 from ctests import unity
@@ -101,7 +106,7 @@ import ctests
 from smedl.codegen import static
 
 @pytest.fixture(scope='module')
-def tmp_common(tmp_path):
+def tmp_dir_common(tmp_path):
     """Prepare a temp dir with all the sources for common static file tests"""
     copy_resources(ctests, tmp_path)
     copy_resources(static, tmp_path)
@@ -109,9 +114,27 @@ def tmp_common(tmp_path):
     yield tmp_path
 
 @pytest.mark.parameterize('c_files', gather_tests(ctests))
-def test_c_units_common(tmp_common, c_files):
+def test_c_units_common(tmp_dir_common, c_files):
     """Test C units for the common static files (smedl_types.c, monitor_map.c,
     etc.)"""
-    build_and_run_tests(tmp_common, c_files, **build_vars)
+    build_and_run_tests(tmp_dir_common, c_files, **build_vars)
 
-#TODO add fixture and test func for file, rabbitmq
+# NOTE: No unit tests for the RabbitMQ adapter. There are no static files
+# except cJSON, an external library (presumably tested by its developer).
+
+import ctests.file
+from smedl.codegen.static import file
+
+@pytest.fixture(scope='module')
+def tmp_dir_file(tmp_path):
+    """Prepare a temp dir with all the sources for file adapter static file
+    tests"""
+    copy_resources(ctests.file, tmp_path)
+    copy_resources(file, tmp_path)
+    copy_resources(unity, tmp_path)
+    yield tmp_path
+
+@pytest.mark.parameterize('c_files', gather_tests(ctests.file))
+def test_c_units_file(tmp_dir_file, c_files):
+    """Test C units for the file adapter static files"""
+    build_and_run_tests(tmp_dir_file, c_files, **build_vars)
