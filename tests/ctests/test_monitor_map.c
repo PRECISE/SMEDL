@@ -1088,7 +1088,7 @@ void test_lookup_only(void) {
 
     SMEDLRecordBase rec_a;
     init_record(&rec_a, 10);
-    monitor_map_insert(&map, &rec);
+    monitor_map_insert(&map, &rec_a);
 
     SMEDLRecordBase *rec;
     rec = monitor_map_lookup(map, smedl_val(10));
@@ -1101,7 +1101,7 @@ void test_lookup_one_nomatch_left(void) {
 
     SMEDLRecordBase rec_a;
     init_record(&rec_a, 10);
-    monitor_map_insert(&map, &rec);
+    monitor_map_insert(&map, &rec_a);
 
     SMEDLRecordBase *rec;
     rec = monitor_map_lookup(map, smedl_val(9));
@@ -1113,7 +1113,7 @@ void test_lookup_one_nomatch_right(void) {
 
     SMEDLRecordBase rec_a;
     init_record(&rec_a, 10);
-    monitor_map_insert(&map, &rec);
+    monitor_map_insert(&map, &rec_a);
 
     SMEDLRecordBase *rec;
     rec = monitor_map_lookup(map, smedl_val(11));
@@ -1258,219 +1258,60 @@ void test_lookup_all_empty(void) {
 void test_lookup_all_one(void) {
     SMEDLRecordBase *map = NULL;
 
-    SMEDLRecordBase rec_a;
-    init_record(&rec_a, 10);
+    SMEDLRecordBase rec;
+    init_record(&rec, 10);
     monitor_map_insert(&map, &rec);
 
-    SMEDLRecordBase *rec;
-    rec = monitor_map_all(map);
-    TEST_ASSERT_EQUAL_PTR_MESSAGE(&rec_a, rec,
+    SMEDLRecordBase *head;
+    head = monitor_map_all(map);
+    TEST_ASSERT_EQUAL_PTR_MESSAGE(&rec, head,
             "Did not receive inserted record from lookup all");
-    TEST_ASSERT_NULL_MESSAGE(rec->next,
+    TEST_ASSERT_NULL_MESSAGE(head->next,
             "Lookup all result not NULL-terminated");
 }
 
-void test_lookup_all_many(void) {
+/* Do a test on lookup_all where there are n records with values specified by
+ * vals, inserted in that order. Assert that each record is in the resulting
+ * map. */
+void do_test_lookup_all(int n, int vals[n]) {
     SMEDLRecordBase *map = NULL;
 
-    SMEDLRecordBase rec_a, rec_b, rec_c, rec_d, rec_e, rec_f, rec_g;
+    SMEDLRecordBase recs[n];
+    for (int i = 0; i < n; i++) {
+        init_record(&recs[i], vals[i]);
+        monitor_map_insert(&map, &recs[i]);
+    }
 
-    init_record(&rec_a, 10);
-    init_record(&rec_b, 5);
-    init_record(&rec_c, 15);
-    init_record(&rec_d, 3);
-    init_record(&rec_e, 7);
-    init_record(&rec_f, 13);
-    init_record(&rec_g, 17);
-    monitor_map_insert(&map, &rec_a);
-    monitor_map_insert(&map, &rec_b);
-    monitor_map_insert(&map, &rec_c);
-    monitor_map_insert(&map, &rec_d);
-    monitor_map_insert(&map, &rec_e);
-    monitor_map_insert(&map, &rec_f);
-    monitor_map_insert(&map, &rec_g);
+    SMEDLRecordBase *head = monitor_map_all(map);
+    for (int i = 0; i < n; i++) {
+        TEST_ASSERT_MESSAGE(check_rec_in_list(head, &recs[i]),
+                "Record missing from lookup all");
+    }
+}
 
-    SMEDLRecordBase *head;
-    head = monitor_map_all(map);
-    TEST_ASSERT(check_rec_in_list(head, &rec_a),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_b),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_c),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_d),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_e),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_f),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_g),
-            "Record missing from lookup all");
+void test_lookup_all_many(void) {
+    int vals[] = {10, 5, 15, 3, 7, 13, 17};
+    do_test_lookup_all(sizeof(vals) / sizeof(vals[0]), vals);
 }
 
 void test_lookup_all_equal_in_root(void) {
-    SMEDLRecordBase *map = NULL;
-
-    SMEDLRecordBase rec_a, rec_b, rec_c, rec_d, rec_e, rec_f, rec_g;
-
-    init_record(&rec_a, 10);
-    init_record(&rec_b, 5);
-    init_record(&rec_c, 15);
-    init_record(&rec_d, 3);
-    init_record(&rec_e, 7);
-    init_record(&rec_f, 10);
-    init_record(&rec_g, 10);
-    monitor_map_insert(&map, &rec_a);
-    monitor_map_insert(&map, &rec_b);
-    monitor_map_insert(&map, &rec_c);
-    monitor_map_insert(&map, &rec_d);
-    monitor_map_insert(&map, &rec_e);
-    monitor_map_insert(&map, &rec_f);
-    monitor_map_insert(&map, &rec_g);
-
-    SMEDLRecordBase *head;
-    head = monitor_map_all(map);
-    TEST_ASSERT(check_rec_in_list(head, &rec_a),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_b),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_c),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_d),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_e),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_f),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_g),
-            "Record missing from lookup all");
+    int vals[] = {10, 5, 15, 3, 7, 10, 10};
+    do_test_lookup_all(sizeof(vals) / sizeof(vals[0]), vals);
 }
 
 void test_lookup_all_equal_in_middle(void) {
-    SMEDLRecordBase *map = NULL;
-
-    SMEDLRecordBase rec_a, rec_b, rec_c, rec_d, rec_e, rec_f, rec_g;
-
-    init_record(&rec_a, 10);
-    init_record(&rec_b, 5);
-    init_record(&rec_c, 15);
-    init_record(&rec_d, 3);
-    init_record(&rec_e, 7);
-    init_record(&rec_f, 5);
-    init_record(&rec_g, 5);
-    monitor_map_insert(&map, &rec_a);
-    monitor_map_insert(&map, &rec_b);
-    monitor_map_insert(&map, &rec_c);
-    monitor_map_insert(&map, &rec_d);
-    monitor_map_insert(&map, &rec_e);
-    monitor_map_insert(&map, &rec_f);
-    monitor_map_insert(&map, &rec_g);
-
-    SMEDLRecordBase *head;
-    head = monitor_map_all(map);
-    TEST_ASSERT(check_rec_in_list(head, &rec_a),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_b),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_c),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_d),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_e),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_f),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_g),
-            "Record missing from lookup all");
+    int vals[] = {10, 5, 15, 3, 7, 5, 5};
+    do_test_lookup_all(sizeof(vals) / sizeof(vals[0]), vals);
 }
 
 void test_lookup_all_equal_in_leaf(void) {
-    SMEDLRecordBase *map = NULL;
-
-    SMEDLRecordBase rec_a, rec_b, rec_c, rec_d, rec_e, rec_f, rec_g;
-
-    init_record(&rec_a, 10);
-    init_record(&rec_b, 5);
-    init_record(&rec_c, 15);
-    init_record(&rec_d, 3);
-    init_record(&rec_e, 7);
-    init_record(&rec_f, 3);
-    init_record(&rec_g, 3);
-    monitor_map_insert(&map, &rec_a);
-    monitor_map_insert(&map, &rec_b);
-    monitor_map_insert(&map, &rec_c);
-    monitor_map_insert(&map, &rec_d);
-    monitor_map_insert(&map, &rec_e);
-    monitor_map_insert(&map, &rec_f);
-    monitor_map_insert(&map, &rec_g);
-
-    SMEDLRecordBase *head;
-    head = monitor_map_all(map);
-    TEST_ASSERT(check_rec_in_list(head, &rec_a),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_b),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_c),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_d),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_e),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_f),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_g),
-            "Record missing from lookup all");
+    int vals[] = {10, 5, 15, 3, 7, 3, 3};
+    do_test_lookup_all(sizeof(vals) / sizeof(vals[0]), vals);
 }
 
 void test_lookup_all_many_equal(void) {
-    SMEDLRecordBase *map = NULL;
-
-    SMEDLRecordBase rec_a, rec_b, rec_c, rec_d, rec_e, rec_f, rec_g, rec_h,
-                    rec_i, rec_j;
-
-    init_record(&rec_a, 10);
-    init_record(&rec_b, 5);
-    init_record(&rec_c, 15);
-    init_record(&rec_d, 3);
-    init_record(&rec_e, 3);
-    init_record(&rec_f, 13);
-    init_record(&rec_g, 13);
-    init_record(&rec_h, 10);
-    init_record(&rec_i, 10);
-    init_record(&rec_j, 10);
-    monitor_map_insert(&map, &rec_a);
-    monitor_map_insert(&map, &rec_b);
-    monitor_map_insert(&map, &rec_c);
-    monitor_map_insert(&map, &rec_d);
-    monitor_map_insert(&map, &rec_e);
-    monitor_map_insert(&map, &rec_f);
-    monitor_map_insert(&map, &rec_g);
-    monitor_map_insert(&map, &rec_h);
-    monitor_map_insert(&map, &rec_i);
-    monitor_map_insert(&map, &rec_j);
-
-    SMEDLRecordBase *head;
-    head = monitor_map_all(map);
-    TEST_ASSERT(check_rec_in_list(head, &rec_a),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_b),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_c),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_d),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_e),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_f),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_g),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_h),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_i),
-            "Record missing from lookup all");
-    TEST_ASSERT(check_rec_in_list(head, &rec_j),
-            "Record missing from lookup all");
+    int vals[] = {10, 5, 15, 3, 3, 3, 13, 13, 17, 10, 10, 10, 5};
+    do_test_lookup_all(sizeof(vals) / sizeof(vals[0]), vals);
 }
 
 /*****************************************************************************/

@@ -3,10 +3,10 @@ Python module for C unit tests
 """
 
 build_vars = {
-    'CC': 'cc'
-    'CPPFLAGS': ['-DUNITY_INCLUDE_CONFIG_H']
-    'CFLAGS': ['std=c99']
-    'LDFLAGS': []
+    'CC': 'cc',
+    'CPPFLAGS': ['-DUNITY_INCLUDE_CONFIG_H'],
+    'CFLAGS': ['-std=c99'],
+    'LDFLAGS': [],
     'LDLIBS': []
 }
 
@@ -15,6 +15,7 @@ import pytest
 import os
 import os.path
 import subprocess
+import tempfile
 
 # importlib.resources is only available in python>=3.7, but is available as a
 # backport.
@@ -77,12 +78,13 @@ def parse_unity_results(output):
     return result
 
 def build_and_run_tests(cwd, c_files, CC='cc', CPPFLAGS=[], CFLAGS=[],
-        LDFLAGS=[], LDLIBS=[]):`
+        LDFLAGS=[], LDLIBS=[]):
     """Build unit tests from the named C files, with the given build options,
     in the given directory. Run the tests and verify the results."""
     # Build unit tests
-    subprocess.run(CC, *CPPFLAGS, *CFLAGS, *LDFLAGS, *c_files, *LDLIBS,
-            '-o', 'test.out', cwd=cwd, check=True)
+    args = [CC, *CPPFLAGS, *CFLAGS, *LDFLAGS, *c_files, *LDLIBS, '-o',
+            'test.out']
+    subprocess.run(args, cwd=cwd, check=True)
 
     # Run unit tests
     # Unity doesn't write to stderr, but redirect to stdout for completeness
@@ -106,14 +108,15 @@ import ctests
 from smedl.codegen import static
 
 @pytest.fixture(scope='module')
-def tmp_dir_common(tmp_path):
+def tmp_dir_common():
     """Prepare a temp dir with all the sources for common static file tests"""
-    copy_resources(ctests, tmp_path)
-    copy_resources(static, tmp_path)
-    copy_resources(unity, tmp_path)
-    yield tmp_path
+    tmp_dir = tempfile.TemporaryDirectory()
+    copy_resources(ctests, tmp_dir.name)
+    copy_resources(static, tmp_dir.name)
+    copy_resources(unity, tmp_dir.name)
+    yield tmp_dir.name
 
-@pytest.mark.parameterize('c_files', gather_tests(ctests))
+@pytest.mark.parametrize('c_files', gather_tests(ctests))
 def test_c_units_common(tmp_dir_common, c_files):
     """Test C units for the common static files (smedl_types.c, monitor_map.c,
     etc.)"""
@@ -126,15 +129,16 @@ import ctests.file
 from smedl.codegen.static import file
 
 @pytest.fixture(scope='module')
-def tmp_dir_file(tmp_path):
+def tmp_dir_file():
     """Prepare a temp dir with all the sources for file adapter static file
     tests"""
-    copy_resources(ctests.file, tmp_path)
-    copy_resources(file, tmp_path)
-    copy_resources(unity, tmp_path)
-    yield tmp_path
+    tmp_dir = tempfile.TemporaryDirectory()
+    copy_resources(ctests.file, tmp_dir.name)
+    copy_resources(file, tmp_dir.name)
+    copy_resources(unity, tmp_dir.name)
+    yield tmp_dir.name
 
-@pytest.mark.parameterize('c_files', gather_tests(ctests.file))
+@pytest.mark.parametrize('c_files', gather_tests(ctests.file))
 def test_c_units_file(tmp_dir_file, c_files):
     """Test C units for the file adapter static files"""
     build_and_run_tests(tmp_dir_file, c_files, **build_vars)
