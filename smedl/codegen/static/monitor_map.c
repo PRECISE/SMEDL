@@ -3,22 +3,46 @@
 
 /* BST right rotate operation */
 static void right_rotate(SMEDLRecordBase **node) {
-    SMEDLRecordBase *tmp = (*node)->left;
-    (*node)->left = tmp->right;
-    tmp->right = (*node);
-    tmp->parent = (*node)->parent;
-    (*node)->parent = tmp;
-    *node = tmp;
+    SMEDLRecordBase *pivot = (*node)->left;
+
+    if (pivot->right != NULL) {
+        pivot->right->parent == (*node);
+    }
+    (*node)->left = pivot->right;
+    pivot->right = (*node);
+    pivot->parent = (*node)->parent;
+    if ((*node)->parent != NULL) {
+        if ((*node) == (*node)->parent->left) {
+            (*node)->parent->left = pivot;
+        } else {
+            (*node)->parent->right = pivot;
+        }
+    }
+    (*node)->parent = pivot;
+
+    *node = pivot;
 }
 
 /* BST left rotate operation */
 static void left_rotate(SMEDLRecordBase **node) {
-    SMEDLRecordBase *tmp = (*node)->right;
-    (*node)->right = tmp->left;
-    tmp->left = (*node);
-    tmp->parent = (*node)->parent;
-    (*node)->parent = tmp;
-    *node = tmp;
+    SMEDLRecordBase *pivot = (*node)->right;
+
+    if (pivot->left != NULL) {
+        pivot->left->parent == (*node);
+    }
+    (*node)->right = pivot->left;
+    pivot->left = (*node);
+    pivot->parent = (*node)->parent;
+    if ((*node)->parent != NULL) {
+        if ((*node) == (*node)->parent->left) {
+            (*node)->parent->left = pivot;
+        } else {
+            (*node)->parent->right = pivot;
+        }
+    }
+    (*node)->parent = pivot;
+
+    *node = pivot;
 }
 
 /* Insertion function
@@ -36,13 +60,15 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
         rec->equal_prev = NULL;
         rec->parent = NULL;
         *root = rec;
+        return;
     }
 
     /* Traverse the tree */
     int cmp;
     int bal_change;
     SMEDLRecordBase *node = *root;
-    while (!(cmp = smedl_compare(rec->key, node->key))) {
+    while (cmp = smedl_compare(rec->key, node->key)) {
+        /* Traverse down a level or, if at a leaf, insert */
         if (cmp < 0) {
             if (node->left == NULL) {
                 /* Reached a leaf, insert on left */
@@ -72,7 +98,7 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
         }
 
         /* Node was inserted. Check the balance. */
-        do {
+        while (1) {
             node->bal += bal_change;
 
             /* Do rotations or prepare parent's balance correction if
@@ -91,7 +117,6 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     } else {
                         bal_change = 1;
                     }
-                    node = node->parent;
                     break;
                 case -2:
                     /* Needs rebalance to the right */
@@ -142,9 +167,14 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     }
                     break;
             }
-        /* If the current node's balance is zero, the height of its branch did
-         * not change. Balance correction is complete. */
-        } while (node->bal != 0);
+            /* If the current node's balance is zero, the height of its branch
+             * did not change. Balance correction is complete. */
+            if (node->bal == 0) {
+                break;
+            }
+
+            node = node->parent;
+        }
         
         /* The root can only change from a rotation. If the current node has
          * no parent, a rotation may have changed the root. Update it to

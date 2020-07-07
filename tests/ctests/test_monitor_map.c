@@ -1318,6 +1318,8 @@ void test_lookup_all_many_equal(void) {
 
 int main(void) {
     UNITY_BEGIN();
+    RUN_TEST(test_empty_control);
+
     RUN_TEST(test_insert_into_empty);
     RUN_TEST(test_insert_bigger);
     RUN_TEST(test_insert_smaller);

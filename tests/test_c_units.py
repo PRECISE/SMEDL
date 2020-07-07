@@ -58,7 +58,10 @@ def gather_tests(module):
         if resources.is_resource(module, fname):
             root, ext = os.path.splitext(fname)
             if root[:5] == 'test_' and ext == '.c':
-                result.append((fname, fname[5:], 'unity.c'))
+                result.append(pytest.param(
+                    (fname, fname[5:], 'unity.c'),
+                    id=fname[5:]
+                ))
     return result
 
 def parse_unity_results(output):
@@ -78,7 +81,7 @@ def parse_unity_results(output):
     return result
 
 def build_and_run_tests(cwd, c_files, CC='cc', CPPFLAGS=[], CFLAGS=[],
-        LDFLAGS=[], LDLIBS=[]):
+        LDFLAGS=[], LDLIBS=[], timeout=30):
     """Build unit tests from the named C files, with the given build options,
     in the given directory. Run the tests and verify the results."""
     # Build unit tests
@@ -88,11 +91,13 @@ def build_and_run_tests(cwd, c_files, CC='cc', CPPFLAGS=[], CFLAGS=[],
 
     # Run unit tests
     # Unity doesn't write to stderr, but redirect to stdout for completeness
-    result = subprocess.run('./test.out', cwd=cwd, stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT, universal_newlines=True)
-
-    # Print full results for visibility with -v
-    print(result.stdout, end='')
+    try:
+        result = subprocess.run('./test.out', cwd=cwd, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, universal_newlines=True,
+                timeout=timeout)
+    finally:
+        # Print full results for when tests fail and visibility with -v
+        print(result.stdout, end='', flush=True)
 
     assert result.returncode >= 0, 'Unit tests terminated by signal'
 
@@ -120,7 +125,7 @@ def tmp_dir_common():
 def test_c_units_common(tmp_dir_common, c_files):
     """Test C units for the common static files (smedl_types.c, monitor_map.c,
     etc.)"""
-    build_and_run_tests(tmp_dir_common, c_files, **build_vars)
+    build_and_run_tests(tmp_dir_common, c_files, timeout=15, **build_vars)
 
 # NOTE: No unit tests for the RabbitMQ adapter. There are no static files
 # except cJSON, an external library (presumably tested by its developer).
@@ -141,4 +146,4 @@ def tmp_dir_file():
 @pytest.mark.parametrize('c_files', gather_tests(ctests.file))
 def test_c_units_file(tmp_dir_file, c_files):
     """Test C units for the file adapter static files"""
-    build_and_run_tests(tmp_dir_file, c_files, **build_vars)
+    build_and_run_tests(tmp_dir_file, c_files, timeout=15, **build_vars)
