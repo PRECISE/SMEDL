@@ -2,47 +2,47 @@
 #include "monitor_map.h"
 
 /* BST right rotate operation */
-static void right_rotate(SMEDLRecordBase **node) {
-    SMEDLRecordBase *pivot = (*node)->left;
+static SMEDLRecordBase * right_rotate(SMEDLRecordBase *node) {
+    SMEDLRecordBase *pivot = node->left;
 
     if (pivot->right != NULL) {
-        pivot->right->parent == (*node);
+        pivot->right->parent = node;
     }
-    (*node)->left = pivot->right;
-    pivot->right = (*node);
-    pivot->parent = (*node)->parent;
-    if ((*node)->parent != NULL) {
-        if ((*node) == (*node)->parent->left) {
-            (*node)->parent->left = pivot;
+    node->left = pivot->right;
+    pivot->right = node;
+    pivot->parent = node->parent;
+    if (node->parent != NULL) {
+        if (node == node->parent->left) {
+            node->parent->left = pivot;
         } else {
-            (*node)->parent->right = pivot;
+            node->parent->right = pivot;
         }
     }
-    (*node)->parent = pivot;
+    node->parent = pivot;
 
-    *node = pivot;
+    return pivot;
 }
 
 /* BST left rotate operation */
-static void left_rotate(SMEDLRecordBase **node) {
-    SMEDLRecordBase *pivot = (*node)->right;
+static SMEDLRecordBase * left_rotate(SMEDLRecordBase *node) {
+    SMEDLRecordBase *pivot = node->right;
 
     if (pivot->left != NULL) {
-        pivot->left->parent == (*node);
+        pivot->left->parent = node;
     }
-    (*node)->right = pivot->left;
-    pivot->left = (*node);
-    pivot->parent = (*node)->parent;
-    if ((*node)->parent != NULL) {
-        if ((*node) == (*node)->parent->left) {
-            (*node)->parent->left = pivot;
+    node->right = pivot->left;
+    pivot->left = node;
+    pivot->parent = node->parent;
+    if (node->parent != NULL) {
+        if (node == node->parent->left) {
+            node->parent->left = pivot;
         } else {
-            (*node)->parent->right = pivot;
+            node->parent->right = pivot;
         }
     }
-    (*node)->parent = pivot;
+    node->parent = pivot;
 
-    *node = pivot;
+    return pivot;
 }
 
 /* Insertion function
@@ -123,12 +123,12 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     if (node->left->bal < 0) {
                         /* Left-left case */
                         node->bal = 0;
-                        right_rotate(&node);
+                        node = right_rotate(node);
                         node->bal = 0;
                     } else {
                         /* Left-right case */
-                        left_rotate(&node->left);
-                        right_rotate(&node);
+                        left_rotate(node->left);
+                        node = right_rotate(node);
                         if (node->bal < 0) {
                             node->left->bal = 0;
                             node->right->bal = 1;
@@ -147,12 +147,12 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     if (node->right->bal > 0) {
                         /* Right-right case */
                         node->bal = 0;
-                        left_rotate(&node);
+                        node = left_rotate(node);
                         node->bal = 0;
                     } else {
                         /* Right-left case */
-                        right_rotate(&node->right);
-                        left_rotate(&node);
+                        right_rotate(node->right);
+                        node = left_rotate(node);
                         if (node->bal < 0) {
                             node->left->bal = 0;
                             node->right->bal = 1;
@@ -384,17 +384,17 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 if (node->left->bal == 0) {
                     /* Left-left case */
                     node->bal = -1;
-                    right_rotate(&node);
+                    node = right_rotate(node);
                     node->bal = 1;
                 } else if (node->left->bal < 0) {
                     /* Left-left case */
                     node->bal = 0;
-                    right_rotate(&node);
+                    node = right_rotate(node);
                     node->bal = 0;
                 } else {
                     /* Left-right case */
-                    left_rotate(&node->left);
-                    right_rotate(&node);
+                    left_rotate(node->left);
+                    node = right_rotate(node);
                     if (node->bal < 0) {
                         node->left->bal = 0;
                         node->right->bal = 1;
@@ -413,17 +413,17 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 if (node->right->bal == 0) {
                     /* Right-right case */
                     node->bal = 1;
-                    left_rotate(&node);
+                    node = left_rotate(node);
                     node->bal = -1;
                 } else if (node->right->bal > 0) {
                     /* Right-right case */
                     node->bal = 0;
-                    left_rotate(&node);
+                    node = left_rotate(node);
                     node->bal = 0;
                 } else {
                     /* Right-left case */
-                    right_rotate(&node->right);
-                    left_rotate(&node);
+                    right_rotate(node->right);
+                    node = left_rotate(node);
                     if (node->bal < 0) {
                         node->left->bal = 0;
                         node->right->bal = 1;

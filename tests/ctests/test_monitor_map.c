@@ -60,7 +60,7 @@ int check_equal_list(SMEDLRecordBase *rec) {
 
         TEST_ASSERT_EQUAL_MESSAGE(0, smedl_compare(rec->key, v),
                 "Key in equal list does not match");
-        TEST_ASSERT_EQUAL_PTR_MESSAGE(rec, rec->equal_prev,
+        TEST_ASSERT_EQUAL_PTR_MESSAGE(prev, rec->equal_prev,
                 ".equal_prev does not point to prev record");
         TEST_ASSERT_NULL_MESSAGE(rec->parent,
                 "Equal record has non-NULL .parent");
