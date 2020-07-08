@@ -40,11 +40,11 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec);
 
 /* Deletion function
  *
+ * root - Pointer to root of the map to remove from
  * rec - Record to remove from its map
  *
- * Returns the root of the updated tree. NOTE: Does not free any memory used
- * by the record. */
-SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec);
+ * NOTE: Does not free any memory used by the record. */
+void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec);
 
 /* Lookup function
  *

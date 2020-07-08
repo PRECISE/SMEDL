@@ -250,7 +250,7 @@ void remove_{{mon.name}}_monitor(SMEDLValue *identities) {
     candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_{{i}}, identities[{{i}}]);
     for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
         if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
-            monitor_map_remove(rec);
+            monitor_map_remove((SMEDLRecordBase **) &monitor_map_{{i}}, rec);
             {% if loop.last %}
             /* Free the monitor itself before freeing the last record */
             {{spec.name}}Monitor *mon = (({{mon.name}}Record *) rec)->mon;

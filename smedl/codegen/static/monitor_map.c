@@ -200,13 +200,18 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
 
 /* Swap the two records' location in the tree */
 static void swap_records(SMEDLRecordBase *a, SMEDLRecordBase *b) {
-    SMEDLRecordBase tmp = *a;
+    SMEDLRecordBase *a_parent = a->parent;
+    SMEDLRecordBase *a_left = a->left;
+    SMEDLRecordBase *a_right = a->right;
+    int_fast8_t a_bal = a->bal;
 
     /* Put b in a's spot */
-    if (a->parent != NULL && a->parent->left == a) {
-        a->parent->left = b;
-    } else if (a->parent != NULL) {
-        a->parent->right = b;
+    if (a->parent != NULL) {
+        if (a->parent->left == a) {
+            a->parent->left = b;
+        } else {
+            a->parent->right = b;
+        }
     }
     if (a->left != NULL) {
         a->left->parent = b;
@@ -222,10 +227,12 @@ static void swap_records(SMEDLRecordBase *a, SMEDLRecordBase *b) {
     a->bal = b->bal;
 
     /* Put a in b's spot */
-    if (b->parent != NULL && b->parent->left == b) {
-        b->parent->left = a;
-    } else if (b->parent != NULL) {
-        b->parent->right = a;
+    if (b->parent != NULL) {
+        if (b->parent->left == b) {
+            b->parent->left = a;
+        } else {
+            b->parent->right = a;
+        }
     }
     if (b->left != NULL) {
         b->left->parent = a;
@@ -235,35 +242,27 @@ static void swap_records(SMEDLRecordBase *a, SMEDLRecordBase *b) {
     }
 
     /* Put a's fields in b */
-    b->parent = tmp.parent;
-    b->left = tmp.left;
-    b->right = tmp.right;
-    b->bal = tmp.bal;
+    b->parent = a_parent;
+    b->left = a_left;
+    b->right = a_right;
+    b->bal = a_bal;
 }
 
 /* Deletion function. 
  *
+ * root - Pointer to root of the map to remove from
  * rec - Record to remove from its map
  *
- * Returns the root of the updated tree. NOTE: Does not free any memory used
- * by the record. */
-SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
+ * NOTE: Does not free any memory used by the record. */
+void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
     if (rec->equal_prev != NULL) {
         /* Not the only record with this key. Remove it without touching the
          * tree. */
         rec->equal_prev->equal = rec->equal;
         if (rec->equal != NULL) {
-            rec->equal->equal_prev =rec->equal_prev;
+            rec->equal->equal_prev = rec->equal_prev;
         }
-
-        /* Return the root of the tree unchanged */
-        while (rec->equal_prev != NULL) {
-            rec = rec->equal_prev;
-        }
-        while (rec->parent != NULL) {
-            rec = rec->parent;
-        }
-        return rec;
+        return;
     } else if (rec->equal != NULL) {
         /* Not the only record with this key, but is the head of this key's
          * linked list. Make the next element the new head while removing this
@@ -273,24 +272,22 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
         rec->equal->right = rec->right;
         rec->equal->bal = rec->bal;
         rec->equal->equal_prev = NULL;
-        if (rec->parent != NULL && rec->parent->left == rec) {
-            rec->parent->left = rec->equal;
-        } else if (rec->parent != NULL) {
-            rec->parent->right = rec->equal;
-        }
         if (rec->left != NULL) {
             rec->left->parent = rec->equal;
         }
         if (rec->right != NULL) {
             rec->right->parent = rec->equal;
         }
-
-        /* Return the root of the tree unchanged */
-        rec = rec->equal;
-        while (rec->parent != NULL) {
-            rec = rec->parent;
+        if (rec->parent != NULL) {
+            if (rec->parent->left == rec) {
+                rec->parent->left = rec->equal;
+            } else {
+                rec->parent->right = rec->equal;
+            }
+        } else {
+            *root = rec->equal;
         }
-        return rec;
+        return;
     }
 
     /* Only record left with this key. It must be removed from the tree. Do
@@ -305,8 +302,9 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 /* Record has no children. Remove it now. */
                 node = rec->parent;
                 if (node == NULL) {
-                    /* Last record in the tree. Return empty tree. */
-                    return NULL;
+                    /* Last record in the tree. Set the root to NULL. */
+                    *root = NULL;
+                    return;
                 } else if (node->left = rec) {
                     node->left = NULL;
                     bal_change = 1;
@@ -320,7 +318,8 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 if (node == NULL) {
                     /* Record is root. Make child new root. */
                     rec->right->parent = NULL;
-                    return rec->right;
+                    *root = rec->right;
+                    return;
                 } else if (node->left = rec) {
                     node->left = rec->right;
                     rec->right->parent = node;
@@ -338,7 +337,8 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 if (node == NULL) {
                     /* Record is root. Make child new root. */
                     rec->left->parent = NULL;
-                    return rec->left;
+                    *root = rec->left;
+                    return;
                 } else if (node->left = rec) {
                     node->left = rec->left;
                     rec->left->parent = node;
@@ -355,12 +355,22 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 for (successor = rec->right; successor->left != NULL;
                         successor = successor->left);
                 swap_records(rec, successor);
+                /* Check if successor became root */
+                if (successor->parent == NULL) {
+                    *root = successor;
+                }
             }
         }
     }
 
     /* Rebalance */
-    do {
+    //TODO Start here: Can node be the root at the end of the loop, when
+    //  node = node->parent? Because that would be bad. Make sure no (and
+    //  probably return early)
+    //TODO Rotations might cause a new root. Make sure *root is updated if so.
+    //TODO Also does bal_change need to be updated if tree is not balanced after
+    //  a rotation?
+    while(1) {
         node->bal += bal_change;
 
         /* Do rotations or prepare parent's balance correction if
@@ -371,13 +381,12 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                  * and update bal_change. */
                 if (node->parent == NULL) {
                     /* At the root. Nothing else to do. */
-                    return node;
+                    return;
                 } else if (node == node->parent->left) {
                     bal_change = 1;
                 } else {
                     bal_change = -1;
                 }
-                node = node->parent;
                 break;
             case -2:
                 /* Needs rebalance to the right */
@@ -386,11 +395,13 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                     node->bal = -1;
                     node = right_rotate(node);
                     node->bal = 1;
+                    //TODO if prev node was root, new node is root
                 } else if (node->left->bal < 0) {
                     /* Left-left case */
                     node->bal = 0;
                     node = right_rotate(node);
                     node->bal = 0;
+                    //TODO if prev node was root, new node is root
                 } else {
                     /* Left-right case */
                     left_rotate(node->left);
@@ -406,6 +417,7 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                         node->right->bal = 0;
                     }
                     node->bal = 0;
+                    //TODO if prev node was root, new node is root
                 }
                 break;
             case 2:
@@ -438,16 +450,15 @@ SMEDLRecordBase * monitor_map_remove(SMEDLRecordBase *rec) {
                 }
                 break;
         }
-    /* If the current node's balance factor is -1 or 1, the height of its branch
-     * did not change (balance factor must have been zero before). Balance
-     * correction is complete. */
-    } while (node->bal != -1 && node->bal != 1);
+        /* If the current node's balance factor is -1 or 1, the height of its
+         * branch did not change (balance factor must have been zero before).
+         * Balance correction is complete. */
+        if (node->bal == -1 || node->bal == 1) {
+            break;
+        }
 
-    /* Return the new root */
-    while (node->parent != NULL) {
         node = node->parent;
     }
-    return node;
 }
 
 /* Lookup function
