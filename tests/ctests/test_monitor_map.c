@@ -73,15 +73,9 @@ int check_equal_list(SMEDLRecordBase *rec) {
     return count;
 }
 
-/* Do the following tests to determine if the AVL tree is valid:
- * - Equal list is correct according to is_equal_list_valid()
- * - Order is correct: left < self < right, for all nodes (i.e. is a BST)
- * - bal is -1, 0, or 1 and properly reflects the balance of the tree,
- *   for all nodes (i.e. is an AVL tree)
- * - Each child's .parent is correct
- * Returns the number of records in the tree. If height is not NULL, the
- * value it points to will be set to the height of the tree. */
-int check_avl_tree(SMEDLRecordBase *root, int *height) {
+/* Recursive helper for check_avl_tree: Does all the same checks except does
+ * not check if the parent is NULL. */
+int check_avl_branch(SMEDLRecordBase *root, int *height) {
     if (root == NULL) {
         if (height != NULL) {
             *height = 0;
@@ -94,8 +88,8 @@ int check_avl_tree(SMEDLRecordBase *root, int *height) {
 
     /* Check left and right children */
     int left_height, right_height;
-    count += check_avl_tree(root->left, &left_height);
-    count += check_avl_tree(root->right, &right_height);
+    count += check_avl_branch(root->left, &left_height);
+    count += check_avl_branch(root->right, &right_height);
     
     /* Check balance */
     TEST_ASSERT_INT_WITHIN_MESSAGE(1, 0, right_height - left_height,
@@ -122,6 +116,27 @@ int check_avl_tree(SMEDLRecordBase *root, int *height) {
     }
 
     return count;
+}
+
+/* Do the following tests to determine if the AVL tree is valid:
+ * - Parent of the root is NULL
+ * - Equal list is correct according to is_equal_list_valid()
+ * - Order is correct: left < self < right, for all nodes (i.e. is a BST)
+ * - bal is -1, 0, or 1 and properly reflects the balance of the tree,
+ *   for all nodes (i.e. is an AVL tree)
+ * - Each child's .parent is correct
+ * Returns the number of records in the tree. If height is not NULL, the
+ * value it points to will be set to the height of the tree. */
+int check_avl_tree(SMEDLRecordBase *root, int *height) {
+    if (root == NULL) {
+        if (height != NULL) {
+            *height = 0;
+        }
+        return 0;
+    }
+
+    TEST_ASSERT_NULL_MESSAGE(root->parent, "Parent of root is not NULL");
+    return check_avl_branch(root, height);
 }
 
 /* Return 1 if the record is not in the tree, 0 otherwise */
