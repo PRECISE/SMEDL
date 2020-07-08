@@ -198,54 +198,57 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
     node->equal = rec;
 }
 
-/* Swap the two records' location in the tree */
-static void swap_records(SMEDLRecordBase *a, SMEDLRecordBase *b) {
-    SMEDLRecordBase *a_parent = a->parent;
+/* Swap the two records' location in the tree.
+ *
+ * a - Ancestor
+ * d - Descendent */
+static void swap_records(SMEDLRecordBase *a, SMEDLRecordBase *d) {
     SMEDLRecordBase *a_left = a->left;
     SMEDLRecordBase *a_right = a->right;
-    int_fast8_t a_bal = a->bal;
+    SMEDLRecordBase *d_parent = d->parent;
 
-    /* Put b in a's spot */
+    /* Point a's old neighbors at d */
     if (a->parent != NULL) {
         if (a->parent->left == a) {
-            a->parent->left = b;
+            a->parent->left = d;
         } else {
-            a->parent->right = b;
+            a->parent->right = d;
         }
     }
-    if (a->left != NULL) {
-        a->left->parent = b;
+    if (a_left != NULL) {
+        a_left->parent = d;
     }
-    if (a->right != NULL) {
-        a->right->parent = b;
+    if (a_right != NULL) {
+        a_right->parent = d;
     }
 
-    /* Put b's field's in a */
-    a->parent = b->parent;
-    a->left = b->left;
-    a->right = b->right;
-    a->bal = b->bal;
-
-    /* Put a in b's spot */
-    if (b->parent != NULL) {
-        if (b->parent->left == b) {
-            b->parent->left = a;
+    /* Point d's old neighbors at a */
+    if (d_parent != NULL) {
+        if (d_parent->left == d) {
+            d_parent->left = a;
         } else {
-            b->parent->right = a;
+            d_parent->right = a;
         }
     }
-    if (b->left != NULL) {
-        b->left->parent = a;
+    if (d->left != NULL) {
+        d->left->parent = a;
     }
-    if (b->right != NULL) {
-        b->right->parent = a;
+    if (d->right != NULL) {
+        d->right->parent = a;
     }
 
-    /* Put a's fields in b */
-    b->parent = a_parent;
-    b->left = a_left;
-    b->right = a_right;
-    b->bal = a_bal;
+    /* Point a and d at each other's neighbors */
+    a->left = d->left;
+    a->right = d->right;
+    d->parent = a->parent;
+    a->parent = (d_parent == a) ? d : d_parent;
+    d->left = (a_left == d) ? a : a_left;
+    d->right = (a_right == d) ? a : a_right;
+
+    /* Swap balances */
+    int_fast8_t a_bal = a->bal;
+    a->bal = d->bal;
+    d->bal = a_bal;
 }
 
 /* Deletion function. 
@@ -305,7 +308,7 @@ void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     /* Last record in the tree. Set the root to NULL. */
                     *root = NULL;
                     return;
-                } else if (node->left = rec) {
+                } else if (node->left == rec) {
                     node->left = NULL;
                     bal_change = 1;
                 } else {
@@ -320,7 +323,7 @@ void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     rec->right->parent = NULL;
                     *root = rec->right;
                     return;
-                } else if (node->left = rec) {
+                } else if (node->left == rec) {
                     node->left = rec->right;
                     rec->right->parent = node;
                     bal_change = 1;
@@ -339,7 +342,7 @@ void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     rec->left->parent = NULL;
                     *root = rec->left;
                     return;
-                } else if (node->left = rec) {
+                } else if (node->left == rec) {
                     node->left = rec->left;
                     rec->left->parent = node;
                     bal_change = 1;
