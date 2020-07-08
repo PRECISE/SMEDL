@@ -460,7 +460,7 @@ void test_delete_only(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(1, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec);
+    monitor_map_remove(&map, &rec);
     TEST_ASSERT_EQUAL_INT_MESSAGE(0, check_avl_tree(map, NULL),
             "Tree is not empty after delete");
 }
@@ -487,7 +487,7 @@ void test_delete_leaf_l(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_d);
+    monitor_map_remove(&map, &rec_d);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -514,7 +514,7 @@ void test_delete_leaf_r(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_e);
+    monitor_map_remove(&map, &rec_e);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -539,7 +539,7 @@ void test_delete_middle_one_child_l(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_c);
+    monitor_map_remove(&map, &rec_c);
     TEST_ASSERT_EQUAL_INT_MESSAGE(5, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -564,7 +564,7 @@ void test_delete_middle_one_child_r(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_c);
+    monitor_map_remove(&map, &rec_c);
     TEST_ASSERT_EQUAL_INT_MESSAGE(5, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -591,7 +591,7 @@ void test_delete_middle(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_c);
+    monitor_map_remove(&map, &rec_c);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -618,7 +618,7 @@ void test_delete_root(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_a);
+    monitor_map_remove(&map, &rec_a);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -645,7 +645,7 @@ void test_delete_leaf_ll(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_e);
+    monitor_map_remove(&map, &rec_e);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -672,7 +672,7 @@ void test_delete_leaf_lr(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_e);
+    monitor_map_remove(&map, &rec_e);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -699,7 +699,7 @@ void test_delete_leaf_rl(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_d);
+    monitor_map_remove(&map, &rec_d);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -726,7 +726,7 @@ void test_delete_leaf_rr(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_d);
+    monitor_map_remove(&map, &rec_d);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -751,7 +751,7 @@ void test_delete_root_successor_not_leaf(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_a);
+    monitor_map_remove(&map, &rec_a);
     TEST_ASSERT_EQUAL_INT_MESSAGE(5, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -776,7 +776,7 @@ void test_delete_root_predecessor_not_leaf(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_a);
+    monitor_map_remove(&map, &rec_a);
     TEST_ASSERT_EQUAL_INT_MESSAGE(5, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -803,7 +803,7 @@ void test_delete_root_left_heavy_l(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_a);
+    monitor_map_remove(&map, &rec_a);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -830,7 +830,7 @@ void test_delete_root_left_heavy_r(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_a);
+    monitor_map_remove(&map, &rec_a);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -857,7 +857,7 @@ void test_delete_root_right_heavy_l(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_a);
+    monitor_map_remove(&map, &rec_a);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -884,7 +884,7 @@ void test_delete_root_right_heavy_r(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_a);
+    monitor_map_remove(&map, &rec_a);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
 }
@@ -905,7 +905,7 @@ void test_delete_ascending(void) {
         char msg[100];
         snprintf(msg, 100, "Tree does not have correct size after delete %d",
                 i + 1);
-        monitor_map_remove(&rec[i]);
+        monitor_map_remove(&map, &rec[i]);
         TEST_ASSERT_EQUAL_INT_MESSAGE(19 - i, check_avl_tree(map, NULL), msg);
     }
 }
@@ -926,7 +926,7 @@ void test_delete_descending(void) {
         char msg[100];
         snprintf(msg, 100, "Tree does not have correct size after delete %d",
                 i + 1);
-        monitor_map_remove(&rec[19 - i]);
+        monitor_map_remove(&map, &rec[19 - i]);
         TEST_ASSERT_EQUAL_INT_MESSAGE(19 - i, check_avl_tree(map, NULL), msg);
     }
 }
@@ -953,7 +953,7 @@ void test_delete_first_equal_root(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_a);
+    monitor_map_remove(&map, &rec_a);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
     TEST_ASSERT_MESSAGE(check_rec_removed(map, &rec_a),
@@ -982,7 +982,7 @@ void test_delete_first_equal_middle(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_b);
+    monitor_map_remove(&map, &rec_b);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
     TEST_ASSERT_MESSAGE(check_rec_removed(map, &rec_b),
@@ -1011,7 +1011,7 @@ void test_delete_first_equal_leaf(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_c);
+    monitor_map_remove(&map, &rec_c);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
     TEST_ASSERT_MESSAGE(check_rec_removed(map, &rec_c),
@@ -1040,7 +1040,7 @@ void test_delete_middle_equal(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_f);
+    monitor_map_remove(&map, &rec_f);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
     TEST_ASSERT_MESSAGE(check_rec_removed(map, &rec_f),
@@ -1069,7 +1069,7 @@ void test_delete_last_equal(void) {
 
     TEST_ASSERT_EQUAL_INT_MESSAGE(7, check_avl_tree(map, NULL),
             "Tree does not have correct size before delete");
-    monitor_map_remove(&rec_g);
+    monitor_map_remove(&map, &rec_g);
     TEST_ASSERT_EQUAL_INT_MESSAGE(6, check_avl_tree(map, NULL),
             "Tree does not have correct size after delete");
     TEST_ASSERT_MESSAGE(check_rec_removed(map, &rec_g),

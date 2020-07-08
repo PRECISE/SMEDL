@@ -364,30 +364,11 @@ void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
     }
 
     /* Rebalance */
-    //TODO Start here: Can node be the root at the end of the loop, when
-    //  node = node->parent? Because that would be bad. Make sure no (and
-    //  probably return early)
-    //TODO Rotations might cause a new root. Make sure *root is updated if so.
-    //TODO Also does bal_change need to be updated if tree is not balanced after
-    //  a rotation?
     while(1) {
         node->bal += bal_change;
 
-        /* Do rotations or prepare parent's balance correction if
-         * necessary */
+        /* Do rotations if necessary */
         switch (node->bal) {
-            case 0:
-                /* Height of this branch shrunk. Figure out which child we are
-                 * and update bal_change. */
-                if (node->parent == NULL) {
-                    /* At the root. Nothing else to do. */
-                    return;
-                } else if (node == node->parent->left) {
-                    bal_change = 1;
-                } else {
-                    bal_change = -1;
-                }
-                break;
             case -2:
                 /* Needs rebalance to the right */
                 if (node->left->bal == 0) {
@@ -395,13 +376,11 @@ void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                     node->bal = -1;
                     node = right_rotate(node);
                     node->bal = 1;
-                    //TODO if prev node was root, new node is root
                 } else if (node->left->bal < 0) {
                     /* Left-left case */
                     node->bal = 0;
                     node = right_rotate(node);
                     node->bal = 0;
-                    //TODO if prev node was root, new node is root
                 } else {
                     /* Left-right case */
                     left_rotate(node->left);
@@ -417,7 +396,6 @@ void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                         node->right->bal = 0;
                     }
                     node->bal = 0;
-                    //TODO if prev node was root, new node is root
                 }
                 break;
             case 2:
@@ -450,14 +428,28 @@ void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                 }
                 break;
         }
+
         /* If the current node's balance factor is -1 or 1, the height of its
-         * branch did not change (balance factor must have been zero before).
+         * branch did not change (balance factor must have been zero before,
+         * or a rotation resulted in no height change).
          * Balance correction is complete. */
         if (node->bal == -1 || node->bal == 1) {
             break;
         }
 
-        node = node->parent;
+        /* If no parent: Update root in case it changed in a rebalance, return.
+         * If parent: Prepare its balance correction. */
+        if (node->parent == NULL) {
+            *root = node;
+            return;
+        } else {
+            if (node == node->parent->left) {
+                bal_change = 1;
+            } else {
+                bal_change = -1;
+            }
+            node = node->parent;
+        }
     }
 }
 
