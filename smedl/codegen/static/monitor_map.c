@@ -432,6 +432,13 @@ void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
                 break;
         }
 
+        /* If no parent: Update root in case it changed in a rebalance, then
+         * done. */
+        if (node->parent == NULL) {
+            *root = node;
+            return;
+        }
+
         /* If the current node's balance factor is -1 or 1, the height of its
          * branch did not change (balance factor must have been zero before,
          * or a rotation resulted in no height change).
@@ -440,19 +447,13 @@ void monitor_map_remove(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
             break;
         }
 
-        /* If no parent: Update root in case it changed in a rebalance, return.
-         * If parent: Prepare its balance correction. */
-        if (node->parent == NULL) {
-            *root = node;
-            return;
+        /* Prepare the balance correction for the next node up */
+        if (node == node->parent->left) {
+            bal_change = 1;
         } else {
-            if (node == node->parent->left) {
-                bal_change = 1;
-            } else {
-                bal_change = -1;
-            }
-            node = node->parent;
+            bal_change = -1;
         }
+        node = node->parent;
     }
 }
 
