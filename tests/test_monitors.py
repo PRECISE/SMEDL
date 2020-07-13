@@ -55,8 +55,6 @@ def test_monitor(generated_file_monitor, test_case):
             'Output messages did not match expected'
     #assert stderr == ''
 
-#TODO C unit tests here? In a test_c_units.py might be better
-
 @pytest.mark.parametrize('generated_file_monitor', test_monitors,
         indirect=True)
 def test_file_names(generated_file_monitor):
