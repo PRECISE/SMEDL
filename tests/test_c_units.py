@@ -76,7 +76,7 @@ def parse_unity_results(output):
         if len(parts) == 4:
             parts.append(None)
         else:
-            parts[5] = parts[5][1:]
+            parts[4] = parts[4][1:]
         result.append(tuple(parts))
     return result
 
