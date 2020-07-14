@@ -237,11 +237,12 @@ SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len) {
             }
             strcpy(copy[i].v.s, array[i].v.s);
         } else if (copy[i].t == SMEDL_OPAQUE) {
-            copy[i].v.o.data = malloc(copy[i].v.o.size);
+            copy[i].v.o.data = malloc(array[i].v.o.size);
             if (copy[i].v.o.data == NULL) {
                 smedl_free_array(copy, i);
                 return NULL;
             }
+            memcpy(copy[i].v.o.data, array[i].v.o.data, array[i].v.o.size);
         }
     }
     return copy;

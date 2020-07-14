@@ -106,8 +106,9 @@ void test_assign_opaque_empty(void) {
             "dst not a separate copy from src");
     TEST_ASSERT_EQUAL_MESSAGE(src.size, dst.size,
             "dst not same size as src");
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(src.data, dst.data, src.size,
-            "dst and src do not match");
+    /* Unity fails TEST_ASSERT_EQUAL_MEMORY when length is zero */
+    /*TEST_ASSERT_EQUAL_MEMORY_MESSAGE(src.data, dst.data, src.size,
+            "dst and src do not match");*/
     free(dst.data);
 }
 
@@ -151,32 +152,33 @@ void test_replace_string_nonempty(void) {
 
 void test_replace_opaque_empty(void) {
     SMEDLOpaque src = make_opaque("");
-    SMEDLOpaque *dst;
-    dst->data = malloc(1);
-    TEST_ASSERT_TRUE_MESSAGE(smedl_replace_opaque(dst, src),
+    SMEDLOpaque dst;
+    dst.data = malloc(1);
+    TEST_ASSERT_TRUE_MESSAGE(smedl_replace_opaque(&dst, src),
             "smedl_replace_opaque() failed");
-    TEST_ASSERT_NOT_EQUAL_MESSAGE(src.data, dst->data,
+    TEST_ASSERT_NOT_EQUAL_MESSAGE(src.data, dst.data,
             "dst not a separate copy from src");
-    TEST_ASSERT_EQUAL_MESSAGE(src.size, dst->size,
+    TEST_ASSERT_EQUAL_MESSAGE(src.size, dst.size,
             "dst not same size as orig");
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(src.data, dst->data, dst->size,
-            "dst and orig do not match");
-    free(dst);
+    /* Unity fails TEST_ASSERT_EQUAL_MEMORY when length is zero */
+    /* TEST_ASSERT_EQUAL_MEMORY_MESSAGE(src.data, dst.data, src.size,
+            "dst and orig do not match"); */
+    free(dst.data);
 }
 
 void test_replace_opaque_nonempty(void) {
     SMEDLOpaque src = make_opaque("abc");
-    SMEDLOpaque *dst;
-    dst->data = malloc(1);
-    TEST_ASSERT_TRUE_MESSAGE(smedl_replace_opaque(dst, src),
+    SMEDLOpaque dst;
+    dst.data = malloc(1);
+    TEST_ASSERT_TRUE_MESSAGE(smedl_replace_opaque(&dst, src),
             "smedl_replace_opaque() failed");
-    TEST_ASSERT_NOT_EQUAL_MESSAGE(src.data, dst->data,
+    TEST_ASSERT_NOT_EQUAL_MESSAGE(src.data, dst.data,
             "dst not a separate copy from src");
-    TEST_ASSERT_EQUAL_MESSAGE(src.size, dst->size,
+    TEST_ASSERT_EQUAL_MESSAGE(src.size, dst.size,
             "dst not same size as orig");
-    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(src.data, dst->data, dst->size,
+    TEST_ASSERT_EQUAL_MEMORY_MESSAGE(src.data, dst.data, src.size,
             "dst and orig do not match");
-    free(dst);
+    free(dst.data);
 }
 
 void test_smedl_compare_int_less(void) {
