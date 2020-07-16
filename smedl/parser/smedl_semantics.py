@@ -4,13 +4,14 @@ SMEDL file semantic actions
 
 from smedl.structures import monitor, expr
 from . import common_semantics
-from .exceptions import TypeMismatch, NameNotDefined, NameCollision
+from .exceptions import TypeMismatch, NameNotDefined
+
 
 class SmedlSemantics(common_semantics.CommonSemantics):
     """Semantic actions for SMEDL parsing"""
     def __init__(self, path):
         """Do some basic initialization
-        
+
         path - The directory the .smedl file resides in"""
         self.path = path
         # self.monitor is created in declaration()
@@ -31,10 +32,9 @@ class SmedlSemantics(common_semantics.CommonSemantics):
 
     def _initial_value_matches(self, var_type, value_type):
         if var_type is expr.SmedlType.INT:
-            return value_type in ['int', 'char'] # Float is normally permitted
-                                                 # for assignment, but if used
-                                                 # for initialization, something
-                                                 # is likely wrong.
+            # Float is normally permitted for assignment to int, but if used
+            # for initialization, something is likely wrong.
+            return value_type in ['int', 'char']
         elif var_type is expr.SmedlType.FLOAT:
             return value_type in ['float', 'int', 'char']
         elif var_type is expr.SmedlType.CHAR:
@@ -46,7 +46,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         elif var_type is expr.SmedlType.THREAD:
             return False
         elif var_type is expr.SmedlType.OPAQUE:
-            #TODO Should we allow opaques to be initialized like strings?
+            # TODO Should we allow opaques to be initialized like strings?
             return False
 
     def state_declaration(self, ast):
@@ -59,9 +59,9 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         if (value is not None and
                 not self._initial_value_matches(var_type, value.type)):
             raise TypeMismatch(
-                    "State var {} initialized to incompatible value {}.".format(
-                        var_name, value.value))
-        
+                "State var {} initialized to incompatible value {}.".format(
+                    var_name, value.value))
+
         # Add to the monitor (and check if already declared)
         if value is None:
             self.monitor.add_state_var(var_name, var_type)
@@ -86,7 +86,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         """Add a scenario to the monitor"""
         # Create an empty scenario
         scenario = monitor.Scenario(ast.name)
-        
+
         # Populate the states and transitions of the scenario
         for transition in ast.transitions:
             # Get else state and actions
@@ -105,18 +105,21 @@ class SmedlSemantics(common_semantics.CommonSemantics):
                 event_name = step.event.name
                 condition = step.condition
                 actions = step.actions
-                scenario.add_step(from_state, event_name, condition, to_state,
-                        actions, else_state, else_actions)
+                scenario.add_step(
+                    from_state, event_name, condition, to_state, actions,
+                    else_state, else_actions)
                 from_state = to_state
-            # Do the last iteration separately - to_state = transition.end_state
+            # Do the last iteration separately -
+            #   to_state = transition.end_state
             step = transition.steps.step_list[-1]
             to_state = transition.steps.end_state
             event_name = step.event.name
             condition = step.condition
             actions = step.actions
-            scenario.add_step(from_state, event_name, condition, to_state,
-                    actions, else_state, else_actions)
-        
+            scenario.add_step(
+                from_state, event_name, condition, to_state, actions,
+                else_state, else_actions)
+
         # Add the scenario to the monitor
         self.monitor.add_scenario(scenario)
         return ast
@@ -162,24 +165,24 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         """Store the parameter name bindings for the current event so they are
         available to actions and conditions in this step."""
         self.current_event = ast.name
-        self.current_event_params = ast.params # Will be a list of names as strs
+        self.current_event_params = ast.params  # Will be a list of (str) names
 
         # Verify that event exists and that the parameter count matches
         if ast.name in self.monitor.imported_events:
             if len(self.monitor.imported_events[ast.name]) != len(ast.params):
                 raise NameNotDefined("{} event has incorrect number of "
-                        "parameters".format(ast.name))
+                                     "parameters".format(ast.name))
         elif ast.name in self.monitor.internal_events:
             if len(self.monitor.internal_events[ast.name]) != len(ast.params):
                 raise NameNotDefined("{} event has incorrect number of "
-                        "parameters".format(ast.name))
+                                     "parameters".format(ast.name))
         elif ast.name in self.monitor.exported_events:
             if len(self.monitor.exported_events[ast.name]) != len(ast.params):
                 raise NameNotDefined("{} event has incorrect number of "
-                        "parameters".format(ast.name))
+                                     "parameters".format(ast.name))
         else:
             raise NameNotDefined("{} event is not an imported, internal, or"
-                    "exported event.".format(ast.name))
+                                 "exported event.".format(ast.name))
 
         return ast
 
@@ -206,9 +209,10 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         # Check type
         try:
             ast.value.assignment_type_check(state_var.type)
-        except TypeMismatch as e:
-            raise TypeMismatch("Expression of type {} cannot be assigned to "
-                    "state variable {} of incompatible type {}".format(
+        except TypeMismatch:
+            raise TypeMismatch(
+                "Expression of type {} cannot be assigned to state variable "
+                "{} of incompatible type {}".format(
                     ast.value.type, ast.target, state_var.type))
 
         # Create AssignmentAction
@@ -229,12 +233,13 @@ class SmedlSemantics(common_semantics.CommonSemantics):
                 expr.SmedlType.INT,
                 expr.SmedlType.FLOAT,
                 expr.SmedlType.CHAR,
-                expr.SmedlType.POINTER]: #TODO Allow pointer increment and
-                                         # decrement? If so, should we also
-                                         # allow +/- on pointers?
-            raise TypeMismatch("Cannot increment state variable {} of type {}"
-                    .format(ast.target, state_var.type))
-        
+                # TODO Allow pointer increment and decrement? If so, should we
+                # also allow +/- on pointers?
+                expr.SmedlType.POINTER]:
+            raise TypeMismatch(
+                "Cannot increment state variable {} of type {}"
+                .format(ast.target, state_var.type))
+
         # Create action
         return monitor.IncrementAction(ast.target)
 
@@ -253,15 +258,16 @@ class SmedlSemantics(common_semantics.CommonSemantics):
                 expr.SmedlType.INT,
                 expr.SmedlType.FLOAT,
                 expr.SmedlType.CHAR,
-                expr.SmedlType.POINTER]: #TODO Allow pointer increment and
-                                         # decrement? If so, should we also
-                                         # allow +/- on pointers?
-            raise TypeMismatch("Cannot decrement state variable {} of type {}"
-                    .format(ast.target, state_var.type))
-        
+                # TODO Allow pointer increment and decrement? If so, should we
+                # also allow +/- on pointers?
+                expr.SmedlType.POINTER]:
+            raise TypeMismatch(
+                "Cannot decrement state variable {} of type {}"
+                .format(ast.target, state_var.type))
+
         # Create action
         return monitor.DecrementAction(ast.target)
-    
+
     def raise_stmt(self, ast):
         """Verify that the event is an internal or exported event and do type
         checking on the parameters, then create the RaiseAction"""
@@ -270,18 +276,18 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         if ast.event in self.monitor.exported_events:
             if len(self.monitor.exported_events[ast.event]) != len(ast.params):
                 raise NameNotDefined("{} event has incorrect number of "
-                        "parameters".format(ast.event))
+                                     "parameters".format(ast.event))
             else:
                 event_params = self.monitor.exported_events[ast.event]
         elif ast.event in self.monitor.internal_events:
             if len(self.monitor.internal_events[ast.event]) != len(ast.params):
                 raise NameNotDefined("{} event has incorrect number of "
-                        "parameters".format(ast.event))
+                                     "parameters".format(ast.event))
             else:
                 event_params = self.monitor.internal_events[ast.event]
         else:
             raise NameNotDefined("{} event is not an exported or internal "
-                    "event.".format(ast.event))
+                                 "event.".format(ast.event))
 
         # Type check the parameters
         for i in range(len(ast.params)):
@@ -289,7 +295,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
 
         # Create the RaiseAction
         return monitor.RaiseAction(ast.event, ast.params)
-    
+
     def call_stmt(self, ast):
         """Create the CallAction"""
         # Calling a helper function as an action should be discouraged and
@@ -299,7 +305,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         # already done by Expressions, so simply create the action.
         return monitor.CallAction(ast.function, ast.params)
 
-    ### Expressions and type checking ##########################################
+    # Expressions and type checking ###########################################
 
     # Note: All type_ parameters should be either a SmedlType, "null", or None.
     # None if it is a helper function or an expression with a helper function
@@ -329,10 +335,10 @@ class SmedlSemantics(common_semantics.CommonSemantics):
             param_idx = self.current_event_params.index(ast)
             if self.current_event in self.monitor.imported_events:
                 param_type = self.monitor.imported_events[
-                        self.current_event][param_idx]
+                    self.current_event][param_idx]
             elif self.current_event in self.monitor.internal_events:
                 param_type = self.monitor.internal_events[
-                        self.current_event][param_idx]
+                    self.current_event][param_idx]
             return expr.EventParam(param_idx, param_type)
         except ValueError:
             # Not an event parameter. Must be a state variable.
@@ -341,8 +347,8 @@ class SmedlSemantics(common_semantics.CommonSemantics):
                 type_ = state_var.type
                 return expr.StateVar(ast, type_)
             except KeyError:
-                raise NameNotDefined("Variable {} is not an event parameter or "
-                        "state variable.".format(ast))
+                raise NameNotDefined("Variable {} is not an event parameter "
+                                     "or state variable.".format(ast))
 
     def parenthesized(self, ast):
         """Parenthesize an expression"""
@@ -363,7 +369,7 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         # This must be processed recursively.
         if isinstance(ast, expr.Expression):
             return ast
-        
+
         left = self.expression(ast[1])
         right = self.expression(ast[2])
 

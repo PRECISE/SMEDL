@@ -3,7 +3,9 @@ Types and operations for SMEDL expressions
 """
 
 from enum import Enum
+
 from smedl.parser.exceptions import TypeMismatch
+
 
 class SmedlType(Enum):
     """Represents the valid data types for SMEDL state variables and params.
@@ -11,13 +13,14 @@ class SmedlType(Enum):
     Enum members are given 2-tuples: (SMEDL type string, C type string). The
     SMEDL type string becomes the value of the member. Thus, to create a
     SmedlType from its string, do something like this:
-        
+
         SmedlType('int')
         SmedlType('pointer')
-        
+
     The C type string can then be accessed using the c_type property:
-        
-        SmedlType('float').c_type   // Evaluates to 'double'"""
+
+        SmedlType('float').c_type   // Evaluates to 'double'
+    """
     def __new__(cls, smedl_type, c_type):
         """Create enum members using only the SMEDL type string as the value and
         assigning the C type string to the c_type property"""
@@ -50,7 +53,7 @@ class SmedlType(Enum):
             return True
         else:
             return False
-    
+
     @classmethod
     def inference(cls, t1, t2):
         """Return the type that should be inferred between the two SmedlType"""
@@ -67,6 +70,7 @@ class SmedlType(Enum):
     def is_a(self, name):
         """Check if name matches the provided string"""
         return self.name == name
+
 
 # Notes on type checking:
 # Types in expressions may be any of the SmedlTypes above, "null" if the value
@@ -116,8 +120,8 @@ class Expression(object):
                 SmedlType.INT, SmedlType.CHAR, SmedlType.POINTER, None]:
             return self._type
         else:
-            raise TypeMismatch("Cannot use {} on expression of type {}".format(
-                op, self._type))
+            raise TypeMismatch("Cannot use {} on expression of type {}"
+                               .format(op, self._type))
 
     def _arithmetic_type_check(self, other):
         """Check that the type of this expression is compatible with the other
@@ -130,7 +134,7 @@ class Expression(object):
                 other._type == SmedlType.FLOAT and self._type in [
                 SmedlType.INT, SmedlType.CHAR]):
             return SmedlType.FLOAT
-        # If one or both operands are None and the rest are numbers, return None
+        # If one or both operands are None and rest are numbers, return None
         elif (self._type is None and other._type in [
                 SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR, None]) or (
                 other._type is None and self._type in [
@@ -179,9 +183,10 @@ class Expression(object):
         the left operand and the "other" is the right operand. Return the
         resulting type, or raise TypeMismatch if not compatible."""
         # If both operands are numbers or None, return int
-        if (self._type in [SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR, None]
-                and other._type in [SmedlType.INT, SmedlType.FLOAT,
-                SmedlType.CHAR, None]):
+        if (self._type in [
+                    SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR, None] and
+                other._type in [
+                    SmedlType.INT, SmedlType.FLOAT, SmedlType.CHAR, None]):
             return SmedlType.INT
         # Otherwise, type mismatch
         else:
@@ -237,7 +242,7 @@ class Expression(object):
                     op))
         except TypeMismatch as e:
             raise TypeMismatch("Cannot use {} on expressions of type {} and {}"
-                    .format(op, self.type, other.type)) from e
+                               .format(op, self.type, other.type)) from e
 
     def assignment_type_check(self, dest_type):
         """Check that the expression type is compatible with the destination
@@ -256,7 +261,8 @@ class Expression(object):
         # If none of the other cases matched, we have a type mismatch
         else:
             raise TypeMismatch("{} cannot be used as a {}".format(self._type,
-                dest_type))
+                               dest_type))
+
 
 class StateVar(Expression):
     """A state variable usage"""
@@ -276,6 +282,7 @@ class StateVar(Expression):
 
     def __repr__(self):
         return "StateVar:" + self._name
+
 
 class EventParam(Expression):
     """An event parameter usage. Event parameters are referred to internally by
@@ -298,6 +305,7 @@ class EventParam(Expression):
     def __repr__(self):
         return "EvParam:" + str(self._idx)
 
+
 class Literal(Expression):
     """A literal in an expression"""
     def __init__(self, string, type_):
@@ -317,6 +325,7 @@ class Literal(Expression):
 
     def __repr__(self):
         return self._string
+
 
 class HelperCall(Expression):
     """A call to a helper function in an expression"""
@@ -341,8 +350,9 @@ class HelperCall(Expression):
         return self._params
 
     def __repr__(self):
-        return (self._name + '(' + ', '.join([repr(p) for p in self._params]) +
-                ')')
+        return (self._name + '(' +
+                ', '.join([repr(p) for p in self._params]) + ')')
+
 
 class UnaryOp(Expression):
     """A unary operation in an expression"""
@@ -371,9 +381,11 @@ class UnaryOp(Expression):
 
     def __repr__(self):
         if self._parens:
-            return ''.join(['(', self._operator, ' ', repr(self._operand), ')'])
+            return ''.join(
+                ['(', self._operator, ' ', repr(self._operand), ')'])
         else:
             return ''.join([self._operator, ' ', repr(self._operand)])
+
 
 class BinaryOp(Expression):
     """A binary operation in an expression"""
@@ -409,7 +421,7 @@ class BinaryOp(Expression):
     def __repr__(self):
         if self._parens:
             return ''.join(['(', repr(self._left), ' ', self._operator, ' ',
-                    repr(self._right), ')'])
+                            repr(self._right), ')'])
         else:
             return ''.join([repr(self._left), ' ', self._operator, ' ',
-                repr(self._right)])
+                            repr(self._right)])

@@ -7,6 +7,7 @@ from smedl.structures import arch
 from . import common_semantics, smedl_parser, smedl_semantics
 from .exceptions import NameCollision, NameNotDefined, ParameterError
 
+
 class A4smedlSemantics(common_semantics.CommonSemantics):
     """Semantic actions for A4SMEDL parsing"""
 
@@ -17,8 +18,8 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         # Initialize an empty system specification
         self.system = arch.MonitorSystem()
 
-        # Monitor specifications from .smedl files. Key is name from file. Value
-        # is parsed monitor.
+        # Monitor specifications from .smedl files. Key is name from file.
+        # Value is parsed monitor.
         self.monitor_specs = dict()
 
         # Maintain records of which channel names are associated with which
@@ -53,13 +54,14 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         with open(filename, "r") as f:
             smedl_spec = f.read()
         parser = smedl_parser.SMEDLParser()
-        monitor_spec = parser.parse(smedl_spec, rule_name='start',
-                semantics=smedl_semantics.SmedlSemantics(dirname))
+        monitor_spec = parser.parse(
+            smedl_spec, rule_name='start',
+            semantics=smedl_semantics.SmedlSemantics(dirname))
 
         # Make sure monitor name is not already taken
         if monitor_spec.name in self.monitor_specs:
             raise NameCollision("Monitor named {} has already been imported"
-                    .format(monitor_spec.name))
+                                .format(monitor_spec.name))
 
         self.monitor_specs[monitor_spec.name] = monitor_spec
         return ast
@@ -69,13 +71,13 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         # Make sure monitor has been imported
         if ast.name not in self.monitor_specs:
             raise NameNotDefined("Monitor {} has not been imported".format(
-                ast.name))
+                                 ast.name))
 
         # If an "as" name was not given, use the actual name
         renamed = ast.name if ast.renamed is None else ast.renamed
 
-        self.system.add_monitor_decl(renamed, self.monitor_specs[ast.name],
-                ast.params)
+        self.system.add_monitor_decl(
+            renamed, self.monitor_specs[ast.name], ast.params)
         return ast
 
     def event_decl(self, ast):
@@ -91,8 +93,8 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
 
     def connection_defn(self, ast):
         """Do various validations and add the connection to the system"""
-        self.system.add_target(ast.name, ast.source.monitor,
-                ast.source.event, ast.target)
+        self.system.add_target(
+            ast.name, ast.source.monitor, ast.source.event, ast.target)
         return ast
 
     def target_event(self, ast):
@@ -102,12 +104,13 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         # Check that destination monitor exists
         if ast.dest_monitor not in self.system.monitor_decls:
             raise NameNotDefined("Destination monitor {} is not declared"
-                    .format(ast.dest_monitor))
+                                 .format(ast.dest_monitor))
         # Check that destination event exists as an imported event
         elif ast.dest_event not in self.system.monitor_decls[
                 ast.dest_monitor].spec.imported_events:
-            raise NameNotDefined("Destination monitor {} does not contain "
-                    "imported event {}".format(ast.dest_event))
+            raise NameNotDefined(
+                "Destination monitor {} does not contain imported event {}"
+                .format(ast.dest_monitor, ast.dest_event))
 
         # If monitor_params and/or event_params were not present, add them as
         # empty lists
@@ -119,21 +122,24 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         # Check that number of monitor params matches
         if len(ast.monitor_params) != len(self.system.monitor_decls[
                 ast.dest_monitor].params):
-            raise ParameterError("Expected {} parameters (identities) for "
-                    "montor {}, got {}".format(len(self.system.monitor_decls[
+            raise ParameterError(
+                "Expected {} parameters (identities) for montor {}, got {}"
+                .format(len(self.system.monitor_decls[
                     ast.dest_monitor].params), ast.dest_monitor,
                     len(ast.monitor_params)))
         # Check that the number of event params matches
         if len(ast.event_params) != len(self.system.monitor_decls[
                 ast.dest_monitor].spec.imported_events[ast.dest_event]):
-            raise ParameterError("Expected {} parameters for event {}.{}, "
-                    "got {}".format(len(self.system.monitor_decls[
+            raise ParameterError(
+                "Expected {} parameters for event {}.{}, got {}"
+                .format(len(self.system.monitor_decls[
                     ast.dest_monitor].spec.imported_events[ast.dest_event]),
                     ast.dest_monitor, ast.dest_event, len(ast.event_params)))
 
         # Create the TargetEvent
-        return arch.TargetEvent(self.system.monitor_decls[ast.dest_monitor],
-                ast.dest_event, ast.monitor_params, ast.event_params)
+        return arch.TargetEvent(
+                self.system.monitor_decls[ast.dest_monitor], ast.dest_event,
+                ast.monitor_params, ast.event_params)
 
     def monitor_initialization(self, ast):
         """Create a TargetCreation. Ensure the target monitor exists and has the
@@ -141,22 +147,24 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         # Check that destination monitor exists
         if ast.dest_monitor not in self.system.monitor_decls:
             raise NameNotDefined("Destination monitor {} is not declared"
-                    .format(ast.dest_monitor))
+                                 .format(ast.dest_monitor))
 
         # Make sure we are not creating a monitor with no parameters. Such
         # monitors are initialized once at global wrapper startup and cannot
         # have separate instances.
         if len(self.system.monitor_decls[ast.dest_monitor].params) == 0:
-            raise ParameterError("Monitor {} without parameters cannot "
-                    "receive new instances".format(ast.dest_monitor))
+            raise ParameterError(
+                "Monitor {} without parameters cannot receive new instances"
+                .format(ast.dest_monitor))
 
         # Make sure the number of monitor parameters matches. Don't need to
         # ensure there are no wildcard parameters because the grammar will not
         # allow it.
         if ast.monitor_params is None or len(ast.monitor_params) != len(
                 self.system.monitor_decls[ast.dest_monitor].params):
-            raise ParameterError("Expected {} parameters (identities) for "
-                    "montor {}, got {}".format(len(self.system.monitor_decls[
+            raise ParameterError(
+                "Expected {} parameters (identities) for montor {}, got {}"
+                .format(len(self.system.monitor_decls[
                     ast.dest_monitor].params), ast.dest_monitor,
                     (0 if ast.monitor_params is None else
                         len(ast.monitor_params))))
@@ -172,8 +180,9 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
             state_vars[initializer.var_name] = initializer.value
 
         # Create the TargetCreation
-        return arch.TargetCreation(self.system.monitor_decls[ast.dest_monitor],
-                ast.monitor_params, state_vars)
+        return arch.TargetCreation(
+            self.system.monitor_decls[ast.dest_monitor], ast.monitor_params,
+            state_vars)
 
     def wildcard_parameter(self, ast):
         """Create a Parameter that might be a wildcard"""
@@ -182,7 +191,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         elif ast.kind == '*':
             return arch.Parameter(True, None)
         else:
-            # This should not happen. It means there is a mistake in the grammar
+            # This should not happen. It means there's a mistake in the grammar
             raise ValueError("Internal error: Invalid parameter source")
 
     def parameter(self, ast):
@@ -192,5 +201,5 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         elif ast.kind == '$':
             return arch.Parameter(False, int(ast.index))
         else:
-            # This should not happen. It means there is a mistake in the grammar
+            # This should not happen. It means there's a mistake in the grammar
             raise ValueError("Internal error: Invalid parameter source")

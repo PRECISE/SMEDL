@@ -3,9 +3,12 @@ Structures and types for monitoring system architectures (.a4smedl files)
 """
 
 import types
-from smedl.parser.exceptions import (NameCollision, NameNotDefined,
-        AlreadyInSyncset, ParameterError, DuplicateConnection, TypeMismatch,
-        DuplicateConnection, InternalError)
+
+from .expr import SmedlType
+from smedl.parser.exceptions import (
+        NameCollision, NameNotDefined, AlreadyInSyncset, ParameterError,
+        DuplicateConnection, TypeMismatch, InternalError, ChannelMismatch)
+
 
 class Parameter(object):
     """A parameter for a target specification. May be used for either monitor
@@ -17,8 +20,8 @@ class Parameter(object):
 
         identity - Boolean. True if the parameter is a monitor parameter, also
           known as a monitor identity. False if it is an event parameter. Note:
-          This is referring only to the source of the parameter! The destination
-          depends only on where this parameter is used.
+          This is referring only to the source of the parameter! The
+          destination depends only on where this parameter is used.
         index - The index in the monitor or event's parameter list that this
           parameter should come from.
 
@@ -59,8 +62,8 @@ class Parameter(object):
         """Get the type of whichever parameter this Parameter is a reference
         to"""
         if self._index is None:
-            raise InternalError("Trying to take 'source_type' of a wildcard "
-                    "Parameter")
+            raise InternalError(
+                "Trying to take 'source_type' of a wildcard Parameter")
         if self._identity:
             return self._target.connection.source_mon.params[self._index]
         else:
@@ -77,13 +80,14 @@ class Parameter(object):
         else:
             return '$' + str(self._index)
 
+
 class Target(object):
     """The target of a connection, such as an imported event or monitor
     creation. Note that this is not the same as the "target system," which is
     the system being monitored."""
     def __init__(self, type_, monitor, mon_params):
         """Initialize the Target object.
-        
+
         type_ - String describing the type of target for Jinja
         monintor - DeclaredMonitor for the destination monitor, or None if this
           is a TargetExport
@@ -135,12 +139,13 @@ class Target(object):
             return NotImplemented
         return self._monitor == other._monitor
 
+
 class TargetEvent(Target):
     """An imported event connection target. Note that this is not the same as
     the "target system," which is the system being monitored."""
     def __init__(self, dest_monitor, dest_event, mon_params, event_params):
         """Initialize this target event.
-        
+
         dest_monitor - DeclaredMonitor for the destination monitor
         dest_event - Name of the destination monitor's imported event
         mon_params - List of Parameters for the monitor identities
@@ -166,7 +171,7 @@ class TargetEvent(Target):
         """Get a sequence of (Parameter, SmedlType) tuples for the destination
         event"""
         return zip(self._event_params,
-                self._monitor.spec.imported_events[self._event])
+                   self._monitor.spec.imported_events[self._event])
 
     def __eq__(self, other):
         """Return True if the other is the same target (ignoring parameters)
@@ -182,6 +187,7 @@ class TargetEvent(Target):
         ev_param_str = ', '.join([str(p) for p in self._event_params])
         return ('TargetEvent:' + self._monitor.name + '[' + mon_param_str +
                 '].' + self._event + '(' + ev_param_str + ')')
+
 
 class TargetCreation(Target):
     """A monitor creation target. Note that this is not the same as the "target
@@ -217,16 +223,17 @@ class TargetCreation(Target):
 
     def __repr__(self):
         mon_param_str = ', '.join([str(p) for p in self._mon_params])
-        state_var_str = ', '.join([k + '=' + str(v)
-                for k, v in self._state_vars.values()])
+        state_var_str = ', '.join(
+            [k + '=' + str(v) for k, v in self._state_vars.values()])
         return ('TargetCreation:' + self._monitor.name + '(' + mon_param_str +
                 ', ' + state_var_str + ')')
 
+
 class TargetExport(Target):
-    """An event export target, for events that are exported out of a synchronous
-    set back to the target system. Note that "export target" and "target system"
-    are two different senses of the word "target," the former being a connection
-    target and the latter being the target of monitoring."""
+    """An event export target, for events that are exported out of a
+    synchronous set back to the target system. Note that "export target" and
+    "target system" are two different senses of the word "target," the former
+    being a connection target and the latter being the target of monitoring."""
     def __init__(self):
         """Initialize this export target."""
         super().__init__('export', None, [])
@@ -237,7 +244,7 @@ class TargetExport(Target):
         if not isinstance(other, Target):
             return NotImplemented
         return isinstance(other, TargetExport)
-    
+
     def __repr__(self):
         # self.monitor should be None and self.mon_params empty, but printing
         # them will confirm
@@ -245,11 +252,13 @@ class TargetExport(Target):
         return ('TargetExport:' + str(self._monitor) +
                 '(' + mon_param_str + ')')
 
+
 class Connection(object):
     """A connection between a source event and some number of targets"""
-    def __init__(self, sys, source_mon, source_event, source_event_params=None):
+    def __init__(self, sys, source_mon, source_event,
+                 source_event_params=None):
         """Create a connection with the specified source monitor and event.
-        
+
         sys - Monitoring system
         source_mon - Source monitor decl, or None if from the target system.
         source_event - Source event name
@@ -282,7 +291,7 @@ class Connection(object):
                 # Otherwise, use source_event_params to populate the dict.
                 self._infer_source_params = False
                 self._source_ev_params = dict(zip(
-                        range(len(source_event_params)), source_event_params))
+                    range(len(source_event_params)), source_event_params))
 
     @property
     def channel(self):
@@ -299,7 +308,8 @@ class Connection(object):
     @property
     def source_event_params(self):
         """Return a sequence of the source event params' SmedlTypes (or for a
-        connection from the target system, None for those that are not known)"""
+        connection from the target system, None for those that are not
+        known)"""
         if self._source_mon is None:
             result = list()
             for i in range(max(self._source_ev_params.keys()) + 1):
@@ -325,7 +335,7 @@ class Connection(object):
         environment, the sequence will include None."""
         exported = False
         source_set = (None if self._source_mon is None else
-                self._source_mon.syncset)
+                      self._source_mon.syncset)
         sets = []
         for target in self._targets:
             if target.monitor is None:
@@ -368,8 +378,8 @@ class Connection(object):
                     self._channel = "_{}".format(self._source_event)
                     self._sys.rename_connection(self, None)
                 else:
-                    self._channel = "_{}_{}".format(self._source_mon.name,
-                            self._source_event)
+                    self._channel = "_{}_{}".format(
+                        self._source_mon.name, self._source_event)
                     self._source_mon.rename_connection(self, None)
         else:
             if self._channel is None:
@@ -397,13 +407,14 @@ class Connection(object):
                 if self._source_mon is None:
                     event_str = self._source_event
                 else:
-                    event_str = self._source_mon.name + '.' + self._source_event
+                    event_str = (self._source_mon.name + '.' +
+                                 self._source_event)
                 raise ChannelMismatch("Source event {} must always use the "
-                        "same connection name".format(event_str))
+                                      "same connection name".format(event_str))
 
     def _typecheck_dest_param(self, dest_param, dest_type, dest_name):
         """Do type verification on a single destination Parameter.
- 
+
         If this connection is from the target system, the actual parameter
         types are unknown, but if the same parameter is used in multiple
         destinations, verify that it matches. And store the type for later
@@ -422,20 +433,21 @@ class Connection(object):
         # Identity params ("#x"/"Id.x")
         if dest_param.identity:
             if self._source_mon is None:
-                raise ParameterError('Cannot use identity parameters ("Id."/'
-                        '"#") for {} when there is no source monitor'
-                        .format(dest_name))
+                raise ParameterError(
+                    'Cannot use identity parameters ("Id."/"#") for {} when '
+                    'there is no source monitor'.format(dest_name))
             else:
                 try:
                     source_type = self._source_mon.params[dest_param.index]
                 except IndexError:
-                    raise ParameterError("Source monitor {} does not have "
-                            "identity {}".format(self._source_mon.name,
-                            dest_param.index))
+                    raise ParameterError(
+                        "Source monitor {} does not have identity {}"
+                        .format(self._source_mon.name, dest_param.index))
                 if not source_type.convertible_to(dest_type):
-                    raise TypeMismatch("Param {} in source monitor {} does "
-                            "not match dest {}".format(dest_param.index,
-                            self._source_mon.name, dest_name))
+                    raise TypeMismatch(
+                        "Param {} in source monitor {} does not match dest {}"
+                        .format(dest_param.index, self._source_mon.name,
+                                dest_name))
 
         # Event params ("$x"/"Param.x")
         else:
@@ -448,36 +460,39 @@ class Connection(object):
                         self._source_ev_params[dest_param.index] = dest_type
                         return
                     else:
-                        raise ParameterError("Source event {} does not have "
-                                "parameter {}".format(self._source_ev,
-                                dest_param.index))
+                        raise ParameterError(
+                            "Source event {} does not have parameter {}"
+                            .format(self._source_ev, dest_param.index))
                 if not source_type.convertible_to(dest_type):
-                    raise TypeMismatch("Param {} in source event {} does not "
-                            "match dest {}".format(dest_param.index,
-                            self._source_event, dest_name))
+                    raise TypeMismatch(
+                        "Param {} in source event {} does not match dest {}"
+                        .format(dest_param.index, self._source_event,
+                                dest_name))
                 elif self._infer_source_params:
                     # Type inference: If the types don't match, use the one
                     # that takes precedence
                     self._source_ev_params[dest_param.index] = (
-                            SmedlType.inference(source_type, dest_type))
+                        SmedlType.inference(source_type, dest_type))
             else:
                 source_ev_params = self._source_mon.spec.exported_events[
                         self._source_event]
                 try:
                     source_type = source_ev_params[dest_param.index]
                 except IndexError:
-                    raise ParameterError("Source event {} does not have "
-                            "parameter {}".format(self._source_mon.name,
-                            dest_param.index))
+                    raise ParameterError(
+                        "Source event {} does not have parameter {}"
+                        .format(self._source_mon.name,
+                                dest_param.index))
                 if not source_type.convertible_to(dest_type):
-                    raise TypeMismatch("Param {} in source event {} does "
-                            "not match dest {}".format(dest_param.index,
-                            self._source_event, dest_name))
+                    raise TypeMismatch(
+                        "Param {} in source event {} does not match dest {}"
+                        .format(dest_param.index, self._source_event,
+                                dest_name))
 
     def _typecheck_dest_params(self, dest_params, dest_param_types, dest_name):
         """Do type verification on a destination parameter list from this
         connection's source monitor and event parameters.
- 
+
         If this connection is from the target system, the actual parameter
         types are unknown, but if the same parameter is used in multiple
         destinations, verify that it matches. And store the type for later
@@ -490,28 +505,30 @@ class Connection(object):
         """
         for i in range(len(dest_params)):
             self._typecheck_dest_param(dest_params[i], dest_param_types[i],
-                    "param {} in {}".format(i, dest_name))
+                                       "param {} in {}".format(i, dest_name))
 
     def _typecheck_target(self, target):
         """Do type verification on all monitor identities, event parameters,
         and state variables in the provided Target"""
         # Typecheck monitor params
         if target.monitor is not None:
-            self._typecheck_dest_params(target.mon_params,
-                    target.monitor.params, "monitor " + target.monitor.name)
+            self._typecheck_dest_params(
+                target.mon_params, target.monitor.params,
+                "monitor " + target.monitor.name)
 
         if isinstance(target, TargetEvent):
             # Typecheck destination event parameter types
-            self._typecheck_dest_params(target.event_params,
-                    target.monitor.spec.imported_events[target.event],
-                    "event " + target.event)
+            self._typecheck_dest_params(
+                target.event_params,
+                target.monitor.spec.imported_events[target.event],
+                "event " + target.event)
         elif isinstance(target, TargetCreation):
             # Typecheck destination state var types
             for var, param in target.state_vars.items():
                 var_type = target.monitor.spec.state_vars[var].type
-            self._typecheck_dest_param(param, var_type,
-                    "state var {} of monitor {}".format(var,
-                    target.monitor.name))
+            self._typecheck_dest_param(
+                param, var_type, "state var {} of monitor {}".format(
+                    var, target.monitor.name))
 
     def add_target(self, target):
         """Add a Target to this channel after verifying that it is not a
@@ -519,19 +536,20 @@ class Connection(object):
         its parameters/state vars"""
         for t in self._targets:
             if target == t:
-                raise DuplicateConnection("Source and destination of "
-                        "connections cannot match.")
+                raise DuplicateConnection(
+                    "Source and destination of connections cannot match.")
         self._typecheck_target(target)
         self._targets.append(target)
         target.connection = self
 
     def __repr__(self):
         if self._source_mon is None:
-            return "Connection({}: {} => ...)".format(self._channel,
-                    self._source_event)
-        else: 
-            return "Connection({}: {}.{} => ...)".format(self._channel,
-                    self._source_mon.name, self._source_event)
+            return "Connection({}: {} => ...)".format(
+                self._channel, self._source_event)
+        else:
+            return "Connection({}: {}.{} => ...)".format(
+                self._channel, self._source_mon.name, self._source_event)
+
 
 class SynchronousSet(set):
     """A subclass of set customized to represent a Synchronous Set"""
@@ -544,6 +562,7 @@ class SynchronousSet(set):
     def name(self):
         """Get the name of the synchronous set"""
         return self._name
+
 
 class DeclaredMonitor(object):
     """A monitor delcaration from the architecture file"""
@@ -611,8 +630,9 @@ class DeclaredMonitor(object):
         """Assign the monitor to a synchronous set. If it is already in one,
         raise AlreadyInSyncset"""
         if self._syncset is not None:
-            raise AlreadyInSyncset("Monitor {} cannot be added to a synchronous"
-                    " set twice.".format(self.name))
+            raise AlreadyInSyncset(
+                "Monitor {} cannot be added to a synchronous set twice."
+                .format(self.name))
         self._syncset = syncset
 
     def add_target(self, channel, source_event, target):
@@ -627,7 +647,7 @@ class DeclaredMonitor(object):
         # Check that source event exists and get the params
         if source_event not in self._spec.exported_events:
             raise NameNotDefined("Source monitor {} does not contain exported "
-                    "event {}".format(self._name, source_event))
+                                 "event {}".format(self._name, source_event))
 
         # Get or create Connection
         try:
@@ -651,7 +671,7 @@ class DeclaredMonitor(object):
             del self._connections[old_channel]
         if self._sys.channel_name_taken(conn.channel):
             raise NameCollision("Channel name {} must always be used for the "
-                    "same source event".format(conn.channel))
+                                "same source event".format(conn.channel))
         self._connections[conn.channel] = conn
 
     def create_export_connections(self):
@@ -691,9 +711,9 @@ class DeclaredMonitor(object):
 
     def __repr__(self):
         return "monitor {}({}) as {}".format(
-                self._spec.name,
-                ", ".join([str(p) for p in self._params]),
-                self._name)
+            self._spec.name, ", ".join([str(p) for p in self._params]),
+            self._name)
+
 
 class MonitorSystem(object):
     """A monitor system as specified by an architecture file (a4smedl file)"""
@@ -760,8 +780,8 @@ class MonitorSystem(object):
         """
         # Ensure the synchronous set does not already exist
         if name in self._syncsets:
-            raise NameCollision("Synchronous set {} is already defined".format(
-                name))
+            raise NameCollision(
+                "Synchronous set {} is already defined".format(name))
 
         # Create the SynchronousSet
         syncset = SynchronousSet(name)
@@ -773,8 +793,8 @@ class MonitorSystem(object):
             try:
                 self._monitor_decls[monitor].assign_syncset(syncset)
             except KeyError:
-                raise NameNotDefined("Monitor {} has not been declared".format(
-                    monitor))
+                raise NameNotDefined(
+                    "Monitor {} has not been declared".format(monitor))
             syncset.add(self._monitor_decls[monitor])
 
         # Add the syncset to the MonitorSystem
@@ -790,9 +810,9 @@ class MonitorSystem(object):
             i += 1
             syncset = monitor_name + str(i)
         if syncset != monitor_name:
-            print("Warning: {} is already the name of a synchronous set. "
-                    "Monitor {} will be in synchronous set {}".format(
-                    monitor_name, syncset))
+            print("Warning: {0} is already the name of a synchronous set. "
+                  "Monitor {0} will be in synchronous set {1}"
+                  .format(monitor_name, syncset))
         return syncset
 
     def add_connection(self, source_ev, params):
@@ -825,7 +845,7 @@ class MonitorSystem(object):
                 decl = self._monitor_decls[monitor]
             except KeyError:
                 raise NameNotDefined("Source monitor {} is not declared"
-                        .format(monitor))
+                                     .format(monitor))
             decl.add_target(channel, source_event, target)
             return
 
@@ -851,7 +871,7 @@ class MonitorSystem(object):
             del self._imported_connections[old_channel]
         if self.channel_name_taken(conn.channel):
             raise NameCollision("Channel name {} must always be used for the "
-                    "same source event".format(conn.channel))
+                                "same source event".format(conn.channel))
         self._imported_connections[conn.channel] = conn
 
     def channel_name_taken(self, channel):
@@ -869,14 +889,15 @@ class MonitorSystem(object):
         Parameters:
         name - Name given to the monitor (i.e. the "as" name, if provided, or
           the regular name if not)
-        target - a MonitorSpec for an imported monitor this name was assigned to
-        params - A list of SmedlType representing the parameters (identities) of
-          this monitor
+        target - a MonitorSpec for an imported monitor this name was assigned
+          to
+        params - A list of SmedlType representing the parameters (identities)
+          of this monitor
         """
         # Check if the given name is already taken
         if name in self.monitor_decls:
-            raise NameCollision("Monitor name {} is already declared".format(
-                name))
+            raise NameCollision(
+                "Monitor name {} is already declared".format(name))
 
         # Create and store the DeclaredMonitor
         self._monitor_decls[name] = DeclaredMonitor(self, name, target, params)
@@ -901,7 +922,7 @@ class MonitorSystem(object):
     def imported_channels(self, syncset):
         """Get a list of Connections with sources not in the given synchronous
         set and destinations in it
-        
+
         syncset - Name of the synchronous set"""
         result = []
 

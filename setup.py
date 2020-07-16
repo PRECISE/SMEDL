@@ -54,6 +54,7 @@ setup(
         'test': [
             'pytest',
             'flake8',
+            # Consider adding the flake8-docstrings plugin
         ],
     },
 

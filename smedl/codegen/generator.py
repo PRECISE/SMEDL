@@ -5,10 +5,12 @@ Code generation and template filling
 import os.path
 import shutil
 import itertools
+
 import jinja2
 from jinja2 import nodes
 from jinja2 import ext
 from jinja2.exceptions import TemplateRuntimeError
+
 from smedl.structures import expr
 from smedl.parser.exceptions import SmedlException
 
@@ -19,9 +21,11 @@ try:
 except ImportError:
     import importlib_resources as resources
 
+
 class UnsupportedFeature(TemplateRuntimeError, SmedlException):
     """Raised when a particular feature of SMEDL is incompatible with the
     chosen generation options (e.g. a particular transport adapter)"""
+
 
 class UnsupportedFeatureExtension(ext.Extension):
     """Jinja2 extension to create an "unsupported" tag that raises
@@ -42,8 +46,8 @@ class UnsupportedFeatureExtension(ext.Extension):
         # expression is a call to _raise_unsupported
         return nodes.ExprStmt(
                 self.call_method('_raise_unsupported', args, lineno=lineno),
-                lineno=lineno
-            )
+                lineno=lineno)
+
 
 class CodeGenerator(object):
     """Generates C code for monitors and monitor systems"""
@@ -75,12 +79,12 @@ class CodeGenerator(object):
 
         # Initialize the Jinja2 environment
         self.env = jinja2.Environment(
-                trim_blocks=True,
-                lstrip_blocks=True,
-                keep_trailing_newline=True,
-                undefined=jinja2.StrictUndefined,
-                extensions=[UnsupportedFeatureExtension],
-                loader=jinja2.PackageLoader('smedl.codegen', '.'))
+            trim_blocks=True,
+            lstrip_blocks=True,
+            keep_trailing_newline=True,
+            undefined=jinja2.StrictUndefined,
+            extensions=[UnsupportedFeatureExtension],
+            loader=jinja2.PackageLoader('smedl.codegen', '.'))
 
         # Make SmedlType available to all templates
         self.env.globals['SmedlType'] = expr.SmedlType
@@ -138,10 +142,10 @@ class CodeGenerator(object):
         # Write file adapters
         for syncset_name in system.syncsets.keys():
             values = {
-                    "sys": system,
-                    "mon_decls": system.monitor_decls.values(),
-                    "syncsets": system.syncsets,
-                }
+                "sys": system,
+                "mon_decls": system.monitor_decls.values(),
+                "syncsets": system.syncsets,
+            }
             self._render("file.c", system.name + "_file.c", values)
             self._render("file.h", system.name + "_file.h", values)
 
@@ -154,10 +158,10 @@ class CodeGenerator(object):
         # Write RabbitMQ adapters
         for syncset_name in system.syncsets.keys():
             values = {
-                    "sys": system,
-                    "syncset": syncset_name,
-                    "mon_decls": system.syncsets[syncset_name],
-                }
+                "sys": system,
+                "syncset": syncset_name,
+                "mon_decls": system.syncsets[syncset_name],
+            }
             self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
             self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
             self._render("rabbitmq.cfg", system.name + ".cfg", values)
@@ -181,15 +185,15 @@ class CodeGenerator(object):
             syncset_specs[syncset.name] = specs
 
         values = {
-                "transport": self.transport,
-                "system": system.name,
-                "syncsets": system.syncsets.keys(),
-                "syncset_mons": syncset_mons,
-                "syncset_specs": syncset_specs,
-                "mon_names": system.monitor_decls.keys(),
-                "spec_names": [decl.spec.name for decl in
-                    system.monitor_decls.values()]
-            }
+            "transport": self.transport,
+            "system": system.name,
+            "syncsets": system.syncsets.keys(),
+            "syncset_mons": syncset_mons,
+            "syncset_specs": syncset_specs,
+            "mon_names": system.monitor_decls.keys(),
+            "spec_names": [decl.spec.name for decl in
+                           system.monitor_decls.values()]
+        }
         self._render("Makefile", "Makefile", values)
 
     def _write_wrappers(self, system, syncset_name):
@@ -203,24 +207,24 @@ class CodeGenerator(object):
         # Write the local wrappers
         for mon in system.syncsets[syncset_name]:
             values = {
-                    "mon": mon,
-                    "spec": mon.spec,
-                }
+                "mon": mon,
+                "spec": mon.spec,
+            }
             self._render("local_wrapper.c", mon.name + "_local_wrapper.c",
-                    values)
+                         values)
             self._render("local_wrapper.h", mon.name + "_local_wrapper.h",
-                    values)
+                         values)
 
         # Write the global wrapper
         values = {
-                "sys": system,
-                "syncset": syncset_name,
-                "mon_decls": system.syncsets[syncset_name],
-            }
+            "sys": system,
+            "syncset": syncset_name,
+            "mon_decls": system.syncsets[syncset_name],
+        }
         self._render("global_wrapper.c", syncset_name + "_global_wrapper.c",
-                values)
+                     values)
         self._render("global_wrapper.h", syncset_name + "_global_wrapper.h",
-                values)
+                     values)
 
     def _write_monitor(self, monitor_spec):
         """Write the files for one monitor specification
@@ -230,8 +234,8 @@ class CodeGenerator(object):
         """
         # Generate the template vars
         values = {
-                "spec": monitor_spec,
-            }
+            "spec": monitor_spec,
+        }
 
         # Write the files
         self._render("mon.c", monitor_spec.name + "_mon.c", values)
@@ -316,7 +320,7 @@ class CodeGenerator(object):
         elif self.transport == "file":
             self._write_file_adapters(system)
         elif self.transport == "ros":
-            pass #TODO
+            pass  # TODO
 
         # Copy helpers that are in the same directory as the .smedl file
         if self.helpers:
