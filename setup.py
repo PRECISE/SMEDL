@@ -21,7 +21,9 @@ setup(
     long_description=long_description,
     url=__about__['uri'],
     author=__about__['author'],
-    author_email=__about__['email'],
+    author_email=__about__['author_email'],
+    maintainer=__about__['maintainer'],
+    maintainer_email=__about__['maintainer_email'],
     license=__about__['license'],
     classifiers=[
         'Intended Audience :: Developers',
@@ -48,6 +50,21 @@ setup(
         'importlib_resources>=1.1;python_version<"3.7"',
     ],
     python_requires='>=3.6',
+    extras_require={
+        'test': [
+            'pytest',
+            'flake8',
+        ],
+    },
+
+    #TODO Set it up to automatically generate the parsers from ebnf files after
+    # installation. This may help:
+    # https://stackoverflow.com/questions/1321270/how-to-extend-distutils-with-a-simple-post-install-script/1321345#1321345
+    # which was linked to from:
+    # https://stackoverflow.com/questions/14441955/how-to-perform-custom-build-steps-in-setup-py
+    # Or it could potentially be done during the build step instead (see second
+    # answer at second link)
+    # Be careful not to break pip -e if possible
 
     entry_points={
         'console_scripts': [

@@ -17,7 +17,7 @@ Summary
 - Examples: See tests/ and README-tests.md
 - Testing
   - Install tox, can either run the full suite on all python versions (how?)
-    or run with the current python version (`tox -e py` I think?)
+    or run with the current python version (`tox -e py3` I think?)
 - Further Reading
   - SMEDL Language
   - Monitor API
