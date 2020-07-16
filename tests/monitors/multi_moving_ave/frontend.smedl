@@ -3,8 +3,8 @@ object Frontend;
 state:
     int numObjects = 0;
     int measurementsSinceGather = 0;
-    int numResponses = 0;
-    float sum = 0;
+    int numResponses;
+    int numAlarms = 0;
 
 events:
     imported newObject();
@@ -12,7 +12,7 @@ events:
     internal checkMeasurementCount();
     exported requestAverages();
     imported averageResponse(float);
-    internal checkSum();
+    internal checkAlarms();
     exported raiseAlarm();
     exported resetAlarm();
 
@@ -40,32 +40,59 @@ scenarios:
                 when (measurementsSinceGather >= numObjects) {
                     measurementsSinceGather = 0;
                     numResponses = 1;
-                    sum = 0;
+                    numAlarms = 0;
                     raise requestAverages();
             }
             -> awaiting_responses
             else
             -> idle;
         awaiting_responses
-            -> averageResponse(average) when (numResponses < numObjects) {
-                sum = sum + average;
+            -> averageResponse(average) when (
+                    numResponses < numObjects && average > 10.0) {
+                numAlarms++;
                 numResponses++;
             }
             -> awaiting_responses;
         awaiting_responses
-            -> averageResponse(average) when (numResponses == numObjects) {
-                sum = sum + average;
-                raise checkSum();
+            -> averageResponse(average) when (
+                    numResponses == numObjects && average > 10.0) {
+                numAlarms++;
+                raise checkAlarms();
             }
+            -> idle;
+        awaiting_responses
+            -> averageResponse(average) when (
+                    numResponses < numObjects && average <= 10.0) {
+                numResponses++;
+            }
+            -> awaiting_responses;
+        awaiting_responses
+            -> averageResponse(average) when (
+                    numResponses == numObjects && average <= 10.0) {
+                raise checkAlarms();
+            }
+            -> idle;
+        /* If the measurement that triggered the request created a new
+           monitor, we can end up with one more response than expected. */
+        idle
+            -> averageResponse(average)
             -> idle;
 
     handleAlarms:
-        /* Alarm if the sum of the averages rises above 10 */
-        no_alarm -> checkSum() when (sum < 10) -> no_alarm;
-        no_alarm -> checkSum() when (sum >= 10) {
-            raise raiseAlarm();
-        } -> yes_alarm;
-        yes_alarm -> checkSum() when (sum < 10) {
-            raise resetAlarm();
-        } -> no_alarm;
-        yes_alarm -> checkSum() when (sum >= 10) -> yes_alarm;
+        /* Alarm if at least half the averages are out of spec */
+        no_alarm
+            -> checkAlarms() when (numAlarms < (numObjects + 1) / 2)
+            -> no_alarm;
+        no_alarm
+            -> checkAlarms() when (numAlarms >= (numObjects + 1) / 2) {
+                raise raiseAlarm();
+            }
+            -> yes_alarm;
+        yes_alarm
+            -> checkAlarms() when (numAlarms < (numObjects + 1) / 2) {
+                raise resetAlarm();
+            }
+            -> no_alarm;
+        yes_alarm
+            -> checkAlarms() when (numAlarms >= (numObjects + 1) / 2)
+            -> yes_alarm;
