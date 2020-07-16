@@ -1,0 +1,136 @@
+\documentclass[paper=letter]{scrreport}
+\usepackage{booktabs}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{scrhack}
+%TODO check the options for hyperref and add useful ones
+
+\title{SMEDL Manual}
+\author{University of Pennsylvania}
+
+\lstdefinelanguage{smedl}{
+  morekeywords={object,\#include,state:,events:,scenarios:,imported,internal,exported,when,else,raise,int,float,double,char,string,pointer,thread,opaque,true,false,null,NULL},
+  alsoletter={\#},
+  alsodigit={:},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]"
+}
+
+\lstdefinelanguage{a4smedl}{
+  morekeywords={system,import,monitor,as,event,syncset,id,param},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]"
+}
+
+\begin{document}
+
+\maketitle
+
+%TODO Basic introduction to SMEDL
+
+\autoref{part:lang} of this manual describes how to write a monitor. It discusses the features and syntax of the SMEDL specification language. \autoref{part:api} is about integrating monitors into a larger system. It describes the API for the generated code and the various transport mechanisms available for asynchronous connections.
+
+\part{The SMEDL and A4SMEDL Monitoring Language}
+\label{part:lang}
+
+A SMEDL monitoring system is designed at two levels: the monitor level and
+the architecture level. Monitor specifications describe a single monitor, that
+is, a list of state variables, a list of events that the monitor consumes and
+emits (known as ``imported'' and ``exported'' events), and a set of states,
+transitions, and actions describing the state machine. Architecture
+specifications describe how multiple monitors come together to form a
+monitoring system, including which monitor specifications are involved, how
+instances of the monitors are parameterized, and how imported and exported
+events are directed.
+
+Monitor specifications are written in \verb|.smedl| files, and there may be
+multiple in a monitoring system. Architecture specifications are written in
+\verb|.a4smedl| files and there is exaclty one per monitoring system.
+
+\chapter{SMEDL Specifications}
+\label{ch:smedl}
+
+A SMEDL specification describes a single monitor. This is where the actual
+monitoring logic is definied. At its core, a SMEDL monitor is a set of state
+machines. Transitions are triggered by events, with optional conditions and
+associated actions. Monitors may also contain state variables, which the
+conditions and actions can make use of.
+
+
+
+%TODO
+
+%NOTE In an expression, == on strings normally compares the contents of the
+% strings, but due to limitations in type verification, this does not happen
+% when both sides of the == or != are helper functions that return strings.
+% Similar for opaques.
+
+%NOTE Opaque type does not allow any operations except == and !=. These
+% operations do a byte-by-byte comparison with memcmp. If that is not
+% acceptible, an alternative is to use a helper function that accepts two
+% SMEDLOpaque and returns zero or nonzero.
+
+\chapter{A4SMEDL Specifications}
+\label{ch:a4smedl}
+
+%TODO
+
+%NOTE Using floats as identity parameters is experimental at best and should
+% very likely be avoided. Hashing may not satisfy the invariant that if a == b,
+% hash(a) == hash(b). And floats must compare exactly equal.
+%NOTE Actually, I think the hashing is no longer a problem
+
+%NOTE Using threads as identity parameters may result in undefined behavior.
+% There is no portable way to compare `pthread_t`.
+
+%NOTE See note in prev section on opaques. If they cannot be tested for equality
+% with memcmp, then it is not safe to use them as monitor identities.
+
+\part{The SMEDL Programming Interface}
+\label{part:api}
+
+%TODO describe how the code is split into layers: monitor, local wrapper, global wrapper, transport
+
+\chapter{Common Elements}
+
+%TODO SMEDLValue and certain other things
+
+\chapter{Monitor API}
+
+%TODO
+
+\chapter{Local Wrapper API}
+
+%TODO
+
+\chapter{Global Wrapper API}
+
+%TODO
+
+\chapter{Transport Adapters}
+
+%TODO
+
+\section{RabbitMQ}
+
+%TODO
+
+%\section{ROS}
+%TODO
+
+\section{File}
+
+%TODO
+
+%\chapter{PEDL API}
+% At some point we may have an additional interface specifically designed for
+% the target system to interface with. It would have functions named after the
+% imported events (instead of channel names) and these functions would either
+% call the global wrapper import API directly or generate RabbitMQ/ROS messages
+% depending on whether synchronous or asynchronous transport is necessary. Such
+% an interface would be documented in a section here.
+\end{document}

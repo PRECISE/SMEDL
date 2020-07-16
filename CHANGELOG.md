@@ -14,6 +14,8 @@ issues with the code.
   systems). RabbitMQ transport is still available for asynchronous
   communication, now via an optional, auto-generated adapter built on top of
   said API.
+- In addition to the RabbitMQ adapter, a file reader adapter is now available
+  for simple monitor testing.
 - The same monitor specification can be used multiple times in one architecture
   file.
 - A new type of connection target is available in architecture files: monitor
@@ -24,6 +26,8 @@ issues with the code.
   2. It provides a mechanism for state variables to be initialized to custom
      values.
 - Type checking for expressions and monitor/event parameters
+- Makefiles are generated with the monitor code. These can be used as-is or
+  provide inspiration for integrating monitors into a larger build system.
 
 ### Changed
 
