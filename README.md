@@ -17,12 +17,10 @@ below discusses all aspects of installation, including prerequisites.
 - [TatSu >=4.4, \<5.0][tatsu]
 - [Jinja2][jinja]
 - [importlib\_resources >=1.1][importlib-resources] (only for Python 3.6.x)
-
-For testing:
-
-- [tox][tox]
-- [pytest][pytest]
-- [flake8][flake8]
+- Required only for testing:
+  * [tox][tox]
+  * [pytest][pytest]
+  * [flake8][flake8]
 
 **Monitor build requirements:**
 
@@ -199,7 +197,8 @@ The options are as follows:
 
 - `rabbitmq`: Asynchronous events are transmitted as JSON-encoded RabbitMQ
   messages. This is a good choice when there is no compelling reason to pick
-  another. A RabbitMQ server is required.
+  another. You will need [rabbitmq-c][rabbitmq-c] installed to build monitors
+  with this transport and a RabbitMQ server to run them.
 - `file`: Meant primarily for testing and debugging. Reads JSON-encoded events
   from a file (or stdin) and writes exported events to stdout. Events between
   monitors are not actually asynchronous.
@@ -229,8 +228,9 @@ required). On the other hand, if you want to inhibit makefile generation, use
 the `--no-makefile` option.
 
 When `mgen` generates a makefile for you, the monitors can be built simply by
-running `make`. If you like, there are some options to tweak the build at the
-top of the makefile.
+running `make`. (This, of course, assumes you have a C compiler and GNU make
+installed.) If you like, there are some options to tweak the build at the top
+of the makefile.
 
 For cases where `mgen` does not generate a makefile, or you are opting not to
 use it, the following tips may be helpful:

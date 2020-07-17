@@ -13,7 +13,7 @@ workflow:
     - if: $CI_COMMIT_BRANCH == "smedl2"
 
 before_script:
-  - ping -c 4 stability.cis.upenn.edu
+#  - ping -c 4 stability.cis.upenn.edu
 #  - apt-get update -y
 #  - apt-get upgrade -y
 #  - apt-get install -y libconfig-dev librabbitmq-dev
