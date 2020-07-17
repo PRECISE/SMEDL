@@ -12,6 +12,10 @@ workflow:
     # branch for new development
     - if: $CI_COMMIT_BRANCH == "smedl2"
 
+cache:
+  paths:
+    - .cache/pip
+
 before_script:
 #  - ping -c 4 stability.cis.upenn.edu
 #  - apt-get update -y
@@ -19,6 +23,7 @@ before_script:
 #  - apt-get install -y libconfig-dev librabbitmq-dev
   - python -V
   - which python
+  - pip install tox
 
 test:
   script:
