@@ -1,334 +1,343 @@
 SMEDL Monitor Generator
 =======================
-### Version 2.0.0
 
-TODO: New TOC:
+A generator for runtime monitors
 
-Summary
-- Prerequisites
-  - Additional prerequisites for testing
-- Installation
-  - Installing for Development
-  - Updating
-  - Syntax highlighting
-- Invocation
-  - Transports
-  - Makefile Generation and Compiling
-- Examples: See tests/ and README-tests.md
-- Testing
-  - Install tox, can either run the full suite on all python versions (how?)
-    or run with the current python version (`tox -e py3` I think?)
-- Further Reading
-  - SMEDL Language
-  - Monitor API
-- Copyright, License, Contact info
+Homepage: [https://gitlab.precise.seas.upenn.edu/smedl/smedl/][repo]
 
 Requirements
 ------------
 
-1. [Python >=3.6](https://docs.python.org/3.6/index.html)
-2. [pip](https://pip.pypa.io/en/stable/)
-    - [TatSu 4.4.0](https://github.com/neogeny/TatSu)
-    - [Jinja2 2.8](http://jinja.pocoo.org/)
-    - [nose 1.3.7](https://nose.readthedocs.io/en/latest/)
-    - [pika 0.10.0](https://pika.readthedocs.io/en/0.10.0/index.html)
-    - [pylibconfig2 0.2.5](https://pypi.python.org/pypi/pylibconfig2/0.2.5)
-    - [pyparsing](https://pypi.python.org/pypi/pyparsing/2.1.10)
+These lists are primarily for reference only. The "Installation" section
+below discusses all aspects of installation, including prerequisites.
 
-Getting started
----------------
+**Python requirements:**
 
-A [Python virtual environment](https://docs.python.org/3/library/venv.html)
-including [Python 3.6](https://docs.python.org/3.6/index.html) and all required Python
-packages has been defined to simplify the process of getting started with the
-tool.
+- [Python >=3.6][python]
+- [TatSu >=4.4, \<5.0][tatsu]
+- [Jinja2][jinja]
+- [importlib\_resources >=1.1][importlib-resources] (only for Python 3.6.x)
 
-If you want to use a virtual environment (recommended), set it up by running
-the following command from the project's root directory:
+For testing:
 
-    pyvenv-3.5 .env && source .env/bin/activate
+- [tox][tox]
+- [pytest][pytest]
+- [flake8][flake8]
 
-To install all of the required dependencies from PyPi and install the monitor
-generator `mgen` as an executable on your path, run the following command in
-the root of the repository:
+**Monitor build requirements:**
+
+- A C compiler (Any C99-compliant compiler should work)
+- [rabbitmq-c][rabbitmq-c] (if using the RabbitMQ
+  transport)
+- [GNU make][make] recommended
+
+Installation
+------------
+
+These instructions are designed for users on Unix-like systems (Linux, macOS).
+Windows users might consider using Windows Subsystem for Linux or Cygwin, or
+they may be able to adapt the instructions for native use.
+
+Before you get started, make sure you have [Python][python] >=3.6 installed
+with [pip][pip] available. The recommended installation method also requires
+the `venv` module. Normally this will come with Python, but certain Linux
+distributions package it as a separate install.
+
+Download and extract a release or clone the repository:
+
+    git clone https://gitlab.precise.seas.upenn.edu/smedl/smedl.git
+    cd smedl
+
+### Virtual Environments
+
+Installing in a [virtual environment][venv] is recommended. This will keep all
+dependencies for this project separate from the rest of the system, ensuring
+there are no conflicts. Create the virtual environment like this:
+
+    python3 -m venv .env
+
+To use the virtual environment, you must activate it (note the dot at the
+beginning of the line):
+
+    . .env/bin/activate
+
+Your prompt will start with `(.env)` to show you that it is active. In the
+future, you will need to activate the virtual environment again each time you
+open a new terminal (by using the same command). You will only be able to
+install, upgrade, and use SMEDL while the virtual environment is active.
+
+You must be in the `smedl` repository to activate the environment, but once it
+is active, you can change to any directory without issue.
+
+Once the environment is active, you may want to upgrade `pip` and `setuptools`
+to the latest version (but this is not strictly necessary):
+
+    pip install --upgrade pip setuptools
+
+For more information on virtual environments, see the [virtual environment
+tutorial][venv].
+
+### Installation Proper
+
+With the virtual environment active, SMEDL can be installed with pip:
 
     pip install .
 
-TODO For development, adding the `-e` option will install SMEDL in "editable"
-mode, which means intead of installing, it will use the code from the repository
-in-place. Thus, there is no need to update the SMEDL installation every time
-you modify the code.
+This will automatically install all the prerequisites as well. That's it. *You
+are now ready to run `mgen`.*
 
-To update the installation of `mgen` without updating its dependencies, run
+### Updating an Existing Installation
+
+If you have pulled the latest commits in git or downloaded and unpacked the
+latest release, you should be able to just install the new version over the
+old version with the same command:
+
+    pip install .
+
+Nonetheless, if you would like to be extra sure, you can uninstall the previous
+version before you install again:
 
     pip uninstall smedl
     pip install .
 
+### Installation for Development
 
-Generating the monitor
-----------------------
+If you are installing to do development on SMEDL itself, you very likely want
+to installing in editable mode (sometimes called "develop mode") by adding the
+`-e` flag:
 
-The 'mgen' script is the primary interface for generating software monitors
-from SMEDL and PEDL definitions. This script can be run with the following
-command (from the project root directory):
+    pip install -e .
 
-    mgen PEDL_SMEDL_FILENAME
+This will set it up so that changes you make to the code in the repository will
+take effect immediately. Otherwise, you would have to reinstall SMEDL each time
+you want to try out a change you made.
 
-This script will generate C source code representing a runtime monitor as
-specified by the PEDL and SMEDL definitions, along with necessary monitor
-management infrastructure.
+In addition, you probably want to install `tox`, which is used to run the test
+suite:
 
-To allow the script to properly locate the PEDL and SMEDL files, the script's
-single parameter should be the name used by the PEDL and SMEDL files, and that
-name should be identical for both files except for their file extensions,
-`.pedl` and `.smedl`.
+    pip install tox
 
-Note: There are two debug flags that can be specified at the command-line.
-These are the '-s' flag for displaying the contents of internal data structures
-used by the monitor during its generation steps and the '-d' flag for
-outputting various debug statements written in the monitor generator code.
+The tests require additional dependencies. Normally, there is no need to
+install them manually, as `tox` handles that for you. But you may want to,
+since you cannot run individual tests manually without them. The testing
+dependencies can be installed like this:
 
-Other useful flags:
-      --version : The current mgen version number
-      --helper <HEADER FILE> : Include the specified header file for providing helper functions
-      --console : Forces output to only show in the console; no file output will be generated
-      --noimplicit : Disables implicit error handling in the generated monitor
-      --arch <ARCH FILE> : The name of architechture file to parse (Described further below)
-      --dir <DIRECTORY> : Output the generated files to this directory relative to the input files
+    pip install -e .[test]
 
+For more on testing, see the "Testing" section.
 
+### Syntax Highlighting
 
-Instrumenting the target
-------------------------
+If you use Vim, there are syntax highlighting files for SMEDL in the `vim/`
+directory. Install them like this:
 
-At the moment, instrumentation of the target program must be performed
-manually. The generated event handling functions, or 'probes', can be found in
-the {object}\_mon.h file. The probe naming convention uses the monitor object
-name and the event name, separated by an underscore. Probes can be added
-anywhere in the target program (assuming the PEDL definitions are followed) and
-will be compiled with the target if the expected parameters are provided and
-the {object}\_mon.h header file is included in the respective target source
-code files.
+1. Copy both `smedl.vim` and `a4smedl.vim` to your `syntax/` directory:
+   `~/.vim/syntax/` on Linux/macOS and `$HOME/vimfiles/syntax/` on Windows.
+2. Create a `smedl.vim` file in `~/.vim/ftdetect/` (on Linux/macOS) or in
+   `$HOME/vimfiles/ftdetect/` (on Windows) with just the following line:
 
+       au BufRead,BufNewFile *.smedl set filetype=smedl
 
-Compiling the generated output
-------------------------------
+3. Create an `a4smedl.vim` file in a similar fashion (being sure to replace
+   `smedl` with `a4smedl` in the line above).
 
-Before executing the instrumented version of the target program, the generated
-runtime monitor must be compiled along with the target program using the
-following command:
+Alternatively, for steps 2 and 3, you can simply add the lines to your regular
+vimrc file.
 
-gcc -o {{base_file_name}}_mon -std=c99 actions.c monitor_map.c {{base_file_name}}_mon.c
+Highlighting rules for Emacs and Visual Studio Code are on the roadmap, but
+with fairly low priority.
 
-Note: If the monitor is an asynchronous monitor, the file {{base_file_name}}_monitor_wrapper.c will be generated, which should be added to the gcc command.
+### Uninstalling
 
+If you installed using a virtual environment, you can uninstall simply by
+deleting the virtual environment directory:
 
-Manually run intermediate generation steps
-------------------------------------------
+    rm -r .env/
 
-[Grako](https://pythonhosted.org/grako/), a PEG parser generator, is used to
-generate the SMEDL and PEDL parsers for their EBNF-defined grammars.
+Syntax highlighting files, just as they had to be installed manually, must be
+removed manually.
 
-To generate a SMEDL parser using the grammar:
+Usage
+-----
 
-	  grako smedl/parser/smedl.grako -o smedl/parser/smedl_parser.py
-	( grako      GRAMMAR             -o     OUTPUT_PARSER  )
+SMEDL works by reading monitor system specifications and translating them into
+C source code. A monitor system consists of an architecture file (a.k.a. an
+`.a4smdl` file) and one or more monitor specifications (a.k.a. `.smedl` files).
+The monitor generator, `mgen`, is the program that translates these
+specification files into C code.
 
-To parse a SMEDL file using the generated parser:
+This README assumes you already have `.smedl` and `.a4smedl` files ready for
+use. For information on how to write those files, see the SMEDL Manual in
+`doc/smedl.pdf`.
 
-      python smedl/parser/smedl_parser.py example.smedl object
-    ( python      PARSER                   INPUT_FILE   START_RULE )
+In its most basic form, here is the command to translate monitor specifications
+into C code. Make sure your virtual environment is active before you run it.
 
-(Use the `-t` command-line option to enable debug tracing)
+    mgen [OPTIONS] [-d <dest_dir>] <input_file>
 
+The `<input_file>` should be an `.a4smedl` file. This will generate all the C
+code for that architecture file and all monitors it uses. The input file can
+also be just a `.smedl` file, in which case only code for that monitor will be
+generated (no local or global wrapper—see Part 2 of the manual, `doc/smedl.pdf`,
+for more on what the wrappers do).
 
-RabbitMQ
+If the `-d` option is given, it will generate the code in the given directory.
+Otherwise, it will generate code in the current directory.
+
+There are some additional options for `mgen`. Some of these are discussed
+shortly, but use `mgen --help` to see a full listing of options and what they
+do.
+
+### Transports
+
+Events may be transmitted to and from monitors synchronously or asynchonously.
+See the chapter on "A4SMEDL Specifications" in the manual (`doc/smedl.pdf`) for
+more on that distinction. But for asynchronous transmission, SMEDL offers a few
+transports to select from. This is done using the `-t <transport>` option.
+
+The options are as follows:
+
+- `rabbitmq`: Asynchronous events are transmitted as JSON-encoded RabbitMQ
+  messages. This is a good choice when there is no compelling reason to pick
+  another. A RabbitMQ server is required.
+- `file`: Meant primarily for testing and debugging. Reads JSON-encoded events
+  from a file (or stdin) and writes exported events to stdout. Events between
+  monitors are not actually asynchronous.
+
+Additional transport adapters are in development.
+
+If no transport option is chosen, the generated monitors will only support
+synchronous communication, i.e. event transmission by linking against them and
+using their C API directly. *Note that synchronous sets cannot transmit events
+to each other directly without an asynchronous transport.*
+
+For more information on the specifics of each transport, see the chapter on
+"Transport Adapters" in the SMEDL manual (`doc/smedl.pdf`).
+
+### Makefile Generation and Compiling
+
+When a transport option is chosen (`-t`), `mgen` has the ability to
+automatically generate a makefile. If there is not already a file named
+`Makefile` in the destination directory, it will do so.
+
+If no transport option is chosen, or there does already exist a file named
+`Makefile`, a makefile will not automatically be generated.
+
+You can force makefile generation, even when it would overwrite an existing
+`Makefile`, with the `-m` option (but even so, a `-t` option is still
+required). On the other hand, if you want to inhibit makefile generation, use
+the `--no-makefile` option.
+
+When `mgen` generates a makefile for you, the monitors can be built simply by
+running `make`. If you like, there are some options to tweak the build at the
+top of the makefile.
+
+For cases where `mgen` does not generate a makefile, or you are opting not to
+use it, the following tips may be helpful:
+
+- Generally speaking, each synchronous set is built into its own executable.
+  (The exception is when using the file transport, where all synchronous sets
+  are linked into a single executable.)
+- Any files with the monitor names or synchronous set name, along with all the
+  static files (e.g. `smedl_types.c`, `event_queue.c`, etc.), are compiled
+  together as part of one synchronous set.
+- The generated code conforms to C99. You may want to use the `-std=c99` option
+  for your compiler.
+- If you want to see extra diagnostic messages, define the `DEBUG` flag with an
+  integer 1-4. Using 0 is the same as not defining it at all. These are the
+  debug levels:
+  * `-DDEBUG=0` Debug messages off
+  * `-DDEBUG=1` Errors only (serious conditions that cannot be recovered from)
+  * `-DDEBUG=2` Errors and warnings (Non-serious abnormal conditions)
+  * `-DDEBUG=3` Errors, warnings and notices (significant but normal)
+  * `-DDEBUG=4` Full debug output
+
+For information about the API for generated code and how to integrate SMEDL
+monitors into your existing systems, see Part 2 of the SMEDL manual
+(`doc/smedl.pdf`).
+
+Examples
 --------
 
-Asynchronous monitoring of events has been implemented using the [Advanced Message Queuing Protocol](http://www.amqp.org/) by the [RabbitMQ](https://www.rabbitmq.com/) message broker.
+See the `tests/monitors/` directory for several examples of working monitor
+systems. The `tests/README-tests.md` file has short descriptions of each
+monitor.
 
-### Configuring a RabbitMQ-enabled monitor
+Testing
+-------
 
-**Hostname**: The host address of your RabbitMQ broker.
+SMEDL uses [`tox`][tox] to run the test suite. You must install it manually:
 
-**Port**: Keep this value as `5672` if your broker is using the default port, or set it to the custom port you have already configured for your broker.
+    pip install tox
 
-**Username**: Your username for the broker.
+To run the full test suite, change directories to the SMEDL repository and run:
 
-**Password**: Your password for the broker.
+    tox
 
-**Exchange**: The main event-handling message exchange.
+The test suite includes the following:
 
-**Control Exchange (ctrl_exchange)**: The message exchange for passing control-related messages.
+- `setup.py check`: Does basic verifications on `setup.py`
+- [flake8][flake8]: Style checks and basic static code analysis for the Python
+  code
+- [pytest][pytest]: Run the test scripts in the `tests/` directory. See
+  `tests/README-tests.md` for more information.
 
-###### Example SMEDL RabbitMQ configuration file
+By default, `tox` will run the test suite using all Python versions that are
+still being maintained (currently 3.6, 3.7, and 3.8) to ensure there are no
+issues with any of them. If you do not have all of them installed, you will get
+errors. In that case, you can tell `tox` to run only your default version of
+Python 3:
 
-	rabbitmq =
-	{
-		hostname = "example.com";
-		port = 5672;
-		username = "test-user";
-		password = "test-password";
-		exchange = "example.topic";
-		ctrl_exchange = "example.control";
-	};
+    tox -e py3
 
-### Format of routing key
+The full test suite with all Python versions automatically runs on GitLab in
+certain circumstances:
 
-The formal of the routing key contains four parts: the channel name, the list of identities of the monitor instance, the event name and the list of attributes of the event. Each element(including channel name, event name, each identity or attribute value) is divided by character '.'. Note that if the type of the attributes of events or identities of the monitor is not typed with integer, it will be replaced by "0" as a place holder. (Note that the string can not be the id of the monitor for now, which will be implemented in the next released version). 
+- Commits to the `master` branch or any `dev*` branch
+- Merge requests
+- Any tagged commits
+- Any commits whose commit message contains `run ci`
+- *Exception:* The test suite will never run if the commit message contains
+  `skip ci`
 
-###### Example of routing key format
+Sometimes, you may want to run specific components of the test suite or even
+specific tests manually. Normally, `tox` handles installing all the test
+dependencies in a separate, dedicated virtual environment. If you want to run
+tests outside of `tox`, you will need to install these dependencies in your
+regular virtual environment:
 
-There are two monitors RateComputation(int) and ThresholdCrossDetection(int) communicating with each other through event dataUpdate2(string, float, float),defined in channel "ch1". For the monitor instances RateComputation(0) and ThresholdCrossDetection(0), the format of the routing key sent along with the message will be "ch1.0.dataUpdates2.0.0.0". The first "0" in the routing key represents the id of RateComputation. The other three "0"s represent the place holder for three  attributes of the event dataUpdate2.  
+    pip install -e .[test]
 
-### JSON format of the asynchronous event message
+Now, you can run `setup.py check`, `flake8 smedl/`, `pytest`, or
+`pytest -k <test_name>`  manually. These all should be run in the top-level
+directory of the repository.
 
-    {
-      "name" : "eventName",
-      "fmt_version" : "format version",
-      "params": {
-                  "v1" : value1,
-              "v2" : value2,
-              ...
-      }
-      "provenance" :{
-            ...
-      }
-    }
+Further Reading
+---------------
 
-Only the message is encoded in JSON string and the routing key still follows the format of the rabbitmq. As a result, the  field "name" in the JSON string is not used for now. Moreover, the field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index where index is from 1. Types and order of the data in "params" follows the definition of the event. The option field "provenance" contains the provenance information, which is opaque to the monitor. 
+The full SMEDL manual can be found in `doc/smedl.pdf`. It describes the SMEDL
+language and the API for generated monitors in detail. There are some other
+documents in the same directory that might be helpful, as well.
 
+License and Contact
+-------------------
 
-Compiling with an architecture description
-------------------------------------------
+Copyright © 2020 The Trustees of the University of Pennsylvania
 
-An architecture description file can be compiled with the SMEDL specification
-using the following command:
+Licensed under a TODO license. For full details, see `LICENSE.txt`.
 
-    mgen PEDL_SMEDL_FILENAME --arch=ARCH_SMEDL_FILENAME
-
-Note that `ARCH_SMEDL_FILENAME` does not contain the `.a4smedl` suffix.
-
-Moreover, it is necessary to compile separately with corresponding SMEDL
-specifications. For more info, readers can refer to the document ``Architecture_Description_Language_for_SMEDL``.
-
-State variable initialization
------------------------------
-
-Default initial value of state variables can be specified in the SMEDL specification:
-
-    Object mon
-    state
-    int i = 0, j=3;
-    string s = "abc";
-    double d = -2.5;
-    ...
-
-Dynamic instantiation
----------------------
-
-In the architecture file, a modifier "creation" can be added before imported events of the monitor:
-
-    System Tracking :=
-    Async RateComputation(int, string)
-    {
-        imported creation dataUpdate (int, string,float,float);
-        imported timeout();
-        imported end();
-        exported dataUpdate2(string, float, float);
-    }
-    ...
-    ch3: dataUpdate => RateComputation.dataUpdate {RateComputation[0]=dataUpdate[0];RateComputation[1]=dataUpdate[1]}
-
-For the example above, instance of RateComputation can be created whenever an dataUpdate event is received. However, in the pattern specification, all identifiers should be bounded. Moreover, target monitor should always appear at the left side of the connection pattern expression. 
-
-Synchronous Communication
--------------------------
-
-Related monitors can be grouped into a "synchronous set." Monitors in the same synchronous set all run in one combined process. They use direct calls to each other's event handlers rather than RabbitMQ messages to exchange events between each other.
-
-This comes with syntax changes in the architecture file and additional C source files that will be generated with the monitors.
-
-### New changes to the architecture file
-
-* Monitors are now declared with the `Monitor` keyword rather than the `Async` keyword. For example:
-  
-    ```
-    Monitor RateComputation(int, string)
-    {
-        imported creation dataUpdate (int, string,float,float);
-        imported timeout();
-        imported end();
-        exported dataUpdate2(string, float, float);
-    }
-    ```
-
-* Between the monitor declarations and the channel specifications, there is a new section where synchronous sets are defined. It begins with the line `Synchronous sets:` followed by the list of synchronous sets. Each set is specified with its name, followed by a comma-separated list of monitor names enclosed in curly braces. For example, to define a set named "metricsSet" containing the monitors "frontend" and "metricsCollector":
-
-    ```
-    Synchronous sets:
-    metricsSet: {frontend, metricsCollector}
-    ```
-
-* Finally, the start of the channel specifications must be maked with the line `Channels:` to separate it from the synchronous set definitions. Buiding on the previous example:
-
-    ```
-    Synchronous sets:
-    metricsSet: {frontend, metricsCollector}
-
-    Channels:
-    ch1: measurement => frontend.measurementIn
-    ch2: frontend.requestMetrics => metricsCollector.metricsRequest
-    ...
-    ```
-
-**An example monitor using the new syntax and features can be found in tests/examples/multi-moving-average.**
-
-### Additional C source files
-
-With this change to mgen, the wrapper from dynamic instantiation gets replaced with a "local wrapper" and "global wrapper." The local wrapper shares the same name as the old wrapper from dynamic instantiation (`<monitor>_wrapper.c`/`.h`), though the contents are very different. The global wrapper (`<set_name>_global_wrapper.c`/`.h`) is an entirely new file.
-
-There is one global wrapper per synchronous set and it routes all events between monitors and takes on the role of interfacing with RabbitMQ. The local wrapper is the interface between the global wrapper and individual monitor instances. It handles dynamic instantiation and distributing imported events to the correct instances of its monitor.
-
-### Generating and building synchronous monitors
-
-The steps for generating monitors have not changed. Run mgen the same way as before. The new wrappers will be generated automatically if the architecture file is provided. Note that the global wrapper is generated any time an architecture file is given, but the produced .c/.h file will be the same for any monitor in the same synchronous set.
-
-When building, there are no new libraries; however, there is the new C file for the global wrapper. The other change is that monitors in the same synchronous set must now all be built (or linked) together. For example, if building the monitors in the `metricsSet` example above:
-
-    gcc -std=c99 -D_POSIX_C_SOURCE=199309L actions.c amqp_utils.c cJSON.c monitor_map.c mon_utils.c frontend_mon.c frontend_monitor_wrapper.c metricsCollector_mon.c metricsCollector_monitor_wrapper.c metricsSet_global_wrapper.c -o metricsSet -lm -lconfig -lrabbitmq
-
-### Synchronous global wrappers
-
-Normally, the global wrapper sends and receives events asynchronously, over RabbitMQ. There is also the option of generating a synchronous interface. In that case, no JSON generation or parsing code is generated either, for performance.
-
-To do this, use the -j or --nojson flag when invoking mgen. The files cJSON.c and amqp_utils.c will not be generated, so be sure to remove these from any makefiles if necessary.
-
-There are two new functions of interest when doing this: `<syncset>_set_init` and `<syncset>_global_import`. These make up the interface between the monitor and the target system.
-
-`<syncset>_set_init()` initializes the internal data structures for the synchronous set's monitors. This function must be called once before any calls to `<syncset>_global_import`.
-
-`<syncset>_global_import(<syncset>_Connection ch_id, param *params)` is what the target system should call to send an event to the monitors in the synchronous set. It takes two parameters:
-
-* `<syncset>_Connection ch_id` is a new enum representing the connections in the architecture file. See \<syncset\>_global_wrapper.h to see how it is defined. Use the connection that corresponds to the event being sent.
-* `param *params` is the parameters for the event. See actions.h for more information on this data type.
-
-Currently there is no provision for monitors to export events back to the target system without manual modifications. Until such a feature is discussed and implemented, manual modifications should go in the `exported_<monitor>_<eventname>` functions in \<monitor\>_mon.c. These are the functions that get called when the corresponding event is exported from the synchronous set.
-
-An example usage of a synchronous global wrapper can be found in the auction example in tests/examples.
-
-Running the test suite
-----------------------
-
-You may run the tool's test suite by simply calling `nose2` from the
-project's root directory.
+Contact: Dominick Pastore [\<dpastore@seas.upenn.edu>](mailto:dpastore@seas.upenn.edu)
 
 
-Updating from the repository
-----------------------------
-
-The canonical repository for this project is located on the
-[PRECISE GitLab](https://gitlab.precise.seas.upenn.edu/pgebhard/smedl).
-
-At the moment, this is an internal repository, so please contact
-[Peter Gebhard](pgeb@seas.upenn.edu) for access.
+[repo]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/
+[python]: https://www.python.org/
+[pip]: https://pip.pypa.io/en/stable/
+[tatsu]: https://github.com/neogeny/TatSu
+[jinja]: https://palletsprojects.com/p/jinja/
+[importlib-resources]: https://pypi.org/project/importlib-resources/
+[tox]: https://tox.readthedocs.io/en/latest/
+[pytest]: https://docs.pytest.org/en/latest/
+[flake8]: https://flake8.pycqa.org/en/latest/
+[rabbitmq-c]: http://alanxz.github.io/rabbitmq-c/
+[make]: https://www.gnu.org/software/make/
+[venv]: https://docs.python.org/3/tutorial/venv.html

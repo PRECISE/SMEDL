@@ -34,9 +34,9 @@ Inside this directory, you will find the following contents:
   are the actual test cases: pairs of files `<testcase_name>.in` and
   `<testcase_name>.out`.
 
-- `ctests/`: Contains C unit test code. The top level contains unit tests for
-  the common static files. Subdirectories contain unit tests for transport
-  adapters.
+- `ctests/`: Contains C unit test code used by `test_c_units.py`. The top level
+  contains unit tests for the common static files. Subdirectories contain unit
+  tests for transport adapters.
 
 - `ctests/unity/`: Contains the Unity library for the C unit tests. There is a
   submodule for the Unity repository and symbolic links to the important files.
@@ -68,15 +68,10 @@ The monitors in the `monitors/` directory can be useful examples of how to
 write a SMEDL monitoring system. Here is a description of each one:
 
 - `simple`: A simple monitor with one imported event and one exported event. It
-  raised the exported event every time it receives the imported event. A "hello
+  raises the exported event every time it receives the imported event. A "hello
   world" monitor of sorts.
 - `multi_moving_ave`: An example monitor that computes moving averages for
   multiple objects (using dynamic instantiation) and raises an alarm if the
   sum of the all the averages rises above a threshold.
-
-Some of these may have additional notes in their directory.
-
-TODO
-----
 
 [pytest-docs]: https://docs.pytest.org/en/stable/
