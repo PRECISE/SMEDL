@@ -1,19 +1,24 @@
-image: python:3.5
+image: python:3
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_MESSAGE ~= /skip\sci/i
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH ~= /^dev/
+    # Remove this rule after smedl2 is merged into master, then create a dev*
+    # branch for new development
+    - if: $CI_COMMIT_BRANCH == "smedl2"
 
 before_script:
-  - ping -c 10 stability.cis.upenn.edu
-  - apt-get update -y
-  - apt-get upgrade -y
-  - apt-get install -y libconfig-dev librabbitmq-dev
+  - ping -c 4 stability.cis.upenn.edu
+#  - apt-get update -y
+#  - apt-get upgrade -y
+#  - apt-get install -y libconfig-dev librabbitmq-dev
   - python -V
   - which python
 
 test:
-  when: manual
   script:
-  - pyvenv .env && source .env/bin/activate
-  - ls -la .env/bin
-  - python -V
-  - which python
-  - pip install .
-  - nosetests -s
+    - tox

@@ -1,7 +1,5 @@
 import json
 
-from .mgen import MonitorGenerator
-
 # importlib.resources is only available in python>=3.7, but is available as a
 # backport.
 try:
@@ -12,6 +10,8 @@ except ImportError:
 # Get the package details from the SMEDL about.json file
 about_stream = resources.open_text(__name__, 'about.json')
 __about__ = json.load(about_stream)
+
+from .mgen import MonitorGenerator  # noqa (Moving to top causes circ import)
 
 __all__ = [
     'MonitorGenerator'
