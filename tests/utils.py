@@ -52,9 +52,8 @@ def json_find_diff(actual, expected):
 
 def parse_multiple_json(text):
     """Parse multiple JSON objects, separated by whitespace, from the input
-    string. Return a list of the parsed objects. If the input string contains
-    invalid JSON, a json.JSONDecodeError will be raised."""
-    result = []
+    string. Return an iterator over the parsed objects. If the input string
+    contains invalid JSON, a json.JSONDecodeError will be raised."""
     decoder = json.JSONDecoder()
     text.strip()
     count = 0
@@ -65,11 +64,9 @@ def parse_multiple_json(text):
             raise json.JSONDecodeError("Object {}: ".format(count) + e.msg,
                     e.doc, e.pos) from e
 
-        result.append(obj)
+        yield obj
         text = text[end:].lstrip()
         count += 1
-
-    return result
 
 class GeneratedMonitor:
     """Generates a monitor in a temporary directory on instantiation. Can run

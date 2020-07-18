@@ -13,12 +13,12 @@ from smedl.parser.exceptions import SmedlException
 
 from utils import *
 
-# List of monitors with test cases
-test_monitors = os.listdir(os.path.join(sys.path[0], 'file'))
+# List of monitors
+test_monitors = os.listdir(os.path.join(sys.path[0], 'monitors'))
 # List of test case tuples
 test_cases = []
 for mon in test_monitors:
-    files = os.listdir(os.path.join(sys.path[0], 'file', mon))
+    files = os.listdir(os.path.join(sys.path[0], 'monitors', mon))
     for fname in files:
         root, ext = os.path.splitext(fname)
         if ext == '.in':
@@ -26,7 +26,7 @@ for mon in test_monitors:
 # List of monitors that should fail to generate
 bad_monitors = os.listdir(os.path.join(sys.path[0], 'bad_monitors'))
 
-@pytest.fixture
+@pytest.fixture(scope='module')
 def generated_file_monitor(request):
     """Fixture to generate a named monitor that's ready to execute"""
     mon = request.param
@@ -39,7 +39,7 @@ def generated_file_monitor(request):
         indirect=['generated_file_monitor'], scope='module')
 def test_monitor(generated_file_monitor, test_case):
     """Test the given monitor with the named testcase"""
-    path = os.path.join(sys.path[0], 'file', generated_file_monitor.fname)
+    path = os.path.join(sys.path[0], 'monitors', generated_file_monitor.fname)
     with open(os.path.join(path, test_case + '.in'), 'r') as f:
         stdin = f.read()
     with open(os.path.join(path, test_case + '.out'), 'r') as f:
@@ -49,8 +49,8 @@ def test_monitor(generated_file_monitor, test_case):
     stdout, stderr = generated_file_monitor.communicate([stdin], timeout=15)[0]
     print(stderr, file=sys.stderr)
 
-    actual_json = parse_multiple_json(stdout)
-    expected_json = parse_multiple_json(expected)
+    actual_json = list(parse_multiple_json(stdout))
+    expected_json = list(parse_multiple_json(expected))
     assert actual_json == expected_json, \
             'Output messages did not match expected'
     #assert stderr == ''

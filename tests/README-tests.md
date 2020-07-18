@@ -23,16 +23,14 @@ Inside this directory, you will find the following contents:
 
 - `monitors/`: Contains all the monitors used for testing. Each monitor system
   gets its own subdirectory (named to match the `.a4smedl` file with the
-  `.a4smedl` removed).
+  `.a4smedl` removed). In each subdirectory, there are:
+  * `.smedl` and `.a4smedl` files
+  * Any helper headers
+  * Test cases, which are pairs of corresponding `.in` and `.out` files
 
 - `bad_monitors/`: Like `monitors/`, but contains monitors where generation
   should fail. This is tested by the `test_invalid_monitor` test cases in
   `test_monitors.py`.
-
-- `file/`: Contains test cases for `test_monitors.py`. One directory for each
-  monitor to be tested (must match a directory in `monitors/`). Inside each one
-  are the actual test cases: pairs of files `<testcase_name>.in` and
-  `<testcase_name>.out`.
 
 - `ctests/`: Contains C unit test code used by `test_c_units.py`. The top level
   contains unit tests for the common static files. Subdirectories contain unit
