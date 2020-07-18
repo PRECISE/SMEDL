@@ -1,0 +1,7 @@
+system Adder;
+
+import "adder.smedl";
+
+monitor Adder();
+
+conn: measurement => Adder.measurement($0);
