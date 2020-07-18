@@ -218,10 +218,10 @@ static int verify_fmt_version(cJSON *fmt) {
             err("Incompatible fmt_version. Expected %d.%d - %d.x",
                     FMT_VERSION_MAJOR, FMT_VERSION_MINOR, FMT_VERSION_MAJOR);
             return 0;
-        } else {
-            err("Bad message ('fmt_version' not array of two numbers)");
-            return 0;
         }
+    } else {
+        err("Bad message ('fmt_version' is empty array, 2 numbers expected)");
+        return 0;
     }
 
     if (cJSON_ArrayNext(fmt_item) && cJSON_IsNumber(fmt_item)) {
@@ -229,14 +229,14 @@ static int verify_fmt_version(cJSON *fmt) {
             err("Incompatible fmt_version. Expected %d.%d - %d.x",
                     FMT_VERSION_MAJOR, FMT_VERSION_MINOR, FMT_VERSION_MAJOR);
             return 0;
-        } else {
-            err("Bad message ('fmt_version' not array of two numbers)");
-            return 0;
         }
+    } else {
+        err("Bad message ('fmt_version' contains 1 number, 2 expected)");
+        return 0;
     }
 
     if (cJSON_ArrayNext(fmt_item)) {
-        err("Bad message ('fmt_version' not array of two numbers)");
+        err("Bad message ('fmt_version' contains more than 2 numbers)");
         return 0;
     }
 
@@ -252,7 +252,11 @@ static void routing_key_to_channel(amqp_bytes_t routing_key, char *buf,
     len--;
     len = len > routing_key.len ? routing_key.len : len;
     for (i = 0; i < len; i++) {
-        buf[i] = rk[i] == '\0' ? ' ' : rk[i];
+        if (rk[i] == '.') {
+            buf[i] = '\0';
+            return;
+        }
+        buf[i] = rk[i];
     }
     buf[i] = '\0';
 }
@@ -283,6 +287,11 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
      * "mychannelislonger") */
     char channel[{{ch_len}}];
     routing_key_to_channel(envelope->routing_key, channel, {{ch_len}});
+
+#if DEBUG >= 4
+    err("Processing message with routing key %.*s (channel %s)",
+            envelope->routing_key.len, envelope->routing_key.bytes, channel);
+#endif
 
     /* Parse JSON */
     cJSON *msg = cJSON_ParseWithLength(envelope->message.body.bytes,
@@ -335,6 +344,7 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
             err("Bad message ('identities' not present as an array)");
             goto fail2;
         }
+        {% if conn.source_mon.params is nonempty %}
         SMEDLValue identities[{{conn.source_mon.params|length}}];
         {% for param in conn.source_mon.params %}
         {% if loop.first %}
@@ -390,16 +400,24 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
             goto fail2;
         }
         {% endfor %}
-        if (!cJSON_ArrayNext(id_json)) {
+        if (cJSON_ArrayNext(id_json)) {
             err("Bad message (Too many elements in 'identities' array)");
             goto fail2;
         }
+        {% else %}
+        SMEDLValue *identities = NULL;
+        if (cJSON_ArrayFirst(identities_json, id_json)) {
+            err("Bad message (Too many elements in 'identities' array)");
+            goto fail2;
+        }
+        {% endif %}
         {% else %}
         SMEDLValue *identities = NULL;
         {% endif %}
 
         /* Convert event parameters to SMEDLValue array */
         cJSON *param_json;
+        {% if conn.source_event_params is nonempty %}
         SMEDLValue params[{{conn.source_event_params|length}}];
         {% for param in conn.source_event_params %}
         {% if loop.first %}
@@ -460,10 +478,19 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
         }
         {% endfor %}
         {% if not conn.event_params_inferred %}
-        if (!cJSON_ArrayNext(id_json)) {
+        if (cJSON_ArrayNext(param_json)) {
             err("Bad message (Too many elements in 'params' array)");
             goto fail2;
         }
+        {% endif %}
+        {% else %}
+        SMEDLValue *params = NULL;
+        {% if not conn.event_params_inferred %}
+        if (cJSON_ArrayFirst(params_json, param_json)) {
+            err("Bad message (Too many elements in 'params' array)");
+            goto fail2;
+        }
+        {% endif %}
         {% endif %}
 
         /* Send to global wrapper */
@@ -540,7 +567,7 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
         amqp_maybe_release_buffers(rmq_state->conn);
 
         /* Try to consume a message */
-        timeout.tv_sec = 5;
+        timeout.tv_sec = 1;
         timeout.tv_usec = 0;
         reply = amqp_consume_message(rmq_state->conn, &envelope, &timeout, 0);
 
@@ -552,13 +579,13 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
                 reply.library_error == AMQP_STATUS_UNEXPECTED_STATE) {
             /* Received some frame besides Basic.Deliver. Handle it. */
             if (!handle_other_frame(init_status, rmq_state)) {
-                error = 1;
+                //error = 1;
             }
         } else if (check_reply(init_status, rmq_state, reply,
                     "Could not consume message")) {
             /* Message successfully received. Handle it. */
             if (!handle_message(rmq_state, &envelope)) {
-                error = 1;
+                //error = 1;
             }
             amqp_destroy_envelope(&envelope);
         } else {
@@ -1084,10 +1111,10 @@ int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf) {
     cJSON_Delete(conf);
     if (status) {
         *out_buf = buf;
-        return 0;
+        return 1;
     } else {
         free(buf);
-        return 1;
+        return 0;
     }
 }
 
@@ -1115,16 +1142,25 @@ int main(int argc, char **argv) {
 
     /* Read config, if present */
     if (status) {
+#if DEBUG >= 4
+        err("Reading config");
+#endif
         status = read_config("{{sys.name}}.cfg", &rmq_config, &conf_buf);
     }
 
     /* Initialize if reading config was successful */
     if (status) {
+#if DEBUG >= 4
+        err("Initializing");
+#endif
         status = init(&init_status, &rmq_state, &rmq_config);
     }
 
     /* Start consuming events if initialization was successful */
     if (status) {
+#if DEBUG >= 3
+        err("Ready to consume events");
+#endif
         status = consume_events(&init_status, &rmq_state);
     }
 
