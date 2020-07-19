@@ -559,7 +559,7 @@ int send_message(RabbitMQState *rmq_state, const char *routing_key,
     properties.content_type = amqp_cstring_bytes("application/json");
     properties.type = amqp_cstring_bytes(FMT_VERSION_STRING);
     if (correlation_id != NULL) {
-        properties.flags |= AMQP_BASIC_CORRELATION_ID;
+        properties._flags |= AMQP_BASIC_CORRELATION_ID_FLAG;
         properties.correlation_id = amqp_cstring_bytes(correlation_id);
     }
 

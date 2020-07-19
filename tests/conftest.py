@@ -24,10 +24,10 @@ def pytest_addoption(parser):
 @pytest.fixture(scope='session')
 def rabbitmq_config(pytestconfig):
     result = dict()
-    result['server'] = pytestconfig.getoption('rabbitmq-server')
-    result['port'] = pytestconfig.getoption('rabbitmq-port')
-    result['username'] = pytestconfig.getoption('rabbitmq-username')
-    result['password'] = pytestconfig.getoption('rabbitmq-password')
-    result['exchange'] = pytestconfig.getoption('rabbitmq-exchange')
-    result['vhost'] = pytestconfig.getoption('rabbitmq-vhost')
+    result['server'] = pytestconfig.getoption('rabbitmq_server')
+    result['port'] = pytestconfig.getoption('rabbitmq_port')
+    result['username'] = pytestconfig.getoption('rabbitmq_user')
+    result['password'] = pytestconfig.getoption('rabbitmq_pass')
+    result['exchange'] = pytestconfig.getoption('rabbitmq_exchange')
+    result['vhost'] = pytestconfig.getoption('rabbitmq_vhost')
     return result

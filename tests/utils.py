@@ -4,6 +4,7 @@ Classes and helper functions used by multiple test modules
 
 import pytest
 
+import sys
 import os
 import os.path
 import stat
@@ -132,6 +133,8 @@ class GeneratedMonitor:
         except TypeError:
             raise TestingError("Called GeneratedMonitor.run() before build()")
 
+        stdout = None
+        stderr = None
         self.needs_communicate = False
         if capture_output:
             stdout = subprocess.PIPE
