@@ -1,54 +1,3 @@
-/*
- * RabbitMQ Adapter
- *
- * RabbitMQ messages are published to exchanges. RabbitMQ subscribers read from
- * queues. Queues can be bound to exchanges, which allows the exchange to route
- * messages into it. How that routing happens depends on the exchange type.
- *
- * SMEDL uses the "topic" exchange type. Queues are assigned a "binding key"
- * when they are bound to an exchange. (The same queue may also be bound more
- * than once to assign multiple binding keys.) When a message is published to
- * the exchange, the exchange routes it to any queue whose binding key matches
- * the message's routing key. Binding keys may have wildcard components to match
- * entire classes of routing keys.
- *
- * SMEDL message routing keys look like this:
- * <channel_name>.<event> (from the environment) or
- * <channel_name>.<monitor>.<event>
- *
- * Only the channel name is significant as far as routing goes.
- *
- * Message content:
- *
- * - The first key in the JSON object is "fmt_version", which must be [2, 0].
- *   The first number is the major version and is incremented any time there is
- *   a backward-incompatible change to the message format. The second number is
- *   the minor version and is incremented any time there is a
- *   backward-compatible update to the message format. Thus, to check for
- *   compatibility, the major version must match, and the minor version must
- *   match or be greater.
- *
- * The other keys:
- *
- * - "event", which is for human reference only but will be
- *   "<monitor>.<event>" for exported events. ("<event>" is recommended for
- *   events from the target system.)
- * - "identities", an array of the monitor identities. For events from the
- *   target system, this should be omitted.
- * - "params", an array of the event parameters.
- * - "aux", which may consist of arbitrary JSON data. If not needed, it should
- *   be set to null.
- *
- * Here is how the various SMEDL types are represented in JSON:
- * - int - Number
- * - char - Number
- * - float - Number
- * - string - String
- * - pointer - String (by converting to uintptr_t and then rendering that in
- *   hexadecimal)
- * - thread - Not supported. Raises UnsupportedFeature.
- *   opaque - String
- */
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -202,44 +151,27 @@ static int check_reply(InitStatus *init_status, RabbitMQState *rmq_state,
     return 0;
 }
 
-/* Verify that the format version is compatible, i.e. the object is an array of
- * two numbers, where the first (the major version) matches and the second (the
- * minor version) is equal or greater. Return nonzero if so, zero if not. */
-static int verify_fmt_version(cJSON *fmt) {
-    cJSON *fmt_item;
-    if (!cJSON_IsArray(fmt)) {
-        err("Bad message ('fmt_version' not present as an array of two "
-                "numbers)");
+/* Verify that the format version is compatible, i.e. it is a string
+ * "smedl-fmt<x>.<y>" where <x> matches the major version and <y> is greater
+ * than or equal to the minor version. Return nonzero if so, zero if not. */
+static int verify_fmt_version(const char *fmt) {
+    int major, minor;
+    int result = sscanf(fmt, "smedl-fmt%d.%d", &major, &minor);
+    if (result != 2) {
+        err("Bad message. 'type' property was present but not "
+                "'smedl-fmt<major>.<minor>'.");
         return 0;
     }
-
-    if (cJSON_ArrayFirst(fmt, fmt_item) && cJSON_IsNumber(fmt_item)) {
-        if (fmt_item->valueint != FMT_VERSION_MAJOR) {
-            err("Incompatible fmt_version. Expected %d.%d - %d.x",
-                    FMT_VERSION_MAJOR, FMT_VERSION_MINOR, FMT_VERSION_MAJOR);
-            return 0;
-        }
-    } else {
-        err("Bad message ('fmt_version' is empty array, 2 numbers expected)");
+    if (major != FMT_VERSION_MAJOR) {
+        err("Incompatible format version. Expected %d.%d - %d.x",
+                FMT_VERSION_MAJOR, FMT_VERSION_MINOR, FMT_VERSION_MAJOR);
         return 0;
     }
-
-    if (cJSON_ArrayNext(fmt_item) && cJSON_IsNumber(fmt_item)) {
-        if (fmt_item->valueint < FMT_VERSION_MINOR) {
-            err("Incompatible fmt_version. Expected %d.%d - %d.x",
-                    FMT_VERSION_MAJOR, FMT_VERSION_MINOR, FMT_VERSION_MAJOR);
-            return 0;
-        }
-    } else {
-        err("Bad message ('fmt_version' contains 1 number, 2 expected)");
+    if (minor < FMT_VERSION_MINOR) {
+        err("Incompatible format version. Expected %d.%d - %d.x",
+                FMT_VERSION_MAJOR, FMT_VERSION_MINOR, FMT_VERSION_MAJOR);
         return 0;
     }
-
-    if (cJSON_ArrayNext(fmt_item)) {
-        err("Bad message ('fmt_version' contains more than 2 numbers)");
-        return 0;
-    }
-
     return 1;
 }
 
@@ -293,18 +225,29 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
             envelope->routing_key.len, envelope->routing_key.bytes, channel);
 #endif
 
+    /* Handle properties */
+    amqp_basic_properties_t *properties = &envelope->message.properties;
+    amqp_bytes_t *correlation_id = NULL;
+    if (properties->_flags & AMQP_BASIC_TYPE_FLAG) {
+        /* Verify format version */
+        char fmt[257];
+        size_t len = properties->type.len <= 256 ? properties->type.len : 256;
+        memcpy(fmt, properties->type.bytes, len);
+        fmt[len] = '\0';
+        if (!verify_fmt_version(fmt)) {
+            return 0;
+        }
+    }
+    if (properties->_flags & AMQP_BASIC_CORRELATION_ID_FLAG) {
+        correlation_id = &properties->correlation_id;
+    }
+
     /* Parse JSON */
     cJSON *msg = cJSON_ParseWithLength(envelope->message.body.bytes,
             envelope->message.body.len);
     if (msg == NULL) {
         err("Received message with invalid JSON");
         return 0;
-    }
-
-    /* Verify fmt_version */
-    cJSON *fmt = cJSON_GetObjectItemCaseSensitive(msg, "fmt_version");
-    if (!verify_fmt_version(fmt)) {
-        goto fail1;
     }
 
     /* Get event parameters JSON */
@@ -327,6 +270,10 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
         goto fail1;
     }
     aux.state = rmq_state;
+    size_t correlation_id_len =
+        correlation_id->len <= 256 ? correlation_id->len : 256;
+    memcpy(aux.correlation_id, correlation_id->bytes, correlation_id_len);
+    aux.correlation_id[correlation_id_len] = '\0';
     {% for conn in sys.imported_channels(syncset) %}
 
     {% if conn.source_mon is not none %}
@@ -599,7 +546,7 @@ int consume_events(InitStatus *init_status, RabbitMQState *rmq_state) {
 
 /* Send a message over RabbitMQ. Return nonzero on success, zero on failure. */
 int send_message(RabbitMQState *rmq_state, const char *routing_key,
-        const char *msg, size_t len) {
+        const char *correlation_id, const char *msg, size_t len) {
     int status;
 
     /* Construct RabbitMQ message */
@@ -607,10 +554,19 @@ int send_message(RabbitMQState *rmq_state, const char *routing_key,
     routing_key_bytes = amqp_cstring_bytes(routing_key);
     msg_bytes.len = len;
     msg_bytes.bytes = (char *) msg;
+    amqp_basic_properties_t properties;
+    properties._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_TYPE_FLAG;
+    properties.content_type = amqp_cstring_bytes("application/json");
+    properties.type = amqp_cstring_bytes(FMT_VERSION_STRING);
+    if (correlation_id != NULL) {
+        properties.flags |= AMQP_BASIC_CORRELATION_ID;
+        properties.correlation_id = amqp_cstring_bytes(correlation_id);
+    }
 
     /* Send the message */
     status = amqp_basic_publish(rmq_state->conn, rmq_state->channel,
-            rmq_state->exchange, routing_key_bytes, 0, 0, NULL, msg_bytes);
+            rmq_state->exchange, routing_key_bytes, 0, 0,
+            &properties, msg_bytes);
     if (!check_status(status, "Could not send message")) {
         return 0;
     }
@@ -756,7 +712,8 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
         goto fail;
     }
 
-    send_message(aux->state, "{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}", msg, strlen(msg));
+    send_message(aux->state, "{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}",
+            aux->correlation_id, msg, strlen(msg));
 
     cJSON_Delete(msg_json);
     return;
