@@ -68,6 +68,23 @@ def parse_multiple_json(text):
         text = text[end:].lstrip()
         count += 1
 
+def collect_test_cases():
+    """Collect the list of monitors and test cases from the monitors/
+    directory. Returns (monitors, test_cases) where monitors is a list of
+    monitor names and test_cases is a list of (mon_name, test_case_name)."""
+    # List of monitors
+    test_monitors = os.listdir(os.path.join(sys.path[0], 'monitors'))
+    # List of test case tuples
+    test_cases = []
+    for mon in test_monitors:
+        files = os.listdir(os.path.join(sys.path[0], 'monitors', mon))
+        for fname in files:
+            root, ext = os.path.splitext(fname)
+            if ext == '.in':
+                test_cases.append((mon, root))
+    return (test_monitors, test_cases)
+
+
 class GeneratedMonitor:
     """Generates a monitor in a temporary directory on instantiation. Can run
     the monitor on demand."""
@@ -178,13 +195,13 @@ class GeneratedMonitor:
                 proc.wait(timeout)
         return [proc.returncode for proc in self.procs]
 
-    def terminate(self):
+    def terminate(self, timeout=2):
         """Terminate the monitor processes. Wait two seconds and then kill any
         remaining processes."""
         for proc in self.procs:
             if proc.returncode is None:
                 proc.terminate()
-        time.sleep(2)
+        time.sleep(timeout)
         for proc in self.procs:
             if proc.returncode is None:
                 proc.kill()

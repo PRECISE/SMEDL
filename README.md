@@ -21,6 +21,9 @@ below discusses all aspects of installation, including prerequisites.
   * [tox][tox]
   * [pytest][pytest]
   * [flake8][flake8]
+  * [pika][pika] (for RabbitMQ tests)
+  * A [RabbitMQ server][rabbitmq-install] (Not Python software; required for
+    RabbitMQ tests)
 
 **Monitor build requirements:**
 
@@ -110,12 +113,20 @@ This will set it up so that changes you make to the code in the repository will
 take effect immediately. Otherwise, you would have to reinstall SMEDL each time
 you want to try out a change you made.
 
-In addition, you probably want to install `tox`, which is used to run the test
-suite:
+In addition, you probably want to install `tox` and a RabbitMQ server. `tox` is
+used to run the test suite, and a RabbitMQ server is required for the RabbitMQ
+tests. Install `tox` with this command:
 
     pip install tox
 
-The tests require additional dependencies. Normally, there is no need to
+On Ubuntu, a RabbitMQ server can be installed with
+`sudo apt install rabbitmq-server`. Other platforms may have versions packaged
+in their respective repositories, or you can install the latest version from
+the [RabbitMQ website]. Alternatively, if you have access to an existing
+RabbitMQ server, you can configure the tests to use that. See the "Testing"
+section for more details.
+
+The tests require additional Python dependencies. Normally, there is no need to
 install them manually, as `tox` handles that for you. But you may want to,
 since you cannot run individual tests manually without them. The testing
 dependencies can be installed like this:
@@ -261,14 +272,16 @@ Examples
 
 See the `tests/monitors/` directory for several examples of working monitor
 systems. The `tests/README-tests.md` file has short descriptions of each
-monitor.
+monitor. Note that there are extra files present in the example monitor
+directories that are only used for testing purposes. Only the `.smedl` and
+`.a4smedl` files are the actual monitors.
 
 Testing
 -------
 
-SMEDL uses [`tox`][tox] to run the test suite. You must install it manually:
-
-    pip install tox
+SMEDL uses [`tox`][tox] to run the test suite. See the "Installation for
+Development" section for information on installing that and a RabbitMQ server
+needed by the RabbitMQ tests.
 
 To run the full test suite, change directories to the SMEDL repository and run:
 
@@ -300,6 +313,8 @@ certain circumstances:
 - *Exception:* The test suite will never run if the commit message contains
   `skip ci`
 
+### Running Tests Manually
+
 Sometimes, you may want to run specific components of the test suite or even
 specific tests manually. Normally, `tox` handles installing all the test
 dependencies in a separate, dedicated virtual environment. If you want to run
@@ -311,6 +326,33 @@ regular virtual environment:
 Now, you can run `setup.py check`, `flake8 smedl/`, `pytest`, or
 `pytest -k <test_name>`  manually. These all should be run in the top-level
 directory of the repository.
+
+### Using an External RabbitMQ Server
+
+If you have access to an existing RabbitMQ server, you can configure the test
+framework to use that instead of a locally installed server. This is also
+useful if you need to change any other RabbitMQ options, such as the port,
+username/password, or vhost.
+
+There are two options for this:
+
+1. Provide extra arguments to `tox`:
+
+       tox -- --rabbitmq-server rabbitmq.example.com
+
+2. Store the extra arguments in an environment variable named `PYTEST_ARGS`:
+
+       export PYTEST_ARGS="--rabbitmq-server rabbitmq.example.com"
+       tox
+
+Here is the full list of options you can set:
+
+- `--rabbitmq-server`: The hostname or IP address for the RabbitMQ server
+- `--rabbitmq-port`: The port to use for the RabbitMQ server
+- `--rabbitmq-user`: The username for the RabbitMQ server
+- `--rabbitmq-pass`: The password for the RabbitMQ server
+- `--rabbitmq-vhost`: The vhost to use with the RabbitMQ server
+- `--rabbitmq-exchange`: The exchange to use with the RabbitMQ server
 
 Further Reading
 ---------------
@@ -338,6 +380,8 @@ Contact: Dominick Pastore [\<dpastore@seas.upenn.edu>](mailto:dpastore@seas.upen
 [tox]: https://tox.readthedocs.io/en/latest/
 [pytest]: https://docs.pytest.org/en/latest/
 [flake8]: https://flake8.pycqa.org/en/latest/
+[pika]: https://pika.readthedocs.io/en/stable/
+[rabbitmq-install]: https://www.rabbitmq.com/download.html
 [rabbitmq-c]: http://alanxz.github.io/rabbitmq-c/
 [make]: https://www.gnu.org/software/make/
 [venv]: https://docs.python.org/3/tutorial/venv.html

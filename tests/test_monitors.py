@@ -13,16 +13,8 @@ from smedl.parser.exceptions import SmedlException
 
 from utils import *
 
-# List of monitors
-test_monitors = os.listdir(os.path.join(sys.path[0], 'monitors'))
-# List of test case tuples
-test_cases = []
-for mon in test_monitors:
-    files = os.listdir(os.path.join(sys.path[0], 'monitors', mon))
-    for fname in files:
-        root, ext = os.path.splitext(fname)
-        if ext == '.in':
-            test_cases.append((mon, root))
+# Gather test cases
+test_monitors, test_cases = collect_test_cases()
 # List of monitors that should fail to generate
 bad_monitors = os.listdir(os.path.join(sys.path[0], 'bad_monitors'))
 

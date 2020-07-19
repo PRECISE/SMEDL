@@ -27,6 +27,8 @@ Inside this directory, you will find the following contents:
   * `.smedl` and `.a4smedl` files
   * Any helper headers
   * Test cases, which are pairs of corresponding `.in` and `.out` files
+  * `testinfo.json`, a file containing extra information used by some test
+    scripts
 
 - `bad_monitors/`: Like `monitors/`, but contains monitors where generation
   should fail. This is tested by the `test_invalid_monitor` test cases in
@@ -68,8 +70,10 @@ write a SMEDL monitoring system. Here is a description of each one:
 - `simple`: A simple monitor with one imported event and one exported event. It
   raises the exported event every time it receives the imported event. A "hello
   world" monitor of sorts.
+- `adder`: A monitor that keeps a running total of the measurements it
+  receives.
 - `multi_moving_ave`: An example monitor that computes moving averages for
   multiple objects (using dynamic instantiation) and raises an alarm if the
-  sum of the all the averages rises above a threshold.
+  at least half of the averages rise above a threshold.
 
 [pytest-docs]: https://docs.pytest.org/en/stable/
