@@ -15,11 +15,12 @@ workflow:
 cache:
   paths:
     - .cache/pip
+      #- /var/cache/apt/archives
 
 before_script:
 #  - ping -c 4 stability.cis.upenn.edu
-#  - apt-get update -y
-#  - apt-get upgrade -y
+  - apt-get update -y
+  - apt-get upgrade -y
   - apt-get install -y rabbitmq-server librabbitmq-dev
   - python -V
   - which python python3.6 python3.7 python3.8
