@@ -22,8 +22,8 @@ below discusses all aspects of installation, including prerequisites.
   * [pytest][pytest]
   * [flake8][flake8]
   * [pika][pika] (for RabbitMQ tests)
-  * A [RabbitMQ server][rabbitmq-install] (Not Python software; required for
-    RabbitMQ tests)
+  * A [RabbitMQ server][rabbitmq-install] (Not Python software, but required
+    for RabbitMQ tests)
 
 **Monitor build requirements:**
 
@@ -171,8 +171,8 @@ Usage
 
 SMEDL works by reading monitor system specifications and translating them into
 C source code. A monitor system consists of an architecture file (a.k.a. an
-`.a4smdl` file) and one or more monitor specifications (a.k.a. `.smedl` files).
-The monitor generator, `mgen`, is the program that translates these
+`.a4smedl` file) and one or more monitor specifications (a.k.a. `.smedl`
+files). The monitor generator, `mgen`, is the program that translates these
 specification files into C code.
 
 This README assumes you already have `.smedl` and `.a4smedl` files ready for
@@ -249,9 +249,9 @@ use it, the following tips may be helpful:
 - Generally speaking, each synchronous set is built into its own executable.
   (The exception is when using the file transport, where all synchronous sets
   are linked into a single executable.)
-- Any files with the monitor names or synchronous set name, along with all the
-  static files (e.g. `smedl_types.c`, `event_queue.c`, etc.), are compiled
-  together as part of one synchronous set.
+- Any files with the synchronous set name, files with names of monitors within
+  that synchronous set, and all the static files (e.g. `smedl_types.c`,
+  `event_queue.c`, etc.), are compiled together as part of one synchronous set.
 - The generated code conforms to C99. You may want to use the `-std=c99` option
   for your compiler.
 - If you want to see extra diagnostic messages, define the `DEBUG` flag with an

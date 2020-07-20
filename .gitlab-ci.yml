@@ -1,4 +1,4 @@
-image: python:3
+image: python:3.8
 
 workflow:
   rules:
@@ -20,9 +20,9 @@ before_script:
 #  - ping -c 4 stability.cis.upenn.edu
 #  - apt-get update -y
 #  - apt-get upgrade -y
-#  - apt-get install -y libconfig-dev librabbitmq-dev
+  - apt-get install -y rabbitmq-server librabbitmq-dev
   - python -V
-  - which python
+  - which python python3.6 python3.7 python3.8
   - pip install tox
 
 test:
