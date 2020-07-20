@@ -1,4 +1,10 @@
-image: python:3.8
+# NOTE: This image provides the Python versions tox expects and the other build
+# dependencies for monitors (e.g. librabbitmq-dev). It will need to be updated
+# from time to time, e.g. when new Python versions are released or if there are
+# new build dependencies for monitors. See the "Testing and CI" section in
+# README-development.md for advice on this.
+#image: python:3.8
+image: dominickpastore/test
 
 workflow:
   rules:
@@ -19,15 +25,14 @@ cache:
 
 before_script:
 #  - ping -c 4 stability.cis.upenn.edu
-  - apt-get update -y
-  - apt-get upgrade -y
-  - apt-get install -y librabbitmq-dev
-  - python -V
-  - which python python3.6 python3.7 python3.8
-  - pip install tox
+#- apt-get update -y
+#- apt-get install -y librabbitmq-dev
+  - python3 -V
+  - which python3 python3.6 python3.7 python3.8
+  - pip3 install tox
 
 test:
   services:
     - rabbitmq
   script:
-    - tox --rabbitmq-server rabbitmq
+    - tox -- --rabbitmq-server rabbitmq
