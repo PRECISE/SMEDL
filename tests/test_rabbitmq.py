@@ -68,6 +68,7 @@ class RabbitMQSession:
         self.binding_keys = binding_keys
         self.bound_count = 0
         self.to_send = messages
+        self.sent_count = 0
         self.received = []
 
         # Initiate connection
@@ -76,95 +77,75 @@ class RabbitMQSession:
         parameters = pika.ConnectionParameters(
             host=rabbitmq_config['server'], port=rabbitmq_config['port'],
             virtual_host=rabbitmq_config['vhost'], credentials=credentials)
-        print("@@@ initializing connection")
-        self.connection = pika.SelectConnection(
-            parameters, on_open_callback=self._on_open)
+        #print("@@@ initializing connection")
+        #print("@@@ config", self.config)
+        self.connection = pika.BlockingConnection(parameters)
 
-        # Do producing and consuming
+        self._setup_channel()
+        self._setup_queue()
+        self._start()
+
         try:
-            print("@@@ starting")
-            self.connection.ioloop.start()
-            print("@@@ normal exit")
+            #print("@@@ starting")
+            self.channel.start_consuming()
+            #print("@@@ rabbitmq done")
         except KeyboardInterrupt:
             # This probably won't normally happen, but if tests are run manually
             # Close gracefully
-            print("@@@ closing after interrupt")
-            self.connection.close()
+            #print("@@@ closing after interrupt")
+            self.connection.call_later(0, self._finish)
             # Let Pika handle any remaining communications
-            print("@@@ waiting for cleanup messages")
-            self.connection.ioloop.start()
+            #print("@@@ waiting for cleanup messages")
+            self.channel.start_consuming()
 
-        print("@@@ rabbitmq done")
+    def _setup_channel(self):
+        #print("@@@ opening channel")
+        self.channel = self.connection.channel()
 
-    def _on_open(self, connection):
-        print("@@@ conn open")
-        connection.add_on_close_callback(self._on_connection_close)
-        connection.channel(on_open_callback=self._on_channel)
-
-    def _on_connection_close(self, connection, exception):
-        print("@@@ connection is closing")
-        self.connection.ioloop.stop()
-
-    def _on_channel(self, channel):
-        print("@@@ channel open")
-        self.channel = channel
-        channel.add_on_close_callback(self._on_channel_close)
-        # Declare queue
-        channel.queue_declare(
-            '', exclusive=True, callback=self._on_queue)
-
-    def _on_channel_close(self, channel, exception):
-        print("@@@ channel is closing:", repr(exception))
-        #self.connection.close()
-
-    def _on_queue(self, declare_ok):
-        self.queue = declare_ok.method.queue
-        # Bind to the binding keys for outgoing messages
-        print("@@@ queue declared")
-        print("@@@ config", self.config)
+    def _setup_queue(self):
+        #print("@@@ declaring queue")
+        result = self.channel.queue_declare('', exclusive=True)
+        self.queue = result.method.queue
+        #print("@@@ binding queue")
         for binding_key in self.binding_keys:
-            print("@@@ rk", binding_key)
+            #print("@@@ rk:", binding_key)
             self.channel.queue_bind(
                 exchange=self.config['exchange'], queue=self.queue,
-                routing_key=binding_key, callback=self._on_bind)
+                routing_key=binding_key)
 
-    def _on_bind(self, bind_ok):
-        self.bound_count += 1
-        print("@@@ queue {} bound".format(self.bound_count))
-
-        if self.bound_count == len(self.binding_keys):
-            # Start consuming
-            self.channel.basic_consume(
-                queue=self.queue, auto_ack=True,
-                on_message_callback=self._consume,
-                callback=self._produce)
+    def _start(self):
+        #print("@@@ starting basic consume")
+        self.channel.basic_consume(queue=self.queue, auto_ack=True,
+                                   on_message_callback=self._consume)
+        self.connection.call_later(0, self._publish)
 
     def _consume(self, channel, method, properties, body):
-        print("@@@ consumed message")
+        #print("@@@ consumed message:", method.routing_key)
+        print(body)
         ev_json = json.loads(body)
         self.received.append((method.routing_key, ev_json))
 
-    def _produce(self, consume_ok):
-        print("@@@ started consuming")
+    def _publish(self):
+        try:
+            rk, body = self.to_send[self.sent_count]
+            self.sent_count += 1
+        except IndexError:
+            #print("@@@ waiting for last responses")
+            self.connection.call_later(1.5, self._finish)
+            return
 
-        # Publish messages
         properties = pika.BasicProperties(content_type='application/json',
                                           type='smedl-fmt2.0')
-        for rk, body in self.to_send:
-            print("@@@ publishing message:", rk)
-            print(body)
-            print("@@@ end of message")
-            self.channel.basic_publish(
-                exchange=self.config['exchange'], routing_key=rk,
-                body=body, properties=properties)
-            time.sleep(0.5)
+        #print("@@@ publishing message:", rk)
+        print(body)
+        self.channel.basic_publish(
+            exchange=self.config['exchange'], routing_key=rk,
+            body=body, properties=properties)
+        self.connection.call_later(0.5, self._publish)
 
-        # Wait a moment for responses
-        print("@@@ waiting for last responses")
-        time.sleep(2)
+    def _finish(self):
+        #print("@@@ closing connection")
         self.connection.close()
-        print("@@@ closed")
-        #self.connection.ioloop.stop()
 
 @pytest.mark.parametrize('generated_rabbitmq_monitor, test_case', test_cases,
         indirect=['generated_rabbitmq_monitor'], scope='module')
@@ -201,12 +182,10 @@ def test_monitor_rabbitmq(generated_rabbitmq_monitor, test_case):
 
     # Terminate monitors
     gen_mon.terminate(5)
-    print("@@@ terminated")
 
     # Check exit statuses
     exit_codes = gen_mon.wait()
     expected_exit_codes = [0] * len(exit_codes)
-    print("@@@ exit codes", exit_codes)
     assert exit_codes == expected_exit_codes, \
         'Monitors did not all terminate cleanly'
 
@@ -219,15 +198,16 @@ def test_monitor_rabbitmq(generated_rabbitmq_monitor, test_case):
         indirect=True)
 def test_rabbitmq_names(generated_rabbitmq_monitor):
     """Test that generated file names are correct for the named monitor"""
+    gen_mon, _ = generated_rabbitmq_monitor
     # Fetch all names
-    sys_name = generated_file_monitor.system.name
-    syncsets = generated_file_monitor.system.syncsets.keys()
-    mon_names = generated_file_monitor.system.monitor_decls.keys()
+    sys_name = gen_mon.system.name
+    syncsets = gen_mon.system.syncsets.keys()
+    mon_names = gen_mon.system.monitor_decls.keys()
     spec_names = [decl.spec.name for decl in
-            generated_file_monitor.system.monitor_decls.values()]
+            gen_mon.system.monitor_decls.values()]
 
     # Get a list of all the file names in the temp dir
-    files = os.listdir(generated_file_monitor.gen_dir)
+    files = os.listdir(gen_mon.gen_dir)
 
     # Check that all the expected files are present
     assert sys_name + ".cfg" in files

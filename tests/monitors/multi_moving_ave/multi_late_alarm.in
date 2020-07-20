@@ -44,7 +44,7 @@
      }
 }
 {
-    "fmt_version": [1, 0],
+    "fmt_version": [2, 0],
     "channel": "in",
     "event": "measurement",
     "params": [2, 2.0],
@@ -75,15 +75,6 @@
     "channel": "in",
     "event": "measurement",
     "params": [2, 1.0],
-    "aux": {
-        "arbitrary": "json data"
-     }
-}
-{
-    "fmt_version": [2, 0],
-    "channel": "in",
-    "event": "measurement",
-    "params": [0, 2.0],
     "aux": {
         "arbitrary": "json data"
      }

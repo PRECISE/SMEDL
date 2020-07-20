@@ -197,7 +197,7 @@ static void handle_{{syncset}}_inter() {
             {% for conn in decl.inter_connections %}
             case CHANNEL_{{syncset}}_{{conn.channel}}:
 #if DEBUG >= 4
-                fprintf(stderr, "Global wrapper '{{syncset}}' exporting for conn '{{conn.channel}}\n");
+                fprintf(stderr, "Global wrapper '{{syncset}}' exporting for conn '{{conn.channel}}'\n");
 #endif
                 if (cb_{{conn.channel}} != NULL) {
                     cb_{{conn.channel}}(identities, params, aux);

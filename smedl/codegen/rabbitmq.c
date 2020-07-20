@@ -270,10 +270,14 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
         goto fail1;
     }
     aux.state = rmq_state;
-    size_t correlation_id_len =
-        correlation_id->len <= 256 ? correlation_id->len : 256;
-    memcpy(aux.correlation_id, correlation_id->bytes, correlation_id_len);
-    aux.correlation_id[correlation_id_len] = '\0';
+    if (correlation_id != NULL) {
+        size_t correlation_id_len =
+            correlation_id->len <= 256 ? correlation_id->len : 256;
+        memcpy(aux.correlation_id, correlation_id->bytes, correlation_id_len);
+        aux.correlation_id[correlation_id_len] = '\0';
+    } else {
+        aux.correlation_id[0] = '\0';
+    }
     {% for conn in sys.imported_channels(syncset) %}
 
     {% if conn.source_mon is not none %}
@@ -558,7 +562,7 @@ int send_message(RabbitMQState *rmq_state, const char *routing_key,
     properties._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_TYPE_FLAG;
     properties.content_type = amqp_cstring_bytes("application/json");
     properties.type = amqp_cstring_bytes(FMT_VERSION_STRING);
-    if (correlation_id != NULL) {
+    if (correlation_id[0] != '\0') {
         properties._flags |= AMQP_BASIC_CORRELATION_ID_FLAG;
         properties.correlation_id = amqp_cstring_bytes(correlation_id);
     }
@@ -592,23 +596,6 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
         //TODO malloc fail. What now?
         return;
     }
-    cJSON *fmt_version = cJSON_AddArrayToObject(msg_json, "fmt_version");
-    if (fmt_version == NULL) {
-        err("Could not add fmt_version to JSON for message serialization");
-        goto fail;
-    }
-    cJSON *fmt_major = cJSON_CreateNumber(FMT_VERSION_MAJOR);
-    if (fmt_major == NULL) {
-        err("Could not create fmt_version JSON for message serialization");
-        goto fail;
-    }
-    cJSON_AddItemToArray(fmt_version, fmt_major);
-    cJSON *fmt_minor = cJSON_CreateNumber(FMT_VERSION_MINOR);
-    if (fmt_minor == NULL) {
-        err("Could not create fmt_version JSON for message serialization");
-        goto fail;
-    }
-    cJSON_AddItemToArray(fmt_version, fmt_minor);
     if (cJSON_AddStringToObject(msg_json, "event", "{{conn.source_mon.name}}.{{conn.source_event}}") == NULL) {
         err("Could not add event name to JSON for message serialization");
         goto fail;
