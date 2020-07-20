@@ -1,30 +1,30 @@
-\documentclass[paper=letter]{scrreport}
-\usepackage{booktabs}
+\documentclass[paper=letter,titlepage,captions=tableheading]{scrartcl}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+\usepackage{textcomp}
+\usepackage{ctable}
 \usepackage{listings}
+\usepackage{xcolor}
 \usepackage{hyperref}
 \usepackage{scrhack}
 %TODO check the options for hyperref and add useful ones
 
+% Allow bold teletype text
+\DeclareFontFamily{T1}{lmtt}{}
+\DeclareFontShape{T1}{lmtt}{m}{n}{<-> ec-lmtl10}{}
+\DeclareFontShape{T1}{lmtt}{m}{\itdefault}{<-> ec-lmtlo10}{}
+\DeclareFontShape{T1}{lmtt}{\bfdefault}{n}{<-> ec-lmtk10}{}
+\DeclareFontShape{T1}{lmtt}{\bfdefault}{\itdefault}{<-> ec-lmtko10}{}
+
+% No dot after table and figure names in captions
+% e.g. "Table 1.1:", not "Table 1.1.:"
+\renewcommand*{\figureformat}{\figurename~\thefigure}
+\renewcommand*{\tableformat}{\tablename~\thetable}
+
+\input{codestyle}
+
 \title{SMEDL Manual}
 \author{University of Pennsylvania}
-
-\lstdefinelanguage{smedl}{
-  morekeywords={object,\#include,state:,events:,scenarios:,imported,internal,exported,when,else,raise,int,float,double,char,string,pointer,thread,opaque,true,false,null,NULL},
-  alsoletter={\#},
-  alsodigit={:},
-  sensitive=true,
-  morecomment=[l]{//},
-  morecomment=[s]{/*}{*/},
-  morestring=[b]"
-}
-
-\lstdefinelanguage{a4smedl}{
-  morekeywords={system,import,monitor,as,event,syncset,id,param},
-  sensitive=true,
-  morecomment=[l]{//},
-  morecomment=[s]{/*}{*/},
-  morestring=[b]"
-}
 
 \begin{document}
 
@@ -32,8 +32,9 @@
 
 %TODO Basic introduction to SMEDL
 
-\autoref{part:lang} of this manual describes how to write a monitor. It discusses the features and syntax of the SMEDL specification language. \autoref{part:api} is about integrating monitors into a larger system. It describes the API for the generated code and the various transport mechanisms available for asynchronous connections.
+\autoref{part:lang} of this manual describes how to write a monitor. It discusses the features and syntax of the SMEDL specification language. \autoref{part:api} is about integrating monitors into your existing code. It describes the API for the generated code and the various transport mechanisms available for asynchronous connections.
 
+\clearpage
 \part{The SMEDL and A4SMEDL Monitoring Language}
 \label{part:lang}
 
@@ -49,22 +50,134 @@ events are directed.
 
 Monitor specifications are written in \verb|.smedl| files, and there may be
 multiple in a monitoring system. Architecture specifications are written in
-\verb|.a4smedl| files and there is exaclty one per monitoring system.
+\verb|.a4smedl| files and there is exactly one per monitoring system.
 
-\chapter{SMEDL Specifications}
-\label{ch:smedl}
+\section{SMEDL Specifications}
+\label{sec:smedl}
 
 A SMEDL specification describes a single monitor. This is where the actual
-monitoring logic is definied. At its core, a SMEDL monitor is a set of state
+monitoring logic is defined. At its core, a SMEDL monitor is a set of state
 machines. Transitions are triggered by events, with optional conditions and
 associated actions. Monitors may also contain state variables, which the
 conditions and actions can make use of.
 
+\subsection{A Basic Monitor}
+\label{subsec:smedl-basic}
 
+\begin{lstlisting}[
+  caption={A monitor that keeps a running total},
+  label=lst:basic-mon,
+  style=smedl
+]
+object Adder;
 
-%TODO Show a basic example going over the most common features. Then have sections on other features (like elses). Finish with a full reference (maybe in a separate chapter). Actually probably do this in sections.
+state:
+  float accumulator = 0;
 
-% Maybe have two examples: A very simple, a more complex (e.g. multiple scenarios, elses) and use that to go over the more advanced features. Then full reference.
+events:
+  imported measurement(float);
+  exported sum(float);
+
+scenarios:
+  main:
+    idle
+      -> measurement(val) {
+        accumulator = accumulator + val;
+        raise sum(accumulator);
+      }
+      -> idle;
+\end{lstlisting}
+
+\autoref{lst:basic-mon} gives an example of a simple monitor. This guide
+will break it down piece-by-piece to familiarize you with the basic syntax of
+SMEDL.
+
+\begin{lstlisting}[firstnumber=1,style=smedlfixed]
+object Adder;
+\end{lstlisting}
+
+This line declares the monitor specification name. It must be present at the
+top of every monitor specification. The name can be any valid SMEDL identifier.
+To be specific, an upper or lowercase letter, followed by zero or more
+additional letters, numbers, or underscores.
+
+This is the only line in the file that stands alone. The rest of the specification is split into three main sections, the start of each marked by a heading
+keyword.
+
+\begin{lstlisting}[firstnumber=3,style=smedlfixed]
+state:
+  float accumulator = 0;
+\end{lstlisting}
+
+This is the state variables section. State variables can be thought of as
+global variables for the monitor. They will be useful for conditions and
+actions (each of which are discussed later). There are seven types (and one
+alias) available, listed in \autoref{tab:types1} along with the most similar C
+type for each. This is the only optional section: If there is no need for state
+variables, it may be omitted entirely.
+
+\ctable[
+  caption={The types available in SMEDL},
+  label=tab:types1,
+  mincapwidth=3in,
+]{ll}{
+  \tnote[a]{\texttt{double} is an alias of \texttt{float} for convenience, not a distinct type.}
+  \tnote[b]{The \texttt{SMEDLOpaque} type is dicussed in %(TODO section from language reference).
+  }
+}{
+  \toprule
+  SMEDL & C \\
+  \midrule
+  \texttt{int} & \texttt{int} \\
+  \texttt{float} & \texttt{double} \\
+  \texttt{double}\tmark[a] & \texttt{double} \\
+  \texttt{char} & \texttt{char} \\
+  \texttt{string} & \texttt{char *} \emph{or} \texttt{char[]} \\
+  \texttt{pointer} & \texttt{void *} \\
+  \texttt{thread} & \texttt{pthread\_t} \\
+  \texttt{opaque} & \texttt{SMEDLOpaque}\tmark[b] \\
+  \bottomrule
+}
+
+\begin{lstlisting}[firstnumber=6,style=smedlfixed]
+events:
+  imported measurement(float);
+  exported sum(float);
+\end{lstlisting}
+
+This is the event declarations section. Events are the input and output of the
+monitor. Imported events come from outside the monitor and may trigger
+transitions and actions. Exported events are generated within the monitor and
+sent out. (There are also internal events, introduced in \autoref{subsec:smedl-advanced}.)
+
+Events can carry parameters with them. TODO
+
+\begin{lstlisting}[firstnumber=10,style=smedlfixed]
+scenarios:
+  main:
+    idle
+      -> measurement(val) {
+        accumulator = accumulator + val;
+        raise sum(accumulator);
+      }
+      -> idle;
+\end{lstlisting}
+
+\subsection{A More Advanced Monitor}
+\label{subsec:smedl-advanced}
+
+%TODO Use the frontend monitor from multi_moving_average, or maybe a monitor
+% for LTL. Actually, the latter is a good idea because it still makes sense
+% as standalone. Go over more advanced features, like else, multiple scenarios,
+% and internal events. Mention details like scenarios can only execute once per
+% macro step and exported events can also act as internal events.
+
+\subsection{SMEDL Language Reference}
+\label{subsec:smedl-ref}
+
+%TODO Start by describing the identifier format, then go into types, then
+% go through sections one by one
+
 
 %NOTE In an expression, == on strings normally compares the contents of the
 % strings, but due to limitations in type verification, this does not happen
@@ -73,11 +186,20 @@ conditions and actions can make use of.
 
 %NOTE Opaque type does not allow any operations except == and !=. These
 % operations do a byte-by-byte comparison with memcmp. If that is not
-% acceptible, an alternative is to use a helper function that accepts two
+% acceptable, an alternative is to use a helper function that accepts two
 % SMEDLOpaque and returns zero or nonzero.
 
-\chapter{A4SMEDL Specifications}
-\label{ch:a4smedl}
+\section{A4SMEDL Specifications}
+\label{sec:a4smedl}
+
+\subsection{A Basic Architecture}
+\label{subsec:a4smedl-basic}
+
+\subsection{A More Advanced Architecture}
+\label{subsec:a4smedl-advanced}
+
+\subsection{A4SMEDL Language Reference}
+\label{subsec:a4smedl-ref}
 
 %TODO Show a basic example going over the most common features. Then have sections on other features (like dynamic instantiation). Finish with a full reference (maybe in a separate chapter). Actually probably do this in sections.
 
@@ -92,46 +214,138 @@ conditions and actions can make use of.
 %NOTE See note in prev section on opaques. If they cannot be tested for equality
 % with memcmp, then it is not safe to use them as monitor identities.
 
+\clearpage
 \part{The SMEDL Programming Interface}
 \label{part:api}
 
-%TODO describe how the code is split into layers: monitor, local wrapper, global wrapper, transport
+The generated monitoring code is separated into multiple layers, ordered here
+from lowest to highest:
+\begin{description}
+  \item[Monitor] contains the actual monitor state machines.
+  \item[Local wrapper] manages instances of a single monitor specification and
+    dynamic instantiation.
+  \item[Global wrapper] manages all local wrappers in a single synchronous set
+    and routes events between them.
+  \item[Transport] handles asynchronous communication between global wrappers
+    and the target system. This layer is only generated when the \texttt{-t}
+    option is used with \texttt{mgen}.
+\end{description}
 
-\chapter{Common Elements}
+The monitor (SMEDL) specification corresponds with the monitor level and the
+architecture (A4SMEDL) specification corresponds with the three layers above
+it.
+
+\section{Common API Elements}
+\label{sec:common}
+
+\textbf{Header: \texttt{smedl\_types.h}}
+
+\subsection{\texttt{SMEDLValue} Type}
+label{subsec:smedlvalue}
+
+The \texttt{SMEDLValue} type is used throughout the API for event parameters,
+monitor identities, etc. It is defined in \autoref{lst:smedlvalue}. Each 
+\texttt{SMEDLValue} contains a type \texttt{t} and a value \texttt{v}. The type
+is a member of the \texttt{SMEDLType} enum and the value is a union. See
+\autoref{tab:smedlvalue-union} for the correspondence between the SMEDL types
+and union members.
+
+%TODO C listings aren't quite formatted right...at the very least, keywords are
+% not bold
+\begin{lstlisting}[
+  caption={The \texttt{SMEDLValue} and \texttt{SMEDLType} definitons},
+  label=lst:smedlvalue,
+  style=Cfixed
+]
+typedef enum {SMEDL_INT, SMEDL_FLOAT, SMEDL_CHAR,
+    SMEDL_STRING, SMEDL_POINTER, SMEDL_THREAD,
+    SMEDL_OPAQUE, SMEDL_NULL} SMEDLType;
+
+typedef struct {
+    SMEDLType t;
+    union {
+        int i;
+        double d;
+        char c;
+        char *s;
+        void *p;
+        pthread_t th;
+        SMEDLOpaque o;
+    } v;
+} SMEDLValue;
+\end{lstlisting}
+
+\ctable[
+  caption={Correspondence between \texttt{SMEDLType} and union in
+  \texttt{SMEDLValue}},
+  label=tab:smedlvalue-union,
+  mincapwidth=3in,
+]{ll}{}{
+  \toprule
+  \texttt{SMEDLType} & Union member \\
+  \midrule
+  \texttt{SMEDL\_INT} & \texttt{i} \\
+  \texttt{SMEDL\_FLOAT} & \texttt{d} \\
+  \texttt{SMEDL\_CHAR} & \texttt{c} \\
+  \texttt{SMEDL\_STRING} & \texttt{s} \\
+  \texttt{SMEDL\_POINTER} & \texttt{p} \\
+  \texttt{SMEDL\_THREAD} & \texttt{th} \\
+  \texttt{SMEDL\_OPAQUE} & \texttt{o} \\
+  \texttt{SMEDL\_NULL} & -- \\
+  \bottomrule
+}
+
+The \texttt{SMEDL\_NULL} type is special---it does not correspond with an
+actual SMEDL type. It is used internally in a couple places, but as far as the
+API is concerned, there is only one significant use: wildcard parameters. In a
+list of monitor identities, a \texttt{SMEDLValue} with \texttt{t} set to
+\texttt{SMEDL\_NULL} is understood to be a wildcard. The \texttt{v} member is
+ignored in such cases.
+
+\subsection{\texttt{SMEDLOpaque} Type}
+\label{subsec:smedlopaque}
 
 %TODO SMEDLValue and certain other things
 
 %NOTE Strings and opaques cannot point to NULL. Strings must always be
 % null-terminated.
 
-\chapter{Monitor API}
+\section{Monitor API}
+\label{sec:mon}
 
 %TODO
 
-\chapter{Local Wrapper API}
+\section{Local Wrapper API}
+\label{sec:local}
 
 %TODO
 
-\chapter{Global Wrapper API}
+\section{Global Wrapper API}
+\label{sec:global}
 
 %TODO
 
-\chapter{Transport Adapters}
+\section{Transport Adapters}
+\label{sec:transport}
 
 %TODO
 
-\section{RabbitMQ}
+\subsection{RabbitMQ}
+\label{subsec:rabbitmq}
 
 %TODO
 
-%\section{ROS}
+%\subsection{ROS}
+%\label{subsec:ros}
 %TODO
 
-\section{File}
+\subsection{File}
+\label{subsec:file}
 
 %TODO
 
-%\chapter{PEDL API}
+%\section{PEDL API}
+%\label{sec:pedl}
 % At some point we may have an additional interface specifically designed for
 % the target system to interface with. It would have functions named after the
 % imported events (instead of channel names) and these functions would either
