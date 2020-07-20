@@ -61,12 +61,13 @@ class RabbitMQSession:
           - 'password'
           - 'exchange'
           - 'vhost'
-        binding_keys - A list of binding keys to bind to
+        binding_keys - A list of binding_keys to bind to
         messages - A list of messages (routing_key, body) to send
         """
         self.config = rabbitmq_config
         self.binding_keys = binding_keys
         self.bound_count = 0
+        self.consuming = 0
         self.to_send = messages
         self.received = []
 
@@ -99,23 +100,24 @@ class RabbitMQSession:
     def _on_open(self, connection):
         print("@@@ conn open")
         connection.add_on_close_callback(self._on_connection_close)
-        connection.channel(on_open_callback=self._on_channel)
+        connection.channel(on_open_callback=self._on_sub_channel)
+        connection.channel(on_open_callback=self._on_pub_channel)
 
-    def _on_connection_close(self, connection, exception):
+    def _on_connection_close(self, connection, reason):
         print("@@@ connection is closing")
         self.connection.ioloop.stop()
 
-    def _on_channel(self, channel):
-        print("@@@ channel open")
-        self.channel = channel
+    def _on_sub_channel(self, channel):
+        print("@@@ sub channel open")
+        self.sub_channel = channel
         channel.add_on_close_callback(self._on_channel_close)
         # Declare queue
         channel.queue_declare(
             '', exclusive=True, callback=self._on_queue)
 
-    def _on_channel_close(self, channel, exception):
-        print("@@@ channel is closing:", repr(exception))
-        #self.connection.close()
+    def _on_channel_close(self, channel, reason):
+        print("@@@ channel is closing")
+        self.connection.close()
 
     def _on_queue(self, declare_ok):
         self.queue = declare_ok.method.queue
@@ -124,7 +126,7 @@ class RabbitMQSession:
         print("@@@ config", self.config)
         for binding_key in self.binding_keys:
             print("@@@ rk", binding_key)
-            self.channel.queue_bind(
+            self.sub_channel.queue_bind(
                 exchange=self.config['exchange'], queue=self.queue,
                 routing_key=binding_key, callback=self._on_bind)
 
@@ -134,27 +136,35 @@ class RabbitMQSession:
 
         if self.bound_count == len(self.binding_keys):
             # Start consuming
-            self.channel.basic_consume(
+            self.sub_channel.basic_consume(
                 queue=self.queue, auto_ack=True,
                 on_message_callback=self._consume,
-                callback=self._produce)
+                callback=self._on_consume_ok)
+
+    def _on_consume_ok(self, consume_ok):
+        print("@@@ started consuming")
+        self.consuming = 1
 
     def _consume(self, channel, method, properties, body):
         print("@@@ consumed message")
         ev_json = json.loads(body)
         self.received.append((method.routing_key, ev_json))
 
-    def _produce(self, consume_ok):
-        print("@@@ started consuming")
+    def _on_pub_channel(self, channel):
+        print("@@@ pub channel open")
+        channel.add_on_close_callback(self._on_channel_close)
+
+        while self.consuming == 0:
+            time.sleep(0.25)
 
         # Publish messages
         properties = pika.BasicProperties(content_type='application/json',
                                           type='smedl-fmt2.0')
         for rk, body in self.to_send:
-            print("@@@ publishing message:", rk)
+            print("@@@ publishing message", rk)
             print(body)
             print("@@@ end of message")
-            self.channel.basic_publish(
+            channel.basic_publish(
                 exchange=self.config['exchange'], routing_key=rk,
                 body=body, properties=properties)
             time.sleep(0.5)
