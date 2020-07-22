@@ -82,7 +82,7 @@ def test_invalid_monitor(tmp_path, mon):
     tmp_path - The tmp_path fixture
     mon - The name of a directory under bad_monitors/
     """
-    mon_path = os.path.join(sys.path[0], 'monitors', mon, mon + '.a4smedl')
+    mon_path = os.path.join(sys.path[0], 'bad_monitors', mon, mon + '.a4smedl')
     generator = smedl.MonitorGenerator(out_dir=tmp_path)
     with pytest.raises(SmedlException):
         generator.generate(mon_path)

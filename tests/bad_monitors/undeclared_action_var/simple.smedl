@@ -1,0 +1,11 @@
+object Simple;
+
+events:
+    imported in(int);
+    exported out(int);
+
+scenarios:
+    main:
+        idle
+            -> in(val) {raise out(valx);}
+            -> idle;

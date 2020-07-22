@@ -90,9 +90,9 @@ class SmedlSemantics(common_semantics.CommonSemantics):
         # Populate the states and transitions of the scenario
         for transition in ast.transitions:
             # Get else state and actions
-            if transition.else_definition is not None:
-                else_state = transition.else_definition.else_state
-                else_actions = transition.else_definition.else_actions
+            if transition.else_step is not None:
+                else_state = transition.else_step.else_state
+                else_actions = transition.else_step.else_actions
             else:
                 else_state = None
                 else_actions = None
