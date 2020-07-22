@@ -55,7 +55,7 @@ class RabbitMQSession:
         """Execute a RabbitMQ session
 
         rabbitmq_config - A dict with the following keys:
-          - 'server'
+          - 'hostname'
           - 'port'
           - 'username'
           - 'password'
@@ -75,7 +75,7 @@ class RabbitMQSession:
         credentials = pika.PlainCredentials(rabbitmq_config['username'],
                                             rabbitmq_config['password'])
         parameters = pika.ConnectionParameters(
-            host=rabbitmq_config['server'], port=rabbitmq_config['port'],
+            host=rabbitmq_config['hostname'], port=rabbitmq_config['port'],
             virtual_host=rabbitmq_config['vhost'], credentials=credentials)
         #print("@@@ initializing connection")
         #print("@@@ config", self.config)
@@ -101,6 +101,15 @@ class RabbitMQSession:
     def _setup_channel(self):
         #print("@@@ opening channel")
         self.channel = self.connection.channel()
+        #print("@@@ declaring exchange")
+        # This should not be necessary. The monitor will declare the exchange.
+        # But if the monitor dies early, the Pika exception from the missing
+        # exchange will end the test early and keep us from seeing the exit
+        # status for the monitor (which is the best indication if e.g. a
+        # segmentation fault killed it).
+        self.channel.exchange_declare(
+            exchange=self.config['exchange'], exchange_type='topic',
+            auto_delete=True)
 
     def _setup_queue(self):
         #print("@@@ declaring queue")

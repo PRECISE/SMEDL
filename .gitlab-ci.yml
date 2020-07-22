@@ -6,6 +6,9 @@
 #image: python:3.8
 image: dominickpastore/test
 
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
 workflow:
   rules:
     - if: $CI_COMMIT_MESSAGE =~ /skip\sci/i
