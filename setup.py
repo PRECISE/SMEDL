@@ -45,7 +45,8 @@ setup(
     },
 
     install_requires=[
-        'tatsu>=4.4,<5',
+        'tatsu>=4.4,<5;python_version<"3.8"',
+        'tatsu>=5;python_version>="3.8"',
         'Jinja2>=2.10',
         'importlib_resources>=1.1;python_version<"3.7"',
     ],
