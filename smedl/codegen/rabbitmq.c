@@ -93,6 +93,7 @@ static int check_status(amqp_status_enum status, const char *fmt, ...) {
 static int check_reply(InitStatus *init_status, RabbitMQState *rmq_state,
         amqp_rpc_reply_t reply, const char *fmt, ...) {
     if (reply.reply_type == AMQP_RESPONSE_NORMAL) {
+        err("@@@");
         /* Success */
         return 1;
     }
@@ -721,6 +722,9 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     amqp_socket_t *socket = NULL;
     
     /* Initialize connection */
+#if DEBUG >= 4
+    err("Creating RabbitMQ connection");
+#endif
     rmq_state->conn = amqp_new_connection();
     if (rmq_state->conn == NULL) {
         err("Could not create connection");
@@ -728,6 +732,9 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     }
 
     /* Create socket */
+#if DEBUG >= 4
+    err("Creating RabbitMQ socket");
+#endif
     socket = amqp_tcp_socket_new(rmq_state->conn);
     if (socket == NULL) {
         err("Could not create TCP socket");
@@ -736,12 +743,18 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     init_status->conn_new = 1;
 
     /* Open socket */
+#if DEBUG >= 4
+    err("Opening RabbitMQ socket");
+#endif
     status = amqp_socket_open(socket, rmq_config->hostname, rmq_config->port);
     if (!check_status(status, "Could not open TCP socket")) {
         return 0;
     }
 
     /* Login */
+#if DEBUG >= 4
+    err("Logging in RabbitMQ %p", rmq_state->conn);
+#endif
     reply = amqp_login(rmq_state->conn, rmq_config->vhost, 0,
             AMQP_DEFAULT_FRAME_SIZE, 0, AMQP_SASL_METHOD_PLAIN,
             rmq_config->username, rmq_config->password);
@@ -751,6 +764,9 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     init_status->conn = 1;
 
     /* Open channel */
+#if DEBUG >= 4
+    err("Opening RabbitMQ channel");
+#endif
     amqp_channel_open(rmq_state->conn, rmq_state->channel);
     reply = amqp_get_rpc_reply(rmq_state->conn);
     if (!check_reply(init_status, rmq_state, reply, "Could not open channel")) {
@@ -759,6 +775,9 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     init_status->channel = 1;
 
     /* Declare the exchange, ensuring it exists */
+#if DEBUG >= 4
+    err("Declaring RabbitMQ exchange");
+#endif
     rmq_state->exchange = amqp_cstring_bytes(rmq_config->exchange);
     amqp_exchange_declare(rmq_state->conn, rmq_state->channel,
             rmq_state->exchange, amqp_cstring_bytes("topic"), 0, 0, 1, 0,
@@ -770,6 +789,9 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     }
 
     /* Create our queue */
+#if DEBUG >= 4
+    err("Declaring RabbitMQ queue");
+#endif
     amqp_queue_declare_ok_t *q_ok = amqp_queue_declare(rmq_state->conn,
             rmq_state->channel, amqp_empty_bytes, 0, 0, 1, 1, amqp_empty_table);
     reply = amqp_get_rpc_reply(rmq_state->conn);
@@ -785,6 +807,9 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     init_status->queue = 1;
 
     /* Bind our queue to routing keys starting with channel names we import */
+#if DEBUG >= 4
+    err("Binding RabbitMQ queue");
+#endif
     {% for conn in sys.imported_channels(syncset) %}
     amqp_queue_bind(rmq_state->conn, rmq_state->channel, rmq_state->queue,
             rmq_state->exchange, amqp_cstring_bytes("{{conn.channel}}.#"),
@@ -808,10 +833,16 @@ int init(InitStatus *init_status, RabbitMQState *rmq_state,
     }
 
     /* If successful, initialize the synchronous set */
+#if DEBUG >= 4
+    err("Initializing synchronous set");
+#endif
     init_{{syncset}}_syncset();
     init_status->syncset = 1;
 
     /* Register callbacks with the synchronous set */
+#if DEBUG >= 4
+    err("Registering callbacks");
+#endif
     {% for decl in mon_decls %}
     {% for conn in decl.inter_connections %}
     callback_{{syncset}}_{{conn.channel}}(send_{{syncset}}_{{conn.channel}});

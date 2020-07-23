@@ -71,17 +71,25 @@ class RabbitMQSession:
         self.sent_count = 0
         self.received = []
 
+    def run(self):
         # Initiate connection
-        credentials = pika.PlainCredentials(rabbitmq_config['username'],
-                                            rabbitmq_config['password'])
+        credentials = pika.PlainCredentials(self.config['username'],
+                                            self.config['password'])
         parameters = pika.ConnectionParameters(
-            host=rabbitmq_config['hostname'], port=rabbitmq_config['port'],
-            virtual_host=rabbitmq_config['vhost'], credentials=credentials)
+            host=self.config['hostname'], port=self.config['port'],
+            virtual_host=self.config['vhost'], credentials=credentials)
         #print("@@@ initializing connection")
         #print("@@@ config", self.config)
         self.connection = pika.BlockingConnection(parameters)
 
-        self._setup_channel()
+        try:
+            self._setup_channel()
+            retry = False
+        except pika.exceptions.ChannelClosedByBroker:
+            retry = True
+        if retry:
+            time.sleep(1)
+            self._setup_channel()
         self._setup_queue()
         self._start()
 
@@ -107,9 +115,10 @@ class RabbitMQSession:
         # exchange will end the test early and keep us from seeing the exit
         # status for the monitor (which is the best indication if e.g. a
         # segmentation fault killed it).
-        #self.channel.exchange_declare(
-        #    exchange=self.config['exchange'], exchange_type='topic',
-        #    auto_delete=True)
+        self.channel.exchange_declare(
+            exchange=self.config['exchange'], exchange_type='topic',
+            passive=True)
+            #auto_delete=True)
 
     def _setup_queue(self):
         #print("@@@ declaring queue")
@@ -188,6 +197,7 @@ def test_monitor_rabbitmq(generated_rabbitmq_monitor, test_case):
 
     # Send and receive messages via RabbitMQ
     session = RabbitMQSession(rabbitmq_config, binding_keys, input_events)
+    session.run()
 
     # Terminate monitors
     gen_mon.terminate(5)
