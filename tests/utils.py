@@ -184,6 +184,7 @@ class GeneratedMonitor:
             else:
                 result.append(self.procs[i].communicate(
                     input_list[i], timeout=timeout))
+        self.needs_communicate = False
         return result
 
     def wait(self, timeout=None):
@@ -193,18 +194,27 @@ class GeneratedMonitor:
         if self.needs_communicate:
             for proc in self.procs:
                 proc.communicate(timeout)
+            self.needs_communicate = False
         else:
             for proc in self.procs:
                 proc.wait(timeout)
         return [proc.returncode for proc in self.procs]
 
-    def terminate(self, timeout=2):
-        """Terminate the monitor processes. Wait two seconds and then kill any
+    def terminate(self, timeout=5):
+        """Terminate the monitor processes. Wait the timeout and then kill any
         remaining processes."""
         for proc in self.procs:
             if proc.returncode is None:
                 proc.terminate()
-        time.sleep(timeout)
+
+        timeout_end = time.time() + timeout
+        for proc in self.procs:
+            timeout = timeout_end - time.time()
+            try:
+                proc.wait(timeout=(timeout if timeout > 0 else 0))
+            except TimeoutError:
+                pass
+
         for proc in self.procs:
             if proc.returncode is None:
                 proc.kill()

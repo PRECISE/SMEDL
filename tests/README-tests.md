@@ -54,6 +54,9 @@ Inside this directory, you will find the following contents:
       git pull
       git submodule update --init
 
+- `docker/`: Contains the Dockerfile that can be used to build the GitLab CI/CD
+  image
+
 - `README-test.md`: This file
 
 Note that there is no `__init__.py`. This directory is not a Python package. It

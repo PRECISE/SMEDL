@@ -82,6 +82,8 @@ class RabbitMQSession:
         #print("@@@ config", self.config)
         self.connection = pika.BlockingConnection(parameters)
 
+        #TODO Figure out how to make sure this doesn't happen until the
+        # exchange is declared. This try/retry thing isn't working.
         try:
             self._setup_channel()
             retry = False

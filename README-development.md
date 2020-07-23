@@ -2,7 +2,8 @@ Development Notes
 =================
 
 This document contains notes to help future developers get up to speed on the
-project.
+project. Some of these are general best practices, others are notes specific
+to this project.
 
 Best Practices
 --------------
@@ -43,7 +44,98 @@ make future usage and maintenance easier and should not generally be ignored.
   an excuse to be sloppy. The purpose of this tool is to generate code for other
   people, so readability is important.
 
-### Releases
+### Documentation
+
+TODO
+
+Git Branching and Tagging
+-------------------------
+
+Git branches are often underutilized, but they can make managing the project
+far easier.
+
+We have two main branches in our repository:
+- `master`: Should always be at the latest release, which should be tagged
+- `develop`: Contains the latest updates, but *should always be in a working
+  state.* Meaning, all tests should be passing. If they are not, they should be
+  fixed immediately, or the changes rolled back until they can be.
+
+Commits to these two branches will always trigger CI, running the automated
+tests, so if there is a problem, you can fix it immediately.
+
+### Adding a new feature
+
+When developing a new feature, *always* start a new branch from `develop`. This
+way, you can freely make commits that might break the code without interfering
+with other features you might be developing at the same time. Once your new
+feature is tested and working, you can merge it back into `develop` and delete
+the branch if you like. Or, if the feature doesn't work out, you can delete the
+branch without ever merging it. Here are some commands that might help with
+this:
+
+```sh
+# Start from the develop branch
+git checkout develop
+# Check out a newly-created (-b) branch for your new feature
+git checkout -b my-new-feature
+# Make some changes, add some commits, then...
+# Push the branch to GitLab (you can do this at any time if you like, e.g.
+# to sync your work between multiple computers, as a backup, or to share
+# your progress, but it's only required when the feature is ready)
+git push -u origin my-new-feature
+# If you make more commits, you can push again like normal
+git push
+```
+
+To test your feature, you can run tests on your own computer (see the "Testing"
+section here and in the main README), but also, any commit you push that
+contains "run ci" will have the full tests run on the server. Be sure also to
+add the new feature to the changelog and update the documentation. When your
+new feature is ready to merge into `develop`, you have two options:
+
+- [Create a merge request on the GitLab website.][merge-request] This gives
+  other people a chance to review the changes if that would be helpful.
+- Merge in your own repository and then push the `develop` branch:
+
+  ```sh
+  git checkout develop
+  git merge my-new-feature
+  git push
+  ```
+
+Once the changes are merged (if if you decide to abandon the feature without
+merging), you can delete the branch if you like (or you can also delete from
+gitLab without deleting from your own computer):
+
+```sh
+# Delete from GitLab
+git push -d origin my-new-feature
+# Delete from your own computer
+git branch -d my-new-feature
+```
+
+### Fixing a Bug
+
+TODO
+
+- Create a branch from `master`, `bugfix-<something>` (the `bug*` prefix
+tells CI to run with every push)
+- Add new tests for the bug, if at all possible
+- Make the fixes
+- Bump the version number and update the changelog
+- Push
+- Merge into `master` and `develop`, tag the `master` commit and add release
+  notes if desired
+
+### Making a release
+
+- Bump the version number and update the changelog to contain the new version
+- Merge `develop` into `master`
+- Tag the `master` commit and add release notes if desired
+- Add a new "unreleased" section to the changelog
+
+Releases
+--------
 
 When making a release:
 
@@ -64,9 +156,53 @@ When making a release:
 TODO semantic versioning, changelog, metadata and version stuff to update, other
 info on how to do releases
 
-### Documentation
+New Python Versions
+-------------------
 
-TODO
+[Roughly every October, a new major version of Python is released. From time to
+time, old Python versions reach end-of-life, as well.][python-cycle] An ideal
+goal would be to support all active Python versions, or at least all versions
+currently receiving bugfixes. Our CI tools help with this greatly by testing
+against multiple Python versions when we merge into the main development
+branch.
+
+When a new Python version is released (or an old version reaches end-of-life),
+there are two lists of Python versions that need to be updated: the list in
+`tox.ini` and the list in `tests/docker/Dockerfile`. The latter then needs to
+be used to build a new Docker image: see "Updating the Docker Image."
+
+There may be certain workarounds or version-dependent hacks that can be removed
+when old Python versions reach end-of-life, such as dependencies in `setup.py`
+that are only required for old versions of Python.
+
+Testing and CI
+--------------
+
+TODO Note different examples of useful commands and techniques for testing
+
+### Updating the Docker Image
+
+GitLab CI/CD uses Docker to provide the environment for CI/CD scripts. Docker
+images are pulled from Docker Hub.
+
+In a perfect world, we would use one of the official `python` docker images,
+but unfortunately, they only contain one version of Python each, and we want to
+test against all active Python versions. So, we have a Dockerfile,
+`tests/docker/Dockerfile`, to build a custom image that includes multiple
+Python versions and all the build dependencies for our monitors.
+
+Ideally, GitLab CI would let you use a Dockerfile instead of just an image. [It
+currently does not.](https://gitlab.com/gitlab-org/gitlab/-/issues/22801) Next
+best thing would be using GitLab's built-in [Container Registry](https://docs.gitlab.com/ee/user/packages/container_registry/index.html).
+Unfortunately, that's not enabled, either. So, we are just using an image
+uploaded to Docker Hub on a personal account.
+
+TODO when to do this?
+
+    docker login
+    docker build -t <username>/<repo> - < Dockerfile
+    docker tag <username>/<repo> <username>/<repo>:YYYY.MM.DD
+    docker push <username>/<repo>
 
 Design of Mgen
 --------------
@@ -164,3 +300,6 @@ After parsing the command line options, it initializes the code generator,
 calls either the SMEDL parser or the A4SMEDL parser depending on what type of
 input file was provided, and then passes the output (which will be objects from
 "smedl/structures") to the code generator for transformation to C code.
+
+[python-cycle]: https://www.python.org/dev/peps/pep-0602/
+[merge-request]: https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html
