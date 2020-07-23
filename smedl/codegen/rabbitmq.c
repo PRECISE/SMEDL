@@ -59,7 +59,7 @@ static void err(const char *fmt, ...) {
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
-    fprintf(stderr, "\n");// "(%ld) \n", (long int) time(NULL));
+    fprintf(stderr, "\n");
 }
 
 /* Print a message to stderr, followed by a colon and error message for the
@@ -93,7 +93,6 @@ static int check_status(amqp_status_enum status, const char *fmt, ...) {
 static int check_reply(InitStatus *init_status, RabbitMQState *rmq_state,
         amqp_rpc_reply_t reply, const char *fmt, ...) {
     if (reply.reply_type == AMQP_RESPONSE_NORMAL) {
-        err("@@@");
         /* Success */
         return 1;
     }
@@ -102,15 +101,12 @@ static int check_reply(InitStatus *init_status, RabbitMQState *rmq_state,
     va_start(args, fmt);
     if (reply.reply_type == AMQP_RESPONSE_LIBRARY_EXCEPTION) {
         /* Error (e.g. server terminated the connection) */
-        err("@@@ a");
         verr_amqp(reply.library_error, fmt, args);
 
     } else if (reply.reply_type == AMQP_RESPONSE_SERVER_EXCEPTION) {
         /* Server-side error */
-        err("@@@ b");
         vfprintf(stderr, fmt, args);
         if (reply.reply.id == AMQP_CHANNEL_CLOSE_METHOD) {
-            err("@@@ b1");
             /* Channel error from server */
             amqp_channel_close_t *details =
                 (amqp_channel_close_t *) reply.reply.decoded;
@@ -126,7 +122,6 @@ static int check_reply(InitStatus *init_status, RabbitMQState *rmq_state,
             init_status->channel = 0;
 
         } else if (reply.reply.id == AMQP_CONNECTION_CLOSE_METHOD) {
-            err("@@@ b2");
             /* Connection error from server */
             amqp_connection_close_t *details =
                 (amqp_connection_close_t *) reply.reply.decoded;
@@ -143,13 +138,11 @@ static int check_reply(InitStatus *init_status, RabbitMQState *rmq_state,
             init_status->conn = 0;
 
         } else {
-            err("@@@ b3");
             /* Other error from server */
             fprintf(stderr, ": Unknown server error 0x%08x\n", reply.reply.id);
         }
 
     } else {
-        err("@@@ d");
         vfprintf(stderr, fmt, args);
         fprintf(stderr, ": Internal error (invalid reply type)\n");
     }
