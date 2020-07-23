@@ -59,7 +59,7 @@ static void err(const char *fmt, ...) {
     va_start(args, fmt);
     vfprintf(stderr, fmt, args);
     va_end(args);
-    fprintf(stderr, "(%ld) \n", (long int) time(NULL));
+    fprintf(stderr, "\n");// "(%ld) \n", (long int) time(NULL));
 }
 
 /* Print a message to stderr, followed by a colon and error message for the
