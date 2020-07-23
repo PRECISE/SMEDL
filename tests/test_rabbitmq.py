@@ -107,9 +107,9 @@ class RabbitMQSession:
         # exchange will end the test early and keep us from seeing the exit
         # status for the monitor (which is the best indication if e.g. a
         # segmentation fault killed it).
-        self.channel.exchange_declare(
-            exchange=self.config['exchange'], exchange_type='topic',
-            auto_delete=True)
+        #self.channel.exchange_declare(
+        #    exchange=self.config['exchange'], exchange_type='topic',
+        #    auto_delete=True)
 
     def _setup_queue(self):
         #print("@@@ declaring queue")
