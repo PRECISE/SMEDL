@@ -181,6 +181,7 @@ int smedl_assign_string(char **dest, char *src) {
 /* Make a copy of the src opaque in dest (does not free the old value!) */
 int smedl_assign_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     void *tmp = malloc(src.size);
+    //TODO Can return NULL correctly if size is zero
     if (tmp == NULL) {
         return 0;
     }
@@ -205,6 +206,7 @@ int smedl_replace_string(char **dest, char *src) {
 /* Free the old dest and make a copy of the src opaque in dest */
 int smedl_replace_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     void *tmp = malloc(src.size);
+    //TODO Can return NULL correctly if size is zero
     if (tmp == NULL) {
         return 0;
     }
