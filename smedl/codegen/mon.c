@@ -369,6 +369,7 @@ void default_{{spec.name}}_state({{spec.name}}State *state) {
     mon->identities = identities;
 
     /* Copy initial state vars in */
+    //TODO Need to deep copy strings and opaques
     mon->s = *init_state;
 
     /* Set all scenarios to their initial state */
