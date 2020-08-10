@@ -1,25 +1,28 @@
 \documentclass[paper=letter,titlepage,captions=tableheading]{scrartcl}
-\usepackage{lmodern}
+\usepackage[lighttt]{lmodern}
 \usepackage[T1]{fontenc}
 \usepackage{textcomp}
 \usepackage{ctable}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{framed}
 \usepackage{hyperref}
 \usepackage{scrhack}
 %TODO check the options for hyperref and add useful ones
 
-% Allow bold teletype text
-\DeclareFontFamily{T1}{lmtt}{}
-\DeclareFontShape{T1}{lmtt}{m}{n}{<-> ec-lmtl10}{}
-\DeclareFontShape{T1}{lmtt}{m}{\itdefault}{<-> ec-lmtlo10}{}
-\DeclareFontShape{T1}{lmtt}{\bfdefault}{n}{<-> ec-lmtk10}{}
-\DeclareFontShape{T1}{lmtt}{\bfdefault}{\itdefault}{<-> ec-lmtko10}{}
+% Workaround for bug with light italic tt
+% See https://tex.stackexchange.com/a/234020
+\ttfamily
+\DeclareFontShape{T1}{lmtt}{m}{it}
+     {<->sub*lmtt/m/sl}{}
 
 % No dot after table and figure names in captions
 % e.g. "Table 1.1:", not "Table 1.1.:"
 \renewcommand*{\figureformat}{\figurename~\thefigure}
 \renewcommand*{\tableformat}{\tablename~\thetable}
+
+% Color for shaded boxes
+\definecolor{shadecolor}{HTML}{F5F5F5}
 
 \input{codestyle}
 
@@ -150,7 +153,9 @@ monitor. Imported events come from outside the monitor and may trigger
 transitions and actions. Exported events are generated within the monitor and
 sent out. (There are also internal events, introduced in \autoref{subsec:smedl-advanced}.)
 
-Events can carry parameters with them. TODO
+Events can carry parameters with them. These will be useful for conditions or
+actions, discussed later. The parameters have predefined types, declared with
+the event.
 
 \begin{lstlisting}[firstnumber=10,style=smedlfixed]
 scenarios:
@@ -163,8 +168,161 @@ scenarios:
       -> idle;
 \end{lstlisting}
 
+Finally, the scenarios section. This contains the actual monitor logic in the
+form of state machines. There can be multiple scenarios, each representing one
+state machine; however, this monitor only has one, named \texttt{main}.
+
+Each scenario is defined as a list of transitions. Here, we only have one. From
+the \texttt{idle} state, if there is a \texttt{measurement} event, the actions
+in curly braces are performed, then it proceeds to the \texttt{idle} state
+again.
+
+The starting state for the first transition becomes the starting state for the
+entire scenario.
+
+Actions have a C-like syntax. There are five types of actions:
+\begin{description}
+  \item[\texttt{<state\_var> = <expr>}] assigns a value to a state
+    variable.
+  \item[\texttt{<state\_var>++}] increments a state variable.
+  \item[\texttt{<state\_var>-{}-}] increments a state variable.
+  \item[\texttt{raise <event>(<expr>[, <expr> \ldots])}] raises an exported orr
+    internal event.
+  \item[\texttt{<function>(<expr>[, <expr> \ldots])}] calls a helper function
+    (see \autoref{TODO in language reference}).
+\end{description}
+
+Expressions are C-like as well and may use literals, event parameters, and
+state variables.
+
 \subsection{A More Advanced Monitor}
 \label{subsec:smedl-advanced}
+
+\autoref{lst:adv-mon} shows a monitor that ensures a light does not illuminate
+until a button is pressed. It demonstrates some features of SMEDL that were not
+present in the simple monitor above.
+
+\begin{lstlisting}[
+  caption={A monitor checking if a light stays off until a button press},
+  label=lst:adv-mon,
+  style=smedl
+]
+object WeakUntil;
+
+state:
+  int light = 0;
+  int button = 0;
+
+events:
+  imported light_is(int);
+  imported button_is(int);
+  internal check();
+  exported satisfaction();
+  exported violation();
+
+scenarios:
+  input:
+    idle -> light_is(status) {
+        light = status;
+        raise check();
+      } -> idle;
+    idle -> button_is(status) {
+        button = status;
+        raise check();
+      } -> idle;
+
+  verify:
+    waiting
+      -> check() when (!light && !button)
+      -> waiting;
+    waiting
+      -> check() when (button) {raise satisfaction();}
+      -> satisfied;
+      else {raise violation();}
+      -> violated;
+    satisfied -> check() -> satisfied;
+    violated -> check() -> violated;
+\end{lstlisting}
+
+This monitor has two scenarios, \texttt{input} and \texttt{verify}. These act
+as separate state machines operating in parallel. Scenarios can share data and
+interact with each other through state variables and internal events.
+
+\begin{lstlisting}[firstnumber=10,style=smedlfixed]
+  internal check();
+\end{lstlisting}
+
+This is an internal event declaration. Internal events can be raised like
+exported events and trigger transitions like imported events, but do not leave
+the monitor. They provide a way for actions in one scenario to send data to
+or trigger a transition in another scenario.
+
+As a result, a single imported event can cause a chain of internal and exported
+events. This is known as a \emph{macro step}. There can only be one transition
+per scenario per macro step. This is a guard against infinite loops.
+
+Note that if a single event triggers a simultaneous transition in multiple
+scenarios, either scenario is permitted to run first. However, any events
+raised during a macro step are queued until all events raised before it are
+finished being handled.
+
+For example, given the scenarios in \autoref{lst:macro-steps}, if
+\texttt{event\_a} were raised, the macro step would look like this:
+\begin{enumerate}
+  \item The transition in \texttt{scn\_a} would be triggered.
+    \begin{enumerate}
+      \item \texttt{event\_b} is raised. It is queued for later, since
+        \texttt{event\_a} is still being handled.
+      \item \texttt{my\_var} is set to \texttt{100}.
+    \end{enumerate}
+  \item \texttt{event\_b} triggers transitions in \texttt{scn\_b} and
+    \texttt{scn\_bb}. These transitions could happen in either order, but we
+    will do \texttt{scn\_b} first.
+    \begin{enumerate}
+      \item In \texttt{scn\_b}, \texttt{event\_d(100)} is raised. It is queued
+        for later.
+      \item In \texttt{scn\_bb}, \texttt{event\_c()} is raised. It is also
+        queued.
+    \end{enumerate}
+  \item \texttt{event\_d} is popped back off the event queue. We will say this
+    was an exported event, so this is the point where it would be emitted from
+    the monitor.
+  \item Next is \texttt{event\_c}, triggering a transition in \texttt{scn\_c}.
+    \texttt{event\_e} is raised and queued.
+  \item Finally, \texttt{event\_e} is dequeued. \texttt{scn\_a} also has a
+    transition for this event, but since the macro step is not over, that
+    transition is not taken.
+\end{enumerate}
+
+\begin{lstlisting}[
+  caption={Example scenarios to demonstrate ordering within a macro step},
+  label=lst:macro-steps,
+  style=smedl
+]
+scenarios:
+  scn_a:
+    start -> event_a() {
+      raise event_b();
+      my_var = 100;
+    } -> state_a;
+    state_a -> event_e() -> start;
+
+  scn_b:
+    start -> event_b() {
+      raise event_d(my_var);
+    } -> start;
+
+  scn_bb:
+    start -> event_b() {
+      raise event_c();
+    } -> start;
+
+  scn_c:
+    start -> event_c() {
+      raise event_e();
+    } -> start;
+\end{lstlisting}
+
 
 %TODO Use the frontend monitor from multi_moving_average, or maybe a monitor
 % for LTL. Actually, the latter is a good idea because it still makes sense
@@ -235,13 +393,19 @@ The monitor (SMEDL) specification corresponds with the monitor level and the
 architecture (A4SMEDL) specification corresponds with the three layers above
 it.
 
+\begin{shaded}
+  Most programs will not need to interact with any layer except the transport
+  layer directly. If not interfacing with SMEDL on a low level, it is safe to
+  skip the sections on the monitor, local wrapper, and global wrapper layers.
+\end{shaded}
+
 \section{Common API Elements}
 \label{sec:common}
 
 \textbf{Header: \texttt{smedl\_types.h}}
 
 \subsection{The \texttt{SMEDLValue} Type}
-label{subsec:smedlvalue}
+\label{subsec:smedlvalue}
 
 The \texttt{SMEDLValue} type is used throughout the API for event parameters,
 monitor identities, etc. It is defined in \autoref{lst:smedlvalue}. Each 
@@ -250,12 +414,10 @@ is a member of the \texttt{SMEDLType} enum and the value is a union. See
 \autoref{tab:smedlvalue-union} for the correspondence between the SMEDL types
 and union members.
 
-%TODO C listings aren't quite formatted right...at the very least, keywords are
-% not bold
 \begin{lstlisting}[
   caption={The \texttt{SMEDLValue} and \texttt{SMEDLType} definitons},
   label=lst:smedlvalue,
-  style=Cfixed
+  style=C
 ]
 typedef enum {SMEDL_INT, SMEDL_FLOAT, SMEDL_CHAR,
     SMEDL_STRING, SMEDL_POINTER, SMEDL_THREAD,
@@ -280,17 +442,20 @@ typedef struct {
   \texttt{SMEDLValue}},
   label=tab:smedlvalue-union,
   mincapwidth=3in,
-]{ll}{}{
+]{ll}{
+  \tnote[a]{Must not be \texttt{NULL} and must be null-terminated.}
+}{
   \toprule
   \texttt{SMEDLType} & Union member \\
   \midrule
-  \texttt{SMEDL\_INT} & \texttt{i} \\
-  \texttt{SMEDL\_FLOAT} & \texttt{d} \\
-  \texttt{SMEDL\_CHAR} & \texttt{c} \\
-  \texttt{SMEDL\_STRING} & \texttt{s} \\
-  \texttt{SMEDL\_POINTER} & \texttt{p} \\
-  \texttt{SMEDL\_THREAD} & \texttt{th} \\
-  \texttt{SMEDL\_OPAQUE} & \texttt{o} \\
+  \texttt{SMEDL\_INT} & \texttt{int i} \\
+  \texttt{SMEDL\_FLOAT} & \texttt{double d} \\
+  \texttt{SMEDL\_CHAR} & \texttt{char c} \\
+  \texttt{SMEDL\_STRING} & \texttt{char *s}\tmark[a] \\
+  \texttt{SMEDL\_POINTER} & \texttt{void *p} \\
+  \texttt{SMEDL\_THREAD} & \texttt{pthread\_t th} \\
+  \texttt{SMEDL\_OPAQUE} &
+    \hyperref[subsec:smedlopaque]{\texttt{SMEDLOpaque o}} \\
   \texttt{SMEDL\_NULL} & -- \\
   \bottomrule
 }
@@ -305,12 +470,85 @@ ignored in such cases.
 \subsection{The \texttt{SMEDLOpaque} Type}
 \label{subsec:smedlopaque}
 
-\texttt{SMEDLOpaque} \texttt{\bfseries SMEDLOpaque}
+SMEDL's \texttt{opaque} type is meant to represent arbitrary-length chunks of
+binary data. In that sense, it is somewhat similar to the \texttt{string} type.
+The difference is that \texttt{string}s cannot contain null characters, since
+they are null-terminated. The \texttt{opaque} type can, but that means its
+size must be stored alongside it explicitly. Thus, we have the
+\texttt{SMEDLOpaque} struct, defined in \autoref{lst:smedlopaque}.
 
-%TODO SMEDLValue and certain other things
+\begin{lstlisting}[
+  caption={The \texttt{SMEDLOpaque} struct},
+  label=lst:smedlopaque,
+  style=C
+]
+typedef struct {
+    void *data;
+    size_t size;
+} SMEDLOpaque;
+\end{lstlisting}
+
+Every \texttt{SMEDLOpaque} struct must point to valid data; the \texttt{data}
+pointer cannot be \texttt{NULL}\@. There is one exception to this: if the
+\texttt{size} is zero, \texttt{data} may be NULL (or any other invalid
+pointer). This goes for \texttt{SMEDLOpaque}s passed to callbacks as well.
+
+Note that copies of opaque data are made during internal processing. This could
+cause issues if there are any self-referential pointers within.
 
 %NOTE Strings and opaques cannot point to NULL. Strings must always be
 % null-terminated.
+
+\subsection{The \texttt{SMEDLCallback} Type and Event Data}
+\label{subsec:smedlcallback}
+
+The SMEDL API naturally has several functions that pass event data from one
+place to another. These functions all accept the same three parameters and do
+not return anything, so to avoid repetition, these parameters are described
+here.
+
+\begin{description}
+  \item[\texttt{SMEDLValue *identities}] is an array of the monitor identities.
+    If there is no monitor (i.e. events from the target system) or the monitor
+    has no identities, this can safely be \texttt{NULL}\@. Additionally, where
+    wildcards are allowed, a \texttt{SMEDL\_NULL} value will represent one.
+  \item[\texttt{SMEDLValue *params}] is an array of the event parameters. If
+    the event has no parameters, this can safely be \texttt{NULL}\@.
+  \item[\texttt{void *aux}] is a pointer that is passed through from imported
+    events to exported events untouched. It can be used for provenance data.
+\end{description}
+
+The callbacks that SMEDL uses for exported events need to have the same
+signature. The \texttt{SMEDLCallback} type (\autoref{lst:smedlcallback}) is a
+function pointer for exactly that.
+
+\begin{lstlisting}[
+  caption={The \texttt{SMEDLCallback} type},
+  label=lst:smedlcallback,
+  style=C
+]
+typedef void (*SMEDLCallback)(SMEDLValue *identities,
+    SMEDLValue *params, void *aux);
+\end{lstlisting}
+
+\subsection{Memory Ownership Conventions}
+\label{subsec:mem-ownership}
+
+The SMEDL API makes extensive use of arrays and pointers. Generally speaking,
+the following principle holds:
+
+%TODO This should probably be styled differently. One-element lists aren't
+% really proper.
+\begin{itemize}
+  \item The caller is responsible for freeing its own memory. If a heap pointer
+is passed as a parameter, the callee does not take ownership of it.
+\end{itemize}
+
+This applies to callbacks as well. Callbacks cannot assume pointers will remain
+valid after they return, as the caller may (and often will) immediately free
+them.
+
+Exceptions to these rules (if any) will be noted with the particular function.
 
 \section{Monitor API}
 \label{sec:mon}
