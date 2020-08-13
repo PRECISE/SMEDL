@@ -42,6 +42,13 @@ void free_{{syncset}}_syncset() {
     {% for decl in mon_decls %}
     free_{{decl.name}}_local_wrapper();
     {% endfor %}
+
+    /* Unset callbacks */
+    {% for decl in mon_decls %}
+    {% for conn in decl.inter_connections %}
+    cb_{{conn.channel}} = NULL;
+    {% endfor %}
+    {% endfor %}
 }
 
 /* Intra routing function - Called by import interface functions and intra queue
