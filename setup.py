@@ -38,10 +38,12 @@ setup(
 
     packages=find_packages(include=['smedl', 'smedl.*']),
     package_data={
-        '': ['*.c', '*.h'],
+        '': ['*.c', '*.cpp', '*.h'],
         'smedl': ['about.json'],
         'smedl.parser': ['*.ebnf'],
-        'smedl.codegen': ['Makefile', '*.cfg'],
+        'smedl.codegen': ['Makefile'],
+        'smedl.codegen.rabbitmq': ['*.cfg'],
+        'smedl.codegen.ros': ['*.inc', '*.msg', 'CMakeLists.txt', '*.xml'],
     },
 
     install_requires=[

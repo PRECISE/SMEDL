@@ -99,9 +99,8 @@ def parse_args():
     parser.add_argument(
         '-d', '--dir', help="Directory to write the generated code to (if not "
         "current directory)")
-    # TODO Add ROS as a wrapper
     parser.add_argument(
-        '-t', '--transport', choices=['rabbitmq', 'file'],
+        '-t', '--transport', choices=['rabbitmq', 'file', 'ros'],
         help="Generate an adapter for the given asynchronous transport method")
     m_group = parser.add_mutually_exclusive_group()
     m_group.add_argument(

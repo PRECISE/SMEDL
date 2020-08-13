@@ -66,7 +66,7 @@ class CodeGenerator(object):
         """
         self.dest_dir = dest_dir
         self.transport = transport
-        if transport is None:
+        if transport is None or transport == 'ros':
             self.makefile = False
         else:
             self.makefile = makefile
@@ -304,6 +304,24 @@ class CodeGenerator(object):
         from . import static
         self._write_static_files(static)
 
+        # Generate transport adapters, if requested
+        if self.transport == "rabbitmq":
+            self._write_rabbitmq_adapters(system)
+        elif self.transport == "file":
+            self._write_file_adapters(system)
+        elif self.transport == "ros":
+            #TODO Generate a ROS package with a node for each synchronous set.
+            #   Generate a msg file for each channel. ROS package should be
+            #   named "smedl_{{sys.name}}"
+            
+            # The rest of the generated code needs to go inside the ROS package
+            self.dest_dir = os.path.join(self.dest_dir,
+                                         "smedl_%s" % system.name, "src")
+
+        #TODO For ROS, need to do something totally different. Generate a
+        # ROS package with a node for each synchronous set. Generate a msg file
+        # for each channel.
+
         # Collect the monitor specs to generate
         mon_specs = dict()
         for decl in system.monitor_decls.values():
@@ -317,14 +335,6 @@ class CodeGenerator(object):
         # Generate wrappers
         for syncset_name in system.syncsets.keys():
             self._write_wrappers(system, syncset_name)
-
-        # Generate transport adapters, if requested
-        if self.transport == "rabbitmq":
-            self._write_rabbitmq_adapters(system)
-        elif self.transport == "file":
-            self._write_file_adapters(system)
-        elif self.transport == "ros":
-            pass  # TODO
 
         # Copy helpers that are in the same directory as the .smedl file
         if self.helpers:
