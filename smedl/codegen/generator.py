@@ -78,13 +78,17 @@ class CodeGenerator(object):
         self.helpers = helpers
 
         # Initialize the Jinja2 environment
+        loaders = [jinja2.PackageLoader('smedl.codegen', '.')]
+        if transport is not None:
+            loaders.append(jinja2.PackageLoader(
+                'smedl.codegen.' + transport, '.'))
         self.env = jinja2.Environment(
             trim_blocks=True,
             lstrip_blocks=True,
             keep_trailing_newline=True,
             undefined=jinja2.StrictUndefined,
             extensions=[UnsupportedFeatureExtension],
-            loader=jinja2.PackageLoader('smedl.codegen', '.'))
+            loader=jinja2.ChoiceLoader(loaders))
 
         # Make SmedlType available to all templates
         self.env.globals['SmedlType'] = expr.SmedlType
@@ -136,8 +140,8 @@ class CodeGenerator(object):
     def _write_file_adapters(self, system):
         """Write the file adapters"""
         # Write static code
-        from .static import file
-        self._write_static_files(file)
+        from .file import static
+        self._write_static_files(static)
 
         # Write file adapters
         for syncset_name in system.syncsets.keys():
@@ -152,8 +156,8 @@ class CodeGenerator(object):
     def _write_rabbitmq_adapters(self, system):
         """Write the RabbitMQ adapters"""
         # Write static code
-        from .static import rabbitmq
-        self._write_static_files(rabbitmq)
+        from .rabbitmq import static
+        self._write_static_files(static)
 
         # Write RabbitMQ adapters
         for syncset_name in system.syncsets.keys():
