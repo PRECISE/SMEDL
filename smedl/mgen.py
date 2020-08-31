@@ -66,6 +66,10 @@ class MonitorGenerator(object):
         else:
             # Parse an architecture file, which will also parse all monitors it
             # imports
+            if not self.gen_transport:
+                print("Notice: No -t/--transport option was chosen. "
+                      "Generating a monitor system\nwithout transport code.",
+                      file=sys.stderr)
             with open(input_file, "r") as f:
                 input_text = f.read()
             parser = a4smedl_parser.A4SMEDLParser()
