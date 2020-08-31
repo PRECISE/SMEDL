@@ -2,6 +2,7 @@
 Code generation and template filling
 """
 
+import os
 import os.path
 import shutil
 import itertools
@@ -15,7 +16,7 @@ from smedl.structures import expr
 from smedl.parser.exceptions import SmedlException
 
 # importlib.resources is only available in python>=3.7, but is available as a
-# backport.
+# backport in earlier versions.
 try:
     from importlib import resources
 except ImportError:
@@ -49,14 +50,32 @@ class UnsupportedFeatureExtension(ext.Extension):
                 lineno=lineno)
 
 
+def construct_generator(transport, **kwargs):
+    """Construct a CodeGenerator or one of its subclasses for the appropriate
+    transport type.
+
+    transport - Name of the asynchronous transport mechanism
+
+    Other arguments are passed through to the CodeGenerator (or subclass)
+    constructor.
+    """
+    generators = {
+        None: CodeGenerator,
+        'rabbitmq': RabbitMQGenerator,
+        'ros': ROSGenerator,
+        'file': FileGenerator,
+    }
+
+    return generators[transport](**kwargs)
+
+
 class CodeGenerator(object):
     """Generates C code for monitors and monitor systems"""
-    def __init__(self, dest_dir, transport, makefile, helpers):
+    def __init__(self, dest_dir, makefile, helpers):
         """Initialize the code generator.
 
         Parameters:
         dest_dir - Directory to write to
-        transport - Name of the asynchronous transport mechanism
         makefile - Whether a Makefile should be written with write_all.
           True=yes (if a transport was given), False=no, None=only if not
           already present in the destination
@@ -65,30 +84,29 @@ class CodeGenerator(object):
           reside in)
         """
         self.dest_dir = dest_dir
-        self.transport = transport
-        if transport is None or transport == 'ros':
+        self.helpers = helpers
+
+        # Most subclasses will use makefile generation, but vanilla
+        # CodeGenerator can't (because we don't have a complete program without
+        # a transport adapter).
+        if type(self) is CodeGenerator:
             self.makefile = False
         else:
             self.makefile = makefile
-        if self.makefile is None:
-            if os.path.exists(os.path.join(dest_dir, 'Makefile')):
-                self.makefile = False
-            else:
-                self.makefile = True
-        self.helpers = helpers
+            if self.makefile is None:
+                if os.path.exists(os.path.join(dest_dir, 'Makefile')):
+                    self.makefile = False
+                else:
+                    self.makefile = True
 
         # Initialize the Jinja2 environment
-        loaders = [jinja2.PackageLoader('smedl.codegen', '.')]
-        if transport is not None:
-            loaders.append(jinja2.PackageLoader(
-                'smedl.codegen.' + transport, '.'))
         self.env = jinja2.Environment(
             trim_blocks=True,
             lstrip_blocks=True,
             keep_trailing_newline=True,
             undefined=jinja2.StrictUndefined,
             extensions=[UnsupportedFeatureExtension],
-            loader=jinja2.ChoiceLoader(loaders))
+            loader=jinja2.ChoiceLoader(self._get_jinja_loaders()))
 
         # Make SmedlType available to all templates
         self.env.globals['SmedlType'] = expr.SmedlType
@@ -96,6 +114,32 @@ class CodeGenerator(object):
 
         # Set up some custom tests for convenience in templates
         self.env.tests['nonempty'] = lambda x: len(x) > 0
+
+    def _get_jinja_loaders(self):
+        """Return a list of Jinja template loaders to use. Subclasses should
+        override to extend the list."""
+        return [jinja2.PackageLoader('smedl.codegen', '.')]
+
+    def _append_paths(self, orig, to_add, dirname):
+        """Extend the list of paths
+
+        orig - The list to extend
+        to_add - A list of paths to extend with
+        dirname - A directory to join each path in to_add with
+
+        Each path in to_add is only added if it's not a file already in orig
+        """
+        for fname in to_add:
+            path = os.path.join(dirname, fname)
+            append = True
+            for existing in orig:
+                try:
+                    if os.path.samefile(existing, path):
+                        append = False
+                except OSError:
+                    append = False
+            if append:
+                orig.append(path)
 
     def _write_static_files(self, module):
         """Write the static code to the output directory. Must be provided with
@@ -111,7 +155,7 @@ class CodeGenerator(object):
                 with open(out_path, "w") as outfile:
                     outfile.write(text)
 
-    def _render(self, template, filename, values):
+    def _render(self, template, filename, values, dest=None):
         """Render the named template to the named file in the output directory
         using the given key-value store.
 
@@ -119,8 +163,11 @@ class CodeGenerator(object):
         template - Name of the template to use
         filename - Name of the generated file
         values - A dict containing the key-value store to pass to the template
+        dest - Directory to write to, defaulting to self.dest_dir
         """
-        out_path = os.path.join(self.dest_dir, filename)
+        if dest is None:
+            dest = self.dest_dir
+        out_path = os.path.join(dest, filename)
         text = self.env.get_template(template).render(values)
         with open(out_path, "w") as f:
             f.write(text)
@@ -136,39 +183,6 @@ class CodeGenerator(object):
                     shutil.copy(f, self.dest_dir)
             except OSError:
                 pass
-
-    def _write_file_adapters(self, system):
-        """Write the file adapters"""
-        # Write static code
-        from .file import static
-        self._write_static_files(static)
-
-        # Write file adapters
-        for syncset_name in system.syncsets.keys():
-            values = {
-                "sys": system,
-                "mon_decls": system.monitor_decls.values(),
-                "syncsets": system.syncsets,
-            }
-            self._render("file.c", system.name + "_file.c", values)
-            self._render("file.h", system.name + "_file.h", values)
-
-    def _write_rabbitmq_adapters(self, system):
-        """Write the RabbitMQ adapters"""
-        # Write static code
-        from .rabbitmq import static
-        self._write_static_files(static)
-
-        # Write RabbitMQ adapters
-        for syncset_name in system.syncsets.keys():
-            values = {
-                "sys": system,
-                "syncset": syncset_name,
-                "mon_decls": system.syncsets[syncset_name],
-            }
-            self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
-            self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
-            self._render("rabbitmq.cfg", system.name + ".cfg", values)
 
     def _write_makefile(self, system):
         """Write the Makefile
@@ -256,26 +270,10 @@ class CodeGenerator(object):
                 result.append(helper[1:-1])
         return result
 
-    def _append_paths(self, orig, to_add, dirname):
-        """Extend the list of paths
-
-        orig - The list to extend
-        to_add - A list of paths to extend with
-        dirname - A directory to join each path in to_add with
-
-        Each path in to_add is only added if it's not a file already in orig
-        """
-        for fname in to_add:
-            path = os.path.join(dirname, fname)
-            append = True
-            for existing in orig:
-                try:
-                    if os.path.samefile(existing, path):
-                        append = False
-                except OSError:
-                    append = False
-            if append:
-                orig.append(path)
+    def _write_transport_adapters(self, system):
+        """Subclasses should override this to generate the transport adapter
+        code."""
+        pass
 
     def write_one(self, monitor):
         """Write all C files for the single monitor described by the provided
@@ -304,24 +302,6 @@ class CodeGenerator(object):
         from . import static
         self._write_static_files(static)
 
-        # Generate transport adapters, if requested
-        if self.transport == "rabbitmq":
-            self._write_rabbitmq_adapters(system)
-        elif self.transport == "file":
-            self._write_file_adapters(system)
-        elif self.transport == "ros":
-            #TODO Generate a ROS package with a node for each synchronous set.
-            #   Generate a msg file for each channel. ROS package should be
-            #   named "smedl_{{sys.name}}"
-            
-            # The rest of the generated code needs to go inside the ROS package
-            self.dest_dir = os.path.join(self.dest_dir,
-                                         "smedl_%s" % system.name, "src")
-
-        #TODO For ROS, need to do something totally different. Generate a
-        # ROS package with a node for each synchronous set. Generate a msg file
-        # for each channel.
-
         # Collect the monitor specs to generate
         mon_specs = dict()
         for decl in system.monitor_decls.values():
@@ -336,6 +316,9 @@ class CodeGenerator(object):
         for syncset_name in system.syncsets.keys():
             self._write_wrappers(system, syncset_name)
 
+        # Generate transport adapters
+        self._write_transport_adapters(system)
+
         # Copy helpers that are in the same directory as the .smedl file
         if self.helpers:
             full_helpers = []
@@ -347,3 +330,128 @@ class CodeGenerator(object):
         # Generate Makefile, if requested
         if self.makefile:
             self._write_makefile(system)
+
+
+class RabbitMQGenerator(CodeGenerator):
+    """Generates C code for monitor systems with the RabbitMQ adapter."""
+    def __init__(self, **kwargs)
+        """Initialize the code generator for RabbitMQ.
+        Parameters match the constructor for CodeGenerator."""
+        super(RabbitMQGenerator, self).__init__(**kwargs)
+
+    def _get_jinja_loaders(self):
+        """Return a list of Jinja template loaders to use."""
+        loaders = super(RabbitMQGenerator, self)._get_jinja_loaders()
+        loaders.append(jinja2.PackageLoader('smedl.codegen.rabbitmq', '.'))
+        return loaders
+
+    def _write_transport_adapters(self, system):
+        """Write the RabbitMQ adapters"""
+        # Write static code
+        from .rabbitmq import static
+        self._write_static_files(static)
+
+        # Write RabbitMQ adapters
+        for syncset_name in system.syncsets.keys():
+            values = {
+                "sys": system,
+                "syncset": syncset_name,
+                "mon_decls": system.syncsets[syncset_name],
+            }
+            self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
+            self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
+            self._render("rabbitmq.cfg", system.name + ".cfg", values)
+
+
+class FileGenerator(CodeGenerator):
+    """Generates C code for monitor systems with the File adapter."""
+    def __init__(self, **kwargs)
+        """Initialize the code generator for the file transport.
+        Parameters match the constructor for CodeGenerator."""
+        super(FileGenerator, self).__init__(**kwargs)
+
+    def _get_jinja_loaders(self):
+        """Return a list of Jinja template loaders to use."""
+        loaders = super(FileGenerator, self)._get_jinja_loaders()
+        loaders.append(jinja2.PackageLoader('smedl.codegen.file', '.'))
+        return loaders
+
+    def _write_transport_adapters(self, system):
+        """Write the file adapters"""
+        # Write static code
+        from .file import static
+        self._write_static_files(static)
+
+        # Write file adapters
+        for syncset_name in system.syncsets.keys():
+            values = {
+                "sys": system,
+                "mon_decls": system.monitor_decls.values(),
+                "syncsets": system.syncsets,
+            }
+            self._render("file.c", system.name + "_file.c", values)
+            self._render("file.h", system.name + "_file.h", values)
+
+
+class ROSGenerator(CodeGenerator):
+    """Generates C code for monitor systems with the ROS adapter."""
+    def __init__(self, **kwargs)
+        """Initialize the code generator for ROS.
+        Parameters match the constructor for CodeGenerator, except that a
+        Makefile is never generated."""
+        super(ROSGenerator, self).__init__(**kwargs)
+
+        # ROS uses catkin make, a customized version of CMake. Disable the
+        # normal Makefile generation.
+        self.makefile = False
+
+        # ROSGenerator creates a full ROS package. This is the directory for
+        # that package. self.dest_dir will later be updated to point to the
+        # "src" directory in that package, where the monitoring code will go.
+        self.pkg_dir = os.path.join(self.dest_dir, "smedl_" + system.name)
+
+    def _get_jinja_loaders(self):
+        """Return a list of Jinja template loaders to use."""
+        loaders = super(ROSGenerator, self)._get_jinja_loaders()
+        loaders.append(jinja2.PackageLoader('smedl.codegen.ros', '.'))
+        return loaders
+
+    def _mkdir(self, *args):
+        """Make the directory formed by joining all the arguments with the
+        package directory with os.path.join. Parent directories must exist,
+        but will not fail if the target directory already exists."""
+        target = os.path.join(self.pkg_dir, *args)
+        try:
+            os.mkdir(target)
+        except FileExistsError:
+            pass
+
+    def write_all(self, system):
+        """Generate a ROS package for the provided monitoring system.
+
+        Parameters:
+        system - A MonitorSystem for which code should be generated
+        """
+        # Generate the skeleton of the ROS package and set the destination
+        # directory for monitor generation to the "src" directory in the
+        # package
+        self._mkdir()
+        self._mkdir('src')
+        self._mkdir('msg')
+        self.dest_dir = os.path.join(self.pkg_dir, 'src')
+
+        super(RabbitMQGenerator, self).write_all(system)
+
+    def _write_transport_adapters(self, system):
+        """Write the code for the ROS package"""
+        values = {
+            "sys": system,
+        }
+
+        #TODO This may overwrite stuff that user previously customized? How to
+        # avoid? Use include files? May not work with package.xml. Just warn
+        # user to update variables again?
+        self._render("CMakeLists.txt", "CMakeLists.txt", values, self.pkg_dir)
+        self._render("package.xml", "package.xml", values, self.pkg_dir)
+
+        #TODO

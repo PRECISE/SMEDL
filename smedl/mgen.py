@@ -39,8 +39,11 @@ class MonitorGenerator(object):
         # Initialize the actual code generator
         if out_dir is None:
             out_dir = '.'
-        self.generator = codegen.CodeGenerator(
-            out_dir, transport, makefile, helpers)
+        self.generator = codegen.construct_generator(
+            transport=transport,
+            dest_dir=out_dir,
+            makefile=makefile,
+            helpers=helpers)
 
     def generate(self, input_file):
         """Generate code for a given input file (which may be a string or a
