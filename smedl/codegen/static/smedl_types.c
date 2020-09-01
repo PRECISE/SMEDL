@@ -1,5 +1,8 @@
 #include <stdlib.h>
 #include <stdint.h>
+{# stdio.h and errno.h only needed for pointer conversion #}
+#include <stdio.h>
+#include <errno.h>
 #include <string.h>
 #include <pthread.h>
 #include "smedl_types.h"
@@ -273,4 +276,33 @@ void smedl_free_array_contents(SMEDLValue *array, size_t len) {
             free(array[i].v.o.data);
         }
     }
+}
+
+/*
+ * Convert a pointer to string representation. Return nonzero on success, zero
+ * on failure.
+ *
+ * Will only write up to size bytes to str, including the null byte.
+ */
+int smedl_pointer_to_string(void *ptr, char *str, size_t size) {
+    int status = snprintf(str, size, "%" PRIxPTR, (uintptr_t) ptr);
+    if (status < 0 || status >= size) {
+        return 0;
+    }
+    return 1;
+}
+
+/*
+ * Convert a string representation of a pointer back to a pointer. Return
+ * nonzero on success, zero on failure.
+ */
+int smedl_string_to_pointer(const char *str, void **ptr) {
+    char *endptr;
+    errno = 0;
+    uintptr_t ptr_int = strtol(str, &endptr, 16);
+    if (errno || str[0] == '\0' || *endptr != '\0') {
+        return 0;
+    }
+    *ptr = (void *) ptr_int;
+    return 1;
 }

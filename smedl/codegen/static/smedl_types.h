@@ -127,6 +127,20 @@ void smedl_free_array(SMEDLValue *array, size_t len);
 void smedl_free_array_contents(SMEDLValue *array, size_t len);
 
 /*
+ * Convert a pointer to string representation. Return nonzero on success, zero
+ * on failure.
+ *
+ * Will only write up to size bytes to str, including the null byte.
+ */
+int smedl_pointer_to_string(void *ptr, char *str, size_t size);
+
+/*
+ * Convert a string representation of a pointer back to a pointer. Return
+ * nonzero on success, zero on failure.
+ */
+int smedl_string_to_pointer(const char *str, void **ptr);
+
+/*
  * A callback function pointer for receiving exported events from monitors and
  * global wrappers
  */

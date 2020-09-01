@@ -271,24 +271,14 @@ void read_events(JSONParser *parser) {
             {% elif param is sameas SmedlType.POINTER %}
             if (json_to_string(str, params_tok, &tmp_s)) {
                 params[{{loop.index0}}].t = SMEDL_POINTER;
-                char *endptr;
-                errno = 0;
-                uintptr_t ptr = strtol(tmp_s, &endptr, 16);
-                if (errno) {
-                    err("\nWarning: Skipping message %d: Overflow extracting "
-                            "pointer from params\n", parser->msg_count);
-                    free(tmp_s);
-                    smedl_free_array_contents(params, {{loop.index0}});
-                    continue;
-                } else if () {
-                    err("\nWarning: Skipping message %d: Bad format (Pointer in"
-                            "params should be hexadecimal string)\n",
+                if (!smedl_string_to_pointer(tmp_s, &params[{{loop.index0}}].v.p)) {
+                    err("Warning: Skipping message %d: Overflow or bad format "
+                            "extracting pointer from params\n",
                             parser->msg_count);
                     free(tmp_s);
                     smedl_free_array_contents(params, {{loop.index0}});
                     continue;
                 }
-                params[{{loop.index0}}].v.p = (void *) ptr;
             {% elif param is sameas SmedlType.THREAD %}
             {% unsupported "'thread' type cannot be transported via file" %}
             {% elif param is sameas SmedlType.OPAQUE %}

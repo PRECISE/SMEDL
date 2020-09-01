@@ -326,18 +326,11 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
         {% elif param is sameas SmedlType.POINTER %}
         if ({{get_next}} && cJSON_IsString(id_json)) {
             identities[{{loop.index0}}].t = SMEDL_POINTER;
-            char *endptr;
-            errno = 0;
-            uintptr_t ptr = strtol(id_json->valuestring, &endptr, 16);
-            if (errno) {
-                err("Could not extract pointer from 'identities': Overflow");
-                goto fail2;
-            } else if (id_json->valuestring[0] == '\0' || *end_ptr != '\0') {
-                err("Bad message (Pointer in 'identities' expects "
-                        "hexadecimal string)");
+            if (!smedl_string_to_pointer(id_json->valuestring, &identities[{{loop.index0}}].v.p)) {
+                err("Could not extract pointer from 'identities': Overflow or "
+                        "bad message");
                 goto fail2;
             }
-            identities[{{loop.index0}}].v.p = (void *) ptr;
         {% elif param is sameas SmedlType.THREAD %}
         {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
         {% elif param is sameas SmedlType.OPAQUE %}
@@ -399,18 +392,11 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
         {% elif param is sameas SmedlType.POINTER %}
         if ({{get_next}} && cJSON_IsString(param_json)) {
             params[{{loop.index0}}].t = SMEDL_POINTER;
-            char *endptr;
-            errno = 0;
-            uintptr_t ptr = strtol(param_json->valuestring, &endptr, 16);
-            if (errno) {
-                err("Could not extract pointer from 'params': Overflow");
-                goto fail2;
-            } else if (param_json->valuestring[0] == '\0' || *end_ptr != '\0') {
-                err("Bad message (Pointer in 'params' expects hexadecimal "
-                        "string)");
+            if (!smedl_string_to_pointer(param_json->valuestring, &params[{{loop.index0}}].v.p)) {
+                err("Could not extract pointer from 'params': Overflow or "
+                        "bad message");
                 goto fail2;
             }
-            params[{{loop.index0}}].v.p = (void *) ptr;
         {% elif param is sameas SmedlType.THREAD %}
         {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
         {% elif param is sameas SmedlType.OPAQUE %}
@@ -618,8 +604,7 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
     {% elif param is sameas SmedlType.STRING %}
     id = cJSON_CreateString(identities[{{loop.index0}}].v.s);
     {% elif param is sameas SmedlType.POINTER %}
-    status = snprintf(ptr, sizeof(ptr), "%" PRIxPTR, (uintptr_t) identities[{{loop.index0}}].v.p);
-    if (status < 0 || status >= sizeof(ptr)) {
+    if (!smedl_pointer_to_string(identities[{{loop.index0}}].v.p, ptr, sizeof(ptr))) {
         err("Could not convert pointer to string for message serialization");
         goto fail;
     }
@@ -661,8 +646,7 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
     {% elif param is sameas SmedlType.STRING %}
     param = cJSON_CreateString(params[{{loop.index0}}].v.s);
     {% elif param is sameas SmedlType.POINTER %}
-    status = snprintf(ptr, sizeof(ptr), "%" PRIxPTR, (uintptr_t) params[{{loop.index0}}].v.p);
-    if (status < 0 || status >= sizeof(ptr)) {
+    if (!smedl_pointer_to_string(params[{{loop.index0}}].v.p, ptr, sizeof(ptr))) {
         err("Could not convert pointer to string for message serialization");
         goto fail;
     }
