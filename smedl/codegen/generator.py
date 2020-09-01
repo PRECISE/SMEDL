@@ -71,20 +71,22 @@ def construct_generator(transport, **kwargs):
 
 class CodeGenerator(object):
     """Generates C code for monitors and monitor systems"""
-    def __init__(self, dest_dir, makefile, helpers):
+    def __init__(self, dest_dir, makefile, overwrite, helpers):
         """Initialize the code generator.
 
         Parameters:
         dest_dir - Directory to write to
         makefile - Whether a Makefile should be written with write_all.
-          True=yes (if a transport was given), False=no, None=only if not
-          already present in the destination
+          True=yes (if a transport was given), False=no
+        overwrite - Whether customizable files (Makefile, certain ROS files,
+          RabbitMQ config) should be overwritten
         helpers - Whether or not to copy helper headers to the out_dir (helpers
           are never copied if out_dir is the same directory they already
           reside in)
         """
         self.dest_dir = dest_dir
         self.helpers = helpers
+        self.overwrite = overwrite
 
         # Most subclasses will use makefile generation, but vanilla
         # CodeGenerator can't (because we don't have a complete program without
@@ -93,11 +95,6 @@ class CodeGenerator(object):
             self.makefile = False
         else:
             self.makefile = makefile
-            if self.makefile is None:
-                if os.path.exists(os.path.join(dest_dir, 'Makefile')):
-                    self.makefile = False
-                else:
-                    self.makefile = True
 
         # Initialize the Jinja2 environment
         self.env = jinja2.Environment(
@@ -155,7 +152,7 @@ class CodeGenerator(object):
                 with open(out_path, "w") as outfile:
                     outfile.write(text)
 
-    def _render(self, template, filename, values, dest=None):
+    def _render(self, template, filename, values, dest=None, preserve=False):
         """Render the named template to the named file in the output directory
         using the given key-value store.
 
@@ -164,10 +161,14 @@ class CodeGenerator(object):
         filename - Name of the generated file
         values - A dict containing the key-value store to pass to the template
         dest - Directory to write to, defaulting to self.dest_dir
+        preserve - If True, don't overwrite files that already exist unless
+          self.overwrite is True
         """
         if dest is None:
             dest = self.dest_dir
         out_path = os.path.join(dest, filename)
+        if preserve and not self.overwrite and os.path.exists(out_path):
+            return
         text = self.env.get_template(template).render(values)
         with open(out_path, "w") as f:
             f.write(text)
@@ -212,7 +213,7 @@ class CodeGenerator(object):
             "spec_names": [decl.spec.name for decl in
                            system.monitor_decls.values()]
         }
-        self._render("Makefile", "Makefile", values)
+        self._render("Makefile", "Makefile", values, preserve=True)
 
     def _write_wrappers(self, system, syncset_name):
         """Write the global wrapper and local wrappers for one synchronous set
@@ -339,6 +340,9 @@ class RabbitMQGenerator(CodeGenerator):
         Parameters match the constructor for CodeGenerator."""
         super(RabbitMQGenerator, self).__init__(**kwargs)
 
+        # Used by Makefile template
+        self.transport = "rabbitmq"
+
     def _get_jinja_loaders(self):
         """Return a list of Jinja template loaders to use."""
         loaders = super(RabbitMQGenerator, self)._get_jinja_loaders()
@@ -360,7 +364,8 @@ class RabbitMQGenerator(CodeGenerator):
             }
             self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
             self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
-            self._render("rabbitmq.cfg", system.name + ".cfg", values)
+            self._render("rabbitmq.cfg", system.name + ".cfg",
+                         values, preserve=True)
 
 
 class FileGenerator(CodeGenerator):
@@ -369,6 +374,9 @@ class FileGenerator(CodeGenerator):
         """Initialize the code generator for the file transport.
         Parameters match the constructor for CodeGenerator."""
         super(FileGenerator, self).__init__(**kwargs)
+
+        # Used by Makefile template
+        self.transport = "file"
 
     def _get_jinja_loaders(self):
         """Return a list of Jinja template loaders to use."""
@@ -444,14 +452,68 @@ class ROSGenerator(CodeGenerator):
 
     def _write_transport_adapters(self, system):
         """Write the code for the ROS package"""
+        msg_dir = os.path.join(self.pkg_dir, 'msg')
+        src_dir = os.path.join(self.pkg_dir, 'src')
+
+        # Gather lists of inbound (from outside SMEDL), outbound (to outside
+        # SMEDL), and internal (from and to only SMEDL) connections
+        inbound_connections = system.imported_connections.values()
+        internal_connections = []
+        outbound_connections = []
+        for decl in system.monitor_decls.values():
+            for conn in decl.connections.values():
+                if None in conn.inter_syncsets:
+                    outbound_connections.append(conn)
+                else:
+                    internal_connections.append(conn)
+        all_connections = (list(inbound_connections) + internal_connections +
+                           outbound_connections)
+
+        # Write message definitions for the various events that need to be
+        # transported over ROS
+        for conn in inbound_connections:
+            values = {
+                "sys": system,
+                "params": conn.source_event_params,
+                "ids": [],
+            }
+            self._render("event.msg", conn.channel + "Msg.msg",
+                         values, msg_dir)
+        for conn in internal_connections + outbound_connections:
+            values = {
+                "sys": system,
+                "params": conn.source_event_params,
+                "ids": conn.source_mon.params,
+            }
+            self._render("event.msg", conn.channel + "Msg.msg",
+                         values, msg_dir)
+
+        # Write configuration include file
         values = {
             "sys": system,
+            "inbound_connections": inbound_connections,
+            "internal_connections": internal_connections,
+            "outbound_connections": outbound_connections,
         }
+        self._render("ros_config.inc", system.name + "_ros_config.inc",
+                     values, src_dir, preserve=True)
 
-        #TODO This may overwrite stuff that user previously customized? How to
-        # avoid? Use include files? May not work with package.xml. Just warn
-        # user to update variables again?
-        self._render("CMakeLists.txt", "CMakeLists.txt", values, self.pkg_dir)
-        self._render("package.xml", "package.xml", values, self.pkg_dir)
+        # Write package build configuration and metadata
+        values = {
+            "sys": system,
+            "connections": all_connections,
+        }
+        self._render("CMakeLists.txt", "CMakeLists.txt",
+                     values, self.pkg_dir, preserve=True)
+        self._render("package.xml", "package.xml",
+                     values, self.pkg_dir, preserve=True)
 
-        #TODO
+        # Write node sources
+        for syncset_name in system.syncsets.keys():
+            values = {
+                "sys": system,
+                "syncset": syncset_name,
+                "mon_decls": system.syncsets[syncset_name],
+            }
+            self._render("ros.cpp", syncset_name + "_ros.cpp", values)
+            self._render("ros.h", syncset_name + "_ros.h", values)

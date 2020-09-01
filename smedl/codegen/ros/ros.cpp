@@ -1,72 +1,13 @@
 #include <stdexcept>
 #include "ros/ros.h"
+#include "{{syncset}}_ros.h"
 
 extern "C" {
+    #include "smedl_types.h"
     #include "{{syncset}}_global_wrapper.h"
 }
 
-//TODO Move to .h eventually
 namespace SMEDL {
-    class {{syncset}}Node {
-        private:
-            /* The instance used for callbacks. Set by attach_global_wrapper().
-             * If NULL, the global wrapper is not yet initialized. */
-            static {{syncset}}Node *callback_node;
-
-            /* NodeHandle for this node */
-            ros::NodeHandle node_handle;
-
-            /* Publishers for channels exported from this synchronous set */
-            {% for decl in mon_decls %}
-            {% for conn in decl.inter_connections %}
-            ros::Publisher pub_{{conn.channel}};
-            {% endfor %}
-            {% endfor %}
-
-            /* Subscribers for channels imported into this synchronous set */
-            {% for conn in sys.imported_channels(syncset) %}
-            ros::Subscriber sub_{{conn.channel}};
-            {% endfor %}
-
-            /* Do all SMEDL initialization (if not already done) and attach
-             * this instance to the global wrapper callbacks. Return true/false
-             * for success/failure. */
-            bool attach_global_wrapper();
-            /* If this instance is currently attached to the global wrapper
-             * callbacks, detach them and deinitialize the global wrapper. */
-            bool detach_global_wrapper();
-
-            /* Callback functions for SMEDL global wrapper */
-            {% for decl in mon_decls %}
-            {% for conn in decl.inter_connections %}
-            static void smedl_cb_{{conn.channel}}(SMEDLValue *ids, SMEDLValue *params, void *aux);
-            {% endfor %}
-            {% endfor %}
-
-            /* Callback functions for ROS subscriptions */
-            {% for conn in sys.imported_channels(syncset) %}
-            void ros_cb_{{conn.channel}}(/*TODO*/);
-            {% endfor %}
-        public:
-            /* Establishes callbacks with SMEDL and ROS and begin interfacing
-             * between them.
-             *
-             * You must not construct a second instance before the first is
-             * destroyed! */
-            {{syncset}}Node(int argc, char **argv);
-            /* Unsubscribe and stop interfacing between ROS and SMEDL and
-             * clean up resources */
-            ~{{syncset}}Node();
-            /* Cannot make copies, as only one instance can interface with the
-             * global wrapper at a time. */
-            {{syncset}}Node(const {{syncset}}Node &other) = delete;
-            {{syncset}}Node & operator=(const {{syncset}}Node &other) = delete;
-    };
-}
-
-namespace SMEDL {
-    #include "{{syncset}}_ros_config.inc"
-
     {{syncset}}Node::callback_node = NULL;
 
     /* Establishes callbacks with SMEDL and ROS and begin interfacing
@@ -83,7 +24,7 @@ namespace SMEDL {
         // Advertise topics for events exported from this synchronous set
         {% for decl in mon_decls %}
         {% for conn in decl.inter_connections %}
-        pub_{{conn.channel}} = node_handle.advertise</*TODO*/>({{conn.channel}}_ros_topic, queue_size);
+        pub_{{conn.channel}} = node_handle.advertise<{{conn.channel}}MsgType>({{conn.channel}}_ros_topic, queue_size);
         {% endfor %}
         {% endfor %}
 
@@ -106,15 +47,149 @@ namespace SMEDL {
     /* Callback functions for SMEDL global wrapper */
     {% for decl in mon_decls %}
     {% for conn in decl.inter_connections %}
-    {{syncset}}Node::smedl_cb_{{conn.channel}}(SMEDLValue *ids, SMEDLValue *params, void *aux) {
-        //TODO Send a message for this channel using instance callback_node
+    void {{syncset}}Node::smedl_cb_{{conn.channel}}(SMEDLValue *ids, SMEDLValue *params, void *aux) {
+        // Construct the ROS message
+        {{conn.channel}}MsgType msg;
+        {% if conn.source_mon is not none %}
+        {% for param in conn.source_mon.params %}
+        {% if param is sameas SmedlType.INT %}
+        msg.SMEDL_{{conn.channel}}_ID{{loop.index0}} = ids[{{loop.index0}}].v.i;
+        {% elif param is sameas SmedlType.FLOAT %}
+        msg.SMEDL_{{conn.channel}}_ID{{loop.index0}} = ids[{{loop.index0}}].v.d;
+        {% elif param is sameas SmedlType.CHAR %}
+        msg.SMEDL_{{conn.channel}}_ID{{loop.index0}} = ids[{{loop.index0}}].v.c;
+        {% elif param is sameas SmedlType.STRING %}
+        msg.SMEDL_{{conn.channel}}_ID{{loop.index0}} = ids[{{loop.index0}}].v.s;
+        {% elif param is sameas SmedlType.POINTER %}
+        char ptr_str[40];
+        if (!smedl_pointer_to_string(ids[{{loop.index0}}].v.p, ptr_str, 40)) {
+            ROS_ERROR("Could not convert pointer to string for sending via ROS");
+            return;
+        }
+        msg.SMEDL_{{conn.channel}}_ID{{loop.index0}} = ptr_str;
+        {% elif param is sameas SmedlType.STRING %}
+        {% unsupported "'thread' type cannot be transported over ROS" %}
+        {% elif param is sameas SmedlType.OPAQUE %}
+        //TODO Revise so that opaque can be any type
+        msg.SMEDL_{{conn.channel}}_ID{{loop.index0}}.insert(
+            msg.SMEDL_{{conn.channel}}_ID{{loop.index0}}.end(),
+            ids[{{loop.index0}}].v.o.data,
+            ids[{{loop.index0}}].v.o.data + ids[{{loop.index0}}].v.o.size)
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+        {% for param in conn.source_event_params %}
+        {% if param is sameas SmedlType.INT %}
+        msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}} = params[{{loop.index0}}].v.i;
+        {% elif param is sameas SmedlType.FLOAT %}
+        msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}} = params[{{loop.index0}}].v.d;
+        {% elif param is sameas SmedlType.CHAR %}
+        msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}} = params[{{loop.index0}}].v.c;
+        {% elif param is sameas SmedlType.STRING %}
+        msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}} = params[{{loop.index0}}].v.s;
+        {% elif param is sameas SmedlType.POINTER %}
+        char ptr_str[40];
+        if (!smedl_pointer_to_string(params[{{loop.index0}}].v.p, ptr_str, 40)) {
+            ROS_ERROR("Could not convert pointer to string for sending via ROS");
+            return;
+        }
+        msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}} = ptr_str;
+        {% elif param is sameas SmedlType.STRING %}
+        {% unsupported "'thread' type cannot be transported over ROS" %}
+        {% elif param is sameas SmedlType.OPAQUE %}
+        msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}}.insert(
+            msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}}.end(),
+            params[{{loop.index0}}].v.o.data,
+            params[{{loop.index0}}].v.o.data + params[{{loop.index0}}].v.o.size)
+        {% endif %}
+        {% endfor %}
+
+        // Publish the message
+        callback_node.pub_{{conn.channel}}.publish(msg);
     }
     {% endfor %}
     {% endfor %}
 
-    /* Do all SMEDL initialization (if not already done) and attach
-     * this instance to the global wrapper callbacks. Return true/false
-     * for success/failure. */
+    /* Callback functions for ROS subscriptions */
+    {% for conn in sys.imported_channels(syncset) %}
+    void {{syncset}}Node::ros_cb_{{conn.channel}}({{conn.channel}}MsgType::ConstPtr &msg) {
+        {% if conn.source_mon is not none %}
+        // Build identities array
+        {% if conn.source_mon.params is nonempty %}
+        SMEDLValue identities[{{conn.source_mon.params|length}}];
+        {% for param in conn.source_mon.params %}
+        {% if param is sameas SmedlType.INT %}
+        identities[{{loop.index0}}].t = SMEDL_INT;
+        identities[{{loop.index0}}].v.i = msg->SMEDL_{{conn.channel}}_ID{{loop.index0}};
+        {% elif param is sameas SmedlType.FLOAT %}
+        identities[{{loop.index0}}].t = SMEDL_FLOAT;
+        identities[{{loop.index0}}].v.d = msg->SMEDL_{{conn.channel}}_ID{{loop.index0}};
+        {% elif param is sameas SmedlType.CHAR %}
+        identities[{{loop.index0}}].t = SMEDL_CHAR;
+        identities[{{loop.index0}}].v.c = msg->SMEDL_{{conn.channel}}_ID{{loop.index0}};
+        {% elif param is sameas SmedlType.STRING %}
+        identities[{{loop.index0}}].t = SMEDL_CHAR;
+        identities[{{loop.index0}}].v.s = msg->SMEDL_{{conn.channel}}_ID{{loop.index0}}.c_str();
+        {% elif param is sameas SmedlType.POINTER %}
+        identities[{{loop.index0}}].t = SMEDL_POINTER;
+        if (!smedl_string_to_pointer(msg->SMEDL_{{conn.channel}}_ID{{loop.index0}}.c_str(), &identities[{{loop.index0}}].v.p)) {
+            ROS_ERROR("Could not convert string to pointer (overflow or bad format)");
+            return;
+        }
+        {% elif param is sameas SmedlType.THREAD %}
+        {% unsupported "'thread' type cannot be transported over ROS" %}
+        {% elif param is sameas SmedlType.OPAQUE %}
+        identities[{{loop.index0}}].t = SMEDL_OPAQUE;
+        identities[{{loop.index0}}].v.o.data = &msg->SMEDL_{{conn.channel}}_ID{{loop.index0}}[0];
+        identities[{{loop.index0}}].v.o.size = msg->SMEDL_{{conn.channel}}_ID{{loop.index0}}.size();
+        {% endif %}
+        {% endfor %}
+        {% else %}
+        SMEDLValue *identities = NULL;
+        {% endif %}
+
+        {% endif %}
+        // Build params array
+        {% if conn.source_event_params is nonempty %}
+        SMEDLValue params[{{conn.source_event_params|length}}];
+        {% for param in conn.source_event_params %}
+        {% if param is sameas SmedlType.INT %}
+        params[{{loop.index0}}].t = SMEDL_INT;
+        params[{{loop.index0}}].v.i = msg->SMEDL_{{conn.channel}}_PARAM{{loop.index0}};
+        {% elif param is sameas SmedlType.FLOAT %}
+        params[{{loop.index0}}].t = SMEDL_FLOAT;
+        params[{{loop.index0}}].v.d = msg->SMEDL_{{conn.channel}}_PARAM{{loop.index0}};
+        {% elif param is sameas SmedlType.CHAR %}
+        params[{{loop.index0}}].t = SMEDL_CHAR;
+        params[{{loop.index0}}].v.c = msg->SMEDL_{{conn.channel}}_PARAM{{loop.index0}};
+        {% elif param is sameas SmedlType.STRING %}
+        params[{{loop.index0}}].t = SMEDL_CHAR;
+        params[{{loop.index0}}].v.s = msg->SMEDL_{{conn.channel}}_PARAM{{loop.index0}}.c_str();
+        {% elif param is sameas SmedlType.POINTER %}
+        params[{{loop.index0}}].t = SMEDL_POINTER;
+        if (!smedl_string_to_pointer(msg->SMEDL_{{conn.channel}}_PARAM{{loop.index0}}.c_str(), &params[{{loop.index0}}].v.p)) {
+            ROS_ERROR("Could not convert string to pointer (overflow or bad format)");
+            return;
+        }
+        {% elif param is sameas SmedlType.THREAD %}
+        {% unsupported "'thread' type cannot be transported over ROS" %}
+        {% elif param is sameas SmedlType.OPAQUE %}
+        params[{{loop.index0}}].t = SMEDL_OPAQUE;
+        params[{{loop.index0}}].v.o.data = &msg->SMEDL_{{conn.channel}}_PARAM{{loop.index0}}[0];
+        params[{{loop.index0}}].v.o.size = msg->SMEDL_{{conn.channel}}_PARAM{{loop.index0}}.size();
+        {% endif %}
+        {% endfor %}
+        {% else %}
+        SMEDLValue *params = NULL;
+        {% endif %}
+
+        // Send event to SMEDL
+        import_{{syncset}}_{{conn.channel}}(identities, params, NULL);
+    }
+    {% endfor %}
+
+    /* Do all SMEDL initialization and attach this instance to the global
+     * wrapper callbacks. */
     void {{syncset}}Node::attach_global_wrapper() {
         if (callback_node != NULL) {
             throw std::logic_error("Cannot attach multiple nodes to one "
@@ -149,5 +224,5 @@ namespace SMEDL {
 
 int main(int argc, char **argv) {
     SMEDL::SMEDL{{syncset}}Node smedl_node(argc, argv);
-    //TODO anything else?
+    //TODO start looping somehow?
 }

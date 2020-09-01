@@ -17,7 +17,8 @@ from smedl import codegen
 class MonitorGenerator(object):
     """Coordinate parsing and template filling"""
     def __init__(
-            self, out_dir=None, transport=None, makefile=None, helpers=True):
+            self, out_dir=None, transport=None, makefile=None, helpers=True,
+            overwrite=False):
         """Initialize the MonitorGenerator with the selected options
 
         out_dir - A string or path-like object for the directory where the
@@ -26,7 +27,8 @@ class MonitorGenerator(object):
           'rabbitmq', 'ros', 'file')
         makefile - Whether or not to generate a Makefile for monitor systems.
           True=yes (if an architecture file and transport are given), False=no,
-          None=only if not already present in the destination
+        overwrite - Whether files that may contain customizations (Makefiles,
+          various ROS files, RabbitMQ config) should be overwritten
         helpers - Whether or not to copy helper headers to the out_dir (helpers
           are never copied if out_dir is the same directory they already
           reside in)
@@ -43,6 +45,7 @@ class MonitorGenerator(object):
             transport=transport,
             dest_dir=out_dir,
             makefile=makefile,
+            overwrite=overwrite,
             helpers=helpers)
 
     def generate(self, input_file):
@@ -108,17 +111,22 @@ def parse_args():
         "current directory)")
     parser.add_argument(
         '-t', '--transport', choices=['rabbitmq', 'file', 'ros'],
-        help="Generate an adapter for the given asynchronous transport method")
+        help="Generate an adapter for the given asynchronous transport "
+        "method. This option is usually recommended when the input is an "
+        "architecture file. A Makefile will be generated (except with 'ros', "
+        "which uses its own build system). If the input is a .smedl file, "
+        "this option has no effect.")
     m_group = parser.add_mutually_exclusive_group()
     m_group.add_argument(
-        '-m', '--makefile', action='store_const', const=True,
-        help="Generate a Makefile even if it would overwrite one already "
-        "present in the destination directory (Makefiles are never generated "
-        "if an .a4smedl file is not provided or no " "-t/--transport option "
-        "is given)")
+        '-o', '--overwrite-all', action='store_const', const=True,
+        help="Certain files are meant to be customizable after generation "
+        "(Makefiles; RabbitMQ cfg; ROS CMakeLists.txt, package.xml, and "
+        "*_ros_config.inc). Normally, these are not overwritten if they are "
+        "already present to preserve any such customizations. This option "
+        "forces ALL files to be overwritten, including these.")
     m_group.add_argument(
         '--no-makefile', action='store_const', const=False, dest='makefile',
-        default=argparse.SUPPRESS, help="Never generate a Makefile")
+        help="Never generate a Makefile")
     parser.add_argument(
         '-n', '--no-copy-helpers', action='store_false', dest='helpers',
         help="Do not copy helper headers (helper headers are never copied if "
@@ -134,6 +142,7 @@ def parse_args():
             'transport': args.transport,
             'makefile': args.makefile,
             'helpers': args.helpers,
+            'overwrite': args.overwrite_all
         })
 
 
