@@ -68,13 +68,14 @@
  */
 
 namespace SMEDL {
+    {% if inbound_connections is nonempty %}
     /*
      * Inbound connections: SMEDL events coming from non-SMEDL nodes
      */
     {% for conn in inbound_connections %}
 
     const std::string {{conn.channel}}_ros_topic = "/smedl/{{sys.name}}/channels/{{conn.channel}}";
-    typedef smedl_{{sys.name}}::{{conn.channel}}Msg {{conn.channel}MsgType;
+    typedef smedl_{{sys.name}}::{{conn.channel}}Msg {{conn.channel}}MsgType;
     {% for param in conn.source_event_params %}
     {% if param is not none %}
     #define SMEDL_{{conn.channel}}_PARAM{{loop.index0}} param{{loop.index0}}
@@ -82,13 +83,15 @@ namespace SMEDL {
     {% endfor %}
     {% endfor %}
 
+    {% endif %}
+    {% if outbound_connections is nonempty %}
     /*
      * Outbound connections: SMEDL events meant to go to non-SMEDL nodes
      */
     {% for conn in outbound_connections %}
 
     const std::string {{conn.channel}}_ros_topic = "/smedl/{{sys.name}}/channels/{{conn.channel}}";
-    typedef smedl_{{sys.name}}::{{conn.channel}}Msg {{conn.channel}MsgType;
+    typedef smedl_{{sys.name}}::{{conn.channel}}Msg {{conn.channel}}MsgType;
     {% for param in conn.source_event_params %}
     {% if param is not none %}
     #define SMEDL_{{conn.channel}}_PARAM{{loop.index0}} param{{loop.index0}}
@@ -101,6 +104,8 @@ namespace SMEDL {
     {% endfor %}
     {% endfor %}
 
+    {% endif %}
+    {% if internal_connections is nonempty %}
     /*
      * Internal connections: SMEDL events from one SMEDL node to another SMEDL
      * node (There is likely no reason to change these.)
@@ -108,7 +113,7 @@ namespace SMEDL {
     {% for conn in internal_connections %}
 
     const std::string {{conn.channel}}_ros_topic = "/smedl/{{sys.name}}/channels/{{conn.channel}}";
-    typedef smedl_{{sys.name}}::{{conn.channel}}Msg {{conn.channel}MsgType;
+    typedef smedl_{{sys.name}}::{{conn.channel}}Msg {{conn.channel}}MsgType;
     {% for param in conn.source_event_params %}
     {% if param is not none %}
     #define SMEDL_{{conn.channel}}_PARAM{{loop.index0}} param{{loop.index0}}
@@ -121,6 +126,7 @@ namespace SMEDL {
     {% endfor %}
     {% endfor %}
 
+    {% endif %}
     /* Number of messages that can be awaiting publishing for a given topic
      * before further messages will be dropped */
     const uint32_t queue_size = 1000;

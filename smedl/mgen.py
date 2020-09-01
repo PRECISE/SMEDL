@@ -118,7 +118,7 @@ def parse_args():
         "this option has no effect.")
     m_group = parser.add_mutually_exclusive_group()
     m_group.add_argument(
-        '-o', '--overwrite-all', action='store_const', const=True,
+        '-f', '--force-overwrite', action='store_const', const=True,
         help="Certain files are meant to be customizable after generation "
         "(Makefiles; RabbitMQ cfg; ROS CMakeLists.txt, package.xml, and "
         "*_ros_config.inc). Normally, these are not overwritten if they are "
@@ -142,7 +142,7 @@ def parse_args():
             'transport': args.transport,
             'makefile': args.makefile,
             'helpers': args.helpers,
-            'overwrite': args.overwrite_all
+            'overwrite': args.force_overwrite
         })
 
 

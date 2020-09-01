@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
-#include <inttypes.h>
 #include <signal.h>
 
 #include <amqp.h>

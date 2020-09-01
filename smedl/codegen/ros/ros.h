@@ -32,10 +32,10 @@ namespace SMEDL {
 
             /* Do all SMEDL initialization and attach this instance to the
              * global wrapper callbacks. */
-            bool attach_global_wrapper();
+            void attach_global_wrapper();
             /* If this instance is currently attached to the global wrapper
              * callbacks, detach them and deinitialize the global wrapper. */
-            bool detach_global_wrapper();
+            void detach_global_wrapper();
 
             /* Callback functions for SMEDL global wrapper */
             {% for decl in mon_decls %}
@@ -46,7 +46,7 @@ namespace SMEDL {
 
             /* Callback functions for ROS subscriptions */
             {% for conn in sys.imported_channels(syncset) %}
-            void ros_cb_{{conn.channel}}({{conn.channel}}MsgType::ConstPtr &msg);
+            void ros_cb_{{conn.channel}}(const {{conn.channel}}MsgType::ConstPtr &msg);
             {% endfor %}
         public:
             /* Establishes callbacks with SMEDL and ROS and begin interfacing

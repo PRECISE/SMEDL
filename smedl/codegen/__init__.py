@@ -2,9 +2,9 @@
 Code generation and template filling
 """
 
-from .generator import CodeGenerator, UnsupportedFeature
+from .generator import construct_generator, UnsupportedFeature
 
 __all__ = [
-    'CodeGenerator',
+    'construct_generator',
     'UnsupportedFeature',
 ]

@@ -17,7 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  {% for conn in connection %}
+  {% for conn in connections %}
   {{conn.channel}}Msg.msg
   {% endfor %}
 )
@@ -45,21 +45,21 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
 )
-{% for syncset in sys.syncsets %}
+{% for syncset in sys.syncsets.values() %}
 
 add_executable(${PROJECT_NAME}_{{syncset.name}}_node
-  {{syncset.name}}_ros.cpp
-  {{syncset.name}}_global_wrapper.c
+  src/{{syncset.name}}_ros.cpp
+  src/{{syncset.name}}_global_wrapper.c
   {% for decl in syncset %}
-  {{decl.name}}_local_wrapper.c
+  src/{{decl.name}}_local_wrapper.c
   {% endfor %}
-  {% for spec in sys.syncset_spec_names(syncset) %}
-  {{spec}}_mon.c
+  {% for spec in sys.syncset_spec_names(syncset.name) %}
+  src/{{spec}}_mon.c
   {% endfor %}
-  smedl_types.c
-  event_queue.c
-  monitor_map.c
-  global_event_queue.c
+  src/smedl_types.c
+  src/event_queue.c
+  src/monitor_map.c
+  src/global_event_queue.c
 )
 set_target_properties(${PROJECT_NAME}_{{syncset.name}}_node PROPERTIES
   OUTPUT_NAME {{syncset.name}}_node
@@ -81,7 +81,7 @@ target_link_libraries(${PROJECT_NAME}_{{syncset.name}}_node
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 install(TARGETS
-  {% for syncset in sys.syncsets %}
+  {% for syncset in sys.syncsets.values() %}
   ${PROJECT_NAME}_{{syncset.name}}_node
   {% endfor %}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

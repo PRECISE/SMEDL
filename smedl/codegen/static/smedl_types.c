@@ -1,7 +1,8 @@
 #include <stdlib.h>
 #include <stdint.h>
-{# stdio.h and errno.h only needed for pointer conversion #}
+/* stdio.h, inttypes.h, and errno.h only needed for pointer conversion */
 #include <stdio.h>
+#include <inttypes.h>
 #include <errno.h>
 #include <string.h>
 #include <pthread.h>

@@ -335,7 +335,7 @@ class CodeGenerator(object):
 
 class RabbitMQGenerator(CodeGenerator):
     """Generates C code for monitor systems with the RabbitMQ adapter."""
-    def __init__(self, **kwargs)
+    def __init__(self, **kwargs):
         """Initialize the code generator for RabbitMQ.
         Parameters match the constructor for CodeGenerator."""
         super(RabbitMQGenerator, self).__init__(**kwargs)
@@ -370,7 +370,7 @@ class RabbitMQGenerator(CodeGenerator):
 
 class FileGenerator(CodeGenerator):
     """Generates C code for monitor systems with the File adapter."""
-    def __init__(self, **kwargs)
+    def __init__(self, **kwargs):
         """Initialize the code generator for the file transport.
         Parameters match the constructor for CodeGenerator."""
         super(FileGenerator, self).__init__(**kwargs)
@@ -403,7 +403,7 @@ class FileGenerator(CodeGenerator):
 
 class ROSGenerator(CodeGenerator):
     """Generates C code for monitor systems with the ROS adapter."""
-    def __init__(self, **kwargs)
+    def __init__(self, **kwargs):
         """Initialize the code generator for ROS.
         Parameters match the constructor for CodeGenerator, except that a
         Makefile is never generated."""
@@ -412,11 +412,6 @@ class ROSGenerator(CodeGenerator):
         # ROS uses catkin make, a customized version of CMake. Disable the
         # normal Makefile generation.
         self.makefile = False
-
-        # ROSGenerator creates a full ROS package. This is the directory for
-        # that package. self.dest_dir will later be updated to point to the
-        # "src" directory in that package, where the monitoring code will go.
-        self.pkg_dir = os.path.join(self.dest_dir, "smedl_" + system.name)
 
     def _get_jinja_loaders(self):
         """Return a list of Jinja template loaders to use."""
@@ -440,15 +435,20 @@ class ROSGenerator(CodeGenerator):
         Parameters:
         system - A MonitorSystem for which code should be generated
         """
-        # Generate the skeleton of the ROS package and set the destination
-        # directory for monitor generation to the "src" directory in the
-        # package
+        # ROSGenerator creates a full ROS package. This is the directory for
+        # that package.
+        self.pkg_dir = os.path.join(self.dest_dir, "smedl_" + system.name)
+
+        # Generate the skeleton of the ROS package
         self._mkdir()
         self._mkdir('src')
         self._mkdir('msg')
+
+        # Set the destination directory for monitor generation to the "src"
+        # directory in the package
         self.dest_dir = os.path.join(self.pkg_dir, 'src')
 
-        super(RabbitMQGenerator, self).write_all(system)
+        super(ROSGenerator, self).write_all(system)
 
     def _write_transport_adapters(self, system):
         """Write the code for the ROS package"""

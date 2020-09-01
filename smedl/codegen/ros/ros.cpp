@@ -8,7 +8,7 @@ extern "C" {
 }
 
 namespace SMEDL {
-    {{syncset}}Node::callback_node = NULL;
+    {{syncset}}Node *{{syncset}}Node::callback_node = NULL;
 
     /* Establishes callbacks with SMEDL and ROS and begin interfacing
      * between them.
@@ -30,7 +30,7 @@ namespace SMEDL {
 
         // Subscribe to topics imported into this synchronous set
         {% for conn in sys.imported_channels(syncset) %}
-        sub_{{conn.channel}} = node_handle.subscribe({{conn.channel}}_ros_topic, queue_size, ros_cb_{{conn.channel}}, this);
+        sub_{{conn.channel}} = node_handle.subscribe({{conn.channel}}_ros_topic, queue_size, &{{syncset}}Node::ros_cb_{{conn.channel}}, this);
         {% endfor %}
     }
 
@@ -105,17 +105,16 @@ namespace SMEDL {
         {% endfor %}
 
         // Publish the message
-        callback_node.pub_{{conn.channel}}.publish(msg);
+        callback_node->pub_{{conn.channel}}.publish(msg);
     }
     {% endfor %}
     {% endfor %}
 
     /* Callback functions for ROS subscriptions */
     {% for conn in sys.imported_channels(syncset) %}
-    void {{syncset}}Node::ros_cb_{{conn.channel}}({{conn.channel}}MsgType::ConstPtr &msg) {
-        {% if conn.source_mon is not none %}
+    void {{syncset}}Node::ros_cb_{{conn.channel}}(const {{conn.channel}}MsgType::ConstPtr &msg) {
         // Build identities array
-        {% if conn.source_mon.params is nonempty %}
+        {% if conn.source_mon is not none and conn.source_mon.params is nonempty %}
         SMEDLValue identities[{{conn.source_mon.params|length}}];
         {% for param in conn.source_mon.params %}
         {% if param is sameas SmedlType.INT %}
@@ -148,7 +147,6 @@ namespace SMEDL {
         SMEDLValue *identities = NULL;
         {% endif %}
 
-        {% endif %}
         // Build params array
         {% if conn.source_event_params is nonempty %}
         SMEDLValue params[{{conn.source_event_params|length}}];
@@ -205,7 +203,7 @@ namespace SMEDL {
         // Set callbacks
         {% for decl in mon_decls %}
         {% for conn in decl.inter_connections %}
-        callback_{{syncset}}_{{conn.channel}}(cb_{{conn.channel}});
+        callback_{{syncset}}_{{conn.channel}}(smedl_cb_{{conn.channel}});
         {% endfor %}
         {% endfor %}
     }
@@ -223,6 +221,6 @@ namespace SMEDL {
 }
 
 int main(int argc, char **argv) {
-    SMEDL::SMEDL{{syncset}}Node smedl_node(argc, argv);
-    //TODO start looping somehow?
+    SMEDL::{{syncset}}Node smedl_node(argc, argv);
+    ros::spin();
 }
