@@ -15,11 +15,9 @@ namespace SMEDL {
      *
      * You must not construct a second instance before the first is
      * destroyed! */
-    {{syncset}}Node::{{syncset}}Node(int argc, char **argv) {
+    {{syncset}}Node::{{syncset}}Node() {
         attach_global_wrapper();
         // Let node_handle be initialized by the default constructor
-
-        ros::init(argc, argv, "/smedl/{{sys.name}}/{{syncset}}_node");
 
         // Advertise topics for events exported from this synchronous set
         {% for decl in mon_decls %}
@@ -221,6 +219,7 @@ namespace SMEDL {
 }
 
 int main(int argc, char **argv) {
-    SMEDL::{{syncset}}Node smedl_node(argc, argv);
+    ros::init(argc, argv, "{{syncset}}_node");
+    SMEDL::{{syncset}}Node smedl_node;
     ros::spin();
 }

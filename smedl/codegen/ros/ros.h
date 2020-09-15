@@ -54,7 +54,7 @@ namespace SMEDL {
              *
              * You must not construct a second instance before the first is
              * destroyed! */
-            {{syncset}}Node(int argc, char **argv);
+            {{syncset}}Node();
             /* Unsubscribe and stop interfacing between ROS and SMEDL and
              * clean up resources */
             ~{{syncset}}Node();

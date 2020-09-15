@@ -443,6 +443,7 @@ class ROSGenerator(CodeGenerator):
         self._mkdir()
         self._mkdir('src')
         self._mkdir('msg')
+        self._mkdir('launch')
 
         # Set the destination directory for monitor generation to the "src"
         # directory in the package
@@ -454,6 +455,7 @@ class ROSGenerator(CodeGenerator):
         """Write the code for the ROS package"""
         msg_dir = os.path.join(self.pkg_dir, 'msg')
         src_dir = os.path.join(self.pkg_dir, 'src')
+        launch_dir = os.path.join(self.pkg_dir, 'launch')
 
         # Gather lists of inbound (from outside SMEDL), outbound (to outside
         # SMEDL), and internal (from and to only SMEDL) connections
@@ -487,6 +489,13 @@ class ROSGenerator(CodeGenerator):
             }
             self._render("event.msg", conn.channel + "Msg.msg",
                          values, msg_dir)
+
+        # Write launch file
+        values = {
+            "sys": system,
+        }
+        self._render("system.launch", system.name + ".launch",
+                     values, launch_dir)
 
         # Write configuration include file
         values = {
