@@ -356,61 +356,56 @@ class Connection(object):
             return False
 
     def assign_name(self, channel):
-        """Do various validations and assign the channel name.
-
-        If the channel name is None:
-        1. Check if the channel already has a name. If so, do nothing.
-        2. If not, generate one like this: _monitor_event or _event
-
-        If the channel name is provided:
-        1. If there is no name already assigned, use the given one.
-        2. If there is and it matches, do nothing.
-        3. If it does not match and it was automatically generated, switch
-           to the given one.
-        4. If it does not match and the existing one was not automatically
-           generated, raise an exception.
+        """If the channel name given is not None, validate that it doesn't
+        conflict with a previously assigned name for the same channel, then
+        assign it.
         """
         if channel is None:
             # Channel not specified
-            if self._channel is None:
-                # No previous channel name. Need to generate one.
-                if self._source_mon is None:
-                    self._channel = "_{}".format(self._source_event)
-                    self._sys.rename_connection(self, None)
-                else:
-                    self._channel = "_{}_{}".format(
-                        self._source_mon.name, self._source_event)
-                    self._source_mon.rename_connection(self, None)
-        else:
-            if self._channel is None:
-                # No previous channel name. Use the given one.
-                self._channel = channel
-                if self._source_mon is None:
-                    self._sys.rename_connection(self, None)
-                else:
-                    self._source_mon.rename_connection(self, None)
-            elif self._channel == channel:
-                # Given name matches what was already used.
-                pass
-            elif self._channel[0] == '_':
-                # Given name doesn't match, but prior name was auto-generated.
-                # Switch to the given name.
-                old_channel = self._channel
-                self._channel = channel
-                if self._source_mon is None:
-                    self._sys.rename_connection(self, old_channel)
-                else:
-                    self._source_mon.rename_connection(self, old_channel)
+            return
+        elif self._channel is None:
+            # No previous channel name. Use the given one.
+            self._channel = channel
+            if self._source_mon is None:
+                self._sys.rename_connection(self)
             else:
-                # Previous name was not auto-generated and the provided name
-                # does not match. Exception.
+                self._source_mon.rename_connection(self)
+        elif self._channel != channel:
+            # Previously assigned channel name does not match. Raise exception.
+            if self._source_mon is None:
+                event_str = self._source_event
+            else:
+                event_str = (self._source_mon.name + '.' + self._source_event)
+            raise ChannelMismatch("Source event {} must always use the same "
+                                  "connection name".format(event_str))
+
+    def assign_default_name_if_unnamed(self, channel):
+        """Assign a default name to this channel if it's still unnamed:
+        - <event> (events from target system)
+        - <monitor>_<event> (events from monitor)
+
+        If the default is already taken, append "_2", "_3", etc. until an
+        available name is found"""
+        if self._channel is not None:
+            return
+        if self._source_mon is None:
+            name = self._source_event
+        else:
+            name = self._source_mon.name + "_" + self._source_event
+
+        self._channel = name
+        num = 1
+        while True:
+            try:
                 if self._source_mon is None:
-                    event_str = self._source_event
+                    self._sys.rename_connection(self)
                 else:
-                    event_str = (self._source_mon.name + '.' +
-                                 self._source_event)
-                raise ChannelMismatch("Source event {} must always use the "
-                                      "same connection name".format(event_str))
+                    self._source_mon.rename_connection(self)
+            except NameCollision:
+                num += 1
+                self._channel = name + "_" + str(num)
+            else:
+                break
 
     def _typecheck_dest_param(self, dest_param, dest_type, dest_name):
         """Do type verification on a single destination Parameter.
@@ -663,12 +658,10 @@ class DeclaredMonitor(object):
         # Add the target to the channel, if it's not a duplicate
         conn.add_target(target)
 
-    def rename_connection(self, conn, old_channel):
+    def rename_connection(self, conn):
         """Put the given connection in the _connections dict under the correct
         name. Called by Connection when it is assigned an automatic or explicit
         name."""
-        if old_channel is not None:
-            del self._connections[old_channel]
         if self._sys.channel_name_taken(conn.channel):
             raise NameCollision("Channel name {} must always be used for the "
                                 "same source event".format(conn.channel))
@@ -682,8 +675,15 @@ class DeclaredMonitor(object):
             if event not in self._ev_connections:
                 conn = Connection(self._sys, self, event)
                 self._ev_connections[event] = conn
-                conn.assign_name(None)
                 conn.add_target(TargetExport())
+
+    def name_unnamed_channels(self):
+        """Assign default channel names to any remaining unnamed channels in
+        the monitor: <monitor>_<event>
+        A "_<#>" will be appended if the default name is already used
+        """
+        for conn in self._ev_connections.values():
+            conn.assign_default_name_if_unnamed()
 
     @property
     def intra_connections(self):
@@ -827,7 +827,9 @@ class MonitorSystem(object):
 
         # Create it
         conn = Connection(self, None, source_ev, params)
-        conn.assign_name(None)
+        self._ev_imported_connections[source_event] = conn
+        #TODO Is it a problem to have an empty Connection if the declared
+        # event is never used? We can at least add a warning, probably
 
     def add_target(self, channel, monitor, source_event, target):
         """Add the given target to the proper connection for the source event
@@ -863,12 +865,10 @@ class MonitorSystem(object):
         # Add the target to the channel, if it's not a duplicate
         conn.add_target(target)
 
-    def rename_connection(self, conn, old_channel):
+    def rename_connection(self, conn):
         """Put the given connection in the _imported_connections dict under the
         correct name. Called by Connection when it is assigned an automatic or
         explicit name."""
-        if old_channel is not None:
-            del self._imported_connections[old_channel]
         if self.channel_name_taken(conn.channel):
             raise NameCollision("Channel name {} must always be used for the "
                                 "same source event".format(conn.channel))
@@ -918,6 +918,35 @@ class MonitorSystem(object):
         an explicit connection."""
         for mon in self._monitor_decls.values():
             mon.create_export_connections()
+
+    def name_unnamed_channels(self):
+        """Assign default channel names to any remaining unnamed channels in
+        the system and all its DeclaredMonitors:
+        - <event> for events from the target system
+        - <monitor>_<event> for events from monitors
+
+        A "_<#>" will be appended if the default name is already used
+        """
+        # Assign names to unnamed channels from the target system
+        for conn in self._ev_imported_connections.values():
+            conn.assign_default_name_if_unnamed()
+
+        # Assign names to unnamed channels from monitors
+        for mon in self._monitor_decls.values():
+            mon.name_unnamed_channels()
+
+    def complete_system(self):
+        """Complete the MonitorSystem by performing actions that could not be
+        done before the entire architecture file has been processed:
+        - Assign monitors that are not yet in synchronous sets to singleton
+          synchronous sets
+        - Create connections to the target system for exported events that are
+          not in any other connection
+        - Assign default names to connections that are still unnamed
+        """
+        self.assign_singleton_syncsets()
+        self.create_export_connections()
+        self.name_unnamed_channels()
 
     def imported_channels(self, syncset):
         """Get a list of Connections with sources not in the given synchronous
