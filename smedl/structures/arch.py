@@ -379,7 +379,7 @@ class Connection(object):
             raise ChannelMismatch("Source event {} must always use the same "
                                   "connection name".format(event_str))
 
-    def assign_default_name_if_unnamed(self, channel):
+    def assign_default_name_if_unnamed(self):
         """Assign a default name to this channel if it's still unnamed:
         - <event> (events from target system)
         - <monitor>_<event> (events from monitor)
