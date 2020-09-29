@@ -24,15 +24,25 @@ static SMEDLCallback cb_{{conn.channel}};
 {% endfor %}
 
 /* Initialization interface - Initialize the global wrapper. Must be called once
- * before importing any events. */
-void init_{{syncset}}_syncset() {
+ * before importing any events. Return nonzero on success, zero on failure. */
+int init_{{syncset}}_syncset() {
+    {# No need to initialize intra_queue and inter_queue because they are
+        static storage duration (due to being global) thus are initialized to
+        NULL automatically #}
     /* Initialize all local wrappers */
     {% for decl in mon_decls %}
     init_{{decl.name}}_local_wrapper();
     {% endfor %}
-    {# No need to initialize intra_queue and inter_queue because they are
-        static storage duration (due to being global) thus are initialized to
-        NULL automatically #}
+
+    return 1;
+
+    {% for decl in mon_decls|reverse %}
+    {% if not loop.first %}
+    free_{{decl.name}}_local_wrapper();
+    {% endif %}
+fail_init_{{decl.name}}:
+    {% endfor %}
+    return 0;
 }
 
 /* Cleanup interface - Tear down and free the resources used by this global
@@ -52,7 +62,8 @@ void free_{{syncset}}_syncset() {
 }
 
 /* Intra routing function - Called by import interface functions and intra queue
- * processing function to route events to the local wrappers */
+ * processing function to route events to the local wrappers.
+ * Return nonzero on success, zero on failure. */
 {# Routing function macros ************************************************** #}
 {% macro param_converter(array_name, param, dest_type) -%}
 {% if dest_type is sameas param.source_type %}
@@ -89,6 +100,16 @@ void free_{{syncset}}_syncset() {
 {%- endif %}
 {%- endmacro %}
 {# -------------------------------------------------------------------------- #}
+{% macro free_state_vars(target) %}
+{% for var, param in target.state_vars.items() %}
+{% if target.monitor.spec.state_vars[var].type is sameas SmedlType.STRING %}
+free(init_state.{{var}});
+{% elif target.monitor.spec.state_vars[var].type is sameas SmedlType.OPAQUE %}
+free(init_state.{{var}}.data);
+{% endif %}
+{% endfor %}
+{% endmacro %}
+{# -------------------------------------------------------------------------- #}
 {% macro route(conn) -%}
 #if DEBUG >= 4
 fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}'\n");
@@ -107,7 +128,10 @@ fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}
 
     {% if target.target_type == 'creation' %}
     {{target.monitor.spec.name}}State init_state;
-    default_{{target.monitor.spec.name}}_state(&init_state);
+    if (!default_{{target.monitor.spec.name}}_state(&init_state)) {
+        /* malloc fail */
+        return 0;
+    }
     {% for var, param in target.state_vars.items() %}
     {% set array_name = "identities" if param.identity else "params" %}
     {% if param.source_type is sameas SmedlType.INT %}
@@ -118,7 +142,8 @@ fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}
     init_state.{{var}} = {{array_name}}[{{param.index}}].v.c;
     {% elif param.source_type is sameas SmedlType.STRING %}
     if (!smedl_replace_string(&init_state.{{var}}, {{array_name}}[{{param.index}}].v.s)) {
-        /* TODO Out of memory. What now? */
+        /* malloc fail */
+        {{free_state_vars(target)}}return 0;
     }
     {% elif param.source_type is sameas SmedlType.POINTER %}
     init_state.{{var}} = {{array_name}}[{{param.index}}].v.p;
@@ -126,12 +151,16 @@ fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}
     init_state.{{var}} = {{array_name}}[{{param.index}}].v.th;
     {% elif param.source_type is sameas SmedlType.OPAQUE %}
     if (!smedl_replace_opaque(&init_state.{{var}}, {{array_name}}[{{param.index}}].v.o)) {
-        /* TODO Out of memory. What now? */
+        /* malloc fail */
+        {{free_state_vars(target)}}return 0;
     }
     {% endif %};
     {% endfor %}
 
-    create_{{target.monitor.name}}_monitor(new_identities, &init_state);
+    if (!create_{{target.monitor.name}}_monitor(new_identities, &init_state)) {
+        /* malloc fail */
+        {{free_state_vars(target)}}return 0;
+    }
     {% elif target.target_type == 'event' %}
     {% if target.event_params is nonempty %}
     SMEDLValue new_params[{{target.event_params|length}}] = {
@@ -143,28 +172,33 @@ fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}
     SMEDLValue *new_params = NULL;
     {% endif %}
 
-    process_{{target.monitor.name}}_{{target.event}}(new_identities, new_params, aux);
+    if (!process_{{target.monitor.name}}_{{target.event}}(new_identities, new_params, aux)) {
+        /* malloc fail */
+        return 0;
+    }
     {% endif %}
 }
 {%- endfor %}
 {%- endmacro %}
 {# End of routing function macros ******************************************* #}
 {% for conn in sys.imported_channels(syncset) %}
-void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     {{route(conn)|indent}}
 }
 {% endfor %}
 {% for decl in mon_decls %}
 {% for conn in decl.intra_connections %}
-void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     {{route(conn)|indent}}
 }
 {% endfor %}
 {% endfor %}
 
-/* Intra queue processing function - Route events to the local wrappers */
-static void handle_{{syncset}}_intra() {
-    unsigned int channel;
+/* Intra queue processing function - Route events to the local wrappers. Return
+ * nonzero on success, zero on failure. */
+static int handle_{{syncset}}_intra() {
+    int success = 1;
+    int channel;
     SMEDLValue *identities, *params;
     void *aux;
 
@@ -173,7 +207,8 @@ static void handle_{{syncset}}_intra() {
             {% for decl in mon_decls %}
             {% for conn in decl.intra_connections %}
             case CHANNEL_{{syncset}}_{{conn.channel}}:
-                route_{{syncset}}_{{conn.channel}}(identities, params, aux);
+                success = success &&
+                    route_{{syncset}}_{{conn.channel}}(identities, params, aux);
                 {% for param_type in conn.source_event_params %}
                 {% if param_type is sameas SmedlType.STRING %}
                 free(params[{{loop.index0}}].v.s);
@@ -190,11 +225,14 @@ static void handle_{{syncset}}_intra() {
          * opaque data were already free'd in the switch.) */
         free(params);
     }
+    return success;
 }
 
-/* Inter queue processing function - Call the export callbacks */
-static void handle_{{syncset}}_inter() {
-    unsigned int channel;
+/* Inter queue processing function - Call the export callbacks. Return nonzero
+ * on success, zero on failure. */
+static int handle_{{syncset}}_inter() {
+    int success = 1;
+    int channel;
     SMEDLValue *identities, *params;
     void *aux;
 
@@ -207,7 +245,8 @@ static void handle_{{syncset}}_inter() {
                 fprintf(stderr, "Global wrapper '{{syncset}}' exporting for conn '{{conn.channel}}'\n");
 #endif
                 if (cb_{{conn.channel}} != NULL) {
-                    cb_{{conn.channel}}(identities, params, aux);
+                    success = success &&
+                        cb_{{conn.channel}}(identities, params, aux);
                 }
                 {% for param_type in conn.source_event_params %}
                 {% if param_type is sameas SmedlType.STRING %}
@@ -225,18 +264,20 @@ static void handle_{{syncset}}_inter() {
          * opaque data were already free'd in the switch.) */
         free(params);
     }
+    return success;
 }
 
 /* Queue processing function - Handle the events in the intra queue, then the
- * inter queue */
-static void handle_{{syncset}}_queues() {
-    handle_{{syncset}}_intra();
-    handle_{{syncset}}_inter();
+ * inter queue. Return nonzero on success, zero on failure. */
+static int handle_{{syncset}}_queues() {
+    int success = handle_{{syncset}}_intra();
+    return handle_{{syncset}}_inter() && success;
 }
 
 /* Global wrapper export interfaces - Called by monitors to place exported
  * events into the appropriate export queues, where they will later be routed to
  * the proper destinations inside and outside the synchronous set.
+ * Returns nonzero on success, zero on failure.
  *
  * Parameters:
  * identites - An array of SMEDLValue of the proper length for the exporting
@@ -247,20 +288,24 @@ static void handle_{{syncset}}_queues() {
  */
 {% for decl in mon_decls %}
 {% for event, conn in decl.ev_connections.items() %}
-void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     {% set params_len = decl.spec.exported_events[event]|length %}
     {% if conn in decl.intra_connections %}
     /* Store on intra queue */
     SMEDLValue *params_intra = smedl_copy_array(params, {{params_len}});
     if (!push_global_event(&intra_queue, CHANNEL_{{syncset}}_{{conn.channel}}, identities, params_intra, aux)) {
-        //TODO Out of memory. What now?
+        /* malloc fail */
+        smedl_free_array(params_intra);
+        return 0;
     }
     {% endif %}
     {% if conn in decl.inter_connections %}
     /* Store on inter queue */
     SMEDLValue *params_inter = smedl_copy_array(params, {{params_len}});
     if (!push_global_event(&inter_queue, CHANNEL_{{syncset}}_{{conn.channel}}, identities, params_inter, aux)) {
-        //TODO Out of memory. What now?
+        /* malloc fail */
+        smedl_free_array(params_inter);
+        return 0;
     }
     {% endif %}
 }
@@ -271,6 +316,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
  * synchronous sets, the target system) to import events into this global
  * wrapper. Each connection that this synchronous set receives has a separate
  * function.
+ * Returns nonzero on success, zero on failure.
  *
  * Parameters:
  * identities - An array of the source monitor's identities. If the connection
@@ -280,9 +326,9 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
  * aux - Extra data to be passed through unchanged */
 {% for conn in sys.imported_channels(syncset) %}
 
-void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
-    route_{{syncset}}_{{conn.channel}}(identities, params, aux);
-    handle_{{syncset}}_queues();
+int import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+    int success = route_{{syncset}}_{{conn.channel}}(identities, params, aux);
+    return handle_{{syncset}}_queues() && success;
 }
 {% endfor %}
 

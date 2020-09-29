@@ -75,7 +75,9 @@ static int handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
  * specification, has very possibly dropped events, and is likely to misbehave
  * when handling future events. However, it is still safe to clean it up, and
  * it will not leak memory as long as that is done.
- * TODO Can we do better than that? Try not to drop events? */
+ * TODO When could future events actually cause crashes? I suspect it's
+ * possible when there are strings or opaques and helper functions, but not
+ * otherwise. */
 {# Event handler macros ***************************************************** #}
 {% macro expression(e) -%}
 {% if e.parens %}({% endif -%}

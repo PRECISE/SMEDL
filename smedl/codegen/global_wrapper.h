@@ -8,8 +8,8 @@
  ******************************************************************************/
 
 /* Initialization interface - Initialize the global wrapper. Must be called once
- * before importing any events. */
-void init_{{syncset}}_syncset();
+ * before importing any events. Return nonzero on success, zero on failure. */
+int init_{{syncset}}_syncset();
 
 /* Cleanup interface - Tear down and free the resources used by this global
  * wrapper and all the local wrappers and monitors it manages. */
@@ -18,6 +18,7 @@ void free_{{syncset}}_syncset();
 /* Global wrapper export interfaces - Called by monitors to place exported
  * events into the appropriate export queues, where they will later be routed to
  * the proper destinations inside and outside the synchronous set.
+ * Returns nonzero on success, zero on failure.
  *
  * Parameters:
  * identites - An array of SMEDLValue of the proper length for the exporting
@@ -28,7 +29,7 @@ void free_{{syncset}}_syncset();
  */
 {% for decl in mon_decls %}
 {% for event in decl.spec.exported_events.keys() %}
-void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
 
@@ -36,6 +37,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
  * synchronous sets, the target system) to import events into this global
  * wrapper. Each connection that this synchronous set receives has a separate
  * function.
+ * Returns nonzero on success, zero on failure.
  *
  * Parameters:
  * identities - An array of the source monitor's identities. If the connection
@@ -44,7 +46,7 @@ void raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
  * params - An array of the source event's parameters
  * aux - Extra data to be passed through unchanged */
 {% for conn in sys.imported_channels(syncset) %}
-void import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int import_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 
 /* Global wrapper callback interface - Used to register callback functions to be
@@ -76,13 +78,14 @@ typedef enum {
 } {{syncset}}ChannelID;
 
 /* Intra routing functions - Called by import interface functions and intra
- * queue processing function to route events to the local wrappers */
+ * queue processing function to route events to the local wrappers.
+ * Return nonzero on success, zero on failure. */
 {% for conn in sys.imported_channels(syncset) %}
-void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% for decl in mon_decls %}
 {% for conn in decl.intra_connections %}
-void route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
 
