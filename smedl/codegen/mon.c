@@ -24,8 +24,10 @@ void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLCallback c
 {% endfor %}
 
 /* Queue processing function - Call the handlers for all the events in the
- * queue until it is empty */
-static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
+ * queue until it is empty.
+ * Return nonzero if all handlers ran successfully, zero if not. */
+static int handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
+    int success = 1;
     int event;
     SMEDLValue *params;
     void *aux;
@@ -35,7 +37,9 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
             {% for event, params in chain(spec.internal_events.items(),
                    spec.exported_events.items()) %}
             case EVENT_{{spec.name}}_{{event}}:
-                execute_{{spec.name}}_{{event}}(mon, params, aux);
+                if (!execute_{{spec.name}}_{{event}}(mon, params, aux)) {
+                    success = 0;
+                }
                 {% for param_type in params %}
                 {% if param_type is sameas SmedlType.STRING %}
                 free(params[{{loop.index0}}].v.s);
@@ -52,6 +56,7 @@ static void handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
 
     /* Macro-step is finished. Reset the scenario execution flags. */
     memset(&mon->ef, 0, sizeof(mon->ef));
+    return success;
 }
 
 /* Event handling functions:
@@ -129,11 +134,13 @@ smedl_opaque_equals({{expression(e.left)}}, {{expression(e.right)}})
     issues #37 and #48 #}
 {% if spec.state_vars[a.var].type is sameas SmedlType.STRING %}
 if (!smedl_replace_string(&mon->s.{{a.var}}, {{expression(a.expr)}})) {
-    /* TODO What to do if malloc fails? */
+    /* malloc fail */
+    return 0;
 }
 {%- elif spec.state_vars[a.var].type is sameas SmedlType.STRING %}
 if (!smedl_replace_opaque(&mon->s.{{a.var}}, {{expression(a.expr)}})) {
-    /* TODO What to do if malloc fails? */
+    /* malloc fail */
+    return 0;
 }
 {%- else %}
 mon->s.{{a.var}} = {{expression(a.expr)}};
@@ -147,7 +154,8 @@ mon->s.{{a.var}}--;
     {# This is freed in handle_{{spec.name}}_queue() #}
     SMEDLValue *new_params = malloc(sizeof(SMEDLValue) * {{spec.get_event(a.event)|length}});
     if (new_params == NULL) {
-        /* TODO What to do if malloc fails? */
+        /* malloc fail */
+        return 0;
     }
     {% for param_type in spec.get_event(a.event) %}
     new_params[{{loop.index0}}].t = SMEDL_{{param_type.value|upper}};
@@ -158,18 +166,20 @@ mon->s.{{a.var}}--;
     {% elif param_type is sameas SmedlType.CHAR %}
     new_params[{{loop.index0}}].v.c = {{expression(a.params[loop.index0])}};
     {% elif param_type is sameas SmedlType.STRING %}
-        //TODO Need to malloc a copy and later free
     if (!smedl_assign_string(&new_params[{{loop.index0}}].v.s, {{expression(a.params[loop.index0])}})) {
-        /* TODO What to do if malloc fails? */
+        /* malloc fail */
+        smedl_free_array(new_params, loop.index0);
+        return 0;
     }
     {% elif param_type is sameas SmedlType.POINTER %}
     new_params[{{loop.index0}}].v.p = {{expression(a.params[loop.index0])}};
     {% elif param_type is sameas SmedlType.THREAD %}
     new_params[{{loop.index0}}].v.th = {{expression(a.params[loop.index0])}};
     {% elif param_type is sameas SmedlType.OPAQUE %}
-        //TODO need to malloc a copy and later free
     if (!smedl_assign_opaque(&new_params[{{loop.index0}}].v.o, {{expression(a.params[loop.index0])}})) {
-        /* TODO What to do if malloc fails? */
+        /* malloc fail */
+        smedl_free_array(new_params, loop.index0);
+        return 0;
     }
     {% endif %}
     {% endfor %}
@@ -194,7 +204,7 @@ if (!mon->ef.{{scenario.name}}_flag) {
         case STATE_{{spec.name}}_{{scenario.name}}_{{state}}:
             {# Note: We don't try to do anything special if the condition is 1
                 (like disable the "else" and further "else if"s) because it
-                would complicate the template and the compiler will optimize
+                would complicate the template and the compiler should optimize
                 this for us anyway. #}
             {% for condition, dest, actions in scenario.steps[(state, event)] %}
             {%+ if not loop.first %}} else {%+ endif %}if ({{expression(condition)}}) {
@@ -238,7 +248,7 @@ if (!mon->ef.{{scenario.name}}_flag) {
 /* Imported events */
 {% for event in spec.imported_events.keys() %}
 
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+int execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
 #if DEBUG >= 4
     fprintf(stderr, "Monitor '{{spec.name}}' handling imported event '{{event}}'\n");
 #endif
@@ -248,7 +258,7 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 
     {% endif %}
     /* Finish the macro-step */
-    handle_{{spec.name}}_queue(mon);
+    return handle_{{spec.name}}_queue(mon);
 }
 {% endfor %}
 {% endif %}
@@ -257,7 +267,7 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 /* Internal events */
 {% for event in spec.internal_events.keys() %}
 
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+int execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
 #if DEBUG >= 4
     fprintf(stderr, "Monitor '{{spec.name}}' handling internal event '{{event}}'\n");
 #endif
@@ -265,16 +275,16 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
     {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
     {% endif %}
+
+    return 1;
 }
 
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+int queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
 #if DEBUG >= 4
     fprintf(stderr, "Monitor '{{spec.name}}' queuing raised internal event '{{event}}'\n");
 #endif
 
-    if (!push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux)) {
-        //TODO Out of memory. What now?
-    }
+    return push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux);
 }
 {% endfor %}
 {% endif %}
@@ -283,7 +293,7 @@ void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
 /* Exported events */
 {% for event in spec.exported_events.keys() %}
 
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+int execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
 #if DEBUG >= 4
     fprintf(stderr, "Monitor '{{spec.name}}' handling exported event '{{event}}'\n");
 #endif
@@ -293,23 +303,22 @@ void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *para
 
     {% endif %}
     /* Export the event */
-    export_{{spec.name}}_{{event}}(mon, params, aux);
+    return export_{{spec.name}}_{{event}}(mon, params, aux);
 }
 
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+int queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
 #if DEBUG >= 4
     fprintf(stderr, "Monitor '{{spec.name}}' queuing raised exported event '{{event}}'\n");
 #endif
 
-    if (!push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux)) {
-        //TODO Out of memory. What now?
-    }
+    return push_event(&mon->event_queue, EVENT_{{spec.name}}_{{event}}, params, aux);
 }
 
-void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
+int export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux) {
     if (mon->callback_{{event}} != NULL) {
-        (mon->callback_{{event}})(mon->identities, params, aux);
+        return (mon->callback_{{event}})(mon->identities, params, aux);
     }
+    return 1;
 }
 {% endfor %}
 {% endif %}
@@ -333,8 +342,9 @@ void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *param
  * opaque data must be free()'d if they are reassigned! The following two
  * functions from smedl_types.h make that simple:
  * - smedl_replace_string()
- * - smedl_replace_opaque() */
-void default_{{spec.name}}_state({{spec.name}}State *state) {
+ * - smedl_replace_opaque()
+ * Returns nonzero on success, zero on malloc failure. */
+int default_{{spec.name}}_state({{spec.name}}State *state) {
     {% for var in spec.state_vars.values() %}
     {% if var.initial_value is not none %}
     {# Strings and opaques must be malloc'd because when they are reassigned,
@@ -342,20 +352,28 @@ void default_{{spec.name}}_state({{spec.name}}State *state) {
         #48 #}
     {% if var.type is sameas SmedlType.STRING %}
     if (!smedl_assign_string(&state->{{var.name}}, {{var.initial_value}})) {
-        /* TODO Out of memory. What now? */
+        /* Out of memory */
+        return 0;
     }
     {% elif var.type is sameas SmedlType.OPAQUE %}
     if (!smedl_assign_opaque(&state->{{var.name}}, {{var.initial_value}})) {
-        /* TODO Out of memory. What now? */
+        /* Out of memory */
+        return 0;
     }
     {% else %}
     state->{{var.name}} = {{var.initial_value}};
     {% endif %}
     {% endif %}
     {% endfor %}
+    return 1;
 }
 
-/* Initialize a {{spec.name}} monitor with the provided state.
+/* Initialize a {{spec.name}} monitor with the provided state. Note that this
+ * function takes ownership of the memory used by any strings and opaques when
+ * successful! (That is, it will call free() on them when they are no longer
+ * needed.) default_{{spec.name}}_state() is aware of this, so unless changing
+ * initial string or opaque state, there is no need to be concerned about this.
+ *
  * Return a pointer to the monitor. Must be freed with
  * free_{{spec.name}}_monitor() when no longer needed.
  * Returns NULL on malloc failure. */
@@ -369,7 +387,6 @@ void default_{{spec.name}}_state({{spec.name}}State *state) {
     mon->identities = identities;
 
     /* Copy initial state vars in */
-    //TODO Need to deep copy strings and opaques
     mon->s = *init_state;
 
     /* Set all scenarios to their initial state */

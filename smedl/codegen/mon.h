@@ -90,25 +90,28 @@ void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLCallback c
  *   within the monitor. If the monitor belongs to a synchronous set, the global
  *   wrapper's queuing happens when the event is actually exported.
  * export_* - Export an exported event by calling the registered callback, if
- *   any. */
+ *   any.
+ *
+ * All return nonzero on success, zero on failure */
 {% for event in spec.imported_events.keys() %}
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
+int execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
 {% endfor %}
 {% for event in spec.internal_events.keys() %}
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
+int execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
+int queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
 {% endfor %}
 {% for event in spec.exported_events.keys() %}
-void execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
-void queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
-void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
+int execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
+int queue_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
+int export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
 {% endfor %}
 
 /* Monitor management functions */
 
 /* Initialize a {{spec.name}} monitor with default state.
  * Return a pointer to the monitor. Must be freed with
- * free_{{spec.name}}_monitor() when no longer needed. */
+ * free_{{spec.name}}_monitor() when no longer needed.
+ * Returns NULL on malloc failure. */
 {{spec.name}}Monitor * init_{{spec.name}}_monitor(SMEDLValue *identities);
 
 /* Fill the provided {{spec.name}}State
@@ -116,12 +119,19 @@ void export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *param
  * opaque data must be free()'d if they are reassigned! The following two
  * functions from smedl_types.h make that simple:
  * - smedl_replace_string()
- * - smedl_replace_opaque() */
-void default_{{spec.name}}_state({{spec.name}}State *state);
+ * - smedl_replace_opaque()
+ * Returns nonzero on success, zero on malloc failure. */
+int default_{{spec.name}}_state({{spec.name}}State *state);
 
-/* Initialize a {{spec.name}} monitor with the provided state.
+/* Initialize a {{spec.name}} monitor with the provided state. Note that this
+ * function takes ownership of the memory used by any strings and opaques when
+ * successful! (That is, it will call free() on them when they are no longer
+ * needed.) defualt_{{spec.name}}_state() is aware of this, so unless changing
+ * initial string or opaque state, there is no need to be concerned about this.
+ *
  * Return a pointer to the monitor. Must be freed with
- * free_{{spec.name}}_monitor() when no longer needed. */
+ * free_{{spec.name}}_monitor() when no longer needed.
+ * Returns NULL on malloc failure. */
 {{spec.name}}Monitor * init_{{spec.name}}_with_state(SMEDLValue *identities, {{spec.name}}State *init_state);
 
 /* Free a {{spec.name}} monitor. NOTE: Does not free the identities. That must

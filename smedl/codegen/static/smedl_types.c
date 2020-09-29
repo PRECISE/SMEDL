@@ -117,7 +117,7 @@ int smedl_compare(SMEDLValue v1, SMEDLValue v2) {
                     v2.v.o.data, v2.v.o.size);
             break;
         default:
-            return 0; 
+            return 0;
     }
 }
 
@@ -148,7 +148,7 @@ int smedl_equal(SMEDLValue v1, SMEDLValue v2) {
         case SMEDL_NULL:
             return 1;
         default:
-            return 0; 
+            return 0;
     }
 }
 
@@ -171,7 +171,8 @@ int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len) {
     return 1;
 }
 
-/* Make a copy of the src string in dest (does not free the old value!) */
+/* Make a copy of the src string in dest (does not free the old value!)
+ * Return nonzero on success, zero on failure */
 int smedl_assign_string(char **dest, char *src) {
     char *tmp = malloc(strlen(src) + 1);
     if (tmp == NULL) {
@@ -182,7 +183,8 @@ int smedl_assign_string(char **dest, char *src) {
     return 1;
 }
 
-/* Make a copy of the src opaque in dest (does not free the old value!) */
+/* Make a copy of the src opaque in dest (does not free the old value!)
+ * Return nonzero on success, zero on failure */
 int smedl_assign_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     void *tmp = malloc(src.size);
     //TODO Can return NULL correctly if size is zero
@@ -195,7 +197,8 @@ int smedl_assign_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     return 1;
 }
 
-/* Free the old dest and make a copy of the src string in dest */
+/* Free the old dest and make a copy of the src string in dest
+ * Return nonzero on success, zero on failure */
 int smedl_replace_string(char **dest, char *src) {
     char *tmp = malloc(strlen(src) + 1);
     if (tmp == NULL) {
@@ -207,7 +210,8 @@ int smedl_replace_string(char **dest, char *src) {
     return 1;
 }
 
-/* Free the old dest and make a copy of the src opaque in dest */
+/* Free the old dest and make a copy of the src opaque in dest
+ * Return nonzero on success, zero on failure */
 int smedl_replace_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     void *tmp = malloc(src.size);
     //TODO Can return NULL correctly if size is zero
@@ -221,7 +225,7 @@ int smedl_replace_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     return 1;
 }
 
-/* 
+/*
  * Make a copy of the SMEDLValue array with the given length. This is a deep
  * copy: new buffers will be malloc'd for strings and opaques.
  *

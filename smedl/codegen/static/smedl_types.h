@@ -61,16 +61,20 @@ typedef struct {
  * if not */
 int smedl_opaque_equals(SMEDLOpaque o1, SMEDLOpaque o2);
 
-/* Make a copy of the src string in dest (does not free the old value!) */
+/* Make a copy of the src string in dest (does not free the old value!).
+ * Return nonzero on success, zero on failure. */
 int smedl_assign_string(char **dest, char *src);
 
-/* Make a copy of the src opaque in dest (does not free the old value!) */
+/* Make a copy of the src opaque in dest (does not free the old value!).
+ * Return nonzero on success, zero on failure. */
 int smedl_assign_opaque(SMEDLOpaque *dest, SMEDLOpaque src);
 
-/* Free the old dest and make a copy of the src string in dest */
+/* Free the old dest and make a copy of the src string in dest.
+ * Return nonzero on success, zero on failure. */
 int smedl_replace_string(char **dest, char *src);
 
-/* Free the old dest and make a copy of the src opaque in dest */
+/* Free the old dest and make a copy of the src opaque in dest.
+ * Return nonzero on success, zero on failure. */
 int smedl_replace_opaque(SMEDLOpaque *dest, SMEDLOpaque src);
 
 /*
@@ -104,7 +108,7 @@ int smedl_equal(SMEDLValue v1, SMEDLValue v2);
  */
 int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len);
 
-/* 
+/*
  * Make a copy of the SMEDLValue array with the given length. This is a deep
  * copy: new buffers will be malloc'd for strings and opaques.
  *
@@ -142,9 +146,10 @@ int smedl_string_to_pointer(const char *str, void **ptr);
 
 /*
  * A callback function pointer for receiving exported events from monitors and
- * global wrappers
+ * global wrappers. Such functions must return nonzero on success, zero on
+ * failure.
  */
-typedef void (*SMEDLCallback)(SMEDLValue *identities, SMEDLValue *params,
+typedef int (*SMEDLCallback)(SMEDLValue *identities, SMEDLValue *params,
         void *aux);
 
 #endif /* SMEDL_TYPES_H */
