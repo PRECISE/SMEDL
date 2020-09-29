@@ -11,14 +11,16 @@
  ******************************************************************************/
 
 /* Initialization interface - Initialize the local wrapper. Must be called once
- * before creating any monitors or importing any events. */
-void init_{{mon.name}}_local_wrapper();
+ * before creating any monitors or importing any events.
+ * Return nonzero on success, zero on failure. */
+int init_{{mon.name}}_local_wrapper();
 
 /* Cleanup interface - Tear down and free the resources used by this local
  * wrapper and all the monitors it manages */
 void free_{{mon.name}}_local_wrapper();
 
 /* Creation interface - Instantiate a new {{mon.name}} monitor.
+ * Return nonzero on success or if monitor already exists, zero on failure.
  *
  * Parameters:
  * identites - An array of SMEDLValue of the proper length for this monitor.
@@ -26,17 +28,18 @@ void free_{{mon.name}}_local_wrapper();
  *   the initial state variable values for this monitor. A default initial
  *   state can be retrieved with default_{{spec.name}}_state()
  *   and then just the desired variables can be updated. */
-void create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init_state);
+int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init_state);
 
 /* Event import interfaces - Send the respective event to the monitor(s) and
  * potentially perform dynamic instantiation.
+ * Return nonzero on success, zero on failure.
  *
  * Parameters:
  * identites - An array of SMEDLValue of the proper length for this monitor.
  * params - An array of SMEDLValue, one for each parameter of the event.
  * aux - Extra data that is passed through to exported events unchanged. */
 {% for event in spec.imported_events.keys() %}
-void process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 
 /******************************************************************************
@@ -51,7 +54,7 @@ typedef struct {{mon.name}}Record {
 } {{mon.name}}Record;
 
 /* Add the provided monitor to the monitor maps. Return a
- * {{mon.name}}Record. */
+ * {{mon.name}}Record, or NULL if unsuccessful. */
 {{mon.name}}Record * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
 
 /* Fetch a list of monitor instances matching the given identities.
@@ -63,7 +66,8 @@ typedef struct {{mon.name}}Record {
  * specified (i.e. there are no wildcards), create an instance with those
  * identities and return it.
  *
- * Returns a linked list of {{mon.name}}Record. */
+ * Returns a linked list of {{mon.name}}Record (which may be empty, i.e. NULL).
+ * If dynamic instantiation fails, returns INVALID_RECORD. */
 {{mon.name}}Record * get_{{mon.name}}_monitors(SMEDLValue *identities);
 
 /* Check if a monitor with the given identities is present. Return nonzero if

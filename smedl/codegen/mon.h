@@ -92,7 +92,11 @@ void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLCallback c
  * export_* - Export an exported event by calling the registered callback, if
  *   any.
  *
- * All return nonzero on success, zero on failure */
+ * All return nonzero on success, zero on failure. Note that when an event
+ * handler fails, it means the monitor is no longer consistent with its
+ * specification, has very possibly dropped events, and is likely to misbehave
+ * when handling future events. However, it is still safe to clean it up, and
+ * it will not leak memory as long as that is done. */
 {% for event in spec.imported_events.keys() %}
 int execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params, void *aux);
 {% endfor %}

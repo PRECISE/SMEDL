@@ -175,7 +175,7 @@ void monitor_map_insert(SMEDLRecordBase **root, SMEDLRecordBase *rec) {
 
             node = node->parent;
         }
-        
+
         /* The root can only change from a rotation. If the current node has
          * no parent, a rotation may have changed the root. Update it to
          * the current node. */
@@ -251,7 +251,7 @@ static void swap_records(SMEDLRecordBase *a, SMEDLRecordBase *d) {
     d->bal = a_bal;
 }
 
-/* Deletion function. 
+/* Deletion function.
  *
  * root - Pointer to root of the map to remove from
  * rec - Record to remove from its map

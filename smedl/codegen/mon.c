@@ -37,9 +37,8 @@ static int handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
             {% for event, params in chain(spec.internal_events.items(),
                    spec.exported_events.items()) %}
             case EVENT_{{spec.name}}_{{event}}:
-                if (!execute_{{spec.name}}_{{event}}(mon, params, aux)) {
-                    success = 0;
-                }
+                success = success &&
+                    execute_{{spec.name}}_{{event}}(mon, params, aux);
                 {% for param_type in params %}
                 {% if param_type is sameas SmedlType.STRING %}
                 free(params[{{loop.index0}}].v.s);
@@ -69,7 +68,14 @@ static int handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
  *   within the monitor. If the monitor belongs to a synchronous set, the global
  *   wrapper's queuing happens when the event is actually exported.
  * export_* - Export an exported event by calling the registered callback, if
- *   any. */
+ *   any.
+ *
+ * All return nonzero on success, zero on failure. Note that when an event
+ * handler fails, it means the monitor is no longer consistent with its
+ * specification, has very possibly dropped events, and is likely to misbehave
+ * when handling future events. However, it is still safe to clean it up, and
+ * it will not leak memory as long as that is done.
+ * TODO Can we do better than that? Try not to drop events? */
 {# Event handler macros ***************************************************** #}
 {% macro expression(e) -%}
 {% if e.parens %}({% endif -%}
@@ -333,10 +339,34 @@ int export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
     {{spec.name}}State init_state;
 
     /* Initialize the monitor with default state */
-    default_{{spec.name}}_state(&init_state);
-    return init_{{spec.name}}_with_state(identities, &init_state);
+    if (!default_{{spec.name}}_state(&init_state)) {
+        /* malloc fail */
+        return NULL;
+    }
+    {{spec.name}}Monitor *result = init_{{spec.name}}_with_state(identities, &init_state);
+    if (result == NULL) {
+        /* malloc fail. Need to clean up strings and opaques in init_state. */
+        {% for var in spec.state_vars.values() %}
+        {% if var.type is sameas SmedlType.STRING %}
+        free(init_state.{{var.name}});
+        {% elif var.type is sameas SmedlType.OPAQUE %}
+        free(init_state.{{var.name}}.data);
+        {% endif %}
+        {% endfor %}
+    }
+    return result;
 }
 
+{% macro free_state_vars(idx) %}
+{# Free string and opaque state variables that have already been allocated #}
+{% for var in spec.state_vars.values()|list[:idx] %}
+{% if var.type is sameas SmedlType.STRING %}
+free(state->{{var.name}});
+{% elif var.type is sameas SmedlType.OPAQUE %}
+free(state->{{var.name}}.data);
+{% endif %}
+{% endfor %}
+{% endmacro %}
 /* Fill the provided {{spec.name}}State
  * with the default initial values for the monitor. Note that strings and
  * opaque data must be free()'d if they are reassigned! The following two
@@ -353,12 +383,12 @@ int default_{{spec.name}}_state({{spec.name}}State *state) {
     {% if var.type is sameas SmedlType.STRING %}
     if (!smedl_assign_string(&state->{{var.name}}, {{var.initial_value}})) {
         /* Out of memory */
-        return 0;
+        {{free_state_vars(loop.index0)|indent(8)}}return 0;
     }
     {% elif var.type is sameas SmedlType.OPAQUE %}
     if (!smedl_assign_opaque(&state->{{var.name}}, {{var.initial_value}})) {
         /* Out of memory */
-        return 0;
+        {{free_state_vars(loop.index0)|indent(8)}}return 0;
     }
     {% else %}
     state->{{var.name}} = {{var.initial_value}};
