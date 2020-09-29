@@ -5,7 +5,7 @@
 
 /* An event in an EventQueue */
 typedef struct Event {
-    unsigned int event;
+    int event;
     /* params is an array. Size is known because number of parameters for any
      * specified event is known. */
     SMEDLValue *params;

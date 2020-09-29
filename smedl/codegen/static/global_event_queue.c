@@ -10,8 +10,8 @@
  * ids - Array of the monitor's identities
  * params - Array of the event's parameters
  * aux - Aux data to pass through */
-int push_global_event(GlobalEventQueue *q, unsigned int channel,
-        SMEDLValue *ids, SMEDLValue *params, void *aux) {
+int push_global_event(GlobalEventQueue *q, int channel, SMEDLValue *ids,
+        SMEDLValue *params, void *aux) {
     /* Create the GlobalEvent */
     GlobalEvent *ge = malloc(sizeof(GlobalEvent));
     if (ge == NULL) {
@@ -42,8 +42,8 @@ int push_global_event(GlobalEventQueue *q, unsigned int channel,
  * ids - Pointer at which to store an array of the monitor identities
  * params - Pointer at which to store an array of the event's parameters
  * aux - Pointer to an Aux pointer to store the aux data in */
-int pop_global_event(GlobalEventQueue *q, unsigned int *channel,
-        SMEDLValue **ids, SMEDLValue **params, void **aux) {
+int pop_global_event(GlobalEventQueue *q, int *channel, SMEDLValue **ids,
+        SMEDLValue **params, void **aux) {
     /* Check if queue is empty */
     if (q->head == NULL) {
         return 0;
