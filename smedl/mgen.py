@@ -17,7 +17,7 @@ from smedl import codegen
 class MonitorGenerator(object):
     """Coordinate parsing and template filling"""
     def __init__(
-            self, out_dir=None, transport=None, makefile=None, helpers=True,
+            self, out_dir=None, transport=None, makefile=True, helpers=True,
             overwrite=False):
         """Initialize the MonitorGenerator with the selected options
 
