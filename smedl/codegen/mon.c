@@ -176,7 +176,7 @@ mon->s.{{a.var}}--;
     {% elif param_type is sameas SmedlType.STRING %}
     if (!smedl_assign_string(&new_params[{{loop.index0}}].v.s, {{expression(a.params[loop.index0])}})) {
         /* malloc fail */
-        smedl_free_array(new_params, loop.index0);
+        smedl_free_array(new_params, {{loop.index0}});
         return 0;
     }
     {% elif param_type is sameas SmedlType.POINTER %}
@@ -186,7 +186,7 @@ mon->s.{{a.var}}--;
     {% elif param_type is sameas SmedlType.OPAQUE %}
     if (!smedl_assign_opaque(&new_params[{{loop.index0}}].v.o, {{expression(a.params[loop.index0])}})) {
         /* malloc fail */
-        smedl_free_array(new_params, loop.index0);
+        smedl_free_array(new_params, {{loop.index0}});
         return 0;
     }
     {% endif %}
@@ -361,7 +361,7 @@ int export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
 
 {% macro free_state_vars(idx) %}
 {# Free string and opaque state variables that have already been allocated #}
-{% for var in spec.state_vars.values()|list[:idx] %}
+{% for var in (spec.state_vars.values()|list)[:idx] %}
 {% if var.type is sameas SmedlType.STRING %}
 free(state->{{var.name}});
 {% elif var.type is sameas SmedlType.OPAQUE %}

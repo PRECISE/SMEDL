@@ -295,7 +295,7 @@ int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, vo
     SMEDLValue *params_intra = smedl_copy_array(params, {{params_len}});
     if (!push_global_event(&intra_queue, CHANNEL_{{syncset}}_{{conn.channel}}, identities, params_intra, aux)) {
         /* malloc fail */
-        smedl_free_array(params_intra);
+        smedl_free_array(params_intra, {{params_len}});
         return 0;
     }
     {% endif %}
@@ -304,7 +304,7 @@ int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, vo
     SMEDLValue *params_inter = smedl_copy_array(params, {{params_len}});
     if (!push_global_event(&inter_queue, CHANNEL_{{syncset}}_{{conn.channel}}, identities, params_inter, aux)) {
         /* malloc fail */
-        smedl_free_array(params_inter);
+        smedl_free_array(params_inter, {{params_len}});
         return 0;
     }
     {% endif %}

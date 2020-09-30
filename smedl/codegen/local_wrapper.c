@@ -8,12 +8,12 @@
 #include "{{mon.name}}_local_wrapper.h"
 #include "{{spec.name}}_mon.h"
 
+{% if mon.params is nonempty %}
 static {{mon.name}}Record dummy_rec;
 /* Used as error response for get_{{mon.name}}_record() since it can
  * legitimately return NULL */
-static {{mon.name}}Record *INVALID_RECORD = *dummy_rec;
+static {{mon.name}}Record *INVALID_RECORD = &dummy_rec;
 
-{% if mon.params is nonempty %}
 /* {{mon.name}} Monitor Maps - One AVL tree for each identity */
 {% for i in range(mon.params|length) %}
 static {{mon.name}}Record *monitor_map_{{i}} = NULL;
@@ -105,7 +105,7 @@ int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init
     {{spec.name}}Monitor *mon = init_{{spec.name}}_with_state(ids_copy, init_state);
     if (mon == NULL) {
         /* malloc fail */
-        smedl_free_array(ids_copy);
+        smedl_free_array(ids_copy, {{mon.params|length}});
         return 0;
     }
     setup_{{mon.name}}_callbacks(mon);
@@ -114,8 +114,8 @@ int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init
     if (add_{{mon.name}}_monitor(mon) == NULL) {
         /* malloc fail */
         free_{{spec.name}}_monitor(mon);
-        smedl_free_array(ids_copy);
-        return 0
+        smedl_free_array(ids_copy, {{mon.params|length}});
+        return 0;
     }
     {% else %}
     /* Singleton monitor - This is a no-op */
@@ -256,7 +256,7 @@ add_fail_0:
             {{spec.name}}Monitor *mon = init_{{spec.name}}_monitor(ids_copy);
             if (mon == NULL) {
                 /* malloc fail */
-                smedl_free_array(ids_copy);
+                smedl_free_array(ids_copy, {{mon.params|length}});
                 return INVALID_RECORD;
             }
             setup_{{mon.name}}_callbacks(mon);
@@ -264,7 +264,7 @@ add_fail_0:
             if (result == NULL) {
                 /* malloc fail */
                 free_{{spec.name}}_monitor(mon);
-                smedl_free_array(ids_copy);
+                smedl_free_array(ids_copy, {{mon.params|length}});
                 return INVALID_RECORD;
             }
             result->r.next = NULL;

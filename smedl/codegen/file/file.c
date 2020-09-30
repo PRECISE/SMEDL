@@ -79,7 +79,7 @@ int enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
     SMEDLValue *params_copy = smedl_copy_array(params, {{conn.source_event_params|length}});
     if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
         /* malloc fail */
-        smedl_free_array(params_copy);
+        smedl_free_array(params_copy, {{conn.source_event_params|length}});
         return 0;
     }
     return 1;
@@ -93,7 +93,7 @@ int enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
     SMEDLValue *params_copy = smedl_copy_array(params, {{conn.source_event_params|length}});
     if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
         /* malloc fail */
-        smedl_free_array(params_copy);
+        smedl_free_array(params_copy, {{conn.source_event_params|length}});
         return 0;
     }
     return 1;

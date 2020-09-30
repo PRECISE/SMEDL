@@ -48,7 +48,7 @@ typedef enum {
 /* Queue processing function - Pop events off the queue and send them to the
  * proper synchronous sets (or to be written to the output file) until the
  * queue is empty */
-void handle_queue();
+int handle_queue();
 
 /* "Callbacks" (not used as such) for events read from the input file and
  * callbacks for events exported from global wrappers.
