@@ -27,7 +27,7 @@ def generated_rabbitmq_monitor(request, rabbitmq_config):
     mon_path = os.path.join(sys.path[0], 'monitors', mon, mon + '.a4smedl')
     gen_mon = GeneratedMonitor(mon_path, 'rabbitmq')
     build_dir = gen_mon.build()
-    
+
     # Generate config
     if rabbitmq_config['exchange'] is None:
         rabbitmq_config['exchange'] = 'smedl.' + gen_mon.system.name

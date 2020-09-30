@@ -131,7 +131,7 @@ def test_c_units_common(tmp_dir_common, c_files):
 # except cJSON, an external library (presumably tested by its developer).
 
 import ctests.file
-from smedl.codegen.static import file
+import smedl.codegen.file.static
 
 @pytest.fixture(scope='module')
 def tmp_dir_file():
@@ -139,7 +139,7 @@ def tmp_dir_file():
     tests"""
     tmp_dir = tempfile.TemporaryDirectory()
     copy_resources(ctests.file, tmp_dir.name)
-    copy_resources(file, tmp_dir.name)
+    copy_resources(smedl.codegen.file.static, tmp_dir.name)
     copy_resources(unity, tmp_dir.name)
     yield tmp_dir.name
 
