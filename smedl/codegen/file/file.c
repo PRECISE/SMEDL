@@ -22,10 +22,10 @@ static GlobalEventQueue queue = {0};
 {% for syncset in conn.inter_syncsets %}
 {% if syncset is none %}
 
-write_{{conn.channel}}(identities, params, aux);
+success = success && write_{{conn.channel}}(identities, params, aux);
 {%- else %}
 
-import_{{syncset.name}}_{{conn.channel}}(identities, params, aux);
+success = success && import_{{syncset.name}}_{{conn.channel}}(identities, params, aux);
 {%- endif %}
 {% endfor %}
 {% for param in conn.source_event_params %}
@@ -39,8 +39,9 @@ free(params[{{loop.index0}}].v.o.data);
 {% endfor %}
 {% endmacro %}
 {# ************************************************************************** #}
-void handle_queue() {
-    unsigned int channel;
+int handle_queue() {
+    int success = 1;
+    int channel;
     SMEDLValue *identities, *params;
     void *aux;
 
@@ -65,29 +66,37 @@ void handle_queue() {
      * longer needed. (String and opaque data were already free'd in the
      * switch.) */
     free(params);
+    return success;
 }
 
 /* "Callbacks" (not used as such) for events read from the input file and
- * callbacks for events exported from global wrappers */
+ * callbacks for events exported from global wrappers.
+ * Return nonzero on success, zero on failure. */
 {% for conn in sys.imported_connections.values() %}
 
-void enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
+int enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
         void *aux) {
     SMEDLValue *params_copy = smedl_copy_array(params, {{conn.source_event_params|length}});
     if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
-        //TODO Out of memory. What now?
+        /* malloc fail */
+        smedl_free_array(params_copy);
+        return 0;
     }
+    return 1;
 }
 {% endfor %}
 {% for decl in mon_decls %}
 {% for conn in decl.connections.values() if conn.inter_syncsets is nonempty %}
 
-void enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
+int enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
         void *aux) {
     SMEDLValue *params_copy = smedl_copy_array(params, {{conn.source_event_params|length}});
     if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
-        //TODO Out of memory. What now?
+        /* malloc fail */
+        smedl_free_array(params_copy);
+        return 0;
     }
+    return 1;
 }
 {% endfor %}
 {% endfor %}
@@ -152,6 +161,7 @@ int write_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux
     printf("],\n"
         "\t\"aux\": %.*s\n", (int) aux_data->len, aux_data->data);
     printf("}\n");
+    return 0;
 }
 {% endfor %}
 {% endfor %}
@@ -272,8 +282,8 @@ void read_events(JSONParser *parser) {
             if (json_to_string(str, params_tok, &tmp_s)) {
                 params[{{loop.index0}}].t = SMEDL_POINTER;
                 if (!smedl_string_to_pointer(tmp_s, &params[{{loop.index0}}].v.p)) {
-                    err("Warning: Skipping message %d: Overflow or bad format "
-                            "extracting pointer from params\n",
+                    err("\nWarning: Skipping message %d: Overflow or bad "
+                            "format extracting pointer from params\n",
                             parser->msg_count);
                     free(tmp_s);
                     smedl_free_array_contents(params, {{loop.index0}});
@@ -300,9 +310,18 @@ void read_events(JSONParser *parser) {
             {% endfor %}
 
             /* Process the event */
-            enqueue_{{conn.channel}}(NULL, params, &aux);
+            int result = enqueue_{{conn.channel}}(NULL, params, &aux);
             smedl_free_array_contents(params, {{conn.source_event_params|length}});
-            handle_queue();
+            if (result) {
+                if (!handle_queue()) {
+                    err("\nWarning: Problem processing queue after message %d",
+                            parser->msg_count);
+                }
+            } else {
+                err("\nWarning: Skipping message %d: "
+                        "enqueue_{{conn.channel}}() failed\n",
+                        parser->msg_count);
+            }
         {% endfor %}
         }
         if (ch_result < 0) {
@@ -322,20 +341,30 @@ void read_events(JSONParser *parser) {
     err("Processed %d messages.", parser->msg_count);
 }
 
-/* Initialize the global wrappers and register callback functions with them. */
-void init_global_wrappers() {
+/* Initialize the global wrappers and register callback functions with them.
+ * Return nonzero on success, zero on failure. */
+int init_global_wrappers() {
     {% for syncset in sys.syncsets.values() %}
     /* {{syncset.name}} syncset */
-    init_{{syncset.name}}_syncset();
+    if (!init_{{syncset.name}}_syncset()) {
+        goto fail_init_{{syncset.name}};
+    }
     {% for decl in syncset %}
     {% for conn in decl.inter_connections %}
     callback_{{syncset.name}}_{{conn.channel}}(enqueue_{{conn.channel}});
     {% endfor %}
     {% endfor %}
-    {% if not loop.last %}
 
-    {% endif %}
     {% endfor %}
+    return 1;
+
+    {% for syncset in sys.syncsets.values()|reverse %}
+    {% if not loop.first %}
+    free_{{syncset.name}}_syncset();
+    {% endif %}
+fail_init_{{syncset.name}}:
+    {% endfor %}
+    return 0;
 }
 
 /* Print a help message to stderr */
@@ -364,11 +393,15 @@ int main(int argc, char **argv) {
 
 
     /* Initialize global wrappers */
-    init_global_wrappers();
+    int result = init_global_wrappers();
+    if (!result) {
+        err("Could not initialize global wrappers");
+        return 1;
+    }
 
     /* Initialize the parser */
     JSONParser parser;
-    int result = init_parser(&parser, fname);
+    result = init_parser(&parser, fname);
     if (!result) {
         err("Could not initialize JSON parser");
         return 1;
@@ -376,7 +409,7 @@ int main(int argc, char **argv) {
 
     /* Start handling events */
     read_events(&parser);
-    
+
     /* Cleanup the parser */
     result = free_parser(&parser);
     if (!result) {

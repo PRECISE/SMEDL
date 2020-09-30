@@ -19,7 +19,7 @@
  *     "aux": {
  *         "arbitrary": "json data"
  *      }
- * } 
+ * }
  *
  * {
  *     "fmt_version": [2, 0],
@@ -30,7 +30,7 @@
  *     "aux": {
  *         "arbitrary": "json data"
  *      }
- *  } 
+ *  }
  */
 
 /* System-wide channel enum */
@@ -51,13 +51,14 @@ typedef enum {
 void handle_queue();
 
 /* "Callbacks" (not used as such) for events read from the input file and
- * callbacks for events exported from global wrappers */
+ * callbacks for events exported from global wrappers.
+ * Return nonzero on success, zero on failure. */
 {% for channel in sys.imported_connections.keys() %}
-void enqueue_{{channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int enqueue_{{channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% for decl in mon_decls %}
 {% for conn in decl.connections.values() if conn.inter_syncsets is nonempty %}
-void enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
 
@@ -69,8 +70,9 @@ int write_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux
 {% endfor %}
 {% endfor %}
 
-/* Initialize the global wrappers and register callback functions with them. */
-void init_global_wrappers();
+/* Initialize the global wrappers and register callback functions with them.
+ * Return nonzero on success, zero on failure. */
+int init_global_wrappers();
 
 /* Receive and process events from the provided JSON parser. Any malformed
  * events are skipped (with a warning printed to stderr). */
