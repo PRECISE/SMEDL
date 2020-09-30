@@ -524,5 +524,9 @@ class ROSGenerator(CodeGenerator):
                 "syncset": syncset_name,
                 "mon_decls": system.syncsets[syncset_name],
             }
-            self._render("ros.cpp", syncset_name + "_ros.cpp", values)
-            self._render("ros.h", syncset_name + "_ros.h", values)
+            self._render("node.cpp", syncset_name + "_node.cpp", values)
+            self._render("node.h", syncset_name + "_node.h", values)
+            self._render("global_wrapper_ros.cpp", syncset_name +
+                         "_global_wrapper_ros.cpp", values)
+            self._render("global_wrapper_ros.h", syncset_name +
+                         "_global_wrapper_ros.h", values)

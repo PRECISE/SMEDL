@@ -1,22 +1,17 @@
-#include <stdexcept>
 #include "ros/ros.h"
-#include "{{syncset}}_ros.h"
+#include "{{syncset}}_global_wrapper_ros.h"
+#include "{{syncset}}_node.h"
 
 extern "C" {
     #include "smedl_types.h"
-    #include "{{syncset}}_global_wrapper.h"
 }
 
 namespace SMEDL {
-    {{syncset}}Node *{{syncset}}Node::callback_node = NULL;
-
-    /* Establishes callbacks with SMEDL and ROS and begin interfacing
-     * between them.
-     *
+    /* Establish the {{syncset}}GlobalWrapper and interface between
+     * it and ROS.
      * You must not construct a second instance before the first is
      * destroyed! */
-    {{syncset}}Node::{{syncset}}Node() {
-        attach_global_wrapper();
+    {{syncset}}Node::{{syncset}}Node() : global_wrapper(this) {
         // Let node_handle be initialized by the default constructor
 
         // Advertise topics for events exported from this synchronous set
@@ -28,24 +23,16 @@ namespace SMEDL {
 
         // Subscribe to topics imported into this synchronous set
         {% for conn in sys.imported_channels(syncset) %}
-        sub_{{conn.channel}} = node_handle.subscribe({{conn.channel}}_ros_topic, queue_size, &{{syncset}}Node::ros_cb_{{conn.channel}}, this);
+        sub_{{conn.channel}} = node_handle.subscribe(
+                {{conn.channel}}_ros_topic, queue_size,
+                &{{syncset}}Node::recv_{{conn.channel}}, this);
         {% endfor %}
     }
 
-    /* Unsubscribe and stop interfacing between ROS and SMEDL and
-     * clean up resources */
-    {{syncset}}Node::~{{syncset}}Node() {
-        // Free global wrapper and unregister callbacks if they are assigned
-        // to us
-        detach_global_wrapper();
-
-        // Destruction of pub_*/sub_* members will unannounce/unsubscribe
-    }
-
-    /* Callback functions for SMEDL global wrapper */
+    /* Functions to send events from the global wrapper */
     {% for decl in mon_decls %}
     {% for conn in decl.inter_connections %}
-    void {{syncset}}Node::smedl_cb_{{conn.channel}}(SMEDLValue *ids, SMEDLValue *params, void *aux) {
+    int {{syncset}}Node::smedl_cb_{{conn.channel}}(SMEDLValue *ids, SMEDLValue *params, void *aux) {
         // Construct the ROS message
         {{conn.channel}}MsgType msg;
         {% if conn.source_mon is not none %}
@@ -62,7 +49,7 @@ namespace SMEDL {
         char ptr_str[40];
         if (!smedl_pointer_to_string(ids[{{loop.index0}}].v.p, ptr_str, 40)) {
             ROS_ERROR("Could not convert pointer to string for sending via ROS");
-            return;
+            return 0;
         }
         msg.SMEDL_{{conn.channel}}_ID{{loop.index0}} = ptr_str;
         {% elif param is sameas SmedlType.STRING %}
@@ -89,7 +76,7 @@ namespace SMEDL {
         char ptr_str[40];
         if (!smedl_pointer_to_string(params[{{loop.index0}}].v.p, ptr_str, 40)) {
             ROS_ERROR("Could not convert pointer to string for sending via ROS");
-            return;
+            return 0;
         }
         msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}} = ptr_str;
         {% elif param is sameas SmedlType.STRING %}
@@ -103,14 +90,15 @@ namespace SMEDL {
         {% endfor %}
 
         // Publish the message
-        callback_node->pub_{{conn.channel}}.publish(msg);
+        pub_{{conn.channel}}.publish(msg);
+        return 1;
     }
     {% endfor %}
     {% endfor %}
 
     /* Callback functions for ROS subscriptions */
     {% for conn in sys.imported_channels(syncset) %}
-    void {{syncset}}Node::ros_cb_{{conn.channel}}(const {{conn.channel}}MsgType::ConstPtr &msg) {
+    void {{syncset}}Node::recv_{{conn.channel}}(const {{conn.channel}}MsgType::ConstPtr &msg) {
         // Build identities array
         {% if conn.source_mon is not none and conn.source_mon.params is nonempty %}
         SMEDLValue identities[{{conn.source_mon.params|length}}];
@@ -180,43 +168,12 @@ namespace SMEDL {
         {% endif %}
 
         // Send event to SMEDL
-        import_{{syncset}}_{{conn.channel}}(identities, params, NULL);
+        if (!global_wrapper.handle_{{conn.channel}}(identities, params, NULL)) {
+            ROS_ERROR("Global wrapper failed to process event from {{conn.channel}}");
+            return;
+        }
     }
     {% endfor %}
-
-    /* Do all SMEDL initialization and attach this instance to the global
-     * wrapper callbacks. */
-    void {{syncset}}Node::attach_global_wrapper() {
-        if (callback_node != NULL) {
-            throw std::logic_error("Cannot attach multiple nodes to one "
-                "global wrapper simultaneously");
-        }
-
-        // Direct callbacks to this instance
-        callback_node = this;
-
-        // Initialize the synchronous set
-        init_{{syncset}}_syncset();
-
-        // Set callbacks
-        {% for decl in mon_decls %}
-        {% for conn in decl.inter_connections %}
-        callback_{{syncset}}_{{conn.channel}}(smedl_cb_{{conn.channel}});
-        {% endfor %}
-        {% endfor %}
-    }
-
-    /* If this instance is currently attached to the global wrapper callbacks,
-     * detach them and deinitialize the global wrapper. This is called by the
-     * destructor, so there is generally no need to call it manually. */
-    void {{syncset}}Node::detach_global_wrapper() {
-        if (callback_node == this) {
-            // Free the global wrapper, which also detaches callbacks
-            free_{{syncset}}_syncset();
-            callback_node = NULL;
-        }
-    }
-}
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "{{syncset}}_node");

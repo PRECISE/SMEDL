@@ -48,7 +48,8 @@ include_directories(
 {% for syncset in sys.syncsets.values() %}
 
 add_executable(${PROJECT_NAME}_{{syncset.name}}_node
-  src/{{syncset.name}}_ros.cpp
+  src/{{syncset.name}}_node.cpp
+  src/{{syncset.name}}_global_wrapper_ros.cpp
   src/{{syncset.name}}_global_wrapper.c
   {% for decl in syncset %}
   src/{{decl.name}}_local_wrapper.c
