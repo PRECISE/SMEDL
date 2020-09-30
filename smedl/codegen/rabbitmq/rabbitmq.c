@@ -208,7 +208,7 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
     if (envelope->redelivered) {
         return 1;
     }
-    
+
     {% set ch_len = (sys.imported_channels(syncset)|map(attribute='channel')|
             map('length')|max) + 2 %}
     /* Get channel name using routing key
@@ -277,8 +277,9 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
     } else {
         aux.correlation_id[0] = '\0';
     }
-    {% for conn in sys.imported_channels(syncset) %}
 
+    status = 1;
+    {% for conn in sys.imported_channels(syncset) %}
     {% if conn.source_mon is not none %}
     /* Import {{conn.source_mon.name}}.{{conn.source_event}} */
     {% else %}
@@ -430,14 +431,14 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
         {% endif %}
 
         /* Send to global wrapper */
-        import_{{syncset}}_{{conn.channel}}(identities, params, &aux);
+        status = import_{{syncset}}_{{conn.channel}}(identities, params, &aux) && status;
     {% endfor %}
     }
 
     /* Cleanup */
     free(aux.aux);
     cJSON_Delete(msg);
-    return 1;
+    return status;
 
 fail2:
     free(aux.aux);
@@ -568,7 +569,7 @@ int send_message(RabbitMQState *rmq_state, const char *routing_key,
 {% for decl in mon_decls %}
 {% for conn in decl.inter_connections %}
 
-void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux_void) {
+int send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux_void) {
     char ptr[40];
     char *opaque;
     int status;
@@ -577,15 +578,15 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
     cJSON *msg_json;
     msg_json = cJSON_CreateObject();
     if (msg_json == NULL) {
+        /* malloc fail */
         err("Could not create JSON object for message serialization");
-        //TODO malloc fail. What now?
-        return;
+        return 0;
     }
     if (cJSON_AddStringToObject(msg_json, "event", "{{conn.source_mon.name}}.{{conn.source_event}}") == NULL) {
         err("Could not add event name to JSON for message serialization");
         goto fail;
     }
-    
+
     /* Add the identities */
     cJSON *ids_json = cJSON_AddArrayToObject(msg_json, "identities");
     if (ids_json == NULL) {
@@ -686,12 +687,12 @@ void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
             aux->correlation_id, msg, strlen(msg));
 
     cJSON_Delete(msg_json);
-    return;
+    return 1;
 
 fail:
-    //TODO Malloc or snprintf fail. What now?
+    /* malloc or snprintf fail */
     cJSON_Delete(msg_json);
-    return;
+    return 0;
 }
 {% endfor %}
 {% endfor %}
@@ -702,7 +703,7 @@ int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
     int status;
     amqp_rpc_reply_t reply;
     amqp_socket_t *socket = NULL;
-    
+
     /* Initialize connection */
 #if DEBUG >= 4
     err("Creating RabbitMQ connection");
@@ -818,7 +819,10 @@ int init(InitStatus *init_status, RabbitMQState *rmq_state,
 #if DEBUG >= 4
     err("Initializing synchronous set");
 #endif
-    init_{{syncset}}_syncset();
+    if (!init_{{syncset}}_syncset()) {
+        err("Could not initialize synchronous set");
+        return 0;
+    }
     init_status->syncset = 1;
 
     /* Register callbacks with the synchronous set */

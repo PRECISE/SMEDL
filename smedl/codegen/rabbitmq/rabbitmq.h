@@ -21,7 +21,7 @@
  *
  * Only the channel name is significant as far as SMEDL's routing goes (between
  * synchronous sets).
- * 
+ *
  * Message properties:
  *
  * RabbitMQ messages can have certain properties attached. See:
@@ -139,7 +139,7 @@ int send_message(RabbitMQState *rmq_state, const char *routing_key,
  * callbacks in the global wrapper. */
 {% for decl in mon_decls %}
 {% for conn in decl.inter_connections %}
-void send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
 
