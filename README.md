@@ -15,7 +15,7 @@ below discusses all aspects of installation, including prerequisites.
 
 - [Python >=3.6][python]
 - [TatSu >=4.4, \<5.0][tatsu]
-- [Jinja2][jinja]
+- [Jinja2 >=2.11][jinja]
 - [importlib\_resources >=1.1][importlib-resources] (only for Python 3.6.x)
 - Required only for testing:
   * [tox][tox]
@@ -28,8 +28,7 @@ below discusses all aspects of installation, including prerequisites.
 **Monitor build requirements:**
 
 - A C compiler (Any C99-compliant compiler should work)
-- [rabbitmq-c][rabbitmq-c] (if using the RabbitMQ
-  transport)
+- [rabbitmq-c][rabbitmq-c] (if using the RabbitMQ transport)
 - [GNU make][make] recommended
 
 Installation
