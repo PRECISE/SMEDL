@@ -40,7 +40,17 @@ event_decl =
     ;
 
 syncset_decl =
-    'syncset' ~ name:identifier '{' monitors:identifier_list '}'
+    'syncset' ~ name:identifier '{' members:syncset_member_list '}'
+    ;
+
+syncset_member_list =
+    ','.{syncset_member}*
+    ;
+
+syncset_member =
+    # Syncsets may contain PEDL events (preceded by "event") and/or monitors
+    kind:'event' ~ name:identifier
+    | kind:`monitor` name:identifier
     ;
 
 #TODO Proposed change: Instead of repeating source spec for each target spec,

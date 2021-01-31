@@ -2,6 +2,7 @@
 Structures and types for monitoring system architectures (.a4smedl files)
 """
 
+import sys
 import types
 
 from .expr import SmedlType
@@ -275,6 +276,9 @@ class Connection(object):
         self._source_mon = source_mon
         # The source event name for this connection
         self._source_event = source_event
+        # Synchronous set this connection belongs to (only applies to
+        # connections from the target system, i.e. source_mon is None)
+        self._syncset = None
         # A list of Targets that this connection links to
         self._targets = []
         # Need to store the source event param types here when there is no
@@ -325,6 +329,21 @@ class Connection(object):
         return self._source_mon is None and self._infer_source_params
 
     @property
+    def syncset(self):
+        return self._syncset
+
+    @syncset.setter
+    def syncset(self, value):
+        if self._source_mon is not None:
+            raise InternalError("Tried to add a Connection that's not from "
+                                "the target system to a synchronous set")
+        if self._syncset is not None:
+            raise AlreadyInSyncset(
+                "Event {} cannot be added to a synchronous set twice."
+                .format(self._source_event))
+        self._syncset = value
+
+    @property
     def targets(self):
         return self._targets
 
@@ -349,11 +368,16 @@ class Connection(object):
         return sets
 
     def __eq__(self, other):
-        """Test for equality with the channel name"""
+        """Test for equality with source monitor and event"""
         if isinstance(other, Connection):
-            return self.channel is not None and self.channel == other.channel
+            return (self.source_mon == other.source_mon and
+                    self.source_event == other.source_event)
         else:
             return False
+
+    def __hash__(self):
+        """Hash by source monitor and event"""
+        return hash((self._source_mon, self._source_event))
 
     def assign_name(self, channel):
         """If the channel name given is not None, validate that it doesn't
@@ -547,7 +571,9 @@ class Connection(object):
 
 
 class SynchronousSet(set):
-    """A subclass of set customized to represent a Synchronous Set"""
+    """A subclass of set customized to represent a Synchronous Set.
+    Meant to contain DeclaredMonitor and Connection (the latter only when
+    originating at the target system)."""
     def __init__(self, name, *args, **kwargs):
         """Create a new SynchronousSet"""
         self._name = name
@@ -769,14 +795,17 @@ class MonitorSystem(object):
         else:
             return False
 
-    def add_syncset(self, name, monitors):
+    def add_syncset(self, name, members):
         """Add a synchronous set to the system.
 
         Parameters:
         name - Name of the synchronous set
-        monitors - An iterable of monitor names to be added to the synchronous
-          set. Monitors must already be declared and must not already be in a
-          synchronous set.
+        members - An iterable of dicts representing the monitors and PEDL
+          events to be added to this synchronous set. Each dict must contain
+          two keys: 'kind' containing 'event' or 'monitor' representing
+          whether it is a PEDL event or monitor, and 'name' containing the name
+          of the PEDL event or monitor. Monitors must already be declared and
+          must not already be in a synchronous set.
         """
         # Ensure the synchronous set does not already exist
         if name in self._syncsets:
@@ -786,16 +815,35 @@ class MonitorSystem(object):
         # Create the SynchronousSet
         syncset = SynchronousSet(name)
 
-        # Iterate through the monitors, check if they exist, check if they are
-        # already in a synchronous set, and assign them to the new synchronous
-        # set
-        for monitor in monitors:
-            try:
-                self._monitor_decls[monitor].assign_syncset(syncset)
-            except KeyError:
-                raise NameNotDefined(
-                    "Monitor {} has not been declared".format(monitor))
-            syncset.add(self._monitor_decls[monitor])
+        # Iterate through the members.
+        # For monitors: Check if they exist, check if they are already in a
+        #   synchronous set, and assign them to the new synchronous set
+        # For PEDL events: Check if the event exists. If so, make sure its
+        #   Connection is not in another synchronous set and add it. If not,
+        #   create a Connection and add it.
+        for member in members:
+            kind = member['kind']
+            member_name = member['name']
+            if kind == 'monitor':
+                try:
+                    self._monitor_decls[member_name].assign_syncset(syncset)
+                except KeyError:
+                    raise NameNotDefined(
+                        "Monitor {} has not been declared".format(member_name))
+                syncset.add(self._monitor_decls[member_name])
+            elif kind == 'event':
+                try:
+                    self._ev_imported_connections[member_name].syncset = \
+                        syncset
+                except KeyError:
+                    conn = Connection(self, None, member_name)
+                    self._ev_imported_connections[member_name] = conn
+                    conn.syncset = syncset
+                syncset.add(self._ev_imported_connections[member_name])
+            else:
+                raise InternalError('Syncset "{}" conatain member "{}" with '
+                                    'unknown kind "{}"'.format(
+                                        name, member_name, kind))
 
         # Add the syncset to the MonitorSystem
         self._syncsets[name] = syncset
@@ -823,13 +871,13 @@ class MonitorSystem(object):
         """
         # Check if it already exists
         if source_ev in self._ev_imported_connections:
-            raise NameCollision("Event {} already declared".format(source_ev))
+            raise NameCollision("Event {} cannot be declared multiple times "
+                                "or after it has already been used implicitly"
+                                .format(source_ev))
 
         # Create it
         conn = Connection(self, None, source_ev, params)
         self._ev_imported_connections[source_event] = conn
-        #TODO Is it a problem to have an empty Connection if the declared
-        # event is never used? We can at least add a warning, probably
 
     def add_target(self, channel, monitor, source_event, target):
         """Add the given target to the proper connection for the source event
@@ -912,6 +960,27 @@ class MonitorSystem(object):
                 syncset = self._unused_syncset(mon.name)
                 self.add_syncset(syncset, (mon.name,))
 
+    def finalize_pedl_events(self):
+        """Check events from the target system for two things:
+        1. Events that were declared but not used (print a warning)
+        2. Events from the target system that are not yet in a synchronous set.
+           If there are any, create a PEDL synchronous set for them, named
+           "PEDL" (or "PEDL2" etc. if "PEDL" was taken)"""
+        connections_without_syncset = []
+
+        for conn in self._ev_imported_connections.values():
+            if conn.channel is None
+                print("Warning: Event {} was not used in a connection"
+                      .format(conn.source_event), file=sys.stderr)
+            else:
+                #TODO Do unused connections need to go into the syncset too?
+                if conn.syncset is None:
+                    connections_without_syncset.append(conn)
+
+        if len(connections_without_syncset) > 0:
+            syncset_name = self._unused_syncset('PEDL')
+            self.add_syncset(syncset_name, connections_without_syncsets)
+
     def create_export_connections(self):
         """Iterate through all the monitor declarations and create export
         targets for all the exported events that are not already the source of
@@ -940,13 +1009,18 @@ class MonitorSystem(object):
         done before the entire architecture file has been processed:
         - Assign monitors that are not yet in synchronous sets to singleton
           synchronous sets
+        - Create a synchronous set for PEDL events, if there are any unassigned
         - Create connections to the target system for exported events that are
           not in any other connection
         - Assign default names to connections that are still unnamed
         """
         self.assign_singleton_syncsets()
+        self.create_pedl_syncset()
         self.create_export_connections()
         self.name_unnamed_channels()
+
+    #TODO Code below here likely needs revising to account for syncsets now
+    # containing Connections as well as DeclaredMonitors
 
     def imported_channels(self, syncset):
         """Get a list of Connections with sources not in the given synchronous

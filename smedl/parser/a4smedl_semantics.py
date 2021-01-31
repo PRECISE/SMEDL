@@ -87,7 +87,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
 
     def syncset_decl(self, ast):
         """Add a synchronous set to the system"""
-        self.system.add_syncset(ast.name, ast.monitors)
+        self.system.add_syncset(ast.name, ast.members)
         return ast
 
     def connection_defn(self, ast):
