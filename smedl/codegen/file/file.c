@@ -124,8 +124,6 @@ int write_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux
     print_escaped(identities[{{loop.index0}}].v.s);
     {% elif param is sameas SmedlType.POINTER %}
     printf("\"%" PRIxPTR "\"", (uintptr_t) identities[{{loop.index0}}].v.p);
-    {% elif param is sameas SmedlType.THREAD %}
-    {% unsupported "'thread' type cannot be transported via file" %}
     {% elif param is sameas SmedlType.OPAQUE %}
     print_escaped_len(identities[{{loop.index0}}].v.o.data,
             identities[{{loop.index0}}].v.o.size);
@@ -147,8 +145,6 @@ int write_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux
     print_escaped(params[{{loop.index0}}].v.s);
     {% elif param is sameas SmedlType.POINTER %}
     printf("\"%" PRIxPTR "\"", (uintptr_t) params[{{loop.index0}}].v.p);
-    {% elif param is sameas SmedlType.THREAD %}
-    {% unsupported "'thread' type cannot be transported via file" %}
     {% elif param is sameas SmedlType.OPAQUE %}
     print_escaped_len(params[{{loop.index0}}].v.o.data,
             params[{{loop.index0}}].v.o.size);
@@ -289,8 +285,6 @@ void read_events(JSONParser *parser) {
                     smedl_free_array_contents(params, {{loop.index0}});
                     continue;
                 }
-            {% elif param is sameas SmedlType.THREAD %}
-            {% unsupported "'thread' type cannot be transported via file" %}
             {% elif param is sameas SmedlType.OPAQUE %}
             if (json_to_opaque(str, params_tok,
                         &params[{{loop.index0}}].v.o.data,

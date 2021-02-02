@@ -147,8 +147,6 @@ fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}
     }
     {% elif param.source_type is sameas SmedlType.POINTER %}
     init_state.{{var}} = {{array_name}}[{{param.index}}].v.p;
-    {% elif param.source_type is sameas SmedlType.THREAD %}
-    init_state.{{var}} = {{array_name}}[{{param.index}}].v.th;
     {% elif param.source_type is sameas SmedlType.OPAQUE %}
     if (!smedl_replace_opaque(&init_state.{{var}}, {{array_name}}[{{param.index}}].v.o)) {
         /* malloc fail */

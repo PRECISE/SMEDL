@@ -331,8 +331,6 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
                         "bad message");
                 goto fail2;
             }
-        {% elif param is sameas SmedlType.THREAD %}
-        {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
         {% elif param is sameas SmedlType.OPAQUE %}
         if ({{get_next}} && cJSON_IsString(id_json)) {
             identities[{{loop.index0}}].t = SMEDL_OPAQUE;
@@ -397,8 +395,6 @@ int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope) {
                         "bad message");
                 goto fail2;
             }
-        {% elif param is sameas SmedlType.THREAD %}
-        {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
         {% elif param is sameas SmedlType.OPAQUE %}
         if ({{get_next}} && cJSON_IsString(param_json)) {
             params[{{loop.index0}}].t = SMEDL_OPAQUE;
@@ -609,8 +605,6 @@ int send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params
         goto fail;
     }
     id = cJSON_CreateString(ptr);
-    {% elif param is sameas SmedlType.THREAD %}
-    {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
     {% elif param is sameas SmedlType.OPAQUE %}
     opaque = malloc(identities[{{loop.index0}}].v.o.size + 1);
     if (opaque == NULL) {
@@ -651,8 +645,6 @@ int send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params
         goto fail;
     }
     param = cJSON_CreateString(ptr);
-    {% elif param is sameas SmedlType.THREAD %}
-    {% unsupported "'thread' type cannot be transported over RabbitMQ" %}
     {% elif param is sameas SmedlType.OPAQUE %}
     opaque = malloc(params[{{loop.index0}}].v.o.size + 1);
     if (opaque == NULL) {

@@ -11,7 +11,7 @@
 # the file is generated.
 
 
-from __future__ import print_function, division, absolute_import, unicode_literals
+from __future__ import generator_stop
 
 import sys
 
@@ -31,13 +31,13 @@ class SMEDLBuffer(Buffer):
         text,
         whitespace=None,
         nameguard=None,
-        comments_re='(\\/\\*([^*]|[\\r\\n]|(\\*+([^*\\/]|[\\r\\n])))*\\*+\\/)|(\\/\\/.*)',
+        comments_re='(\\/\\*([^*]|[*\\r\\n])*\\*\\/)|(\\/\\/.*)',
         eol_comments_re=None,
         ignorecase=None,
         namechars='',
         **kwargs
     ):
-        super(SMEDLBuffer, self).__init__(
+        super().__init__(
             text,
             whitespace=whitespace,
             nameguard=nameguard,
@@ -54,19 +54,19 @@ class SMEDLParser(Parser):
         self,
         whitespace=None,
         nameguard=None,
-        comments_re='(\\/\\*([^*]|[\\r\\n]|(\\*+([^*\\/]|[\\r\\n])))*\\*+\\/)|(\\/\\/.*)',
+        comments_re='(\\/\\*([^*]|[*\\r\\n])*\\*\\/)|(\\/\\/.*)',
         eol_comments_re=None,
         ignorecase=None,
         left_recursion=True,
         parseinfo=False,
         keywords=None,
         namechars='',
-        buffer_class=SMEDLBuffer,
+        tokenizercls=SMEDLBuffer,
         **kwargs
     ):
         if keywords is None:
             keywords = KEYWORDS
-        super(SMEDLParser, self).__init__(
+        super().__init__(
             whitespace=whitespace,
             nameguard=nameguard,
             comments_re=comments_re,
@@ -76,7 +76,7 @@ class SMEDLParser(Parser):
             parseinfo=parseinfo,
             keywords=keywords,
             namechars=namechars,
-            buffer_class=buffer_class,
+            tokenizercls=tokenizercls,
             **kwargs
         )
 
@@ -122,10 +122,8 @@ class SMEDLParser(Parser):
             with self._option():
                 self._token('pointer')
             with self._option():
-                self._token('thread')
-            with self._option():
                 self._token('opaque')
-            self._error('no available options')
+            self._error('expecting one of: char double float int opaque pointer string')
 
     @tatsumasu()
     def _start_(self):  # noqa
@@ -218,7 +216,7 @@ class SMEDLParser(Parser):
                     self._token('internal')
                 with self._option():
                     self._token('exported')
-                self._error('no available options')
+                self._error('expecting one of: exported imported internal')
         self.name_last_node('type')
 
         def sep3():
@@ -303,7 +301,7 @@ class SMEDLParser(Parser):
                 self._token('->')
                 self._identifier_()
                 self.name_last_node('end_state')
-            self._error('no available options')
+            self._error('expecting one of: step_definition step_event_definition')
         self.ast._define(
             ['end_state', 'rest', 'step'],
             []
@@ -381,7 +379,7 @@ class SMEDLParser(Parser):
             with self._option():
                 self._void()
                 self.name_last_node('first')
-            self._error('no available options')
+            self._error('expecting one of: action assignment call_stmt decrement increment raise_stmt')
         self.ast._define(
             ['first', 'rest'],
             []
@@ -400,7 +398,7 @@ class SMEDLParser(Parser):
                 self._raise_stmt_()
             with self._option():
                 self._call_stmt_()
-            self._error('no available options')
+            self._error('expecting one of: /[a-zA-Z][A-Za-z0-9_]*/ assignment call_stmt decrement identifier increment raise raise_stmt')
 
     @tatsumasu()
     def _assignment_(self):  # noqa
@@ -541,7 +539,7 @@ class SMEDLParser(Parser):
                         self._token('==')
                     with self._option():
                         self._token('!=')
-                    self._error('no available options')
+                    self._error('expecting one of: != ==')
 
         def block0():
             self._comparison_expr_()
@@ -561,7 +559,7 @@ class SMEDLParser(Parser):
                         self._token('>=')
                     with self._option():
                         self._token('>')
-                    self._error('no available options')
+                    self._error('expecting one of: < <= > >=')
 
         def block0():
             self._bitshift_expr_()
@@ -577,7 +575,7 @@ class SMEDLParser(Parser):
                         self._token('<<')
                     with self._option():
                         self._token('>>')
-                    self._error('no available options')
+                    self._error('expecting one of: << >>')
 
         def block0():
             self._additive_expr_()
@@ -593,7 +591,7 @@ class SMEDLParser(Parser):
                         self._token('+')
                     with self._option():
                         self._token('-')
-                    self._error('no available options')
+                    self._error('expecting one of: + -')
 
         def block0():
             self._multiplicative_expr_()
@@ -611,7 +609,7 @@ class SMEDLParser(Parser):
                         self._token('/')
                     with self._option():
                         self._token('%')
-                    self._error('no available options')
+                    self._error('expecting one of: % * /')
 
         def block0():
             self._unary_expr_()
@@ -638,7 +636,7 @@ class SMEDLParser(Parser):
                 self._atom_()
             with self._option():
                 self._atom_()
-            self._error('no available options')
+            self._error('expecting one of: ! + - atom helper_call literal parenthesized var_or_param ~')
 
     @tatsumasu()
     def _atom_(self):  # noqa
@@ -651,7 +649,7 @@ class SMEDLParser(Parser):
                 self._parenthesized_()
             with self._option():
                 self._var_or_param_()
-            self._error('no available options')
+            self._error('expecting one of: ( /[a-zA-Z][A-Za-z0-9_]*/ bool char float helper_call identifier integer literal null parenthesized string var_or_param')
 
     @tatsumasu()
     def _literal_(self):  # noqa
@@ -686,7 +684,7 @@ class SMEDLParser(Parser):
                 self.name_last_node('value')
                 self._constant('null')
                 self.name_last_node('type')
-            self._error('no available options')
+            self._error('expecting one of: /"[^"\\\\\\n]*(?:\\\\.[^"\\\\\\n]*)*"/ /\'(?:[^\'\\\\\\n]|\\\\[0-7]{1,3}|\\\\x[0-9a-fA-F]{2}|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}|\\\\[\'"?\\\\abfnrtv])\'/ /[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+/ /[0-9]+/ NULL bool char false float integer null string true')
         self.ast._define(
             ['type', 'value'],
             []
@@ -753,7 +751,7 @@ class SMEDLParser(Parser):
                         self.name_last_node('value')
                         self._constant('null')
                         self.name_last_node('type')
-                    self._error('no available options')
+                    self._error('expecting one of: /"[^"\\\\\\n]*(?:\\\\.[^"\\\\\\n]*)*"/ /\'(?:[^\'\\\\\\n]|\\\\[0-7]{1,3}|\\\\x[0-9a-fA-F]{2}|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}|\\\\[\'"?\\\\abfnrtv])\'/ /[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+/ /[0-9]+/ NULL bool char false float integer null string true')
             with self._option():
                 with self._group():
                     self._token('+')
@@ -782,7 +780,7 @@ class SMEDLParser(Parser):
                 self.name_last_node('value')
                 self._constant('signed_int')
                 self.name_last_node('type')
-            self._error('no available options')
+            self._error('expecting one of: + - /"[^"\\\\\\n]*(?:\\\\.[^"\\\\\\n]*)*"/ /\'(?:[^\'\\\\\\n]|\\\\[0-7]{1,3}|\\\\x[0-9a-fA-F]{2}|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}|\\\\[\'"?\\\\abfnrtv])\'/ /[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+/ /[0-9]+/ NULL bool char false float integer null string true')
         self.ast._define(
             ['type', 'value'],
             []
@@ -798,7 +796,7 @@ class SMEDLParser(Parser):
 
     @tatsumasu()
     def _char_(self):  # noqa
-        self._pattern("'(?:[^'\\\\\\n]|\\\\[0-7]{1,3}|\\\\x[0-9a-fA-F]+|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}|\\\\[^0-7xuU])'")
+        self._pattern('\'(?:[^\'\\\\\\n]|\\\\[0-7]{1,3}|\\\\x[0-9a-fA-F]{2}|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}|\\\\[\'"?\\\\abfnrtv])\'')
 
     @tatsumasu()
     def _string_(self):  # noqa
@@ -815,7 +813,7 @@ class SMEDLParser(Parser):
                 self._token('false')
                 self._constant(0)
                 self.name_last_node('@')
-            self._error('no available options')
+            self._error('expecting one of: false true')
 
     @tatsumasu()
     def _null_(self):  # noqa
@@ -826,7 +824,7 @@ class SMEDLParser(Parser):
                 self._token('null')
                 self._constant('NULL')
                 self.name_last_node('@')
-            self._error('no available options')
+            self._error('expecting one of: NULL null')
 
 
 class SMEDLSemantics(object):

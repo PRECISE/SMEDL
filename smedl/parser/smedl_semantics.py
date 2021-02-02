@@ -43,8 +43,6 @@ class SmedlSemantics(common_semantics.CommonSemantics):
             return value_type == 'string'
         elif var_type is expr.SmedlType.POINTER:
             return value_type == 'null'
-        elif var_type is expr.SmedlType.THREAD:
-            return False
         elif var_type is expr.SmedlType.OPAQUE:
             # TODO Should we allow opaques to be initialized like strings?
             return False

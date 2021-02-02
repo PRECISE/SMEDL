@@ -95,8 +95,6 @@ params[{{e.idx}}].v.
         s
     {%- elif e.type is sameas SmedlType.POINTER -%}
         p
-    {%- elif e.type is sameas SmedlType.THREAD -%}
-        th
     {%- elif e.type is sameas SmedlType.OPAQUE -%}
         o
     {%- endif %}
@@ -181,8 +179,6 @@ mon->s.{{a.var}}--;
     }
     {% elif param_type is sameas SmedlType.POINTER %}
     new_params[{{loop.index0}}].v.p = {{expression(a.params[loop.index0])}};
-    {% elif param_type is sameas SmedlType.THREAD %}
-    new_params[{{loop.index0}}].v.th = {{expression(a.params[loop.index0])}};
     {% elif param_type is sameas SmedlType.OPAQUE %}
     if (!smedl_assign_opaque(&new_params[{{loop.index0}}].v.o, {{expression(a.params[loop.index0])}})) {
         /* malloc fail */

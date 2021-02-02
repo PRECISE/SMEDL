@@ -52,8 +52,6 @@ namespace SMEDL {
             return 0;
         }
         msg.SMEDL_{{conn.channel}}_ID{{loop.index0}} = ptr_str;
-        {% elif param is sameas SmedlType.STRING %}
-        {% unsupported "'thread' type cannot be transported over ROS" %}
         {% elif param is sameas SmedlType.OPAQUE %}
         //TODO Revise so that opaque can be any type
         msg.SMEDL_{{conn.channel}}_ID{{loop.index0}}.insert(
@@ -79,8 +77,6 @@ namespace SMEDL {
             return 0;
         }
         msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}} = ptr_str;
-        {% elif param is sameas SmedlType.STRING %}
-        {% unsupported "'thread' type cannot be transported over ROS" %}
         {% elif param is sameas SmedlType.OPAQUE %}
         msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}}.insert(
             msg.SMEDL_{{conn.channel}}_PARAM{{loop.index0}}.end(),
@@ -121,8 +117,6 @@ namespace SMEDL {
             ROS_ERROR("Could not convert string to pointer (overflow or bad format)");
             return;
         }
-        {% elif param is sameas SmedlType.THREAD %}
-        {% unsupported "'thread' type cannot be transported over ROS" %}
         {% elif param is sameas SmedlType.OPAQUE %}
         identities[{{loop.index0}}].t = SMEDL_OPAQUE;
         identities[{{loop.index0}}].v.o.data = &msg->SMEDL_{{conn.channel}}_ID{{loop.index0}}[0];
@@ -155,8 +149,6 @@ namespace SMEDL {
             ROS_ERROR("Could not convert string to pointer (overflow or bad format)");
             return;
         }
-        {% elif param is sameas SmedlType.THREAD %}
-        {% unsupported "'thread' type cannot be transported over ROS" %}
         {% elif param is sameas SmedlType.OPAQUE %}
         params[{{loop.index0}}].t = SMEDL_OPAQUE;
         params[{{loop.index0}}].v.o.data = &msg->SMEDL_{{conn.channel}}_PARAM{{loop.index0}}[0];

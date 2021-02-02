@@ -11,7 +11,7 @@
 # the file is generated.
 
 
-from __future__ import print_function, division, absolute_import, unicode_literals
+from __future__ import generator_stop
 
 import sys
 
@@ -31,13 +31,13 @@ class A4SMEDLBuffer(Buffer):
         text,
         whitespace=None,
         nameguard=None,
-        comments_re='(\\/\\*([^*]|[\\r\\n]|(\\*+([^*\\/]|[\\r\\n])))*\\*+\\/)|(\\/\\/.*)',
+        comments_re='(\\/\\*([^*]|[*\\r\\n])*\\*\\/)|(\\/\\/.*)',
         eol_comments_re=None,
         ignorecase=None,
         namechars='',
         **kwargs
     ):
-        super(A4SMEDLBuffer, self).__init__(
+        super().__init__(
             text,
             whitespace=whitespace,
             nameguard=nameguard,
@@ -54,19 +54,19 @@ class A4SMEDLParser(Parser):
         self,
         whitespace=None,
         nameguard=None,
-        comments_re='(\\/\\*([^*]|[\\r\\n]|(\\*+([^*\\/]|[\\r\\n])))*\\*+\\/)|(\\/\\/.*)',
+        comments_re='(\\/\\*([^*]|[*\\r\\n])*\\*\\/)|(\\/\\/.*)',
         eol_comments_re=None,
         ignorecase=None,
         left_recursion=True,
         parseinfo=False,
         keywords=None,
         namechars='',
-        buffer_class=A4SMEDLBuffer,
+        tokenizercls=A4SMEDLBuffer,
         **kwargs
     ):
         if keywords is None:
             keywords = KEYWORDS
-        super(A4SMEDLParser, self).__init__(
+        super().__init__(
             whitespace=whitespace,
             nameguard=nameguard,
             comments_re=comments_re,
@@ -76,7 +76,7 @@ class A4SMEDLParser(Parser):
             parseinfo=parseinfo,
             keywords=keywords,
             namechars=namechars,
-            buffer_class=buffer_class,
+            tokenizercls=tokenizercls,
             **kwargs
         )
 
@@ -122,10 +122,8 @@ class A4SMEDLParser(Parser):
             with self._option():
                 self._token('pointer')
             with self._option():
-                self._token('thread')
-            with self._option():
                 self._token('opaque')
-            self._error('no available options')
+            self._error('expecting one of: char double float int opaque pointer string')
 
     @tatsumasu()
     def _start_(self):  # noqa
@@ -145,7 +143,7 @@ class A4SMEDLParser(Parser):
                         self._syncset_decl_()
                     with self._option():
                         self._connection_defn_()
-                    self._error('no available options')
+                    self._error('expecting one of: connection_defn event_decl import_stmt monitor_decl syncset_decl')
             self._token(';')
         self._closure(block0)
         self._check_eof()
@@ -209,11 +207,41 @@ class A4SMEDLParser(Parser):
         self._identifier_()
         self.name_last_node('name')
         self._token('{')
-        self._identifier_list_()
-        self.name_last_node('monitors')
+        self._syncset_member_list_()
+        self.name_last_node('members')
         self._token('}')
         self.ast._define(
-            ['monitors', 'name'],
+            ['members', 'name'],
+            []
+        )
+
+    @tatsumasu()
+    def _syncset_member_list_(self):  # noqa
+
+        def sep0():
+            self._token(',')
+
+        def block0():
+            self._syncset_member_()
+        self._gather(block0, sep0)
+
+    @tatsumasu()
+    def _syncset_member_(self):  # noqa
+        with self._choice():
+            with self._option():
+                self._token('event')
+                self.name_last_node('kind')
+                self._cut()
+                self._identifier_()
+                self.name_last_node('name')
+            with self._option():
+                self._constant('monitor')
+                self.name_last_node('kind')
+                self._identifier_()
+                self.name_last_node('name')
+            self._error('expecting one of: /[a-zA-Z][A-Za-z0-9_]*/ event identifier')
+        self.ast._define(
+            ['kind', 'name'],
             []
         )
 
@@ -253,7 +281,7 @@ class A4SMEDLParser(Parser):
                 self._target_event_()
             with self._option():
                 self._monitor_initialization_()
-            self._error('no available options')
+            self._error('expecting one of: /[a-zA-Z][A-Za-z0-9_]*/ identifier monitor_initialization target_event')
 
     @tatsumasu()
     def _target_event_(self):  # noqa
@@ -294,7 +322,7 @@ class A4SMEDLParser(Parser):
                 with self._option():
                     self._initializer_list_()
                     self.name_last_node('state_vars')
-                self._error('no available options')
+                self._error('expecting one of: initializer_list parameter_list_nonempty')
         self._token(')')
         self.ast._define(
             ['dest_monitor', 'monitor_params', 'state_vars'],
@@ -372,7 +400,7 @@ class A4SMEDLParser(Parser):
             with self._option():
                 self._token('*')
                 self.name_last_node('kind')
-            self._error('no available options')
+            self._error('expecting one of: # $ * Id Param parameter')
         self.ast._define(
             ['kind'],
             []
@@ -405,7 +433,7 @@ class A4SMEDLParser(Parser):
                 self._token('.')
                 self._natural_()
                 self.name_last_node('index')
-            self._error('no available options')
+            self._error('expecting one of: # $ Id Param')
         self.ast._define(
             ['index', 'kind'],
             []
@@ -448,6 +476,12 @@ class A4SMEDLSemantics(object):
         return ast
 
     def syncset_decl(self, ast):  # noqa
+        return ast
+
+    def syncset_member_list(self, ast):  # noqa
+        return ast
+
+    def syncset_member(self, ast):  # noqa
         return ast
 
     def connection_defn(self, ast):  # noqa

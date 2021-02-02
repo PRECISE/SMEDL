@@ -23,6 +23,5 @@ type =
     | 'char'
     | 'string'
     | 'pointer'
-    | 'thread'
     | 'opaque'
     ;

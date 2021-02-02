@@ -62,7 +62,6 @@
  * - string - String
  * - pointer - String (by converting to uintptr_t and then rendering that in
  *   hexadecimal)
- * - thread - Not supported. Raises UnsupportedFeature.
  * - opaque - String
  */
 
