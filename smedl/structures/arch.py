@@ -945,6 +945,9 @@ class MonitorSystem(object):
         params - A list of SmedlType representing the parameters (identities)
           of this monitor
         """
+        # Monitors can't be named "pedl"
+        if name == 'pedl':
+            raise NameCollision("Monitors cannot be named 'pedl'")
         # Check if the given name is already taken
         if name in self.monitor_decls:
             raise NameCollision(

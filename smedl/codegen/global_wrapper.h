@@ -15,6 +15,61 @@ int init_{{syncset}}_syncset();
  * wrapper and all the local wrappers and monitors it manages. */
 void free_{{syncset}}_syncset();
 
+/* Run interface - Process all currently-queued events TODO in which or both
+ * directions?
+ *
+ * Returns nonzero on success, zero on failure. */
+int run_{{syncset}}_wrapper();
+
+/* Global wrapper export interface - Called by monitors and the target program
+ * to raise events for the global wrapper to process. Actual processing does
+ * not happen until run_{{syncset}}_wrapper() is called.
+ * Returns nonzero on success, zero on failure.
+ *
+ * Parameters:
+ * identites - An array of SMEDLValue of the proper length for the exporting
+ *   monitor. Ignored for events from the target program and may be set to
+ *   NULL.
+ * params - An array of SMEDLValue, one for each parameter of the exported event
+ * aux - Extra data that was passed from the imported event that caused this
+ *   exported event
+ */
+{% for decl in mon_decls %}
+{% for event in decl.spec.exported_events.keys() %}
+int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% endfor %}
+{% endfor %}
+{% for event in sys.ev_imported_connections.keys() %}
+int raise_pedl_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% endfor %}
+
+/* Global wrapper import interface - Called by an external module (e.g. the
+ * manager) to forward events to the global wrapper to be imported by monitors
+ * or sent back to the target program. Actual processing does not happen until
+ * run_{{syncset}}_wrapper() is called. TODO That's correct, right?
+ * Returns nonzero on success, zero on failure.
+ *
+ * Parameters:
+ * identites - An array of SMEDLValue of the proper length for the exporting
+ *   monitor. Ignored for events from the target program and may be set to
+ *   NULL.
+ * params - An array of SMEDLValue, one for each parameter of the exported event
+ * aux - Extra data that was passed from the imported event that caused this
+ *   exported event
+ */
+{% for conn in sys.imported_channels(syncset) %}
+//TODO
+int forward_{{syncset}}_{{}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% endfor %}
+
+//TODO
+
+
+
+
+
+
+
 /* Global wrapper export interfaces - Called by monitors to place exported
  * events into the appropriate export queues, where they will later be routed to
  * the proper destinations inside and outside the synchronous set.
