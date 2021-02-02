@@ -352,6 +352,7 @@ class Connection(object):
         """Return a sequence of the SynchronousSets the source event is routed
         to, not including its own. If the source event is routed to the
         environment, the sequence will include None."""
+        #TODO Update for PEDL events in syncsets?
         exported = False
         source_set = (None if self._source_mon is None else
                       self._source_mon.syncset)
@@ -715,6 +716,7 @@ class DeclaredMonitor(object):
     def intra_connections(self):
         """Return a list of connections where this monitor is the source and
         at least one destination is in the same synchronous set"""
+        #TODO Update for PEDL events in syncsets?
         result = []
         for conn in self._connections.values():
             for target in conn.targets:
@@ -727,6 +729,7 @@ class DeclaredMonitor(object):
     def inter_connections(self):
         """Return a list of connections where this monitor is the source and
         at least one destination is not in the same synchronous set"""
+        #TODO Update for PEDL events in syncsets?
         result = []
         for conn in self._connections.values():
             for target in conn.targets:
