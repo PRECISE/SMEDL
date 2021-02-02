@@ -157,7 +157,7 @@ fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}
     {% endif %};
     {% endfor %}
 
-    if (!create_{{target.monitor.name}}_monitor(new_identities, &init_state)) {
+    if (!create_{{target.monitor.name}}(new_identities, &init_state)) {
         /* malloc fail */
         {{free_state_vars(target)}}return 0;
     }

@@ -89,7 +89,7 @@ void free_{{mon.name}}_local_wrapper() {
  *   the initial state variable values for this monitor. A default initial
  *   state can be retrieved with default_{{spec.name}}_state()
  *   and then just the desired variables can be updated. */
-int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init_state) {
+int create_{{mon.name}}(SMEDLValue *identities, {{spec.name}}State *init_state) {
     {% if mon.params is nonempty %}
     /* Check if monitor with identities already exists */
     if (check_{{mon.name}}_monitors(identities)) {
@@ -134,7 +134,7 @@ int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init
  * aux - Extra data that is passed through to exported events unchanged. */
 {% for event in spec.imported_events.keys() %}
 
-int process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+int perform_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
 #if DEBUG >= 4
     fprintf(stderr, "Local wrapper '{{mon.name}}' processing event '{{event}}'\n");
 #endif

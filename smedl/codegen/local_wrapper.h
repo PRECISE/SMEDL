@@ -28,7 +28,8 @@ void free_{{mon.name}}_local_wrapper();
  *   the initial state variable values for this monitor. A default initial
  *   state can be retrieved with default_{{spec.name}}_state()
  *   and then just the desired variables can be updated. */
-int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init_state);
+//TODO Change to match GT API that uses set_<monitor>_<event>()
+int create_{{mon.name}}(SMEDLValue *identities, {{spec.name}}State *init_state);
 
 /* Event import interfaces - Send the respective event to the monitor(s) and
  * potentially perform dynamic instantiation.
@@ -39,7 +40,7 @@ int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init
  * params - An array of SMEDLValue, one for each parameter of the event.
  * aux - Extra data that is passed through to exported events unchanged. */
 {% for event in spec.imported_events.keys() %}
-int process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int perform_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 
 /******************************************************************************
