@@ -1,6 +1,5 @@
 @@parseinfo :: False
-#TODO Double check this regex
-@@comments :: /(\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/)|(\/\/.*)/
+@@comments :: /(\/\*([^*]|[*\r\n])*\*\/)|(\/\/.*)/
 
 identifier_list =
     ','.{identifier}*
