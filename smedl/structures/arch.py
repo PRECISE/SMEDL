@@ -482,7 +482,7 @@ class Connection(object):
                     else:
                         raise ParameterError(
                             "Source event {} does not have parameter {}"
-                            .format(self._source_ev, dest_param.index))
+                            .format(self._source_event, dest_param.index))
                 if not source_type.convertible_to(dest_type):
                     raise TypeMismatch(
                         "Param {} in source event {} does not match dest {}"
@@ -518,7 +518,7 @@ class Connection(object):
         destinations, verify that it matches. And store the type for later
         use by templates.
 
-        dest_params - An interable of Parameters
+        dest_params - An iterable of Parameters
         dest_param_types - The SmedlTypes of the dest_params
         dest_name - Name of what's being typechecked, e.g. "monitor ___"
           or "event ___", to be used in exception messages
@@ -964,6 +964,7 @@ class MonitorSystem(object):
         for mon in self._monitor_decls.values():
             if mon.syncset is None:
                 syncset = self._unused_syncset(mon.name)
+                #TODO add_syncset takes different params now
                 self.add_syncset(syncset, (mon.name,))
 
     def finalize_pedl_events(self):
@@ -985,6 +986,7 @@ class MonitorSystem(object):
 
         if len(connections_without_syncset) > 0:
             syncset_name = self._unused_syncset('PEDL')
+            #TODO add_syncset takes different params now
             self.add_syncset(syncset_name, connections_without_syncsets)
 
     def create_export_connections(self):
