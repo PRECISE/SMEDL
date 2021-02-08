@@ -116,6 +116,11 @@ class Target(object):
         return self._mon_params
 
     @property
+    def syncset(self):
+        """Get the syncset that this Target belongs to"""
+        return self._monitor.syncset
+
+    @property
     def mon_params_w_types(self):
         """Get a sequence of (Parameter, SmedlType) tuples for the monitor
         identities"""
@@ -235,23 +240,150 @@ class TargetExport(Target):
     synchronous set back to the target system. Note that "export target" and
     "target system" are two different senses of the word "target," the former
     being a connection target and the latter being the target of monitoring."""
-    def __init__(self):
-        """Initialize this export target."""
+    def __init__(self, exported_event, event_params):
+        """Initialize this export target with the given ExportedEvent and
+        iterable of Parameters"""
         super().__init__('export', None, [])
+        self._event = exported_event
+        self._event_params = tuple(event_params)
+
+        # Export targets belong to synchronous sets directly
+        self._syncset = None
+
+    @property
+    def event(self):
+        return self._event
+
+    @property
+    def event_params(self):
+        return self._event_params
+
+    @property
+    def syncset(self):
+        """Get the syncset that this Target belongs to"""
+        return self._monitor.syncset
+
+    @syncset.setter
+    def syncset(self, value):
+        if self._syncset is not None:
+            raise AlreadyInSyncset(
+                "Event {} cannot be added to a synchronous set twice."
+                .format(self._exported_event.name))
+        self._syncset = value
 
     def __eq__(self, other):
         """Return true if the other is the same target (ignoring parameters)
         as ourselves"""
         if not isinstance(other, Target):
             return NotImplemented
-        return isinstance(other, TargetExport)
+        return self._event == other._event
 
     def __repr__(self):
         # self.monitor should be None and self.mon_params empty, but printing
         # them will confirm
         mon_param_str = ', '.join([str(p) for p in self._mon_params])
-        return ('TargetExport:' + str(self._monitor) +
-                '(' + mon_param_str + ')')
+        return ('TargetExport:' + self._event)
+
+
+class ExportedEvent(object):
+    """An event exported back to the target system.
+
+    Events imported from the target system have their name and parameter info
+    stored in the relevant Connection object. Events to and from monitors have
+    their info stored in a MonitorSpec object. This class stores the name and
+    parameter info for events exported back to the target system, since it is
+    not stored anywhere else.
+
+    Parameters:
+    name - Name of the event.
+    params - List of SmedlType, or None if they should be inferred"""
+    def __init__(self, name, params=None):
+        self._name = name
+        self._infer_params = (params is None)
+        self._params = params
+
+    @property
+    def name(self):
+        """Get the name of this ExportedEvent"""
+        return self._name
+
+    def check_params(self, conn, param_list):
+        """Typecheck the given source parameters against this event's
+        parameters, doing type inferral if necessary
+
+        Parameters:
+        conn - Connection that is routing to this ExportedEvent
+        param_list - List of Parameters from the TargetExport"""
+        source_ids = conn.source_mon.params
+        source_params = conn.source_event_params
+
+        if self._params is None:
+            self._params = []
+            for param in param_list:
+                if param.identity:
+                    try:
+                        self._params.append(source_ids[param.index])
+                    except IndexError:
+                        raise ParameterError(
+                            "Source monitor {} does not have identity {}"
+                            .format(conn.source_mon.name, param.index))
+                else:
+                    try:
+                        self._params.append(source_params[param.index])
+                    except IndexError:
+                        raise ParameterError(
+                            "Source event {} does not have param {}"
+                            .format(conn.source_event, param.index))
+        else:
+            if len(self._params) != len(param_list):
+                raise ParameterError(
+                    "Wrong number of parameters for dest event {}"
+                    .format(self._name))
+            for i, param in enumerate(param_list):
+                if param.identity:
+                    try:
+                        param_type = source_ids[param.index]
+                    except IndexError:
+                        raise ParameterError(
+                            "Source monitor {} does not have identity {}"
+                            .format(conn.source_mon.name, param.index))
+                    if not param_type.convertible_to(self._params[i]):
+                        raise TypeMismatch(
+                            "Param {} in source monitor {} does not match dest"
+                            " {}".format(i, conn.source_mon.name, self._name))
+                else:
+                    try:
+                        param_type = source_params[param.index]
+                    except IndexError:
+                        raise ParameterError(
+                            "Source event {} does not have param {}"
+                            .format(conn.source_event, param.index))
+                    if not param_type.convertible_to(self._params[i]):
+                        raise TypeMismatch(
+                            "Param {} in source event {} does not match dest "
+                            "{}".format(i, conn.source_event, self._name))
+
+                self._params[i] = SmedlType.inference(param_type,
+                                                      self._params[i])
+
+    def __hash__(self):
+        """Hash based on event name"""
+        return hash(self._name)
+
+    def __eq__(self, other):
+        """Compare for equality based on event name"""
+        if not isinstance(other, ExportedEvent):
+            return NotImplemented
+        return self._name == other._name
+
+    def __repr__(self):
+        if self._infer_params and self._params is None:
+            return "{}(Inferred: ...)".format(self._name)
+        elif self._infer_params:
+            return "{}(Inferred: {})".format(self._name,
+                                             ", ".join(self._params))
+        else:
+            return "{}({})".format(self._name, ", ".join(self._params))
 
 
 class Connection(object):
@@ -330,6 +462,8 @@ class Connection(object):
 
     @property
     def syncset(self):
+        """If the source event is from the target system, get the syncset it
+        belongs to (if it has been set yet). Otherwise, return None."""
         return self._syncset
 
     @syncset.setter
@@ -350,22 +484,17 @@ class Connection(object):
     @property
     def inter_syncsets(self):
         """Return a sequence of the SynchronousSets the source event is routed
-        to, not including its own. If the source event is routed to the
-        environment, the sequence will include None."""
-        #TODO Update for PEDL events in syncsets?
-        exported = False
-        source_set = (None if self._source_mon is None else
+        to, not including its own."""
+        source_set = (self._syncset if self._source_mon is None else
                       self._source_mon.syncset)
         sets = []
         for target in self._targets:
             if target.monitor is None:
-                exported = True
-                continue
-            dest_set = target.monitor.syncset
+                dest_set = target.syncset
+            else:
+                dest_set = target.monitor.syncset
             if dest_set != source_set and dest_set not in sets:
                 sets.append(dest_set)
-        if exported:
-            sets.append(None)
         return sets
 
     def __eq__(self, other):
@@ -549,6 +678,9 @@ class Connection(object):
             self._typecheck_dest_param(
                 param, var_type, "state var {} of monitor {}".format(
                     var, target.monitor.name))
+        elif isinstance(target, TargetExport):
+            # Typecheck destination PEDL event types
+            target.event.check_params(self, target.event_params)
 
     def add_target(self, target):
         """Add a Target to this channel after verifying that it is not a
@@ -573,8 +705,8 @@ class Connection(object):
 
 class SynchronousSet(set):
     """A subclass of set customized to represent a Synchronous Set.
-    Meant to contain DeclaredMonitor and Connection (the latter only when
-    originating at the target system)."""
+    Meant to contain DeclaredMonitor, Connection (only when originating at the
+    target system), and ExportedEvent."""
     def __init__(self, name, *args, **kwargs):
         """Create a new SynchronousSet"""
         self._name = name
@@ -698,11 +830,18 @@ class DeclaredMonitor(object):
         """Exported events that are not explicitly the source of a connection
         in the architecture specification implicitly get exported back to the
         environment. This creates those implicit TargetExports."""
-        for event in self._spec.exported_events.keys():
+        exported_events = []
+        for event, params in self._spec.exported_events.items():
             if event not in self._ev_connections:
                 conn = Connection(self._sys, self, event)
                 self._ev_connections[event] = conn
-                conn.add_target(TargetExport())
+
+                name = "_{}_{}".format(self._name, event)
+                exported_event = ExportedEvent(name)
+                exported_events.append(exported_event)
+                parameters = [Parameter(False, i) for i in range(len(params))]
+                conn.add_target(TargetExport(exported_event, parameters))
+        return exported_events
 
     def name_unnamed_channels(self):
         """Assign default channel names to any remaining unnamed channels in
@@ -716,11 +855,13 @@ class DeclaredMonitor(object):
     def intra_connections(self):
         """Return a list of connections where this monitor is the source and
         at least one destination is in the same synchronous set"""
-        #TODO Update for PEDL events in syncsets?
         result = []
         for conn in self._connections.values():
             for target in conn.targets:
-                if target.monitor in self._syncset:
+                if target.monitor is None and target.syncset is self._syncset:
+                    result.append(conn)
+                    break
+                elif target.monitor in self._syncset:
                     result.append(conn)
                     break
         return result
@@ -729,11 +870,14 @@ class DeclaredMonitor(object):
     def inter_connections(self):
         """Return a list of connections where this monitor is the source and
         at least one destination is not in the same synchronous set"""
-        #TODO Update for PEDL events in syncsets?
         result = []
         for conn in self._connections.values():
             for target in conn.targets:
-                if target.monitor not in self._syncset:
+                if (target.monitor is None and
+                        target.syncset is not self._syncset):
+                    result.append(conn)
+                    break
+                elif target.monitor not in self._syncset:
                     result.append(conn)
                     break
         return result
@@ -763,6 +907,10 @@ class MonitorSystem(object):
         # Using source event names as keys
         self._ev_imported_connections = dict()
         # Values are Connections.
+
+        # Events destined for the target system. Keys are event names. Values
+        # are ExportedEvents
+        self._exported_events = dict()
 
     @property
     def name(self):
@@ -805,10 +953,13 @@ class MonitorSystem(object):
         name - Name of the synchronous set
         members - An iterable of dicts representing the monitors and PEDL
           events to be added to this synchronous set. Each dict must contain
-          two keys: 'kind' containing 'event' or 'monitor' representing
-          whether it is a PEDL event or monitor, and 'name' containing the name
-          of the PEDL event or monitor. Monitors must already be declared and
-          must not already be in a synchronous set.
+          two keys: 'kind' and 'name'. The 'kind' is one of the following:
+            * 'monitor' - The member is a monitor
+            * 'imported' - The member is an imported PEDL event
+            * 'exported' - The member is an exported PEDL event
+          and 'name' is the name of the monitor or event. Monitors must already
+          be declared and all of the given members must not already be in a
+          synchronous set.
         """
         # Ensure the synchronous set does not already exist
         if name in self._syncsets:
@@ -822,8 +973,8 @@ class MonitorSystem(object):
         # For monitors: Check if they exist, check if they are already in a
         #   synchronous set, and assign them to the new synchronous set
         # For PEDL events: Check if the event exists. If so, make sure its
-        #   Connection is not in another synchronous set and add it. If not,
-        #   create a Connection and add it.
+        #   Connection/ExportedEvent is not in another synchronous set and add
+        #   it. If not, create a Connection/ExportedEvent and add it.
         for member in members:
             kind = member['kind']
             member_name = member['name']
@@ -834,7 +985,7 @@ class MonitorSystem(object):
                     raise NameNotDefined(
                         "Monitor {} has not been declared".format(member_name))
                 syncset.add(self._monitor_decls[member_name])
-            elif kind == 'event':
+            elif kind == 'imported':
                 try:
                     self._ev_imported_connections[member_name].syncset = \
                         syncset
@@ -843,6 +994,14 @@ class MonitorSystem(object):
                     self._ev_imported_connections[member_name] = conn
                     conn.syncset = syncset
                 syncset.add(self._ev_imported_connections[member_name])
+            elif kind == 'exported':
+                try:
+                    self._exported_events[member_name].syncset = syncset
+                except KeyError:
+                    exported_ev = ExportedEvent(member_name)
+                    self._exported_events[member_name] = exported_ev
+                    exported_ev.syncset = syncset
+                syncset.add(self._exported_events[member_name])
             else:
                 raise InternalError('Syncset "{}" conatain member "{}" with '
                                     'unknown kind "{}"'.format(
@@ -851,19 +1010,24 @@ class MonitorSystem(object):
         # Add the syncset to the MonitorSystem
         self._syncsets[name] = syncset
 
-    def _unused_syncset(self, monitor_name):
-        """Find an unused synchronous set name for the named monitor. If the
-        monitor name iself is not already a synchronous set, use that.
-        Otherwise, append a number."""
-        syncset = monitor_name
+    def _unused_syncset(self, name):
+        """Find an unused synchronous set name for the given name. If the name
+        iself is not already a synchronous set, use that. Otherwise, append a
+        number."""
+        syncset = name
         i = 1
         while syncset in self._syncsets:
             i += 1
-            syncset = monitor_name + str(i)
-        if syncset != monitor_name:
-            print("Warning: {0} is already the name of a synchronous set. "
-                  "Monitor {0} will be in synchronous set {1}"
-                  .format(monitor_name, syncset))
+            syncset = name + str(i)
+        if syncset != name:
+            if name == 'PEDL':
+                print("Warning: 'PEDL' is already the name of a synchronous "
+                      "set. Using {} for the syncset containing asynchronous "
+                      "PEDL events.".format(syncset), file=sys.stderr)
+            else:
+                print("Warning: {0} is already the name of a synchronous set. "
+                      "Monitor {0} will be in synchronous set {1}"
+                      .format(name, syncset), file=sys.stderr)
         return syncset
 
     def add_connection(self, source_ev, params):
@@ -964,17 +1128,22 @@ class MonitorSystem(object):
         for mon in self._monitor_decls.values():
             if mon.syncset is None:
                 syncset = self._unused_syncset(mon.name)
-                #TODO add_syncset takes different params now
-                self.add_syncset(syncset, (mon.name,))
+                self.add_syncset(syncset, ({'kind': 'monitor',
+                                            'name': mon.name},))
 
     def finalize_pedl_events(self):
         """Check events from the target system for two things:
         1. Events that were declared but not used (print a warning)
         2. Events from the target system that are not yet in a synchronous set.
            If there are any, create a PEDL synchronous set for them, named
-           "PEDL" (or "PEDL2" etc. if "PEDL" was taken)"""
-        connections_without_syncset = []
+           "PEDL" (or "PEDL2" etc. if "PEDL" was taken)
+        In addition, check for exported monitor events that are not the source
+        of a connection. For these, create implicit Connections and
+        ExportedEvents and add them to the PEDL syncset as well.
+        """
+        pedl_evs_without_syncset = []
 
+        # Check (1) and (2) from docstring
         for conn in self._ev_imported_connections.values():
             if conn.channel is None
                 print("Warning: Event {} was not used in a connection"
@@ -982,19 +1151,19 @@ class MonitorSystem(object):
             else:
                 #TODO Do unused connections need to go into the syncset too?
                 if conn.syncset is None:
-                    connections_without_syncset.append(conn)
+                    pedl_evs_without_syncset.append(
+                        {'kind': 'imported', 'name': conn.source_event})
 
-        if len(connections_without_syncset) > 0:
-            syncset_name = self._unused_syncset('PEDL')
-            #TODO add_syncset takes different params now
-            self.add_syncset(syncset_name, connections_without_syncsets)
-
-    def create_export_connections(self):
-        """Iterate through all the monitor declarations and create export
-        targets for all the exported events that are not already the source of
-        an explicit connection."""
+        # Do last part of docstring (unconnected exported monitor events)
         for mon in self._monitor_decls.values():
-            mon.create_export_connections()
+            exported_events = mon.create_export_connections()
+            for ev in exported_events:
+                pedl_evs_without_syncset.append(
+                    {'kind': 'exported', 'name': ev.name})
+
+        if len(pedl_evs_without_syncset) > 0:
+            syncset_name = self._unused_syncset('PEDL')
+            self.add_syncset(syncset_name, pedl_evs_without_syncset)
 
     def name_unnamed_channels(self):
         """Assign default channel names to any remaining unnamed channels in
@@ -1023,12 +1192,11 @@ class MonitorSystem(object):
         - Assign default names to connections that are still unnamed
         """
         self.assign_singleton_syncsets()
-        self.create_pedl_syncset()
-        self.create_export_connections()
+        self.finalize_pedl_events()
         self.name_unnamed_channels()
 
     #TODO Code below here likely needs revising to account for syncsets now
-    # containing Connections as well as DeclaredMonitors
+    # containing Connections+ExportedEvents as well as DeclaredMonitors
 
     def imported_channels(self, syncset):
         """Get a list of Connections with sources not in the given synchronous

@@ -49,7 +49,7 @@ syncset_member_list =
 
 syncset_member =
     # Syncsets may contain PEDL events (preceded by "event") and/or monitors
-    kind:'event' ~ name:identifier
+    'event' ~ kind:`imported` name:identifier
     | kind:`monitor` name:identifier
     ;
 
