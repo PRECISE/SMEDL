@@ -858,9 +858,10 @@ class DeclaredMonitor(object):
         result = []
         for conn in self._connections.values():
             for target in conn.targets:
-                if target.monitor is None and target.syncset is self._syncset:
-                    result.append(conn)
-                    break
+                if target.monitor is None:
+                    if target.syncset is self._syncset:
+                        result.append(conn)
+                        break
                 elif target.monitor in self._syncset:
                     result.append(conn)
                     break
@@ -873,10 +874,10 @@ class DeclaredMonitor(object):
         result = []
         for conn in self._connections.values():
             for target in conn.targets:
-                if (target.monitor is None and
-                        target.syncset is not self._syncset):
-                    result.append(conn)
-                    break
+                if target.monitor is None:
+                    if target.syncset is not self._syncset:
+                        result.append(conn)
+                        break
                 elif target.monitor not in self._syncset:
                     result.append(conn)
                     break
@@ -1150,6 +1151,8 @@ class MonitorSystem(object):
                       .format(conn.source_event), file=sys.stderr)
             else:
                 #TODO Do unused connections need to go into the syncset too?
+                # Probably. If it was declared, we should be prepared to accept
+                # it and do nothing.
                 if conn.syncset is None:
                     pedl_evs_without_syncset.append(
                         {'kind': 'imported', 'name': conn.source_event})
@@ -1195,9 +1198,6 @@ class MonitorSystem(object):
         self.finalize_pedl_events()
         self.name_unnamed_channels()
 
-    #TODO Code below here likely needs revising to account for syncsets now
-    # containing Connections+ExportedEvents as well as DeclaredMonitors
-
     def imported_channels(self, syncset):
         """Get a list of Connections with sources not in the given synchronous
         set and destinations in it
@@ -1207,6 +1207,8 @@ class MonitorSystem(object):
 
         # Sort through the channels from the target system
         for conn in self._imported_connections.values():
+            if conn in self._syncsets[syncset]:
+                continue
             for target in conn.targets:
                 if target.monitor in self._syncsets[syncset]:
                     result.append(conn)
@@ -1214,12 +1216,17 @@ class MonitorSystem(object):
 
         # Sort through channels from monitors
         for decl in self._monitor_decls.values():
-            if decl not in self._syncsets[syncset]:
-                for conn in decl.connections.values():
-                    for target in conn.targets:
-                        if target.monitor in self._syncsets[syncset]:
+            if decl in self._syncsets[syncset]:
+                continue
+            for conn in decl.connections.values():
+                for target in conn.targets:
+                    if target.monitor is None:
+                        if target.event in self._syncsets[syncset]:
                             result.append(conn)
                             break
+                    elif target.monitor in self._syncsets[syncset]:
+                        result.append(conn)
+                        break
 
         return result
 
@@ -1228,6 +1235,10 @@ class MonitorSystem(object):
 
         syncset - Name of the synchronous set"""
         result = set()
-        for decl in self._syncsets[syncset]:
-            result.add(decl.spec.name)
+        for obj in self._syncsets[syncset]:
+            try:
+                result.add(obj.spec.name)
+            except AttributeError:
+                # This obj is not a monitor
+                pass
         return result
