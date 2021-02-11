@@ -9,17 +9,18 @@
 
 /* Initialization interface - Initialize the global wrapper. Must be called once
  * before importing any events. Return nonzero on success, zero on failure. */
-int init_{{syncset}}_syncset();
+int init_{{syncset}}_syncset(void);
 
 /* Cleanup interface - Tear down and free the resources used by this global
  * wrapper and all the local wrappers and monitors it manages. */
-void free_{{syncset}}_syncset();
+void free_{{syncset}}_syncset(void);
 
-/* Run interface - Process all currently-queued events.
+/* Run interface - Process all currently-queued events. Should be called after
+ * every call to forward_*().
  * TODO Name conflict if syncset is named "manager"
  *
  * Returns nonzero on success, zero on failure. */
-int run_{{syncset}}();
+int run_{{syncset}}(void);
 
 /* Global wrapper export interface - Called by monitors and the target program
  * to raise events for the global wrapper to process.
@@ -44,7 +45,7 @@ int run_{{syncset}}();
 int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
-{% for event in sys.ev_imported_connections.keys() %}
+{% for event, conn in sys.ev_imported_connections.items() if conn.syncset.name == syncset %}
 int raise_pedl_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 
@@ -74,13 +75,30 @@ int forward_{{syncset}}_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *id
 
 /* Routing functions - One for each event this synchronous set touches. Called
  * to route each event from the queue appropriately to one or more of monitors,
- * the target program, and the manager. */
+ * the target program, and the manager.
+ *
+ * Returns nonzero on success, zero on failure. */
 {% for conn in sys.imported_channels(syncset) %}
 int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% for decl in mon_decls %}
 {% for conn in decl.connections.values() %}
 int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% endfor %}
+{% endfor %}
+
+/* Local wrapper and PEDL handoff functions - Take queued event parameters and
+ * transform them for the imported monitor event or exported PEDL event, then
+ * call the local wrapper or PEDL function.
+ *
+ * Returns nonzero on success, zero on failure. */
+{% for conn, targets in dest_channel(syncset).items() %}
+{% for target in targets %}
+{% if target.target_type == 'creation' %}
+int localcreation_{{conn.channel}}_{{target.mon_string}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% else %}
+int local_{{conn.channel}}_{{target.mon_string}}_{{target.event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% endif %}
 {% endfor %}
 {% endfor %}
 

@@ -111,6 +111,15 @@ class Target(object):
         return self._monitor
 
     @property
+    def mon_string(self):
+        """Get the name of the destination DeclaredMonitor, or "pedl" if
+        ExportTarget"""
+        if self._monitor is None:
+            return "pedl"
+        else:
+            return self._monitor.name
+
+    @property
     def mon_params(self):
         """Get a tuple of Parameters for the monitor identities"""
         return self._mon_params
@@ -244,24 +253,37 @@ class TargetExport(Target):
         """Initialize this export target with the given ExportedEvent and
         iterable of Parameters"""
         super().__init__('export', None, [])
-        self._event = exported_event
+        self._exported_event = exported_event
         self._event_params = tuple(event_params)
 
         # Export targets belong to synchronous sets directly
         self._syncset = None
 
     @property
+    def exported_event(self):
+        return self._exported_event
+
+    @property
     def event(self):
-        return self._event
+        """Get the name for the exported event"""
+        return self._exported_event.name
 
     @property
     def event_params(self):
+        """Get a tuple of Parameters for the exported event"""
         return self._event_params
+
+    @property
+    def event_params_w_types(self):
+        """Get a sequence of (Parameter, SmedlType) tuples for the exported
+        event"""
+        return zip(self._event_params,
+                   self._exported_event.params)
 
     @property
     def syncset(self):
         """Get the syncset that this Target belongs to"""
-        return self._monitor.syncset
+        return self._syncset
 
     @syncset.setter
     def syncset(self, value):
@@ -276,13 +298,13 @@ class TargetExport(Target):
         as ourselves"""
         if not isinstance(other, Target):
             return NotImplemented
-        return self._event == other._event
+        return self._exported_event == other._exported_event
 
     def __repr__(self):
         # self.monitor should be None and self.mon_params empty, but printing
         # them will confirm
         mon_param_str = ', '.join([str(p) for p in self._mon_params])
-        return ('TargetExport:' + self._event)
+        return ('TargetExport:' + self._exported_event)
 
 
 class ExportedEvent(object):
@@ -306,6 +328,11 @@ class ExportedEvent(object):
     def name(self):
         """Get the name of this ExportedEvent"""
         return self._name
+
+    @property
+    def params(self):
+        """Get a sequence of SmedlType representing the event parameters"""
+        return tuple(self._params)
 
     def check_params(self, conn, param_list):
         """Typecheck the given source parameters against this event's
@@ -689,7 +716,7 @@ class Connection(object):
                     var, target.monitor.name))
         elif isinstance(target, TargetExport):
             # Typecheck destination PEDL event types
-            target.event.check_params(self, target.event_params)
+            target.exported_event.check_params(self, target.event_params)
 
     def add_target(self, target):
         """Add a Target to this channel after verifying that it is not a
@@ -697,6 +724,9 @@ class Connection(object):
         its parameters/state vars"""
         for t in self._targets:
             if target == t:
+                #TODO I think this is checking for duplicate destinations, not
+                # source and destination are the same. But both tests are
+                # important. Make sure both happen and fix the exception msg.
                 raise DuplicateConnection(
                     "Source and destination of connections cannot match.")
         self._typecheck_target(target)
@@ -860,6 +890,7 @@ class DeclaredMonitor(object):
         for conn in self._ev_connections.values():
             conn.assign_default_name_if_unnamed()
 
+    # TODO intra_connections and inter_connections still needed?
     @property
     def intra_connections(self):
         """Return a list of connections where this monitor is the source and
@@ -1236,6 +1267,37 @@ class MonitorSystem(object):
                     elif target.monitor in self._syncsets[syncset]:
                         result.append(conn)
                         break
+
+        return result
+
+    def dest_channels(self, syncset):
+        """Get all Connections with destinations in the given synchronous set
+        and return a dict, Connection -> list of Targets in syncset
+
+        syncset - Name of the synchronous set"""
+        result = {}
+
+        # Sort through the channels from the target system
+        for conn in self._imported_connections.values():
+            targets = []
+            for target in conn.targets:
+                if target.monitor in self._syncsets[syncset]:
+                    targets.append(target)
+            if targets:
+                result[conn] = targets
+
+        # Sort through channels from monitors
+        for decl in self._monitor_decls.values():
+            for conn in decl.connections.values():
+                targets = []
+                for target in conn.targets:
+                    if target.monitor is None:
+                        if target.event in self._syncsets[syncset]:
+                            targets.append(target)
+                    elif target.monitor in self._syncsets[syncset]:
+                        targets.append(target)
+                if targets:
+                    result[conn] = targets
 
         return result
 
