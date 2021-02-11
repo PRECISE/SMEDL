@@ -438,6 +438,15 @@ class Connection(object):
         return self._source_mon
 
     @property
+    def mon_string(self):
+        """If there is a source monitor, return its name. If not, return the
+        string "pedl"."""
+        if self._source_mon is None:
+            return "pedl"
+        else:
+            return self._source_mon.name
+
+    @property
     def source_event(self):
         return self._source_event
 
