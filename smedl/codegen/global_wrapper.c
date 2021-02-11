@@ -5,6 +5,7 @@
 #include "smedl_types.h"
 #include "global_event_queue.h"
 #include "{{sys.name}}_defs.h"
+#include "{{syncset}}_manager.h"
 #include "{{syncset}}_global_wrapper.h"
 //TODO Next include still needed after switching to set_* interface?
 {% for decl in mon_decls %}

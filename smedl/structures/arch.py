@@ -1301,6 +1301,42 @@ class MonitorSystem(object):
 
         return result
 
+    def exported_channels(self, syncset):
+        """Get all Connections with sources in the given synchronous set and
+        destinations not in the given synchronous set and return a dict,
+        Connection -> list of Targets not in syncset
+
+        syncset - Name of the synchronous set"""
+        result = {}
+
+        # Sort through the channels from the target system
+        for conn in self._imported_connections.values():
+            if conn not in self._syncsets[syncset]:
+                continue
+            targets = []
+            for target in conn.targets:
+                if target.monitor not in self._syncsets[syncset]:
+                    targets.append(target)
+            if targets:
+                result[conn] = targets
+
+        # Sort through channels from monitors
+        for decl in self._monitor_decls.values():
+            if decl not in self._syncsets[syncset]:
+                continue
+            for conn in decl.connections.values():
+                targets = []
+                for target in conn.targets:
+                    if target.monitor is None:
+                        if target.event not in self._syncsets[syncset]:
+                            targets.append(target)
+                    elif target.monitor not in self._syncsets[syncset]:
+                        targets.append(target)
+                if targets:
+                    result[conn] = targets
+
+        return result
+
     def syncset_spec_names(self, syncset):
         """Get a set of the MonitorSpec names for the named syncset
 
