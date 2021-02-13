@@ -20,7 +20,7 @@ int init_manager(void) {
     if (!init_{{syncset}}_syncset()) {
         return 0;
     }
-    if (!init_async()) {
+    if (!init_async(0)) {
         free_{{syncset}}_syncset();
         return 0;
     }

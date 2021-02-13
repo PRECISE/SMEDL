@@ -1,5 +1,5 @@
-#ifndef {{syncset}}_RABBITMQ_H
-#define {{syncset}}_RABBITMQ_H
+#ifndef {{syncset}}_ASYNC_H
+#define {{syncset}}_ASYNC_H
 
 /*
  * RabbitMQ Adapter
@@ -65,7 +65,9 @@
  * - opaque - String
  */
 
-#include <amqp.h>
+/******************************************************************************
+ * External Interface                                                         *
+ ******************************************************************************/
 
 /* Current message format version. Increment the major version whenever making
  * a backward-incompatible change to the message format. Increment the minor
@@ -74,6 +76,40 @@
 #define FMT_VERSION_MAJOR 2
 #define FMT_VERSION_MINOR 0
 #define FMT_VERSION_STRING "smedl-fmt2.0"
+
+/* Initialize RabbitMQ adapter. The blocking parameter must be 0 or 1--see
+ * run_async() for more info on what that means.
+ *
+ * Returns nonzero on success, zero on failure. */
+int init_async(int blocking);
+
+/* Clean up RabbitMQ adapter.
+ *
+ * If in blocking mode, this should be run in a signal handler or separate
+ * thread, and it will cause run_async() to return. */
+void free_async(void);
+
+/* Give the RabbitMQ adapter a chance to process messages.
+ *
+ * If the adapter is in blocking mode, this call does not return until
+ * free_async() is called. Once all pending messages have been handled, it will
+ * keep waiting for more.
+ *
+ * Returns nonzero on success, zero on failure. */
+int run_async(void);
+
+/* Event forwarding functions - Send an asynchronous event over RabbutMQ.
+ *
+ * Returns nonzero on success, zero on failure. */
+{% for conn in sys.exported_channels(syncset).keys() %}
+int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% endfor %}
+
+/******************************************************************************
+ * End of External Interface                                                  *
+ ******************************************************************************/
+
+#include <amqp.h>
 
 /* A struct to keep track of what has been initialized and what has not, so
  * cleanup can happen properly */
@@ -108,39 +144,9 @@ typedef struct {
  * RabbitMQState, needed when later sending a message out. Used as the aux
  * parameter for SMEDL API calls. */
 typedef struct {
-    RabbitMQState *state;
     char correlation_id[257];
     void *aux;
 } RabbitMQAux;
-
-/* Signal handler for SIGINT and SIGTERM. Set the interrupted flag to nonzero
- * (1 normally, 2 if there was also an error reinstating the signal handler.) */
-void set_interrupted(int signum);
-
-/* Handle an incoming message by calling the proper global wrapper import
- * function. Return nonzero on success, zero on failure. */
-int handle_message(RabbitMQState *rmq_state, amqp_envelope_t *envelope);
-
-/* Main loop: Start consuming events. Return nonzero on success (when triggered
- * by a signal), zero on failure. */
-int consume_events(InitStatus *init_status, RabbitMQState *rmq_state);
-
-/* While waiting for a regular message, occasionally a non-Basic.Deliver frame
- * will arrive. That frame must be processed before continuing. This function
- * does that. Returns nonzero on success, zero on failure. */
-int handle_other_frame(InitStatus *init_status, RabbitMQState *rmq_state);
-
-/* Send a message over RabbitMQ. Return nonzero on success, zero on failure. */
-int send_message(RabbitMQState *rmq_state, const char *routing_key,
-        const char *correlation_id, const char *msg, size_t len);
-
-/* Message send functions - Send an exported message. To be used as the
- * callbacks in the global wrapper. */
-{% for decl in mon_decls %}
-{% for conn in decl.inter_connections %}
-int send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
-{% endfor %}
-{% endfor %}
 
 /* Open the file named "fname" in the current directory, if it exists. Strip
  * out any C++-style comments that are the first non-whitespace on their line.
@@ -154,20 +160,34 @@ int send_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params
  * on failure. */
 int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf);
 
-/* Do all initialization. Return nonzero on success, zero on failure */
-int init(InitStatus *init_status, RabbitMQState *rmq_state,
-        RabbitMQConfig *rmq_config);
-
-/* Do cleanup. Use init_status to determine what needs to be cleaned up. Return
- * nonzero on success, zero on failure. */
-int cleanup(InitStatus *init_status, RabbitMQState *rmq_state);
-
 /* Initialize RabbitMQ. Return nonzero on success, zero on failure. */
-int init_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state,
-        RabbitMQConfig *rmq_config);
+int init_rabbitmq(RabbitMQConfig *rmq_config);
 
 /* Do RabbitMQ cleanup. Use init_status to determine what needs to be cleaned
  * up. Return nonzero on success, zero on failure. */
-int cleanup_rabbitmq(InitStatus *init_status, RabbitMQState *rmq_state);
+int cleanup_rabbitmq(void);
 
-#endif /* {{syncset}}_RABBITMQ_H */
+/* Consume and process one RabbitMQ message.
+ *
+ * Return 0 if there was an error.
+ * Return 1 if a message was consumed.
+ * Return 2 if:
+ *  - In blocking mode, no message was received before the timeout.
+ *  - In non-blocking mode, no message was pending.
+ */
+int consume_message(void);
+
+/* While waiting for a regular message, occasionally a non-Basic.Deliver frame
+ * will arrive. That frame must be processed before continuing. This function
+ * does that. Returns nonzero on success, zero on failure. */
+int handle_other_frame(void);
+
+/* Handle an incoming message by calling the proper global wrapper import
+ * function. Return nonzero on success, zero on failure. */
+int handle_message(amqp_envelope_t *envelope);
+
+/* Send a message over RabbitMQ. Return nonzero on success, zero on failure. */
+int send_message(const char *routing_key, const char *correlation_id,
+        const char *msg, size_t len);
+
+#endif /* {{syncset}}_ASYNC_H */
