@@ -69,6 +69,15 @@ int process_queue(void) {
             {% for conn in sys.imported_channels(syncset) %}
             case CHANNEL_{{conn.channel}}:
                 success = deliver_{{conn.mon_string}}_{{conn.source_event}}(identities, params, aux) && success;
+                {% if conn.source_mon is not none %}
+                {% for param_type in conn.source_mon.params %}
+                {% if param_type is sameas SmedlType.STRING %}
+                free(identites[{{loop.index0}}].v.s);
+                {% elif param_type is sameas SmedlType.OPAQUE %}
+                free(identites[{{loop.index0}}].v.o.data);
+                {% endif %}
+                {% endfor %}
+                {% endif %}
                 {% for param_type in conn.source_event_params %}
                 {% if param_type is sameas SmedlType.STRING %}
                 free(params[{{loop.index0}}].v.s);
@@ -81,6 +90,15 @@ int process_queue(void) {
             {% for conn in sys.exported_channels(syncset).keys() %}
             case CHANNEL_{{conn.channel}}:
                 success = deliver_{{conn.mon_string}}_{{conn.source_event}}(identities, params, aux) && success;
+                {% if conn.source_mon is not none %}
+                {% for param_type in conn.source_mon.params %}
+                {% if param_type is sameas SmedlType.STRING %}
+                free(identites[{{loop.index0}}].v.s);
+                {% elif param_type is sameas SmedlType.OPAQUE %}
+                free(identites[{{loop.index0}}].v.o.data);
+                {% endif %}
+                {% endfor %}
+                {% endif %}
                 {% for param_type in conn.source_event_params %}
                 {% if param_type is sameas SmedlType.STRING %}
                 free(params[{{loop.index0}}].v.s);
@@ -92,9 +110,8 @@ int process_queue(void) {
             {% endfor %}
         }
 
-        // TODO Should malloc/free identities too
-        /* Event params were malloc'd. They are no longer needed. (String and
-         * opaque data were already free'd in the switch.) */
+        /* Ids and event params were malloc'd. They are no longer needed.
+         * (String and opaque data were already free'd in the switch.) */
         free(params);
     }
     return success;
@@ -106,14 +123,26 @@ int process_queue(void) {
  * Returns nonzero on success and zero on failure. */
 {# -------------------------------------------------------------------------- #}
 {% macro enqueue(conn) -%}
-{% set params_len = conn.source_event_params|length %}
-//TODO Make a copy of identities too
-SMEDLValue *params_copy = smedl_copy_array(params, {{params_len}});
-if (params_copy == NULL) {
+{% if conn.source_mon is not none %}
+{% set ids_len = conn.source_mon.params|length %}
+SMEDLValue *ids_copy = smedl_copy_array(identities, {{ids_len}});
+if (ids_copy == NULL) {
     return 0;
 }
-if (!push_global_event(&queue, CHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
+{% endif %}
+{% set params_len = conn.source_event_params|length %}
+SMEDLValue *params_copy = smedl_copy_array(params, {{params_len}});
+if (params_copy == NULL) {
+    {% if conn.source_mon is not none %}
+    smedl_free_array(ids_copy, {{ids_len}});
+    {% endif %}
+    return 0;
+}
+if (!push_global_event(&queue, CHANNEL_{{conn.channel}}, ids_copy, params_copy, aux)) {
     smedl_free_array(params_copy, {{params_len}});
+    {% if conn.source_mon is not none %}
+    smedl_free_array(ids_copy, {{ids_len}});
+    {% endif %}
     return 0;
 }
 return 1;
