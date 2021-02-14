@@ -1,6 +1,10 @@
+{% if pure_async %}
+#include <stdio.h>
+{% else %}
 #if DEBUG > 0
 #include <stdio.h>
 #endif
+{% endif %}
 #include <stdlib.h>
 #include "smedl_types.h"
 #include "global_event_queue.h"
@@ -8,6 +12,12 @@
 #include "{{syncset}}_global_wrapper.h"
 #include "{{syncset}}_async.h"
 #include "{{syncset}}_manager.h"
+{% if pure_async %}
+#include <signal.h>
+
+/* Set to 1 to initiate clean shutdown. */
+volatile sig_atomic_t smedl_interrupted = 0;
+{% endif %}
 
 /* Manager event queue */
 static GlobalEventQueue queue;
@@ -34,13 +44,35 @@ void free_manager(void) {
     free_{{syncset}}_syncset();
 }
 
+{% if pure_async %}
+/* Run interface - This is a pure asynchronous manager (no PEDL events are
+ * attached synchronously). Run until the program is interrupted with SIGINT
+ * or SIGTERM (or smedl_interrupted is set to nonzero, the action taken by
+ * the handlers for these signals).
+ *
+ * Returns nonzero on success and zero on failure. */
+{% else %}
 /* Run interface - Process all pending events in all attached synchronous sets
  * and network interfaces.
  *
  * Returns nonzero on success and zero on failure. */
+{% endif %}
 int run_manager(void) {
     int result = 1;
 
+    {% if pure_async %}
+    while (!smedl_interrupted) {
+        if (!run_async(1)) {
+            fprintf("Error while running network endpoint\n");
+            result = 0;
+        }
+
+        if (!process_queue()) {
+            printf("Error while processing manager queue\n");
+            result = 0;
+        }
+    }
+    {% else %}
     // First, run syncset wrapper to process events from the target program.
     result = run_{{syncset}}() && result;
 
@@ -48,8 +80,9 @@ int run_manager(void) {
     // run_async() call and loop not necessary, just a single process_queue().
     do {
         result = process_queue() && result;
-        result = run_async() && result;
+        result = run_async(0) && result;
     } while (queue->head != NULL);
+    {% endif %}
 
     return result;
 }
@@ -181,3 +214,49 @@ int deliver_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SM
     return forward_{{conn.mon_string}}_{{conn.source_event}}(identities, params, aux);
 }
 {% endfor %}
+{% if pure_async %}
+
+/* Signal handler for SIGINT and SIGTERM to shutdown gracefully. Sets the
+ * interrupted flag to 1. */
+static void set_interrupted(int signum) {
+    /* Windows and some other platforms reset the signal handler to the default
+     * when a signal is received. Set it back to this function. This creates a
+     * race condition on these platforms, but more reliable functions are not
+     * cross platform (not that all platforms handle signal() the same way
+     * either, or even use SIGINT and SIGTERM at all, but at least they are
+     * standard C). Anyway, the worst case scenario is two SIGINT/SIGTERM
+     * arrive back to back, the second arrives before the signal handler is
+     * set back to this function, and the program is terminated immediately
+     * instead of shutting down cleanly. The only thing lost is notifying the
+     * server of our exit so it can clean up before it notices we died. */
+    signal(signum, set_interrupted);
+    smedl_interrupted = 1;
+}
+
+int {% if cpp %}c_{% endif %}main(int argc, char **argv) {
+    // Set signal handlers so we can shut down cleanly
+    if (signal(SIGINT, set_interrupted) == SIG_ERR) {
+        fprintf("Could not set SIGINT handler\n");
+        return 2;
+    }
+    if (signal(SIGTERM, set_interrupted) == SIG_ERR) {
+        fprintf("Could not set SIGTERM handler\n");
+        return 2;
+    }
+
+    if (!init_manager()) {
+        return 1;
+    }
+
+    int result = run_manager();
+    free_manager();
+
+    if (result) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+#ifndef
+{% endif %}

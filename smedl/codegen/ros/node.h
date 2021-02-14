@@ -4,8 +4,6 @@
 #include "ros/ros.h"
 #include "{{sys.name}}_ros_config.inc"
 
-#include "{{syncset}}_global_wrapper_ros.h"
-
 extern "C" {
     #include "smedl_types.h"
 }
@@ -13,16 +11,12 @@ extern "C" {
 namespace SMEDL {
     class {{syncset}}Node {
         private:
-            {{syncset}}GlobalWrapper global_wrapper;
-
             /* NodeHandle for this node */
             ros::NodeHandle node_handle;
 
             /* Publishers for channels exported from this synchronous set */
-            {% for decl in mon_decls %}
-            {% for conn in decl.inter_connections %}
+            {% for conn in sys.exported_channels(syncset).keys() %}
             ros::Publisher pub_{{conn.channel}};
-            {% endfor %}
             {% endfor %}
 
             /* Subscribers for channels imported into this synchronous set */
@@ -47,10 +41,8 @@ namespace SMEDL {
             {{syncset}}Node & operator=(const {{syncset}}Node &other) = delete;
 
             /* Functions to send events from the global wrapper */
-            {% for decl in mon_decls %}
-            {% for conn in decl.inter_connections %}
+            {% for conn in sys.exported_channels(syncset).keys() %}
             int send_{{conn.channel}}(SMEDLValue *ids, SMEDLValue *params, void *aux);
-            {% endfor %}
             {% endfor %}
 
     };

@@ -28,13 +28,6 @@
 #include "{{syncset}}_manager.h"
 #include "{{syncset}}_async.h"
 
-/* 1 if running in blocking mode, 0 if not */
-static volatile sig_atomic_t blocking_mode;
-
-/* Used in blocking mode. free_async() sets to 1 to cause run_async() to
- * return. */
-static volatile sig_atomic_t cleanup = 0;
-
 /* RabbitMQ state */
 InitStatus init_status;
 RabbitMQState rmq_state;
@@ -140,16 +133,14 @@ static int check_reply(amqp_rpc_reply_t reply, const char *fmt, ...) {
  * Initialization and teardown                                                *
  ******************************************************************************/
 
-/* Initialize RabbitMQ adapter. The blocking parameter must be 0 or 1--see
- * run_async() for more info on what that means.
+/* Initialize RabbitMQ adapter.
  *
  * Returns nonzero on success, zero on failure. */
-int init_async(int blocking) {
+int init_async(void) {
     int status = 1;
     char *conf_buf;
     init_status = {0};
     rmq_state = {.channel = 1};
-    blocking_mode = !!blocking;
     RabbitMQConfig rmq_config = {
         .hostname = "localhost",
         .port = 5672,
@@ -187,14 +178,44 @@ int init_async(int blocking) {
 
 /* Clean up RabbitMQ adapter.
  *
- * If in blocking mode, this should be run in a signal handler or separate
- * thread, and it will cause run_async() to return. */
-void free_async(void) {
-    if (blocking_mode) {
-        cleanup = 1;
-    } else {
-        cleanup_rabbitmq();
+ * Return nonzero on success, zero on error (in which case, cleanup was
+ * performed as much as possible). */
+int free_async(void) {
+    /* Use init_status to determine what needs to be cleaned up. */
+    int status, result = 1;
+    amqp_rpc_reply_t reply;
+
+    /* Free queue name memory */
+    if (init_status.queue) {
+        amqp_bytes_free(rmq_state.queue);
     }
+
+    /* Close channel */
+    if (init_status.channel) {
+        reply = amqp_channel_close(rmq_state.conn, rmq_state.channel,
+                AMQP_REPLY_SUCCESS);
+        if (!check_reply(reply, "Could not close channel")) {
+            result = 0;
+        }
+    }
+
+    /* Close the connection */
+    if (init_status.conn) {
+        reply = amqp_connection_close(rmq_state.conn, AMQP_REPLY_SUCCESS);
+        if (!check_reply(reply, "Could not close connection")) {
+            result = 0;
+        }
+    }
+
+    /* Destroy the connection */
+    if (init_status.conn_new) {
+        status = amqp_destroy_connection(rmq_state.conn);
+        if (!check_status(status, "Could not destroy connection")) {
+            result = 0;
+        }
+    }
+
+    return result;
 }
 
 /* Read a string configuration item into the char pointer, if the item is in the
@@ -502,86 +523,46 @@ int init_rabbitmq(RabbitMQConfig *rmq_config) {
     return 1;
 }
 
-/* Do RabbitMQ cleanup. Use init_status to determine what needs to be cleaned
- * up. Return nonzero on success, zero on failure. */
-int cleanup_rabbitmq(void) {
-    int status, result = 1;
-    amqp_rpc_reply_t reply;
-
-    /* Free queue name memory */
-    if (init_status.queue) {
-        amqp_bytes_free(rmq_state.queue);
-    }
-
-    /* Close channel */
-    if (init_status.channel) {
-        reply = amqp_channel_close(rmq_state.conn, rmq_state.channel,
-                AMQP_REPLY_SUCCESS);
-        if (!check_reply(reply, "Could not close channel")) {
-            result = 0;
-        }
-    }
-
-    /* Close the connection */
-    if (init_status.conn) {
-        reply = amqp_connection_close(rmq_state.conn, AMQP_REPLY_SUCCESS);
-        if (!check_reply(reply, "Could not close connection")) {
-            result = 0;
-        }
-    }
-
-    /* Destroy the connection */
-    if (init_status.conn_new) {
-        status = amqp_destroy_connection(rmq_state.conn);
-        if (!check_status(status, "Could not destroy connection")) {
-            result = 0;
-        }
-    }
-
-    return result;
-}
-
 /******************************************************************************
  * Incoming message handling                                                  *
  ******************************************************************************/
 
 /* Give the RabbitMQ adapter a chance to process messages.
  *
- * If the adapter is in blocking mode, this call does not return until either
- * an error or free_async() is called. Once all pending messages have been
- * handled, it will keep waiting for more.
- *
- * Return 0 if there is an error.
- * Return 1 if all messages are processed (nonblocking) or free_async() is
- * called (blocking).
+ * If blocking is true, block until a SMEDL event comes, process it, then
+ * return. If blocking is false, process all currently pending events and then
+ * return.
  *
  * Returns nonzero on success, zero on failure. */
-int run_async(void) {
+int run_async(int blocking) {
+    {% if pure_async %}
+    while (!smedl_interrupted) {
+    {% else %}
     while (1) {
-        int result = consume_message();
+    {% endif %}
+        int result = consume_message(blocking);
         if (result == 0) {
             return 0;
         }
-        if (!blocking_mode && result == 2) {
+        if (blocking && result == 1) {
             return 1;
         }
-        if (blocking_mode && cleanup) {
-            break;
+        if (!blocking && result == 3) {
+            return 1;
         }
     }
-
-    return cleanup_rabbitmq();
 }
 
 /* Consume and process one RabbitMQ message.
  *
  * Return 0 if there was an error.
- * Return 1 if a message was consumed.
- * Return 2 if:
+ * Return 1 if a SMEDL message was consumed.
+ * Return 2 if a non-SMEDL message was consumed.
+ * Return 3 if:
  *  - In blocking mode, no message was received before the timeout.
  *  - In non-blocking mode, no message was pending.
  */
-int consume_message(void) {
+int consume_message(int blocking) {
     int status;
     amqp_rpc_reply_t reply;
     amqp_envelope_t envelope;
@@ -593,7 +574,7 @@ int consume_message(void) {
     amqp_maybe_release_buffers(rmq_state.conn);
 
     /* Try to consume a message */
-    timeout.tv_sec = blocking_mode ? 1 : 0;
+    timeout.tv_sec = blocking ? 1 : 0;
     timeout.tv_usec = 0;
     reply = amqp_consume_message(rmq_state.conn, &envelope, &timeout, 0);
 

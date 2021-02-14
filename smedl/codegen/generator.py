@@ -403,6 +403,7 @@ class FileGenerator(CodeGenerator):
 
 class ROSGenerator(CodeGenerator):
     """Generates C code for monitor systems with the ROS adapter."""
+    #TODO Set cpp to True
     def __init__(self, **kwargs):
         """Initialize the code generator for ROS.
         Parameters match the constructor for CodeGenerator, except that a

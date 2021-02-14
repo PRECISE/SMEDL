@@ -1,6 +1,9 @@
 #ifndef {{syncset}}_MANAGER_H
 #define {{syncset}}_MANAGER_H
 
+{% if pure_async %}
+#include <signal.h>
+{% endif %}
 #include "smedl_types.h"
 
 /******************************************************************************
@@ -17,10 +20,19 @@ int init_manager(void);
  * global wrapper and network interfaces attached to it. */
 void free_manager(void);
 
+{% if pure_async %}
+/* Run interface - This is a pure asynchronous manager (no PEDL events are
+ * attached synchronously). Run until the program is interrupted with SIGINT
+ * or SIGTERM (or smedl_interrupted is set to nonzero, the action taken by
+ * the handlers for these signals).
+ *
+ * Returns nonzero on success and zero on failure. */
+{% else %}
 /* Run interface - Process all pending events in all attached synchronous sets
  * and network interfaces.
  *
  * Returns nonzero on success and zero on failure. */
+{% endif %}
 int run_manager(void);
 
 /* Manager queueing interfaces - Queue events to be forwarded to monitors or
@@ -37,6 +49,18 @@ int report_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SME
 /******************************************************************************
  * End of External Interface                                                  *
  ******************************************************************************/
+{% if pure_async %}
+
+/* Set to 1 to initiate clean shutdown. */
+extern volatile sig_atomic_t smedl_interrupted;
+{% if cpp %}
+
+/* Entry point. Allows main() to be in C++ code, but it should do nothing more
+ * than call this function and return the result. See:
+ * https://isocpp.org/wiki/faq/mixing-c-and-cpp#overview-mixing-langs */
+int c_main(int argc, char **argv);
+{% endif %}
+{% endif %}
 
 /* Queue processing function - Deliver the events in the manager queue to their
  * destinations.

@@ -77,26 +77,25 @@
 #define FMT_VERSION_MINOR 0
 #define FMT_VERSION_STRING "smedl-fmt2.0"
 
-/* Initialize RabbitMQ adapter. The blocking parameter must be 0 or 1--see
- * run_async() for more info on what that means.
+/* Initialize RabbitMQ adapter.
  *
  * Returns nonzero on success, zero on failure. */
-int init_async(int blocking);
+int init_async(void);
 
 /* Clean up RabbitMQ adapter.
  *
- * If in blocking mode, this should be run in a signal handler or separate
- * thread, and it will cause run_async() to return. */
-void free_async(void);
+ * Return nonzero on success, zero on error (in which case, cleanup was
+ * performed as much as possible). */
+int free_async(void);
 
 /* Give the RabbitMQ adapter a chance to process messages.
  *
- * If the adapter is in blocking mode, this call does not return until
- * free_async() is called. Once all pending messages have been handled, it will
- * keep waiting for more.
+ * If blocking is true, block until a SMEDL event comes, process it, then
+ * return. If blocking is false, process all currently pending events and then
+ * return.
  *
  * Returns nonzero on success, zero on failure. */
-int run_async(void);
+int run_async(blocking);
 
 /* Event forwarding functions - Send an asynchronous event over RabbutMQ.
  *
@@ -163,19 +162,16 @@ int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf);
 /* Initialize RabbitMQ. Return nonzero on success, zero on failure. */
 int init_rabbitmq(RabbitMQConfig *rmq_config);
 
-/* Do RabbitMQ cleanup. Use init_status to determine what needs to be cleaned
- * up. Return nonzero on success, zero on failure. */
-int cleanup_rabbitmq(void);
-
 /* Consume and process one RabbitMQ message.
  *
  * Return 0 if there was an error.
- * Return 1 if a message was consumed.
- * Return 2 if:
+ * Return 1 if a SMEDL message was consumed.
+ * Return 2 if a non-SMEDL message was consumed.
+ * Return 3 if:
  *  - In blocking mode, no message was received before the timeout.
  *  - In non-blocking mode, no message was pending.
  */
-int consume_message(void);
+int consume_message(int blocking);
 
 /* While waiting for a regular message, occasionally a non-Basic.Deliver frame
  * will arrive. That frame must be processed before continuing. This function

@@ -1,24 +1,28 @@
-#include "ros/ros.h"
-#include "{{syncset}}_global_wrapper_ros.h"
+#include <ros/callback_queue.h>
+#include <ros/ros.h>
 #include "{{syncset}}_node.h"
+#include "{{sys.name}}_ros_config.inc"
 
 extern "C" {
     #include "smedl_types.h"
+    #include "{{syncset}}_manager.h"
+    #include "{{syncset}}_async.h"
 }
 
 namespace SMEDL {
+    /* The {{syncset}}Node to send and receive all ROS messages through */
+    {{syncset}}Node *{{syncset}}_node;
+
     /* Establish the {{syncset}}GlobalWrapper and interface between
      * it and ROS.
      * You must not construct a second instance before the first is
      * destroyed! */
-    {{syncset}}Node::{{syncset}}Node() : global_wrapper(this) {
+    {{syncset}}Node::{{syncset}}Node() {
         // Let node_handle be initialized by the default constructor
 
         // Advertise topics for events exported from this synchronous set
-        {% for decl in mon_decls %}
-        {% for conn in decl.inter_connections %}
+        {% for conn in sys.exported_channels(syncset).keys() %}
         pub_{{conn.channel}} = node_handle.advertise<{{conn.channel}}MsgType>({{conn.channel}}_ros_topic, queue_size);
-        {% endfor %}
         {% endfor %}
 
         // Subscribe to topics imported into this synchronous set
@@ -30,9 +34,8 @@ namespace SMEDL {
     }
 
     /* Functions to send events from the global wrapper */
-    {% for decl in mon_decls %}
-    {% for conn in decl.inter_connections %}
-    int {{syncset}}Node::smedl_cb_{{conn.channel}}(SMEDLValue *ids, SMEDLValue *params, void *aux) {
+    {% for conn in sys.exported_channels(syncset).keys() %}
+    int {{syncset}}Node::send_{{conn.channel}}(SMEDLValue *ids, SMEDLValue *params, void *aux) {
         // Construct the ROS message
         {{conn.channel}}MsgType msg;
         {% if conn.source_mon is not none %}
@@ -89,7 +92,6 @@ namespace SMEDL {
         pub_{{conn.channel}}.publish(msg);
         return 1;
     }
-    {% endfor %}
     {% endfor %}
 
     /* Callback functions for ROS subscriptions */
@@ -160,15 +162,69 @@ namespace SMEDL {
         {% endif %}
 
         // Send event to SMEDL
-        if (!global_wrapper.handle_{{conn.channel}}(identities, params, NULL)) {
+        if (!report_{{conn.mon_string}}_{{conn.source_event}}(identities, params, NULL)) {
             ROS_ERROR("Global wrapper failed to process event from {{conn.channel}}");
             return;
         }
     }
     {% endfor %}
+}
+
+/* Initialize ROS node.
+ *
+ * Returns nonzero on success, zero on failure. */
+int init_async(void) {
+    ros::init(argc, argv, "{{syncset}}_node");
+    SMEDL::{{syncset}}_node = new SMEDL::{{syncset}}Node;
+}
+
+/* Cleanup ROS node. */
+void free_async(void) {
+    delete SMEDL::{{syncset}}_node;
+}
+
+/* Give the ROS node a change to process messages.
+ *
+ * If blocking is true, block until a SMEDL event comes, process it, then
+ * return. If blocking is false, process all currently pending events and then
+ * return.
+ *
+ * Returns nonzero on success, zero on failure. */
+int run_async(blocking) {
+    if (blocking) {
+        while (ros::ok()) {
+            ros::CallOneResult result = ros::getGlobalCallbackQueue()->
+                    callOne(ros::WallDuration(0.1));
+            if (result == ros::Called) {
+                return 1;
+            } else if (result == ros::Disabled) {
+                return 0;
+            }
+        }
+        /* ROS is shutting down */
+        smedl_interrupted = 1;
+    } else {
+        if (!ros::ok()) {
+            /* ROS is shutting down */
+            smedl_interrupted = 1;
+        }
+        ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0));
+        return 1;
+    }
+}
+
+/* Event forwarding functions - Send an asynchronous event from the ROS node.
+ *
+ * Returns nonzero on success, zero on failure. */
+{% for conn in sys.exported_channels(syncset).keys() %}
+
+int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+    return SMEDL::{{syncset}}_node->send_{{conn.channel}}(identities, params, aux);
+}
+{% endfor %}
+{% if pure_async %}
 
 int main(int argc, char **argv) {
-    ros::init(argc, argv, "{{syncset}}_node");
-    SMEDL::{{syncset}}Node smedl_node;
-    ros::spin();
+    return c_main(argc, argv);
 }
+{% endif %}
