@@ -191,16 +191,6 @@ int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
 {%- endif %}
 {%- endmacro %}
 {# -------------------------------------------------------------------------- #}
-{% macro free_state_vars(target) %}
-{% for var, param in target.state_vars.items() %}
-{% if target.monitor.spec.state_vars[var].type is sameas SmedlType.STRING %}
-free(init_state.{{var}});
-{% elif target.monitor.spec.state_vars[var].type is sameas SmedlType.OPAQUE %}
-free(init_state.{{var}}.data);
-{% endif %}
-{% endfor %}
-{% endmacro %}
-{# -------------------------------------------------------------------------- #}
 {% for conn, targets in dest_channel(syncset).items() %}
 {% for target in targets %}
 
@@ -216,41 +206,20 @@ int localcreation_{{conn.channel}}_{{target.mon_string}}(SMEDLValue *identities,
     SMEDLValue *new_identities = NULL;
     {% endif %}
 
-    //TODO Update to use set_* interface
-    {{target.monitor.spec.name}}State init_state;
-    if (!default_{{target.monitor.spec.name}}_state(&init_state)) {
+    if (!create_{{target.monitor.name}}(new_identities)) {
         /* malloc fail */
         return 0;
     }
     {% for var, param in target.state_vars.items() %}
     {% set array_name = "identities" if param.identity else "params" %}
-    {% if param.source_type is sameas SmedlType.INT %}
-    init_state.{{var}} = {{array_name}}[{{param.index}}].v.i;
-    {% elif param.source_type is sameas SmedlType.FLOAT %}
-    init_state.{{var}} = {{array_name}}[{{param.index}}].v.d;
-    {% elif param.source_type is sameas SmedlType.CHAR %}
-    init_state.{{var}} = {{array_name}}[{{param.index}}].v.c;
-    {% elif param.source_type is sameas SmedlType.STRING %}
-    if (!smedl_replace_string(&init_state.{{var}}, {{array_name}}[{{param.index}}].v.s)) {
-        /* malloc fail */
-        {{free_state_vars(target)}}return 0;
+    if (!set_{{target.monitor.name}}_{{var.name}}(new_identities, {{array_name}}[{{param.index}}])) {
+        goto fail;
     }
-    {% elif param.source_type is sameas SmedlType.POINTER %}
-    init_state.{{var}} = {{array_name}}[{{param.index}}].v.p;
-    {% elif param.source_type is sameas SmedlType.OPAQUE %}
-    if (!smedl_replace_opaque(&init_state.{{var}}, {{array_name}}[{{param.index}}].v.o)) {
-        /* malloc fail */
-        {{free_state_vars(target)}}return 0;
-    }
-    {% endif %};
     {% endfor %}
 
-    if (!create_{{target.monitor.name}}(new_identities, &init_state)) {
-        /* malloc fail */
-        {{free_state_vars(target)}}return 0;
-    }
-
-    return 1;
+fail:
+    //TODO Need a way to free the created monitor
+    return 0;
 }
 {% else %}
 int local_{{conn.channel}}_{{target.mon_string}}_{{target.event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {

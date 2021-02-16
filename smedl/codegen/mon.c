@@ -396,6 +396,35 @@ int default_{{spec.name}}_state({{spec.name}}State *state) {
     return 1;
 }
 
+/* Set the value of a state variable. Intended as an alternative interface to
+ * getting the default state variables struct and modifying it when creating a
+ * monitor.
+ * Returns nonzero on success, zero on malloc failure. */
+{% for var in spec.state_vars.values() %}
+int setvar_{{spec.name}}_{{var.name}}({{spec.name}}Monitor *mon, SMEDLValue value) {
+    {% if var.type is sameas SmedlType.INT %}
+    mon->s.{{var.name}} = value.v.i;
+    {% elif var.type is sameas SmedlType.FLOAT %}
+    mon->s.{{var.name}} = value.v.d;
+    {% elif var.type is sameas SmedlType.CHAR %}
+    mon->s.{{var.name}} = value.v.c;
+    {% elif var.type is sameas SmedlType.STRING %}
+    if (!smedl_replace_string(&mon->s.{{var.name}}, value.v.s)) {
+        /* malloc fail */
+        return 0;
+    }
+    {% elif var.type is sameas SmedlType.POINTER %}
+    mon->s.{{var.name}} = value.v.p;
+    {% elif var.type is sameas SmedlType.OPAQUE %}
+    if (!smedl_replace_opaque(&mon->s.{{var.name}}, value.v.o)) {
+        /* malloc fail */
+        return 0;
+    }
+    {% endif %}
+    return 1;
+}
+
+
 /* Initialize a {{spec.name}} monitor with the provided state. Note that this
  * function takes ownership of the memory used by any strings and opaques when
  * successful! (That is, it will call free() on them when they are no longer

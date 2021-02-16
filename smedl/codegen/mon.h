@@ -118,6 +118,13 @@ int export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
  * Returns NULL on malloc failure. */
 {{spec.name}}Monitor * init_{{spec.name}}_monitor(SMEDLValue *identities);
 
+/* Set the value of a state variable. Intended as an alternative interface to
+ * getting the default state variables struct and modifying it when creating a
+ * monitor.
+ * Returns nonzero on success, zero on malloc failure. */
+{% for var_name in spec.state_vars.keys() %}
+int setvar_{{spec.name}}_{{var_name}}({{spec.name}}Monitor *mon, SMEDLValue value);
+
 /* Fill the provided {{spec.name}}State
  * with the default initial values for the monitor. Note that strings and
  * opaque data must be free()'d if they are reassigned! The following two

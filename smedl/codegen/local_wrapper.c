@@ -84,12 +84,8 @@ void free_{{mon.name}}_local_wrapper() {
  *
  * Parameters:
  * identites - An array of SMEDLValue of the proper length for this monitor.
- *   Must be fully specified; no wildcards.
- * init_state - A pointer to a {{spec.name}}State containing
- *   the initial state variable values for this monitor. A default initial
- *   state can be retrieved with default_{{spec.name}}_state()
- *   and then just the desired variables can be updated. */
-int create_{{mon.name}}(SMEDLValue *identities, {{spec.name}}State *init_state) {
+ *   Must be fully specified; no wildcards. */
+int create_{{mon.name}}(SMEDLValue *identities) {
     {% if mon.params is nonempty %}
     /* Check if monitor with identities already exists */
     if (check_{{mon.name}}_monitors(identities)) {
@@ -102,7 +98,7 @@ int create_{{mon.name}}(SMEDLValue *identities, {{spec.name}}State *init_state) 
         /* malloc fail */
         return 0;
     }
-    {{spec.name}}Monitor *mon = init_{{spec.name}}_with_state(ids_copy, init_state);
+    {{spec.name}}Monitor *mon = init_{{spec.name}}_monitor(ids_copy);
     if (mon == NULL) {
         /* malloc fail */
         smedl_free_array(ids_copy, {{mon.params|length}});
@@ -122,6 +118,30 @@ int create_{{mon.name}}(SMEDLValue *identities, {{spec.name}}State *init_state) 
     {% endif %}
     return 1;
 }
+
+/* State variable interface - Set the value of the respective state variable.
+ * Intended to be used right after monitor creation.
+ * Return nonzero on success, zero if the monitor does not exist or malloc
+ * failure.
+ *
+ * Parameters:
+ * identites - An array of SMEDLValue of the proper length for this monitor.
+ * value - The value to assign to the state variable. */
+{% for var in spec.state_vars.values() %}
+
+int set_{{mon.name}}_{{var.name}}(SMEDLValue *identities, SMEDLValue value) {
+    {% if mon.params is nonempty %}
+    {{spec.name}}Monitor *mon = getsingle_{{mon.name}}_monitor(identities);
+    if (mon == NULL) {
+        return 0;
+    }
+    return setvar_{{spec.name}}_{{var.name}}(mon, value);
+    {% else %}
+    /* Singleton monitor - This is a no-op */
+    {% endif %}
+    return 1;
+}
+{% endfor %}
 
 /* Event import interfaces - Send the respective event to the monitor(s) and
  * potentially perform dynamic instantiation.
@@ -189,6 +209,26 @@ add_fail_{{i}}:
     free(rec{{i-1}});
     {% endfor %}
 add_fail_0:
+    return NULL;
+}
+
+/* Fetch a monitor with the given identities. Identities must be fully
+ * specified (i.e. no wildcards) and if the monitor does not exist, return
+ * NULL.
+ *
+ * Returns a pointer to the {{spec.name}}Monitor or NULL.
+ */
+{{spec.name}}Monitor * getsingle_{{mon.name}}_monitor(SMEDLValue *identities) {
+    /* Fetch matching monitors from monitor map 0, then iterate through to
+     * find the full match */
+    SMEDLRecordBase *candidates;
+    candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_0, identities[0]);
+    for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
+        if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
+            return ({{mon.name}}Record *) rec)->mon;
+        }
+    }
+    /* No match */
     return NULL;
 }
 

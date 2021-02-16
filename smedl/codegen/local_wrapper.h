@@ -23,13 +23,19 @@ void free_{{mon.name}}_local_wrapper();
  * Return nonzero on success or if monitor already exists, zero on failure.
  *
  * Parameters:
+ * identites - An array of SMEDLValue of the proper length for this monitor. */
+int create_{{mon.name}}(SMEDLValue *identities);
+
+/* State variable interface - Set the value of the respective state variable.
+ * Intended to be used right after monitor creation.
+ * Return nonzero on success, zero if the monitor does not exist.
+ *
+ * Parameters:
  * identites - An array of SMEDLValue of the proper length for this monitor.
- * init_state - A pointer to a {{spec.name}}State containing
- *   the initial state variable values for this monitor. A default initial
- *   state can be retrieved with default_{{spec.name}}_state()
- *   and then just the desired variables can be updated. */
-//TODO Change to match GT API that uses set_<monitor>_<event>()
-int create_{{mon.name}}(SMEDLValue *identities, {{spec.name}}State *init_state);
+ * value - The value to assign to the state variable. */
+{% for var_name in spec.state_vars.keys() %}
+int set_{{mon.name}}_{{var_name}}(SMEDLValue *identities, SMEDLValue value);
+{% endfor %}
 
 /* Event import interfaces - Send the respective event to the monitor(s) and
  * potentially perform dynamic instantiation.
@@ -70,6 +76,14 @@ typedef struct {{mon.name}}Record {
  * Returns a linked list of {{mon.name}}Record (which may be empty, i.e. NULL).
  * If dynamic instantiation fails, returns INVALID_RECORD. */
 {{mon.name}}Record * get_{{mon.name}}_monitors(SMEDLValue *identities);
+
+/* Fetch a monitor with the given identities. Identities must be fully
+ * specified (i.e. no wildcards) and if the monitor does not exist, return
+ * NULL.
+ *
+ * Returns a pointer to the {{spec.name}}Monitor or NULL.
+ */
+{{spec.name}}Monitor * getsingle_{{mon.name}}_monitor(SMEDLValue *identities);
 
 /* Check if a monitor with the given identities is present. Return nonzero if
  * so, zero if not. */
