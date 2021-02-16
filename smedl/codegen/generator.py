@@ -88,6 +88,9 @@ class CodeGenerator(object):
         self.helpers = helpers
         self.overwrite = overwrite
 
+        # Subclasses should set to True if there is C++ code present
+        self.cpp = False
+
         # Most subclasses will use makefile generation, but vanilla
         # CodeGenerator can't (because we don't have a complete program without
         # a transport adapter).
@@ -215,16 +218,30 @@ class CodeGenerator(object):
         }
         self._render("Makefile", "Makefile", values, preserve=True)
 
-    def _write_wrappers(self, system, syncset_name):
+    def _write_systemwide(self, system):
+        """Write the files used for the entire monitoring system
+
+        Paremeters:
+        system - The MonitorSystem to generate for
+        """
+        values = {
+            "sys": system,
+        }
+        self._render("defs.h", system.name + "_defs.h", values)
+
+        # Generate Makefile, if requested
+        if self.makefile:
+            self._write_makefile(system)
+
+    def _write_wrappers(self, system, syncset):
         """Write the global wrapper and local wrappers for one synchronous set
 
         Parameters:
         system - A MonitorSystem containing the synchronous set
-        syncset_name - The name of the synchronous set whose wrappers should be
-          generated
+        syncset_name - The synchronous set whose wrappers should be generated
         """
         # Write the local wrappers
-        for mon in system.syncsets[syncset_name]:
+        for mon in system.syncsets[syncset.name]:
             values = {
                 "mon": mon,
                 "spec": mon.spec,
@@ -234,16 +251,20 @@ class CodeGenerator(object):
             self._render("local_wrapper.h", mon.name + "_local_wrapper.h",
                          values)
 
-        # Write the global wrapper
+        # Write the global wrapper and manager
         values = {
             "sys": system,
-            "syncset": syncset_name,
-            "mon_decls": system.syncsets[syncset_name],
+            "syncset": syncset.name,
+            "pure_async": syncset.pure_async,
+            "cpp": self.cpp,
+            "mon_decls": system.syncsets[syncset.name],
         }
-        self._render("global_wrapper.c", syncset_name + "_global_wrapper.c",
+        self._render("global_wrapper.c", syncset.name + "_global_wrapper.c",
                      values)
-        self._render("global_wrapper.h", syncset_name + "_global_wrapper.h",
+        self._render("global_wrapper.h", syncset.name + "_global_wrapper.h",
                      values)
+        self._render("manager.c", syncset.name + "_manager.c", values)
+        self._render("manager.h", syncset.name + "_manager.h", values)
 
     def _write_monitor(self, monitor_spec):
         """Write the files for one monitor specification
@@ -317,6 +338,9 @@ class CodeGenerator(object):
         for syncset_name in system.syncsets.keys():
             self._write_wrappers(system, syncset_name)
 
+        # Generate systemwide files
+        self._write_systemwide(system)
+
         # Generate transport adapters
         self._write_transport_adapters(system)
 
@@ -327,10 +351,6 @@ class CodeGenerator(object):
                 helpers = self._get_helpers(spec)
                 self._append_paths(full_helpers, helpers, spec.path)
             self._copy_files(full_helpers)
-
-        # Generate Makefile, if requested
-        if self.makefile:
-            self._write_makefile(system)
 
 
 class RabbitMQGenerator(CodeGenerator):
@@ -356,14 +376,16 @@ class RabbitMQGenerator(CodeGenerator):
         self._write_static_files(static)
 
         # Write RabbitMQ adapters
-        for syncset_name in system.syncsets.keys():
+        for syncset in system.syncsets.values():
             values = {
                 "sys": system,
-                "syncset": syncset_name,
-                "mon_decls": system.syncsets[syncset_name],
+                "syncset": syncset.name,
+                "pure_async": syncset.pure_async,
+                "mon_decls": system.syncsets[syncset.name],
             }
-            self._render("rabbitmq.c", syncset_name + "_rabbitmq.c", values)
-            self._render("rabbitmq.h", syncset_name + "_rabbitmq.h", values)
+            self._render("async_rabbitmq.c", syncset.name +
+                         "_async_rabbitmq.c", values)
+            self._render("async.h", syncset.name + "_async.h", values)
             self._render("rabbitmq.cfg", system.name + ".cfg",
                          values, preserve=True)
 
@@ -403,12 +425,12 @@ class FileGenerator(CodeGenerator):
 
 class ROSGenerator(CodeGenerator):
     """Generates C code for monitor systems with the ROS adapter."""
-    #TODO Set cpp to True
     def __init__(self, **kwargs):
         """Initialize the code generator for ROS.
         Parameters match the constructor for CodeGenerator, except that a
         Makefile is never generated."""
         super(ROSGenerator, self).__init__(**kwargs)
+        self.cpp = True
 
         # ROS uses catkin make, a customized version of CMake. Disable the
         # normal Makefile generation.
@@ -519,15 +541,13 @@ class ROSGenerator(CodeGenerator):
                      values, self.pkg_dir, preserve=True)
 
         # Write node sources
-        for syncset_name in system.syncsets.keys():
+        for syncset in system.syncsets.values():
             values = {
                 "sys": system,
-                "syncset": syncset_name,
-                "mon_decls": system.syncsets[syncset_name],
+                "syncset": syncset.name,
+                "pure_async": syncset.pure_async,
+                "mon_decls": system.syncsets[syncset.name],
             }
-            self._render("node.cpp", syncset_name + "_node.cpp", values)
-            self._render("node.h", syncset_name + "_node.h", values)
-            self._render("global_wrapper_ros.cpp", syncset_name +
-                         "_global_wrapper_ros.cpp", values)
-            self._render("global_wrapper_ros.h", syncset_name +
-                         "_global_wrapper_ros.h", values)
+            self._render("node.cpp", syncset.name + "_node.cpp", values)
+            self._render("node.h", syncset.name + "_node.h", values)
+            self._render("async.h", syncset.name + "_async.h", values)

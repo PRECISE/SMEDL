@@ -1,8 +1,6 @@
 #ifndef {{sys.name}}_DEFS_H
 #define {{sys.name}}_DEFS_H
 
-//TODO Add to generator.py
-
 /* Uniquely identifies any connection in the architecture */
 typedef enum {
     {% for channel in sys.imported_connections.keys() %}

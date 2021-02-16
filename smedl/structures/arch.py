@@ -756,6 +756,15 @@ class SynchronousSet(set):
         """Get the name of the synchronous set"""
         return self._name
 
+    @property
+    def pure_async(self):
+        """Return True if there are no PEDL events in this synchronous set,
+        False otherwise."""
+        for member in self:
+            if isinstance(member, (Connection, ExportedEvent)):
+                return False
+        return True
+
 
 class DeclaredMonitor(object):
     """A monitor delcaration from the architecture file"""
