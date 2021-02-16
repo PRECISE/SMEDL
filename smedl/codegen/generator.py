@@ -12,6 +12,7 @@ from jinja2 import nodes
 from jinja2 import ext
 from jinja2.exceptions import TemplateRuntimeError
 
+import smedl.structures.arch
 from smedl.structures import expr
 from smedl.parser.exceptions import SmedlException
 
@@ -196,12 +197,16 @@ class CodeGenerator(object):
         """
         syncset_mons = dict()
         for syncset in system.syncsets.values():
-            syncset_mons[syncset.name] = [decl.name for decl in syncset]
+            syncset_mons[syncset.name] = [
+                decl.name for decl in syncset
+                if isinstance(decl, smedl.structures.arch.DeclaredMonitor)]
 
         syncset_specs = dict()
         for syncset in system.syncsets.values():
             specs = []
             for decl in syncset:
+                if not isinstance(decl, smedl.structures.arch.DeclaredMonitor):
+                    continue
                 if decl.spec.name not in specs:
                     specs.append(decl.spec.name)
             syncset_specs[syncset.name] = specs
@@ -242,6 +247,8 @@ class CodeGenerator(object):
         """
         # Write the local wrappers
         for mon in system.syncsets[syncset.name]:
+            if not isinstance(mon, smedl.structures.arch.DeclaredMonitor):
+                continue
             values = {
                 "mon": mon,
                 "spec": mon.spec,
@@ -252,12 +259,14 @@ class CodeGenerator(object):
                          values)
 
         # Write the global wrapper and manager
+        mon_decls = [mon for mon in system.syncsets[syncset.name]
+                     if isinstance(mon, smedl.structures.arch.DeclaredMonitor)]
         values = {
             "sys": system,
             "syncset": syncset.name,
             "pure_async": syncset.pure_async,
             "cpp": self.cpp,
-            "mon_decls": system.syncsets[syncset.name],
+            "mon_decls": mon_decls,
         }
         self._render("global_wrapper.c", syncset.name + "_global_wrapper.c",
                      values)
@@ -377,11 +386,19 @@ class RabbitMQGenerator(CodeGenerator):
 
         # Write RabbitMQ adapters
         for syncset in system.syncsets.values():
+            #DEBUG
+            import pprint
+            print("@@@", syncset.name)
+            pprint.pprint(system.imported_channels(syncset.name))
+
+            mon_decls = [
+                mon for mon in system.syncsets[syncset.name]
+                if isinstance(mon, smedl.structures.arch.DeclaredMonitor)]
             values = {
                 "sys": system,
                 "syncset": syncset.name,
                 "pure_async": syncset.pure_async,
-                "mon_decls": system.syncsets[syncset.name],
+                "mon_decls": mon_decls,
             }
             self._render("async_rabbitmq.c", syncset.name +
                          "_async_rabbitmq.c", values)
@@ -542,11 +559,14 @@ class ROSGenerator(CodeGenerator):
 
         # Write node sources
         for syncset in system.syncsets.values():
+            mon_decls = [
+                on for mon in system.syncsets[syncset.name]
+                if isinstance(mon, smedl.structures.arch.DeclaredMonitor)]
             values = {
                 "sys": system,
                 "syncset": syncset.name,
                 "pure_async": syncset.pure_async,
-                "mon_decls": system.syncsets[syncset.name],
+                "mon_decls": mon_decls,
             }
             self._render("node.cpp", syncset.name + "_node.cpp", values)
             self._render("node.h", syncset.name + "_node.h", values)

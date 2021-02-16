@@ -191,7 +191,7 @@ int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
 {%- endif %}
 {%- endmacro %}
 {# -------------------------------------------------------------------------- #}
-{% for conn, targets in dest_channel(syncset).items() %}
+{% for conn, targets in sys.dest_channels(syncset).items() %}
 {% for target in targets %}
 
 {% if target.target_type == 'creation' %}

@@ -92,7 +92,7 @@ int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
  * call the local wrapper or PEDL function.
  *
  * Returns nonzero on success, zero on failure. */
-{% for conn, targets in dest_channel(syncset).items() %}
+{% for conn, targets in sys.dest_channels(syncset).items() %}
 {% for target in targets %}
 {% if target.target_type == 'creation' %}
 int localcreation_{{conn.channel}}_{{target.mon_string}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
