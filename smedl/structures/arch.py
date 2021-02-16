@@ -256,9 +256,6 @@ class TargetExport(Target):
         self._exported_event = exported_event
         self._event_params = tuple(event_params)
 
-        # Export targets belong to synchronous sets directly
-        self._syncset = None
-
     @property
     def exported_event(self):
         return self._exported_event
@@ -267,6 +264,11 @@ class TargetExport(Target):
     def event(self):
         """Get the name for the exported event"""
         return self._exported_event.name
+
+    @property
+    def syncset(self):
+        """Get the syncset that this Target belongs to"""
+        return self._exported_event.syncset
 
     @property
     def event_params(self):
@@ -279,19 +281,6 @@ class TargetExport(Target):
         event"""
         return zip(self._event_params,
                    self._exported_event.params)
-
-    @property
-    def syncset(self):
-        """Get the syncset that this Target belongs to"""
-        return self._syncset
-
-    @syncset.setter
-    def syncset(self, value):
-        if self._syncset is not None:
-            raise AlreadyInSyncset(
-                "Event {} cannot be added to a synchronous set twice."
-                .format(self._exported_event.name))
-        self._syncset = value
 
     def __eq__(self, other):
         """Return true if the other is the same target (ignoring parameters)
@@ -324,6 +313,9 @@ class ExportedEvent(object):
         self._infer_params = (params is None)
         self._params = params
 
+        # Exported events belong to synchronous sets directly
+        self._syncset = None
+
     @property
     def name(self):
         """Get the name of this ExportedEvent"""
@@ -333,6 +325,19 @@ class ExportedEvent(object):
     def params(self):
         """Get a sequence of SmedlType representing the event parameters"""
         return tuple(self._params)
+
+    @property
+    def syncset(self):
+        """Get the syncset that this ExportedEvent belongs to"""
+        return self._syncset
+
+    @syncset.setter
+    def syncset(self, value):
+        if self._syncset is not None:
+            raise AlreadyInSyncset(
+                "Event {} cannot be added to a synchronous set twice."
+                .format(self._name))
+        self._syncset = value
 
     def check_params(self, conn, param_list):
         """Typecheck the given source parameters against this event's
@@ -889,6 +894,7 @@ class DeclaredMonitor(object):
                 exported_events.append(exported_event)
                 parameters = [Parameter(False, i) for i in range(len(params))]
                 conn.add_target(TargetExport(exported_event, parameters))
+                self._sys.exported_events[name] = exported_event
         return exported_events
 
     def name_unnamed_channels(self):
@@ -988,6 +994,10 @@ class MonitorSystem(object):
     @property
     def ev_imported_connections(self):
         return self._ev_imported_connections
+
+    @property
+    def exported_events(self):
+        return self._exported_events
 
     def __eq__(self, other):
         """Test for equality with the system name"""
@@ -1195,7 +1205,7 @@ class MonitorSystem(object):
 
         # Check (1) and (2) from docstring
         for conn in self._ev_imported_connections.values():
-            if conn.channel is None
+            if conn.channel is None:
                 print("Warning: Event {} was not used in a connection"
                       .format(conn.source_event), file=sys.stderr)
             else:
