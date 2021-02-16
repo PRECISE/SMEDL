@@ -423,7 +423,7 @@ int setvar_{{spec.name}}_{{var.name}}({{spec.name}}Monitor *mon, SMEDLValue valu
     {% endif %}
     return 1;
 }
-
+{% endfor %}
 
 /* Initialize a {{spec.name}} monitor with the provided state. Note that this
  * function takes ownership of the memory used by any strings and opaques when

@@ -124,6 +124,7 @@ int export_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *params
  * Returns nonzero on success, zero on malloc failure. */
 {% for var_name in spec.state_vars.keys() %}
 int setvar_{{spec.name}}_{{var_name}}({{spec.name}}Monitor *mon, SMEDLValue value);
+{% endfor %}
 
 /* Fill the provided {{spec.name}}State
  * with the default initial values for the monitor. Note that strings and

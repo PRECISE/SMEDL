@@ -238,7 +238,7 @@ class CodeGenerator(object):
 
         Parameters:
         system - A MonitorSystem containing the synchronous set
-        syncset_name - The synchronous set whose wrappers should be generated
+        syncset - The synchronous set whose wrappers should be generated
         """
         # Write the local wrappers
         for mon in system.syncsets[syncset.name]:
@@ -335,8 +335,8 @@ class CodeGenerator(object):
             self._write_monitor(spec)
 
         # Generate wrappers
-        for syncset_name in system.syncsets.keys():
-            self._write_wrappers(system, syncset_name)
+        for syncset in system.syncsets.values():
+            self._write_wrappers(system, syncset)
 
         # Generate systemwide files
         self._write_systemwide(system)

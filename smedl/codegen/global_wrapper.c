@@ -119,7 +119,7 @@ result = 1;
 
 {% set routing = namespace(external=false) %}
 {% for target in conn.targets %}
-{% if target.syncset.name != syncset %}
+{% if target.target_type == 'export' and target.syncset.name != syncset %}
 {% set routing.external = true %}
 {% elif target.target_type == 'creation' %}
 result = localcreation_{{conn.channel}}_{{target.mon_string}}(identities, params, aux) && result;
