@@ -27,6 +27,7 @@ def generated_file_monitor(request):
     gen_mon.build()
     return gen_mon
 
+@pytest.mark.skip(reason="File adapter needs overhaul for manager API")
 @pytest.mark.parametrize('generated_file_monitor, test_case', test_cases,
         indirect=['generated_file_monitor'], scope='module')
 def test_monitor(generated_file_monitor, test_case):
@@ -47,6 +48,7 @@ def test_monitor(generated_file_monitor, test_case):
             'Output messages did not match expected'
     #assert stderr == ''
 
+@pytest.mark.skip(reason="File adapter needs overhaul for manager API")
 @pytest.mark.parametrize('generated_file_monitor', test_monitors,
         indirect=True)
 def test_file_names(generated_file_monitor):
@@ -75,6 +77,7 @@ def test_file_names(generated_file_monitor):
         assert mon + "_mon.c" in files
         assert mon + "_mon.h" in files
 
+@pytest.mark.skip(reason="File adapter needs overhaul for manager API")
 @pytest.mark.parametrize('mon', bad_monitors)
 def test_invalid_monitor(tmp_path, mon):
     """Test that generation of the named monitor fails

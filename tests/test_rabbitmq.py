@@ -236,11 +236,12 @@ def test_rabbitmq_names(generated_rabbitmq_monitor):
         assert syncset in files
         assert syncset + "_global_wrapper.c" in files
         assert syncset + "_global_wrapper.h" in files
-        assert syncset + "_rabbitmq.c" in files
-        assert syncset + "_rabbitmq.h" in files
+        assert syncset + "_async_rabbitmq.c" in files
+        assert syncset + "_async.h" in files
     for mon in mon_names:
         assert mon + "_local_wrapper.c" in files
         assert mon + "_local_wrapper.h" in files
     for spec in spec_names:
         assert mon + "_mon.c" in files
         assert mon + "_mon.h" in files
+    assert sys_name + "_defs.h" in files
