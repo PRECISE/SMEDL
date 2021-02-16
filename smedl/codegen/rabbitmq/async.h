@@ -95,7 +95,7 @@ int free_async(void);
  * return.
  *
  * Returns nonzero on success, zero on failure. */
-int run_async(blocking);
+int run_async(int blocking);
 
 /* Event forwarding functions - Send an asynchronous event over RabbutMQ.
  *
