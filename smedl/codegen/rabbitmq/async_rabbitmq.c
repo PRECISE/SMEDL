@@ -696,8 +696,13 @@ int handle_message(amqp_envelope_t *envelope) {
         return 1;
     }
 
+    {% if sys.imported_channels(syncset) is nonempty %}
     {% set ch_len = (sys.imported_channels(syncset)|map(attribute='channel')|
             map('length')|max) + 2 %}
+    {% else %}
+    {# There are no incoming messages. #}
+    {% set ch_len = 2 %}
+    {% endif %}
     /* Get channel name using routing key
      * Max channel length is 2 greater than the longest channel name we
      * are interested in (to account for null terminator and at least one extra
@@ -982,10 +987,16 @@ int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SM
         err("Could not create JSON object for message serialization");
         return 0;
     }
+
+    {% if conn.source_mon is not none %}
     if (cJSON_AddStringToObject(msg_json, "event", "{{conn.source_mon.name}}.{{conn.source_event}}") == NULL) {
+    {% else %}
+    if (cJSON_AddStringToObject(msg_json, "event", "{{conn.source_event}}") == NULL) {
+    {% endif %}
         err("Could not add event name to JSON for message serialization");
         goto fail;
     }
+    {% if conn.source_mon is not none %}
 
     /* Add the identities */
     cJSON *ids_json = cJSON_AddArrayToObject(msg_json, "identities");
@@ -1026,6 +1037,7 @@ int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SM
     }
     cJSON_AddItemToArray(ids_json, id);
     {% endfor %}
+    {% endif %}
 
     /* Add the event params */
     cJSON *params_json = cJSON_AddArrayToObject(msg_json, "params");
@@ -1079,8 +1091,13 @@ int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SM
         goto fail;
     }
 
+    {% if conn.source_mon is not none %}
     send_message(rmq_state, "{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}",
             aux->correlation_id, msg, strlen(msg));
+    {% else %}
+    send_message(rmq_state, "{{conn.channel}}.{{conn.source_event}}",
+            aux->correlation_id, msg, strlen(msg));
+    {% endif %}
 
     cJSON_Delete(msg_json);
     return 1;

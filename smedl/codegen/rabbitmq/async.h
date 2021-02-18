@@ -16,7 +16,7 @@
  * entire classes of routing keys.
  *
  * SMEDL message routing keys look like this:
- * <channel_name>.<event> (from the environment) or
+ * <channel_name>.<event> (from the target program) or
  * <channel_name>.<monitor>.<event>
  *
  * Only the channel name is significant as far as SMEDL's routing goes (between

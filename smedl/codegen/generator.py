@@ -386,11 +386,6 @@ class RabbitMQGenerator(CodeGenerator):
 
         # Write RabbitMQ adapters
         for syncset in system.syncsets.values():
-            #DEBUG
-            import pprint
-            print("@@@", syncset.name)
-            pprint.pprint(system.imported_channels(syncset.name))
-
             mon_decls = [
                 mon for mon in system.syncsets[syncset.name]
                 if isinstance(mon, smedl.structures.arch.DeclaredMonitor)]

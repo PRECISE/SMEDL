@@ -293,7 +293,7 @@ class TargetExport(Target):
         # self.monitor should be None and self.mon_params empty, but printing
         # them will confirm
         mon_param_str = ', '.join([str(p) for p in self._mon_params])
-        return ('TargetExport:' + self._exported_event)
+        return ('TargetExport:' + str(self._exported_event))
 
 
 class ExportedEvent(object):
@@ -1280,7 +1280,7 @@ class MonitorSystem(object):
             for conn in decl.connections.values():
                 for target in conn.targets:
                     if target.monitor is None:
-                        if target.event in self._syncsets[syncset]:
+                        if target.exported_event in self._syncsets[syncset]:
                             result.append(conn)
                             break
                     elif target.monitor in self._syncsets[syncset]:
@@ -1311,7 +1311,7 @@ class MonitorSystem(object):
                 targets = []
                 for target in conn.targets:
                     if target.monitor is None:
-                        if target.event in self._syncsets[syncset]:
+                        if target.exported_event in self._syncsets[syncset]:
                             targets.append(target)
                     elif target.monitor in self._syncsets[syncset]:
                         targets.append(target)
@@ -1347,7 +1347,7 @@ class MonitorSystem(object):
                 targets = []
                 for target in conn.targets:
                     if target.monitor is None:
-                        if target.event not in self._syncsets[syncset]:
+                        if target.exported_event not in self._syncsets[syncset]:
                             targets.append(target)
                     elif target.monitor not in self._syncsets[syncset]:
                         targets.append(target)
