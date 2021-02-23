@@ -139,8 +139,8 @@ static int check_reply(amqp_rpc_reply_t reply, const char *fmt, ...) {
 int init_async(void) {
     int status = 1;
     char *conf_buf;
-    init_status = {0};
-    rmq_state = {.channel = 1};
+    init_status = (InitStatus) {0};
+    rmq_state = (RabbitMQState) {.channel = 1};
     RabbitMQConfig rmq_config = {
         .hostname = "localhost",
         .port = 5672,
@@ -166,10 +166,10 @@ int init_async(void) {
 
     if (status) {
         /* Something failed. Clean up. */
-        cleanup(&init_status, &rmq_state);
+        free_async();
     } else {
         /* Program was terminated. Clean up. */
-        status = cleanup(&init_status, &rmq_state);
+        status = free_async();
     }
     free(conf_buf);
 
@@ -510,9 +510,9 @@ int init_rabbitmq(RabbitMQConfig *rmq_config) {
 #if DEBUG >= 4
     err("Starting RabbitMQ consumption");
 #endif
-    amqp_basic_consume(rmq_state->conn, rmq_state->channel, rmq_state->queue,
+    amqp_basic_consume(rmq_state.conn, rmq_state.channel, rmq_state.queue,
             amqp_empty_bytes, 0, 0, 0, amqp_empty_table);
-    reply = amqp_get_rpc_reply(rmq_state->conn);
+    reply = amqp_get_rpc_reply(rmq_state.conn);
     if (!check_reply(reply, "Could not start consuming events")) {
         return 0;
     }
@@ -974,7 +974,7 @@ int send_message(const char *routing_key, const char *correlation_id,
  * Returns nonzero on success, zero on failure. */
 {% for conn in sys.exported_channels(syncset).keys() %}
 
-int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux_void) {
     char ptr[40];
     char *opaque;
     int status;
@@ -1092,10 +1092,10 @@ int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SM
     }
 
     {% if conn.source_mon is not none %}
-    send_message(rmq_state, "{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}",
+    send_message("{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}",
             aux->correlation_id, msg, strlen(msg));
     {% else %}
-    send_message(rmq_state, "{{conn.channel}}.{{conn.source_event}}",
+    send_message("{{conn.channel}}.{{conn.source_event}}",
             aux->correlation_id, msg, strlen(msg));
     {% endif %}
 

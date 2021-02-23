@@ -68,20 +68,16 @@ int run_{{syncset}}(void) {
             {% for conn in sys.imported_channels(syncset) %}
             case CHANNEL_{{conn.channel}}:
                 success = route_{{syncset}}_{{conn.channel}}(identities, params, aux) && success;
-                //TODO These events were queued from outside. Need to free
-                // identities.
-                {% for param_type in conn.source_event_params %}
+                {% if conn.source_mon is not none %}
+                {% for param_type in conn.source_mon.params %}
                 {% if param_type is sameas SmedlType.STRING %}
-                free(params[{{loop.index0}}].v.s);
+                free(identites[{{loop.index0}}].v.s);
                 {% elif param_type is sameas SmedlType.OPAQUE %}
-                free(params[{{loop.index0}}].v.o.data);
+                free(identites[{{loop.index0}}].v.o.data);
                 {% endif %}
                 {% endfor %}
-                break;
-            {% for decl in mon_decls %}
-            {% for conn in decl.connections.values() %}
-            case CHANNEL_{{syncset}}_{{conn.channel}}:
-                success = route_{{syncset}}_{{conn.channel}}(identities, params, aux) && success;
+                free(identities);
+                {% endif %}
                 {% for param_type in conn.source_event_params %}
                 {% if param_type is sameas SmedlType.STRING %}
                 free(params[{{loop.index0}}].v.s);
@@ -91,6 +87,18 @@ int run_{{syncset}}(void) {
                 {% endfor %}
                 break;
             {% endfor %}
+            {% for decl in mon_decls %}
+            {% for conn in decl.connections.values() %}
+            case CHANNEL_{{conn.channel}}:
+                success = route_{{syncset}}_{{conn.channel}}(identities, params, aux) && success;
+                {% for param_type in conn.source_event_params %}
+                {% if param_type is sameas SmedlType.STRING %}
+                free(params[{{loop.index0}}].v.s);
+                {% elif param_type is sameas SmedlType.OPAQUE %}
+                free(params[{{loop.index0}}].v.o.data);
+                {% endif %}
+                {% endfor %}
+                break;
             {% endfor %}
             {% endfor %}
         }
@@ -115,11 +123,11 @@ int run_{{syncset}}(void) {
 #if DEBUG >= 4
 fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}'\n");
 #endif
-result = 1;
+int result = 1;
 
 {% set routing = namespace(external=false) %}
 {% for target in conn.targets %}
-{% if target.target_type == 'export' and target.syncset.name != syncset %}
+{% if target.syncset.name != syncset %}
 {% set routing.external = true %}
 {% elif target.target_type == 'creation' %}
 result = localcreation_{{conn.channel}}_{{target.mon_string}}(identities, params, aux) && result;

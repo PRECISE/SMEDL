@@ -30,7 +30,7 @@ int init_manager(void) {
     if (!init_{{syncset}}_syncset()) {
         return 0;
     }
-    if (!init_async(0)) {
+    if (!init_async()) {
         free_{{syncset}}_syncset();
         return 0;
     }
@@ -63,12 +63,12 @@ int run_manager(void) {
     {% if pure_async %}
     while (!smedl_interrupted) {
         if (!run_async(1)) {
-            fprintf("Error while running network endpoint\n");
+            fprintf(stderr, "Error while running network endpoint\n");
             result = 0;
         }
 
         if (!process_queue()) {
-            printf("Error while processing manager queue\n");
+            fprintf(stderr, "Error while processing manager queue\n");
             result = 0;
         }
     }
@@ -81,7 +81,7 @@ int run_manager(void) {
     do {
         result = process_queue() && result;
         result = run_async(0) && result;
-    } while (queue->head != NULL);
+    } while (queue.head != NULL);
     {% endif %}
 
     return result;
@@ -145,6 +145,7 @@ int process_queue(void) {
 
         /* Ids and event params were malloc'd. They are no longer needed.
          * (String and opaque data were already free'd in the switch.) */
+        free(identities);
         free(params);
     }
     return success;
@@ -162,6 +163,8 @@ SMEDLValue *ids_copy = smedl_copy_array(identities, {{ids_len}});
 if (ids_copy == NULL) {
     return 0;
 }
+{% else %}
+SMEDLValue *ids_copy = NULL;
 {% endif %}
 {% set params_len = conn.source_event_params|length %}
 SMEDLValue *params_copy = smedl_copy_array(params, {{params_len}});
@@ -236,11 +239,11 @@ static void set_interrupted(int signum) {
 int {% if cpp %}c_{% endif %}main(int argc, char **argv) {
     // Set signal handlers so we can shut down cleanly
     if (signal(SIGINT, set_interrupted) == SIG_ERR) {
-        fprintf("Could not set SIGINT handler\n");
+        fprintf(stderr, "Could not set SIGINT handler\n");
         return 2;
     }
     if (signal(SIGTERM, set_interrupted) == SIG_ERR) {
-        fprintf("Could not set SIGTERM handler\n");
+        fprintf(stderr, "Could not set SIGTERM handler\n");
         return 2;
     }
 
@@ -258,5 +261,4 @@ int {% if cpp %}c_{% endif %}main(int argc, char **argv) {
     }
 }
 
-#ifndef
 {% endif %}

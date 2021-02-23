@@ -225,7 +225,7 @@ add_fail_0:
     candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_0, identities[0]);
     for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
         if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
-            return ({{mon.name}}Record *) rec)->mon;
+            return (({{mon.name}}Record *) rec)->mon;
         }
     }
     /* No match */
