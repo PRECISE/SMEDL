@@ -521,9 +521,9 @@ class Connection(object):
             # Typecheck destination state var types
             for var, param in target.state_vars.items():
                 var_type = target.monitor.spec.state_vars[var].type
-            self._typecheck_dest_param(
-                param, var_type, "state var {} of monitor {}".format(
-                    var, target.monitor.name))
+                self._typecheck_dest_param(
+                    param, var_type, "state var {} of monitor {}".format(
+                        var, target.monitor.name))
 
     def add_target(self, target):
         """Add a Target to this channel after verifying that it is not a

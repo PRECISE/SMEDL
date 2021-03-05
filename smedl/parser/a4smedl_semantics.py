@@ -171,6 +171,8 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         # Create a dict for state variable initialization and check that state
         # vars all exist
         state_vars = dict()
+        if ast.state_vars is None:
+            ast['state_vars'] = []
         for initializer in ast.state_vars:
             if (initializer.var_name not in
                     self.system.monitor_decls[ast.dest_monitor].state_vars):
