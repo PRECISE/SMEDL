@@ -312,7 +312,7 @@ class Connection(object):
         known)"""
         if self._source_mon is None:
             result = list()
-            for i in range(max(self._source_ev_params.keys()) + 1):
+            for i in range(max(self._source_ev_params.keys(), default=-1) + 1):
                 result.append(self._source_ev_params.get(i))
             return result
         else:
