@@ -69,7 +69,7 @@ typedef struct {{spec.name}}Monitor {
     {% endfor %}
 
     /* Cleanup callback pointer */
-    int (*cleanup)({{spec.name}}Monitor *mon);
+    int (*cleanup)(struct {{spec.name}}Monitor *mon);
 
     /* Local event queue */
     EventQueue event_queue;

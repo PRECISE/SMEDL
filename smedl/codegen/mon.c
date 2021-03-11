@@ -34,7 +34,7 @@ void registercleanup_{{spec.name}}({{spec.name}}Monitor *mon, int (*cleanup_func
 /* Check if all final states have been reached, and if so, call the cleanup
  * callback (if registered) */
 static int check_final_states({{spec.name}}Monitor *mon) {
-    if ({% for scenario, state in spec.get_final_states.items() -%}
+    if ({% for scenario, state in spec.get_final_states().items() -%}
         mon->{{scenario}}_state == STATE_{{spec.name}}_{{scenario}}_{{state}}{% if not loop.last %} &&
         {% endif %}{% endfor %}) {
         if (mon->cleanup != NULL) {
