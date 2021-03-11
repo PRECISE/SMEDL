@@ -57,7 +57,7 @@ highlight default link smedlState       Identifier
 
 syntax match smedlInclude       "\v#include" nextgroup=smedlInclFile skipwhite skipempty
 syntax keyword smedlType        int float double char string pointer thread opaque
-syntax keyword smedlKeyword     object when else raise
+syntax keyword smedlKeyword     object when else raise finalstate
 syntax keyword smedlConstant    true false null NULL
 highlight default link smedlInclude     Include
 highlight default link smedlType        Type
