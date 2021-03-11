@@ -53,6 +53,10 @@ typedef struct {{mon.name}}Record {
     {{spec.name}}Monitor *mon;
 } {{mon.name}}Record;
 
+/* Recycle a monitor instance - Used as the callback for when final states are
+ * reached in the monitor. Return nonzero if successful, zero on failure. */
+int recycle_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
+
 /* Add the provided monitor to the monitor maps. Return a
  * {{mon.name}}Record, or NULL if unsuccessful. */
 {{mon.name}}Record * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon);

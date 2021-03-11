@@ -23,6 +23,28 @@ void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLCallback c
 }
 {% endfor %}
 
+/* Cleanup callback registration function - Set the callback for when the
+ * monitor is ready to be recycled. The callback is responsible for calling
+ * free_{{spec.name}}_monitor(). */
+void registercleanup_{{spec.name}}({{spec.name}}Monitor *mon, int (*cleanup_func)({{spec.name}}Monitor *mon)) {
+    mon->cleanup = cleanup_func;
+}
+{% if spec.get_final_states() is nonempty %}
+
+/* Check if all final states have been reached, and if so, call the cleanup
+ * callback (if registered) */
+static int check_final_states({{spec.name}}Monitor *mon) {
+    if ({% for scenario, state in spec.get_final_states.items() -%}
+        mon->{{scenario}}_state == STATE_{{spec.name}}_{{scenario}}_{{state}}{% if not loop.last %} &&
+        {% endif %}{% endfor %}) {
+        if (mon->cleanup != NULL) {
+            return mon->cleanup(mon);
+        }
+    }
+    return 1;
+}
+{% endif %}
+
 /* Queue processing function - Call the handlers for all the events in the
  * queue until it is empty.
  * Return nonzero if all handlers ran successfully, zero if not. */
@@ -53,7 +75,10 @@ static int handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
         free(params);
     }
 
-    /* Macro-step is finished. Reset the scenario execution flags. */
+    /* Macro-step is finished. */
+{% if spec.get_final_states() is nonempty %}
+    success = check_final_states(mon) && success;
+{% endif %}
     memset(&mon->ef, 0, sizeof(mon->ef));
     return success;
 }

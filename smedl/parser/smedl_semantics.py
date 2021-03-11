@@ -120,6 +120,10 @@ class SmedlSemantics(common_semantics.CommonSemantics):
                 from_state, event_name, condition, to_state, actions,
                 else_state, else_actions)
 
+        # If a final state was given, check if it exists and add it
+        if ast.final_state is not None:
+            scenario.add_final_state(ast.final_state)
+
         # Add the scenario to the monitor
         self.monitor.add_scenario(scenario)
         return ast

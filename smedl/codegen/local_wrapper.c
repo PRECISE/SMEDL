@@ -28,6 +28,9 @@ static void setup_{{mon.name}}_callbacks({{spec.name}}Monitor *mon) {
     {% for event in spec.exported_events.keys() %}
     register_{{spec.name}}_{{event}}(mon, raise_{{mon.name}}_{{event}});
     {% endfor %}
+    {% if mon.params is nonempty %}
+    registercleanup_{{spec.name}}(mon, recycle_{{mon.name}}_monitor);
+    {% endif %}
 }
 
 /* Initialization interface - Initialize the local wrapper. Must be called once
@@ -164,6 +167,13 @@ int process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
 }
 {% endfor %}
 {% if mon.params is nonempty %}
+
+/* Recycle a monitor instance - Used as the callback for when final states are
+ * reached in the monitor. Return nonzero if successful, zero on failure. */
+int recycle_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
+    remove_{{mon.name}}_monitor(mon->identities);
+    return 1;
+}
 
 /* Add the provided monitor to the monitor maps. Return a
  * {{mon.name}}Record, or NULL if unsuccessful. */
@@ -306,7 +316,7 @@ void remove_{{mon.name}}_monitor(SMEDLValue *identities) {
             /* Free the monitor itself before freeing the last record */
             {{spec.name}}Monitor *mon = (({{mon.name}}Record *) rec)->mon;
             smedl_free_array(mon->identities, {{mon.params|length}});
-            free(mon);
+            free_{{spec.name}}_monitor(mon);
             {% endif %}
             free(rec);
         }

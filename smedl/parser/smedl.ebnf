@@ -61,6 +61,7 @@ scenario_section =
 
 scenario =
     name:identifier ':'
+    ['finalstate' final_state:identifier ';']
     transitions:{transition}*
     ;
 
