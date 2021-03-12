@@ -154,10 +154,10 @@ int process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
     int success = 1;
     while (records != NULL) {
         {{spec.name}}Monitor *mon = records->mon;
+        records = ({{mon.name}}Record *) records->r.next;
         if (!execute_{{spec.name}}_{{event}}(mon, params, aux)) {
             success = 0;
         }
-        records = ({{mon.name}}Record *) records->r.next;
     }
     return success;
     {% else %}
@@ -319,6 +319,7 @@ void remove_{{mon.name}}_monitor(SMEDLValue *identities) {
             free_{{spec.name}}_monitor(mon);
             {% endif %}
             free(rec);
+            break;
         }
     }
     {% endfor %}

@@ -76,10 +76,10 @@ static int handle_{{spec.name}}_queue({{spec.name}}Monitor *mon) {
     }
 
     /* Macro-step is finished. */
+    memset(&mon->ef, 0, sizeof(mon->ef));
 {% if spec.get_final_states() is nonempty %}
     success = check_final_states(mon) && success;
 {% endif %}
-    memset(&mon->ef, 0, sizeof(mon->ef));
     return success;
 }
 
@@ -224,7 +224,8 @@ mon->s.{{a.var}}--;
     {{expression(param)}}
         {%- if not loop.last %}, {%+ endif -%}
     {%- endfor -%}
-    );
+    );ndle
+
 {%- endif %}
 {%- endmacro %}
 {# -------------------------------------------------------------------------- #}
