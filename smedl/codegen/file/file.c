@@ -22,10 +22,10 @@ static GlobalEventQueue queue = {0};
 {% for syncset in conn.inter_syncsets %}
 {% if syncset is none %}
 
-success = success && write_{{conn.channel}}(identities, params, aux);
+success = write_{{conn.channel}}(identities, params, aux) && success;
 {%- else %}
 
-success = success && import_{{syncset.name}}_{{conn.channel}}(identities, params, aux);
+success = import_{{syncset.name}}_{{conn.channel}}(identities, params, aux) && success;
 {%- endif %}
 {% endfor %}
 {% for param in conn.source_event_params %}
@@ -161,7 +161,7 @@ int write_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux
     printf("],\n"
         "\t\"aux\": %.*s\n", (int) aux_data->len, aux_data->data);
     printf("}\n");
-    return 0;
+    return 1;
 }
 {% endfor %}
 {% endfor %}
