@@ -60,12 +60,12 @@ int handle_queue() {
             {% endfor %}
             {% endfor %}
         }
+        /* Event params were malloc'd in the enqueue_*() functions. They are no
+         * longer needed. (String and opaque data were already free'd in the
+         * switch.) */
+        free(params);
     }
 
-    /* Event params were malloc'd in the enqueue_*() functions. They are no
-     * longer needed. (String and opaque data were already free'd in the
-     * switch.) */
-    free(params);
     return success;
 }
 
@@ -365,6 +365,13 @@ int init_global_wrappers() {
 fail_init_{{syncset.name}}:
     {% endfor %}
     return 0;
+}
+
+/* Cleanup the global wrappers and the local wrappers and monitors within */
+void free_global_wrappers() {
+    {% for syncset in sys.syncsets.values() %}
+    free_{{syncset.name}}_syncset();
+    {% endfor %}
 }
 
 /* Print a help message to stderr */
