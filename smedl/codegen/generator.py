@@ -395,9 +395,9 @@ class RabbitMQGenerator(CodeGenerator):
                 "pure_async": syncset.pure_async,
                 "mon_decls": mon_decls,
             }
-            self._render("async_rabbitmq.c", syncset.name +
-                         "_async_rabbitmq.c", values)
-            self._render("async.h", syncset.name + "_async.h", values)
+            self._render("rabbitmq.c", syncset.name +
+                         "_rabbitmq.c", values)
+            self._render("rabbitmq.h", syncset.name + "_rabbitmq.h", values)
             self._render("rabbitmq.cfg", system.name + ".cfg",
                          values, preserve=True)
 
@@ -565,4 +565,4 @@ class ROSGenerator(CodeGenerator):
             }
             self._render("node.cpp", syncset.name + "_node.cpp", values)
             self._render("node.h", syncset.name + "_node.h", values)
-            self._render("async.h", syncset.name + "_async.h", values)
+            self._render("ros.h", syncset.name + "_ros.h", values)

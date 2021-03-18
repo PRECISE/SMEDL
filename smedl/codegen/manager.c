@@ -10,7 +10,7 @@
 #include "global_event_queue.h"
 #include "{{sys.name}}_defs.h"
 #include "{{syncset}}_global_wrapper.h"
-#include "{{syncset}}_async.h"
+#include "{{syncset}}_{{sys.transport}}.h"
 #include "{{syncset}}_manager.h"
 {% if pure_async %}
 #include <signal.h>
@@ -30,7 +30,7 @@ int init_manager(void) {
     if (!init_{{syncset}}_syncset()) {
         return 0;
     }
-    if (!init_async()) {
+    if (!init_{{sys.transport}}()) {
         free_{{syncset}}_syncset();
         return 0;
     }
@@ -40,7 +40,7 @@ int init_manager(void) {
 /* Cleanup interface - Tear down and free resources used by the manager and the
  * global wrapper and network interfaces attached to it. */
 void free_manager(void) {
-    free_async();
+    free_{{sys.transport}}();
     free_{{syncset}}_syncset();
 }
 
@@ -62,7 +62,7 @@ int run_manager(void) {
 
     {% if pure_async %}
     while (!smedl_interrupted) {
-        if (!run_async(1)) {
+        if (!run_{{sys.transport}}(1)) {
             fprintf(stderr, "Error while running network endpoint\n");
             result = 0;
         }
@@ -77,10 +77,11 @@ int run_manager(void) {
     result = run_{{syncset}}() && result;
 
     //TODO When adding threading support, network can run in separate thread.
-    // run_async() call and loop not necessary, just a single process_queue().
+    // run_{{sys.transport}}() call and loop not necessary, just a single
+    // process_queue().
     do {
         result = process_queue() && result;
-        result = run_async(0) && result;
+        result = run_{{sys.transport}}(0) && result;
     } while (queue.head != NULL);
     {% endif %}
 
@@ -214,7 +215,7 @@ int deliver_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SM
 {% for conn in sys.exported_channels(syncset).keys() %}
 
 int deliver_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
-    return forward_{{conn.mon_string}}_{{conn.source_event}}(identities, params, aux);
+    return forward_{{sys.transport}}_{{conn.mon_string}}_{{conn.source_event}}(identities, params, aux);
 }
 {% endfor %}
 {% if pure_async %}

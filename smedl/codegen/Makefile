@@ -50,7 +50,7 @@ SOURCES_{{syncset}}=
 {%- for spec in syncset_specs[syncset] %}{% if not loop.first %} {% endif %}{{spec}}_mon.c{% endfor %}
 {%- for mon in syncset_mons[syncset] %} {{mon}}_local_wrapper.c{% endfor %}
  {{syncset}}_global_wrapper.c {{syncset}}_manager.c
-{%- if transport == 'rabbitmq' %} {{syncset}}_async_rabbitmq.c{% endif %}
+{%- if transport == 'rabbitmq' %} {{syncset}}_rabbitmq.c{% endif %}
 
 {% endfor %}
 SMEDL_SOURCES=$(COMMON_SOURCES){% if transport == 'file' %} {{system}}_file.c{% endif %}

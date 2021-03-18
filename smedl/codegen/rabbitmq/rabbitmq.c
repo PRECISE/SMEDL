@@ -26,7 +26,7 @@
 #include "cJSON.h"
 #include "smedl_types.h"
 #include "{{syncset}}_manager.h"
-#include "{{syncset}}_async.h"
+#include "{{syncset}}_rabbitmq.h"
 
 /* RabbitMQ state */
 InitStatus init_status;
@@ -136,7 +136,7 @@ static int check_reply(amqp_rpc_reply_t reply, const char *fmt, ...) {
 /* Initialize RabbitMQ adapter.
  *
  * Returns nonzero on success, zero on failure. */
-int init_async(void) {
+int init_rabbitmq(void) {
     int status = 1;
     char *conf_buf;
     init_status = (InitStatus) {0};
@@ -161,15 +161,15 @@ int init_async(void) {
 #if DEBUG >= 4
         err("Initializing RabbitMQ");
 #endif
-        status = init_rabbitmq(&rmq_config);
+        status = init_rabbitmq_lib(&rmq_config);
     }
 
     if (status) {
         /* Something failed. Clean up. */
-        free_async();
+        free_rabbitmq();
     } else {
         /* Program was terminated. Clean up. */
-        status = free_async();
+        status = free_rabbitmq();
     }
     free(conf_buf);
 
@@ -180,7 +180,7 @@ int init_async(void) {
  *
  * Return nonzero on success, zero on error (in which case, cleanup was
  * performed as much as possible). */
-int free_async(void) {
+int free_rabbitmq(void) {
     /* Use init_status to determine what needs to be cleaned up. */
     int status, result = 1;
     amqp_rpc_reply_t reply;
@@ -404,7 +404,7 @@ int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf) {
 }
 
 /* Initialize RabbitMQ. Return nonzero on success, zero on failure. */
-int init_rabbitmq(RabbitMQConfig *rmq_config) {
+int init_rabbitmq_lib(RabbitMQConfig *rmq_config) {
     int status;
     amqp_rpc_reply_t reply;
     amqp_socket_t *socket = NULL;
@@ -534,7 +534,7 @@ int init_rabbitmq(RabbitMQConfig *rmq_config) {
  * return.
  *
  * Returns nonzero on success, zero on failure. */
-int run_async(int blocking) {
+int run_rabbitmq(int blocking) {
     {% if pure_async %}
     while (!smedl_interrupted) {
     {% else %}
@@ -974,7 +974,7 @@ int send_message(const char *routing_key, const char *correlation_id,
  * Returns nonzero on success, zero on failure. */
 {% for conn in sys.exported_channels(syncset).keys() %}
 
-int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux_void) {
+int forward_rabbitmq_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux_void) {
     char ptr[40];
     char *opaque;
     int status;

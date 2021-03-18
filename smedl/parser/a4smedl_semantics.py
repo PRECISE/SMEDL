@@ -11,12 +11,12 @@ from .exceptions import NameCollision, NameNotDefined, ParameterError
 class A4smedlSemantics(common_semantics.CommonSemantics):
     """Semantic actions for A4SMEDL parsing"""
 
-    def __init__(self, path):
+    def __init__(self, path, transport=None):
         # Store the path which imported monitors will be relative to
         self.path = path
 
         # Initialize an empty system specification
-        self.system = arch.MonitorSystem()
+        self.system = arch.MonitorSystem(default_transport=transport)
 
         # Monitor specifications from .smedl files. Key is name from file.
         # Value is parsed monitor.

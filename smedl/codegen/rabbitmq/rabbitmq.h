@@ -1,5 +1,5 @@
-#ifndef {{syncset}}_ASYNC_H
-#define {{syncset}}_ASYNC_H
+#ifndef {{syncset}}_RABBITMQ_H
+#define {{syncset}}_RABBITMQ_H
 
 /*
  * RabbitMQ Adapter
@@ -80,13 +80,13 @@
 /* Initialize RabbitMQ adapter.
  *
  * Returns nonzero on success, zero on failure. */
-int init_async(void);
+int init_rabbitmq(void);
 
 /* Clean up RabbitMQ adapter.
  *
  * Return nonzero on success, zero on error (in which case, cleanup was
  * performed as much as possible). */
-int free_async(void);
+int free_rabbitmq(void);
 
 /* Give the RabbitMQ adapter a chance to process messages.
  *
@@ -95,13 +95,13 @@ int free_async(void);
  * return.
  *
  * Returns nonzero on success, zero on failure. */
-int run_async(int blocking);
+int run_rabbitmq(int blocking);
 
 /* Event forwarding functions - Send an asynchronous event over RabbutMQ.
  *
  * Returns nonzero on success, zero on failure. */
 {% for conn in sys.exported_channels(syncset).keys() %}
-int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+int forward_rabbitmq_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 
 /******************************************************************************
@@ -160,7 +160,7 @@ typedef struct {
 int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf);
 
 /* Initialize RabbitMQ. Return nonzero on success, zero on failure. */
-int init_rabbitmq(RabbitMQConfig *rmq_config);
+int init_rabbitmq_lib(RabbitMQConfig *rmq_config);
 
 /* Consume and process one RabbitMQ message.
  *
@@ -186,4 +186,4 @@ int handle_message(amqp_envelope_t *envelope);
 int send_message(const char *routing_key, const char *correlation_id,
         const char *msg, size_t len);
 
-#endif /* {{syncset}}_ASYNC_H */
+#endif /* {{syncset}}_RABBITMQ_H */

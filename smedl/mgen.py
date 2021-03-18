@@ -37,6 +37,7 @@ class MonitorGenerator(object):
         # when generating just a monitor (which does not include the transport
         # adapter)
         self.gen_transport = (transport is not None)
+        self.transport = transport
 
         # Initialize the actual code generator
         if out_dir is None:
@@ -81,7 +82,8 @@ class MonitorGenerator(object):
             parser = a4smedl_parser.A4SMEDLParser()
             self.system = parser.parse(
                 input_text, rule_name='start',
-                semantics=a4smedl_semantics.A4smedlSemantics(dirname))
+                semantics=a4smedl_semantics.A4smedlSemantics(dirname,
+                                                             self.transport))
 
             # Generate the code
             self.generator.write_all(self.system)

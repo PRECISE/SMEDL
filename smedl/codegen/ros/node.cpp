@@ -6,7 +6,7 @@
 extern "C" {
     #include "smedl_types.h"
     #include "{{syncset}}_manager.h"
-    #include "{{syncset}}_async.h"
+    #include "{{syncset}}_ros.h"
 }
 
 namespace SMEDL {
@@ -170,58 +170,61 @@ namespace SMEDL {
     {% endfor %}
 }
 
-/* Initialize ROS node.
- *
- * Returns nonzero on success, zero on failure. */
-int init_async(void) {
-    ros::init(argc, argv, "{{syncset}}_node");
-    SMEDL::{{syncset}}_node = new SMEDL::{{syncset}}Node;
-}
+extern "C" {
+    /* Initialize ROS node.
+     *
+     * Returns nonzero on success, zero on failure. */
+    int init_ros(void) {
+        ros::init(argc, argv, "{{syncset}}_node");
+        SMEDL::{{syncset}}_node = new SMEDL::{{syncset}}Node;
+    }
 
-/* Cleanup ROS node. */
-void free_async(void) {
-    delete SMEDL::{{syncset}}_node;
-}
+    /* Cleanup ROS node. */
+    void free_ros(void) {
+        delete SMEDL::{{syncset}}_node;
+    }
 
-/* Give the ROS node a change to process messages.
- *
- * If blocking is true, block until a SMEDL event comes, process it, then
- * return. If blocking is false, process all currently pending events and then
- * return.
- *
- * Returns nonzero on success, zero on failure. */
-int run_async(blocking) {
-    if (blocking) {
-        while (ros::ok()) {
-            ros::CallOneResult result = ros::getGlobalCallbackQueue()->
-                    callOne(ros::WallDuration(0.1));
-            if (result == ros::Called) {
-                return 1;
-            } else if (result == ros::Disabled) {
-                return 0;
+    /* Give the ROS node a change to process messages.
+     *
+     * If blocking is true, block until a SMEDL event comes, process it, then
+     * return. If blocking is false, process all currently pending events and
+     * then return.
+     *
+     * Returns nonzero on success, zero on failure. */
+    int run_ros(blocking) {
+        if (blocking) {
+            while (ros::ok()) {
+                ros::CallOneResult result = ros::getGlobalCallbackQueue()->
+                        callOne(ros::WallDuration(0.1));
+                if (result == ros::Called) {
+                    return 1;
+                } else if (result == ros::Disabled) {
+                    return 0;
+                }
             }
-        }
-        /* ROS is shutting down */
-        smedl_interrupted = 1;
-    } else {
-        if (!ros::ok()) {
             /* ROS is shutting down */
             smedl_interrupted = 1;
+        } else {
+            if (!ros::ok()) {
+                /* ROS is shutting down */
+                smedl_interrupted = 1;
+            }
+            ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0));
+            return 1;
         }
-        ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0));
-        return 1;
     }
-}
 
-/* Event forwarding functions - Send an asynchronous event from the ROS node.
- *
- * Returns nonzero on success, zero on failure. */
-{% for conn in sys.exported_channels(syncset).keys() %}
+    /* Event forwarding functions - Send an asynchronous event from the ROS
+     * node.
+     *
+     * Returns nonzero on success, zero on failure. */
+    {% for conn in sys.exported_channels(syncset).keys() %}
 
-int forward_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
-    return SMEDL::{{syncset}}_node->send_{{conn.channel}}(identities, params, aux);
+    int forward_ros_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+        return SMEDL::{{syncset}}_node->send_{{conn.channel}}(identities, params, aux);
+    }
+    {% endfor %}
 }
-{% endfor %}
 {% if pure_async %}
 
 int main(int argc, char **argv) {

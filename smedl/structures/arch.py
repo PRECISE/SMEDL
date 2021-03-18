@@ -751,15 +751,21 @@ class SynchronousSet(set):
     """A subclass of set customized to represent a Synchronous Set.
     Meant to contain DeclaredMonitor, Connection (only when originating at the
     target system), and ExportedEvent."""
-    def __init__(self, name, *args, **kwargs):
+    def __init__(self, name, transport, *args, **kwargs):
         """Create a new SynchronousSet"""
         self._name = name
+        self._transport = transport
         super().__init__(*args, **kwargs)
 
     @property
     def name(self):
         """Get the name of the synchronous set"""
         return self._name
+
+    @property
+    def transport(self):
+        """Get the name of the transport this synchronous set uses"""
+        return self._transport
 
     @property
     def pure_async(self):
@@ -946,8 +952,13 @@ class DeclaredMonitor(object):
 
 class MonitorSystem(object):
     """A monitor system as specified by an architecture file (a4smedl file)"""
-    def __init__(self):
+    def __init__(self, default_transport=None):
         self._name = None
+
+        # The transport to use for all synchronous sets by default.
+        # (Eventually, it would be nice to allow transports to be chosen per-
+        # synchronous-set. See issue #62.)
+        self._default_transport = default_transport
 
         # Monitor declarations. Keys are the "as X" names of the monitors,
         # values are DeclaredMonitors
@@ -978,6 +989,11 @@ class MonitorSystem(object):
             self._name = value
         else:
             raise InternalError("Monitoring system already named")
+
+    @property
+    def transport(self):
+        #TODO Should be removed when #62 is implemented
+        return self._default_transport
 
     @property
     def monitor_decls(self):
@@ -1027,7 +1043,7 @@ class MonitorSystem(object):
                 "Synchronous set {} is already defined".format(name))
 
         # Create the SynchronousSet
-        syncset = SynchronousSet(name)
+        syncset = SynchronousSet(name, self._default_transport)
 
         # Iterate through the members.
         # For monitors: Check if they exist, check if they are already in a
