@@ -112,8 +112,8 @@ def parse_args():
         '-d', '--dir', help="Directory to write the generated code to (if not "
         "current directory)")
     parser.add_argument(
-        #TODO File adapter needs to be totally overhauled for new API
-        #'-t', '--transport', choices=['rabbitmq', 'file', 'ros'],
+        # TODO File adapter needs to be totally overhauled for new API
+        # '-t', '--transport', choices=['rabbitmq', 'file', 'ros'],
         '-t', '--transport', choices=['rabbitmq', 'ros'],
         help="Generate an adapter for the given asynchronous transport "
         "method. This option is usually recommended when the input is an "

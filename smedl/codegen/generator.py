@@ -555,7 +555,7 @@ class ROSGenerator(CodeGenerator):
         # Write node sources
         for syncset in system.syncsets.values():
             mon_decls = [
-                on for mon in system.syncsets[syncset.name]
+                mon for mon in system.syncsets[syncset.name]
                 if isinstance(mon, smedl.structures.arch.DeclaredMonitor)]
             values = {
                 "sys": system,

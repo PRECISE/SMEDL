@@ -290,9 +290,6 @@ class TargetExport(Target):
         return self._exported_event == other._exported_event
 
     def __repr__(self):
-        # self.monitor should be None and self.mon_params empty, but printing
-        # them will confirm
-        mon_param_str = ', '.join([str(p) for p in self._mon_params])
         return ('TargetExport:' + str(self._exported_event))
 
 
@@ -729,7 +726,7 @@ class Connection(object):
         its parameters/state vars"""
         for t in self._targets:
             if target == t:
-                #TODO I think this is checking for duplicate destinations, not
+                # TODO I think this is checking for duplicate destinations, not
                 # source and destination are the same. But both tests are
                 # important. Make sure both happen and fix the exception msg.
                 raise DuplicateConnection(
@@ -992,7 +989,7 @@ class MonitorSystem(object):
 
     @property
     def transport(self):
-        #TODO Should be removed when #62 is implemented
+        # TODO Should be removed when #62 is implemented
         return self._default_transport
 
     @property
@@ -1120,7 +1117,7 @@ class MonitorSystem(object):
 
         # Create it
         conn = Connection(self, None, source_ev, params)
-        self._ev_imported_connections[source_event] = conn
+        self._ev_imported_connections[source_ev] = conn
 
     def add_target(self, channel, monitor, source_event, target):
         """Add the given target to the proper connection for the source event
@@ -1225,7 +1222,7 @@ class MonitorSystem(object):
                 print("Warning: Event {} was not used in a connection"
                       .format(conn.source_event), file=sys.stderr)
             else:
-                #TODO Do unused connections need to go into the syncset too?
+                # TODO Do unused connections need to go into the syncset too?
                 # Probably. If it was declared, we should be prepared to accept
                 # it and do nothing.
                 if conn.syncset is None:
@@ -1363,7 +1360,8 @@ class MonitorSystem(object):
                 targets = []
                 for target in conn.targets:
                     if target.monitor is None:
-                        if target.exported_event not in self._syncsets[syncset]:
+                        if (target.exported_event not in
+                                self._syncsets[syncset]):
                             targets.append(target)
                     elif target.monitor not in self._syncsets[syncset]:
                         targets.append(target)
