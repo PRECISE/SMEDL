@@ -110,7 +110,7 @@ step_definition =
     [actions:action_list]
     ;
 
-else_definition = 
+else_definition =
     'else'
     else_preproc
     [else_actions:action_list]

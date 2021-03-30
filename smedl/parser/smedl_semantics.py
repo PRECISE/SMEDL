@@ -138,7 +138,9 @@ class SmedlSemantics(common_semantics.CommonSemantics):
             self.multiple_steps = False
         else:
             self.multiple_steps = True
-            step_list.extend(ast.step_list)
+            step_list.extend(ast.rest.step_list)
+            ast['end_state'] = ast.rest.end_state
+            del ast['rest']
         del ast['step']
         ast['step_list'] = step_list
         return ast
