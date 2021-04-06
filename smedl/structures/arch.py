@@ -254,6 +254,8 @@ class TargetExport(Target):
         iterable of Parameters"""
         super().__init__('export', None, [])
         self._exported_event = exported_event
+        for param in event_params:
+            param.target = self
         self._event_params = tuple(event_params)
 
     @property
