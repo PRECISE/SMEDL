@@ -224,7 +224,7 @@ mon->s.{{a.var}}--;
     {{expression(param)}}
         {%- if not loop.last %}, {%+ endif -%}
     {%- endfor -%}
-    );ndle
+    );
 
 {%- endif %}
 {%- endmacro %}
