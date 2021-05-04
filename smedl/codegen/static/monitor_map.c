@@ -124,6 +124,8 @@ MonitorInstance dummy_instance;
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.*/
 
+#define IDS_OF(mon) (*(SMEDLValue **) ((mon) + map->offset))
+
 /* Initialize a MonitorMap. Returns nonzero if successful, zero on failure.
  *
  * Parameters:
@@ -218,7 +220,7 @@ MonitorInstance * monitormap_insert(MonitorMap *map, void *mon,
     entry.head->prev = NULL;
     entry.head->next_inst = next_inst;
     entry.head->next_map = next_map;
-    entry.hash = map->hash(*(SMEDLValue **) (mon + map->offset));
+    entry.hash = map->hash(IDS_OF(mon));
     entry.dib = 1;
     size_t i = entry.hash & map->mask;
 
@@ -228,9 +230,7 @@ MonitorInstance * monitormap_insert(MonitorMap *map, void *mon,
             map->count++;
             return entry.head;
         } else if (map->table[i].hash == entry.hash &&
-                map->equals(*(SMEDLValue **) (mon + map->offset),
-                    *(SMEDLValue **) (map->table[i].head->mon +
-                                      map->offset))) {
+                map->equals(IDS_OF(mon), IDS_OF(map->table[i].head))) {
             entry.head->next = map->table[i].head;
             map->table[i].head->prev = entry.head;
             map->table[i].head = entry.head;
@@ -342,7 +342,7 @@ static void monitormap_remove_list(MonitorMap *map, size_t i) {
  * map - The MonitorMap to insert into
  * inst - Pointer to the MonitorInstance to be inserted */
 void monitormap_removeinst(MonitorMap *map, MonitorInstance *inst) {
-    size_t i = monitormap_lookup_index(map, *(SMEDLValue **) (inst->mon + map->offset));
+    size_t i = monitormap_lookup_index(map, IDS_OF(inst->mon));
     assert(i != (size_t) -1);   // Not found
     monitormap_remove_from_list(map, inst, i);
 
@@ -360,8 +360,7 @@ void monitormap_removeinst(MonitorMap *map, MonitorInstance *inst) {
  * map - The MonitorMap to insert into
  * mon - Pointer to the <monitor>Mon to be inserted */
 void monitormap_remove(MonitorMap *map, void *mon) {
-    size_t i = monitormap_lookup_index(map,
-            *(SMEDLValue **) (mon + map->offset));
+    size_t i = monitormap_lookup_index(map, IDS_OF(mon));
     assert(i != (size_t) -1);   // Not found
 
     /* Find the MonitorInstance and remove from its list */
