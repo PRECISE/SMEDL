@@ -686,6 +686,77 @@ class DeclaredMonitor(object):
             conn.assign_default_name_if_unnamed()
 
     @property
+    def full_param_subset(self):
+        """Return a tuple containing a full subset of parameter indices"""
+        return tuple(range(len(self._params)))
+
+    @property
+    def param_subsets(self):
+        """Return a list of the subsets of parameters needed for this monitor.
+        For example, if the architecture contains the following:
+
+            ev1 => Mon1[$0, $1, $2].ev1();
+            ev2 => Mon1[$0, *, $1].ev2();
+
+        then Mon1's param subsets would be [(0, 1, 2), (0, 2)].
+        """
+        result = []
+        for conn in self._sys.imported_connections.values():
+            for target in conn.targets:
+                if target.monitor is not self:
+                    continue
+                params = []
+                for i, param in enumerate(target.mon_params):
+                    if param.index is not None:
+                        params.append(i)
+                params = tuple(params)
+                if params not in result:
+                    result.append(params)
+
+        # The full set of parameters should be in the result somewhere for a
+        # well-written architecture file (otherwise the monitor will never be
+        # instantiated), but check if it needs to be added just in case
+        if self.full_param_subset not in result:
+            result.append(self.full_param_subset)
+
+        return result
+
+    @property
+    def param_subsets_tree(self):
+        """Return a nested dict that acts as a decision tree for which param
+        subset goes with a given set of identities with wildcards. Each dict
+        contains three keys: 'idx', 'wild', and 'bound'. 'idx' is the parameter
+        index to check, 'wild' is the next layer in the decision tree for if
+        the parameter is a wildcard, and 'bound' is the next layer if it isn't.
+        The next layer is either another similar dict or a param subset tuple
+        (if there are no more decisions)."""
+        def tree(subsets, idx, depth):
+            if len(subsets) == 1:
+                return subsets[0]
+            bound = []
+            wild = []
+            for subset in subsets:
+                try:
+                    if subset[depth] == idx:
+                        bound.append(subset)
+                    else:
+                        wild.append(subset)
+                except IndexError:
+                    wild.append(subset)
+            if len(bound) > 0 and len(wild) > 0:
+                return {
+                    'idx': idx,
+                    'bound': tree(bound, idx + 1, depth + 1),
+                    'wild': tree(wild, idx + 1, depth)
+                }
+            elif len(bound) > 0:
+                return tree(bound, idx + 1, depth + 1)
+            else:
+                return tree(wild, idx + 1, depth)
+
+        return tree(self.param_subsets, 0, 0)
+
+    @property
     def intra_connections(self):
         """Return a list of connections where this monitor is the source and
         at least one destination is in the same synchronous set"""

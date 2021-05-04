@@ -2,21 +2,115 @@
 #include <stdio.h>
 #endif
 #include <stdlib.h>
+#include <string.h>
 #include "smedl_types.h"
 #include "monitor_map.h"
 #include "{{mon.syncset.name}}_global_wrapper.h"
 #include "{{mon.name}}_local_wrapper.h"
 #include "{{spec.name}}_mon.h"
 
+{% macro mon_map_name(param_set) -%}
+{%- if param_set == mon.full_param_subset -%}
+monitor_map_all
+{%- else -%}
+monitor_map_{% for i in param_set %}{% if not loop.first %}_{% endif %}{{i}}{% endfor %}
+{%- endif -%}
+{%- endmacro %}
+{% macro mon_hash_name(param_set) -%}
+{%- if param_set == mon.full_param_subset -%}
+hash_all
+{%- else -%}
+hash_{% for i in param_set %}{% if not loop.first %}_{% endif %}{{i}}{% endfor %}
+{%- endif -%}
+{%- endmacro %}
+{% macro mon_equals_name(param_set) -%}
+{%- if param_set == mon.full_param_subset -%}
+equals_all
+{%- else -%}
+equals_{% for i in param_set %}{% if not loop.first %}_{% endif %}{{i}}{% endfor %}
+{%- endif -%}
+{%- endmacro %}
+{# /************************************************************************/ #}
 {% if mon.params is nonempty %}
-static {{mon.name}}Record dummy_rec;
-/* Used as error response for get_{{mon.name}}_record() since it can
- * legitimately return NULL */
-static {{mon.name}}Record *INVALID_RECORD = &dummy_rec;
 
-/* {{mon.name}} Monitor Maps - One AVL tree for each identity */
-{% for i in range(mon.params|length) %}
-static {{mon.name}}Record *monitor_map_{{i}} = NULL;
+/* {{mon.name}} Monitor Maps - One for each subset of non-wildcard identities
+ * used for lookups.
+ *
+ * For fast lookups, SMEDL keeps a monitor map for each subset of non-wildcard
+ * identities used. For example, with the following connections:
+ *
+ *     ev1 => Mon1[$0, $1, $2].ev1();
+ *     ev2 => Mon1[$0, *, $1].ev2();
+ *
+ * There would be two monitor maps: one that hashes all three identities, and
+ * one that hashes the first and third. For the latter, any monitors with
+ * identical first and third identities would be grouped together in the hash
+ * table (as a linked list).
+ *
+ * The monitor map that hashes all identities (i.e. no wildcards) is always
+ * called "monitor_map_all".
+ */
+{% for param_set in mon.param_subsets %}
+static MonitorMap {{mon_map_name(param_set)}};
+{% endfor %}
+
+/* Monitor map hash functions - One for each monitor map */
+{% for param_set in mon.param_subsets %}
+
+static uint64_t {{mon_hash_name(param_set)}}(SMEDLValue *ids) {
+    murmur_state s = MURMUR_INIT(0);
+    {% for param in param_set %}
+    {% if mon.params[param].type is sameas SmedlType.INT %}
+    murmur(ids[{{param}}].v.i, sizeof(ids[{{param}}].v.i), &s);
+    {% elif mon.params[param].type is sameas SmedlType.FLOAT %}
+    murmur(ids[{{param}}].v.d, sizeof(ids[{{param}}].v.d), &s);
+    {% elif mon.params[param].type is sameas SmedlType.CHAR %}
+    murmur(ids[{{param}}].v.c, sizeof(ids[{{param}}].v.c), &s);
+    {% elif mon.params[param].type is sameas SmedlType.STRING %}
+    murmur(ids[{{param}}].v.s, strlen(ids[{{param}}].v.s), &s);
+    {% elif mon.params[param].type is sameas SmedlType.POINTER %}
+    murmur(ids[{{param}}].v.p, sizeof(ids[{{param}}].v.p), &s);
+    {% elif mon.params[param].type is sameas SmedlType.OPAQUE %}
+    murmur(ids[{{param}}].v.o.data, ids[{{param}}].v.o.size, &s);
+    {% endif %}
+    {% endfor %}
+    return murmur_f(&s);
+}
+{% endfor %}
+
+/* Monitor map equals functions - One for each monitor map */
+{% for param_set in mon.param_subsets %}
+
+static int {{mon_equals_name(param_set)}}(SMEDLValue *ids1, SMEDLValue *ids2) {
+    {% for param in param_set %}
+    {% if mon.params[param].type is sameas SmedlType.INT %}
+    if (ids1[{{param}}].v.i != ids2[{{param}}].v.i) {
+        return 0;
+    }
+    {% elif mon.params[param].type is sameas SmedlType.FLOAT %}
+    if (ids1[{{param}}].v.d != ids2[{{param}}].v.d) {
+        return 0;
+    }
+    {% elif mon.params[param].type is sameas SmedlType.CHAR %}
+    if (ids1[{{param}}].v.c != ids2[{{param}}].v.c) {
+        return 0;
+    }
+    {% elif mon.params[param].type is sameas SmedlType.STRING %}
+    if (strcmp(ids1[{{param}}].v.s, ids2[{{param}}].v.s)) {
+        return 0;
+    }
+    {% elif mon.params[param].type is sameas SmedlType.POINTER %}
+    if (ids1[{{param}}].v.p != ids2[{{param}}].v.p) {
+        return 0;
+    }
+    {% elif mon.params[param].type is sameas SmedlType.OPAQUE %}
+    if (!smedl_opaque_equals(ids1[{{param}}].v.o, ids2[{{param}}].v.o)) {
+        return 0;
+    }
+    {% endif %}
+    {% endfor %}
+    return 1;
+}
 {% endfor %}
 {% else %}
 /* Singleton monitor */
@@ -38,10 +132,21 @@ static void setup_{{mon.name}}_callbacks({{spec.name}}Monitor *mon) {
  * Return nonzero on success, zero on failure. */
 int init_{{mon.name}}_local_wrapper() {
     {% if mon.params is nonempty %}
-    /* Reserved for future use, but no need to actually do anything at this
-     * time. Monitor maps are already initialized to NULL by being of static
-     * storage duration. */
+    {% for param_set in mon.param_subsets %}
+    if (!monitormap_init({{mon_map_name(param_set)}})) {
+        goto fail_init_{{mon_map_name(param_set)}};
+    }
+    {% endfor %}
+
     return 1;
+
+    {% for param_set in mon.param_subsets|reverse %}
+    {% if not loop.first %}
+    monitormap_free(&{{mon_map_name(param_set)}});
+    {% endif %}
+fail_init_{{mon_map_name(param_set)}}:
+    {% endfor %}
+    return 0;
     {% else %}
     /* Initialize the singleton */
     monitor = init_{{spec.name}}_monitor(NULL);
@@ -57,29 +162,19 @@ int init_{{mon.name}}_local_wrapper() {
  * wrapper and all the monitors it manages */
 void free_{{mon.name}}_local_wrapper() {
     {% if mon.params is nonempty %}
-    {{mon.name}}Record *records, *next;
-    {% for i in range(mon.params|length) %}
-
-    {% if loop.last %}
-    /* Free records, monitors, identities, and map for monitor_map_{{i}} */
-    {% else %}
-    /* Free records and map for monitor_map_{{i}} */
-    {% endif %}
-    records = ({{mon.name}}Record *) monitor_map_all((SMEDLRecordBase *) monitor_map_{{i}});
-    while (records != NULL) {
-        {% if loop.last %}
-        free(records->mon->identities);
-        free(records->mon);
-        {% endif %}
-        next = ({{mon.name}}Record *) records->r.next;
-        free(records);
-        records = next;
-    }
-    monitor_map_{{i}} = NULL;
+    MonitorInstance *instances = monitormap_free(monitor_map_all, 1);
+    {% for param_set in mon.param_subsets
+        if param_set != mon.full_param_subset %}
+    monitormap_free({{mon_map_name(param_set)}});
     {% endfor %}
-    {% else %}
-    free_{{spec.name}}_monitor(monitor);
-    {% endif %}
+
+    while (instances != NULL) {
+        MonitorInstance *tmp = instances->next;
+        smedl_free_array(ids_copy, {{mon.params|length}});
+        free_{{spec.name}}_monitor(instances->mon);
+        free(instances);
+        instances = tmp;
+    }
 }
 
 /* Creation interface - Instantiate a new {{mon.name}} monitor.
@@ -95,7 +190,7 @@ void free_{{mon.name}}_local_wrapper() {
 int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init_state) {
     {% if mon.params is nonempty %}
     /* Check if monitor with identities already exists */
-    if (check_{{mon.name}}_monitors(identities)) {
+    if (monitormap_lookup(monitor_map_all, identities) != NULL) {
         return 1;
     }
 
@@ -144,17 +239,17 @@ int process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
     {% if mon.params is nonempty %}
     /* Fetch the monitors to send the event to or do dynamic instantiation if
      * necessary */
-    {{mon.name}}Record *records = get_{{mon.name}}_monitors(identities);
-    if (records == INVALID_RECORD) {
+    MonitorInstance *instances = get_{{mon.name}}_monitors(identities);
+    if (instances == INVALID_INSTANCE) {
         /* malloc fail */
         return 0;
     }
 
     /* Send the event to each monitor */
     int success = 1;
-    while (records != NULL) {
-        {{spec.name}}Monitor *mon = records->mon;
-        records = ({{mon.name}}Record *) records->r.next;
+    while (instances != NULL) {
+        {{spec.name}}Monitor *mon = instances->mon;
+        instances = instances->next;
         if (!execute_{{spec.name}}_{{event}}(mon, params, aux)) {
             success = 0;
         }
@@ -171,35 +266,41 @@ int process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
 /* Recycle a monitor instance - Used as the callback for when final states are
  * reached in the monitor. Return nonzero if successful, zero on failure. */
 int recycle_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
-    remove_{{mon.name}}_monitor(mon->identities);
+    monitormap_remove(monitor_map_all, mon);
+    smedl_free_array(mon->identities, {{mon.params|length}});
+    free_{{spec.name}}_monitor(mon);
     return 1;
 }
 
 /* Add the provided monitor to the monitor maps. Return a
- * {{mon.name}}Record, or NULL if unsuccessful. */
-{{mon.name}}Record * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
-    {% for i in range(mon.params|length) %}
-    /* Identity {{i}} */
-    {{mon.name}}Record *rec{{i}};
-    rec{{i}} = malloc(sizeof({{mon.name}}Record));
-    if (rec{{i}} == NULL) {
-        /* malloc fail */
-        goto add_fail_{{i}};
+ * MonitorInstance, or NULL if unsuccessful. */
+MonitorInstance * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
+    MonitorInstance *prev_inst = NULL;
+    MonitorMap *prev_map = NULL;
+    MonitorMap *inst;
+    {% for param_set in mon.param_subsets
+        if param_set != mon.full_param_subset %}
+
+    inst = monitormap_insert({{mon_map_name(param_set)}}, mon, prev_inst, prev_map);
+    if (inst == NULL) {
+        {% if not loop.first %}
+        monitormap_removeinst(prev_map, prev_inst);
+        {% endif %}
+        return NULL;
     }
-    rec{{i}}->mon = mon;
-    rec{{i}}->r.key = mon->identities[{{i}}];
-    monitor_map_insert((SMEDLRecordBase **) &monitor_map_{{i}}, (SMEDLRecordBase *) rec{{i}});
-
+    prev_inst = inst;
+    prev_map = {{mon_map_name(param_set)}};
     {% endfor %}
-    return rec0;
 
-    {% for i in range(mon.params|length - 1, 0, -1) %}
-add_fail_{{i}}:
-    monitor_map_remove((SMEDLRecordBase **) &monitor_map_{{i-1}}, (SMEDLRecordBase *) rec{{i-1}});
-    free(rec{{i-1}});
-    {% endfor %}
-add_fail_0:
-    return NULL;
+    inst = monitormap_insert(monitor_map_all, mon, prev_inst, prev_map);
+    if (inst == NULL) {
+        {% if mon.param_subsets|length > 1 %}
+        monitormap_removeinst(prev_map, prev_inst);
+        {% endif %}
+        return NULL;
+    }
+
+    return inst;
 }
 
 /* Fetch a list of monitor instances matching the given identities.
@@ -211,117 +312,55 @@ add_fail_0:
  * specified (i.e. there are no wildcards), create an instance with those
  * identities and return it.
  *
- * Returns a linked list of {{mon.name}}Record (which may be empty, i.e. NULL).
- * If dynamic instantiation fails, returns INVALID_RECORD. */
-{{mon.name}}Record * get_{{mon.name}}_monitors(SMEDLValue *identities) {
-    /* Fetch the candidate list using the monitor map for the first
-     * non-wildcard */
-    SMEDLRecordBase *candidates = NULL;
-    int all_wildcards = 0;
-    {% for i in range(mon.params|length) %}
-    {%+ if not loop.first %}} else {%+ endif %}if (identities[{{i}}].t != SMEDL_NULL) {
-        candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_{{i}}, identities[{{i}}]);
-    {% if loop.last %}
-    } else {
-    {% endif %}
-    {% endfor %}
-        /* All identities were wildcards. */
-        all_wildcards = 1;
-    }
+ * Returns a linked list of MonitorInstance (which may be empty, i.e. NULL).
+ * If dynamic instantiation fails, returns INVALID_INSTANCE. */
+{% macro pick_mon_map(tree) %}
+{% if tree is mapping %}
+if (identities[{{tree.idx}}].t == SMEDL_NULL) {
+    {{pick_mon_map(tree.wild)|indent}}
+} else {
+    {{pick_mon_map(tree.bound)|indent}}
+}
+{% else %}
+instances = monitormap_lookup({{mon_map_name(tree)}}, identities);
+{% if tree == mon.full_param_subset %}
+dynamic_instantiation = 1;
+{% endif %}
+{% endif %}
+{% endmacro %}
+MonitorInstance * get_{{mon.name}}_monitors(SMEDLValue *identities) {
+    /* Look up from the proper monitor map */
+    MonitorInstance *instances;
+    int dynamic_instantiation = 0;
+    {{pick_mon_map(mon.param_subsets_tree)|indent}}
 
-    {{mon.name}}Record *result;
-    if (all_wildcards) {
-        /* Fetch *all* records */
-        result = ({{mon.name}}Record *) monitor_map_all((SMEDLRecordBase *) monitor_map_0);
-    } else {
-        /* Filter down to candidates that match the full identity list */
-        result = NULL;
-        for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
-            if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
-                rec->next = (SMEDLRecordBase *) result;
-                result = ({{mon.name}}Record *) rec;
-            }
-        }
-    }
-
-    /* If there are no matches and identity list is fully specified (no
-     * wildcards), do dynamic instantiation. */
-    if (result == NULL) {
-        int dynamic_instantiation = 1;
-        for (size_t i = 0; i < {{mon.params|length}}; i++) {
-            if (identities[i].t == SMEDL_NULL) {
-                dynamic_instantiation = 0;
-            }
-        }
-
-        if (dynamic_instantiation) {
+    /* Do dynamic instantiation if wildcards were fully specified and there
+     * are no matching monitors */
+    if (instances == NULL && dynamic_instantiation) {
 #if DEBUG >= 4
-            fprintf(stderr, "Dynamic instantiation for '{{mon.name}}'\n");
+        fprintf(stderr, "Dynamic instantiation for '{{mon.name}}'\n");
 #endif
-            SMEDLValue *ids_copy = smedl_copy_array(identities, {{mon.params|length}});
-            if (ids_copy == NULL) {
-                /* malloc fail */
-                return INVALID_RECORD;
-            }
-            {{spec.name}}Monitor *mon = init_{{spec.name}}_monitor(ids_copy);
-            if (mon == NULL) {
-                /* malloc fail */
-                smedl_free_array(ids_copy, {{mon.params|length}});
-                return INVALID_RECORD;
-            }
-            setup_{{mon.name}}_callbacks(mon);
-            result = add_{{mon.name}}_monitor(mon);
-            if (result == NULL) {
-                /* malloc fail */
-                free_{{spec.name}}_monitor(mon);
-                smedl_free_array(ids_copy, {{mon.params|length}});
-                return INVALID_RECORD;
-            }
-            result->r.next = NULL;
+        SMEDLValue *ids_copy = smedl_copy_array(identities, {{mon.params|length}});
+        if (ids_copy == NULL) {
+            /* malloc fail */
+            return INVALID_INSTANCE;
+        }
+        {{spec.name}}Monitor *mon = init_{{spec.name}}_monitor(ids_copy);
+        if (mon == NULL) {
+            /* malloc fail */
+            smedl_free_array(ids_copy, {{mon.params|length}});
+            return INVALID_INSTANCE;
+        }
+        setup_{{mon.name}}_callbacks(mon);
+        instances = add_{{mon.name}}_monitor(mon);
+        if (result == NULL) {
+            /* malloc fail */
+            free_{{spec.name}}_monitor(mon);
+            smedl_free_array(ids_copy, {{mon.params|length}});
+            return INVALID_INSTANCE;
         }
     }
 
     return result;
-}
-
-/* Check if a monitor with the given identities is present. Return nonzero if
- * so, zero if not. The identities must be fully specified (no wildcards). */
-int check_{{mon.name}}_monitors(SMEDLValue *identities) {
-    /* Fetch monitors with matching first identity */
-    SMEDLRecordBase *candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_0, identities[0]);
-
-    /* Check if any of the candidates match the full identity list */
-    for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
-        if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-/* Remove a monitor with the given identities from the monitor maps. The
- * identities must be fully specified (no wildcards). */
-void remove_{{mon.name}}_monitor(SMEDLValue *identities) {
-    SMEDLRecordBase *candidates;
-    {% for i in range(mon.params|length) %}
-
-    /* Fetch matching monitors from monitor map {{i}}, then iterate through to
-     * find and remove the full match */
-    candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_{{i}}, identities[{{i}}]);
-    for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
-        if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
-            monitor_map_remove((SMEDLRecordBase **) &monitor_map_{{i}}, rec);
-            {% if loop.last %}
-            /* Free the monitor itself before freeing the last record */
-            {{spec.name}}Monitor *mon = (({{mon.name}}Record *) rec)->mon;
-            smedl_free_array(mon->identities, {{mon.params|length}});
-            free_{{spec.name}}_monitor(mon);
-            {% endif %}
-            free(rec);
-            break;
-        }
-    }
-    {% endfor %}
 }
 {% endif %}

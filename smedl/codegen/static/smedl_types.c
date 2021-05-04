@@ -152,6 +152,8 @@ int smedl_equal(SMEDLValue v1, SMEDLValue v2) {
     }
 }
 
+//TODO Can likely be removed. Was used for monitor lookups when we used AVL
+// trees for monitor maps.
 /*
  * Compare two arrays of SMEDLValue and return nonzero if each element in the
  * first is equal to the corresponding element in the second. The first array
