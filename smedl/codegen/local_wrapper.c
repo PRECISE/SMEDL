@@ -13,6 +13,8 @@
 {% macro mon_map_name(param_set) -%}
 {%- if param_set == mon.full_param_subset -%}
 monitor_map_all
+{%- elif param_set == () -%}
+monitor_map_none
 {%- else -%}
 monitor_map_{% for i in param_set %}{% if not loop.first %}_{% endif %}{{i}}{% endfor %}
 {%- endif -%}
@@ -20,6 +22,8 @@ monitor_map_{% for i in param_set %}{% if not loop.first %}_{% endif %}{{i}}{% e
 {% macro mon_hash_name(param_set) -%}
 {%- if param_set == mon.full_param_subset -%}
 hash_all
+{%- elif param_set == () -%}
+hash_none
 {%- else -%}
 hash_{% for i in param_set %}{% if not loop.first %}_{% endif %}{{i}}{% endfor %}
 {%- endif -%}
@@ -27,13 +31,14 @@ hash_{% for i in param_set %}{% if not loop.first %}_{% endif %}{{i}}{% endfor %
 {% macro mon_equals_name(param_set) -%}
 {%- if param_set == mon.full_param_subset -%}
 equals_all
+{%- elif param_set == () -%}
+equals_none
 {%- else -%}
 equals_{% for i in param_set %}{% if not loop.first %}_{% endif %}{{i}}{% endfor %}
 {%- endif -%}
 {%- endmacro %}
 {# /************************************************************************/ #}
 {% if mon.params is nonempty %}
-
 /* {{mon.name}} Monitor Maps - One for each subset of non-wildcard identities
  * used for lookups.
  *
@@ -49,7 +54,9 @@ equals_{% for i in param_set %}{% if not loop.first %}_{% endif %}{{i}}{% endfor
  * table (as a linked list).
  *
  * The monitor map that hashes all identities (i.e. no wildcards) is always
- * called "monitor_map_all".
+ * called "monitor_map_all". The monitor map that stores all monitors in the
+ * same bucket (i.e. all identities are wildcard), if present, is called
+ * "monitor_map_none".
  */
 {% for param_set in mon.param_subsets %}
 static MonitorMap {{mon_map_name(param_set)}};
@@ -61,17 +68,17 @@ static MonitorMap {{mon_map_name(param_set)}};
 static uint64_t {{mon_hash_name(param_set)}}(SMEDLValue *ids) {
     murmur_state s = MURMUR_INIT(0);
     {% for param in param_set %}
-    {% if mon.params[param].type is sameas SmedlType.INT %}
-    murmur(ids[{{param}}].v.i, sizeof(ids[{{param}}].v.i), &s);
-    {% elif mon.params[param].type is sameas SmedlType.FLOAT %}
-    murmur(ids[{{param}}].v.d, sizeof(ids[{{param}}].v.d), &s);
-    {% elif mon.params[param].type is sameas SmedlType.CHAR %}
-    murmur(ids[{{param}}].v.c, sizeof(ids[{{param}}].v.c), &s);
-    {% elif mon.params[param].type is sameas SmedlType.STRING %}
+    {% if mon.params[param] is sameas SmedlType.INT %}
+    murmur(&ids[{{param}}].v.i, sizeof(ids[{{param}}].v.i), &s);
+    {% elif mon.params[param] is sameas SmedlType.FLOAT %}
+    murmur(&ids[{{param}}].v.d, sizeof(ids[{{param}}].v.d), &s);
+    {% elif mon.params[param] is sameas SmedlType.CHAR %}
+    murmur(&ids[{{param}}].v.c, sizeof(ids[{{param}}].v.c), &s);
+    {% elif mon.params[param] is sameas SmedlType.STRING %}
     murmur(ids[{{param}}].v.s, strlen(ids[{{param}}].v.s), &s);
-    {% elif mon.params[param].type is sameas SmedlType.POINTER %}
-    murmur(ids[{{param}}].v.p, sizeof(ids[{{param}}].v.p), &s);
-    {% elif mon.params[param].type is sameas SmedlType.OPAQUE %}
+    {% elif mon.params[param] is sameas SmedlType.POINTER %}
+    murmur(&ids[{{param}}].v.p, sizeof(ids[{{param}}].v.p), &s);
+    {% elif mon.params[param] is sameas SmedlType.OPAQUE %}
     murmur(ids[{{param}}].v.o.data, ids[{{param}}].v.o.size, &s);
     {% endif %}
     {% endfor %}
@@ -84,27 +91,27 @@ static uint64_t {{mon_hash_name(param_set)}}(SMEDLValue *ids) {
 
 static int {{mon_equals_name(param_set)}}(SMEDLValue *ids1, SMEDLValue *ids2) {
     {% for param in param_set %}
-    {% if mon.params[param].type is sameas SmedlType.INT %}
+    {% if mon.params[param] is sameas SmedlType.INT %}
     if (ids1[{{param}}].v.i != ids2[{{param}}].v.i) {
         return 0;
     }
-    {% elif mon.params[param].type is sameas SmedlType.FLOAT %}
+    {% elif mon.params[param] is sameas SmedlType.FLOAT %}
     if (ids1[{{param}}].v.d != ids2[{{param}}].v.d) {
         return 0;
     }
-    {% elif mon.params[param].type is sameas SmedlType.CHAR %}
+    {% elif mon.params[param] is sameas SmedlType.CHAR %}
     if (ids1[{{param}}].v.c != ids2[{{param}}].v.c) {
         return 0;
     }
-    {% elif mon.params[param].type is sameas SmedlType.STRING %}
+    {% elif mon.params[param] is sameas SmedlType.STRING %}
     if (strcmp(ids1[{{param}}].v.s, ids2[{{param}}].v.s)) {
         return 0;
     }
-    {% elif mon.params[param].type is sameas SmedlType.POINTER %}
+    {% elif mon.params[param] is sameas SmedlType.POINTER %}
     if (ids1[{{param}}].v.p != ids2[{{param}}].v.p) {
         return 0;
     }
-    {% elif mon.params[param].type is sameas SmedlType.OPAQUE %}
+    {% elif mon.params[param] is sameas SmedlType.OPAQUE %}
     if (!smedl_opaque_equals(ids1[{{param}}].v.o, ids2[{{param}}].v.o)) {
         return 0;
     }
@@ -143,7 +150,7 @@ int init_{{mon.name}}_local_wrapper() {
 
     {% for param_set in mon.param_subsets|reverse %}
     {% if not loop.first %}
-    monitormap_free(&{{mon_map_name(param_set)}});
+    monitormap_free(&{{mon_map_name(param_set)}}, 0);
     {% endif %}
 fail_init_{{mon_map_name(param_set)}}:
     {% endfor %}
@@ -166,7 +173,7 @@ void free_{{mon.name}}_local_wrapper() {
     MonitorInstance *instances = monitormap_free(&monitor_map_all, 1);
     {% for param_set in mon.param_subsets
         if param_set != mon.full_param_subset %}
-    monitormap_free(&{{mon_map_name(param_set)}});
+    monitormap_free(&{{mon_map_name(param_set)}}, 0);
     {% endfor %}
 
     while (instances != NULL) {
@@ -195,8 +202,14 @@ int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init
     {% if mon.params is nonempty %}
     /* Check if monitor with identities already exists */
     if (monitormap_lookup(&monitor_map_all, identities) != NULL) {
+#if DEBUG >= 4
+        fprintf(stderr, "Local wrapper '{{mon.name}}' skipping explicit creation for existing monitor\n");
+#endif
         return 1;
     }
+#if DEBUG >= 4
+    fprintf(stderr, "Local wrapper '{{mon.name}}' doing explicit creation\n");
+#endif
 
     /* Initialize new monitor with identities and state */
     SMEDLValue *ids_copy = smedl_copy_array(identities, {{mon.params|length}});
@@ -270,6 +283,9 @@ int process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
 /* Recycle a monitor instance - Used as the callback for when final states are
  * reached in the monitor. Return nonzero if successful, zero on failure. */
 int recycle_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
+#if DEBUG >= 4
+        fprintf(stderr, "Recycling an instance of '{{mon.name}}'\n");
+#endif
     monitormap_remove(&monitor_map_all, mon);
     smedl_free_array(mon->identities, {{mon.params|length}});
     free_{{spec.name}}_monitor(mon);
@@ -325,11 +341,12 @@ if (identities[{{tree.idx}}].t == SMEDL_NULL) {
 } else {
     {{pick_mon_map(tree.bound)|indent}}
 }
-{% else %}
+{%- else %}
 instances = monitormap_lookup(&{{mon_map_name(tree)}}, identities);
-{% if tree == mon.full_param_subset %}
+{%- if tree == mon.full_param_subset %}
+
 dynamic_instantiation = 1;
-{% endif %}
+{%- endif %}
 {% endif %}
 {% endmacro %}
 MonitorInstance * get_{{mon.name}}_monitors(SMEDLValue *identities) {

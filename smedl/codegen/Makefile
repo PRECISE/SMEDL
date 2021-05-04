@@ -25,7 +25,7 @@ EXTRA_SOURCES_{{spec}}=
 # -DDEBUG=3: Notice (Significant but normal occurrences)
 # -DDEBUG=4: Debug (All debug messages on)
 CFLAGS:=-g -DDEBUG=4 $(CFLAGS)
-#CFLAGS:=-O2 $(CFLAGS)
+#CFLAGS:=-O2 -DNDEBUG $(CFLAGS)
 
 # Where to place all object files, dependency makefiles, and executables.
 # For example, to place everything in a "build" directory:

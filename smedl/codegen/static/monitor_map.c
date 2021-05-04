@@ -218,7 +218,7 @@ MonitorInstance * monitormap_insert(MonitorMap *map, void *mon,
     entry.head->prev = NULL;
     entry.head->next_inst = next_inst;
     entry.head->next_map = next_map;
-    entry.hash = map->hash(mon + map->offset);
+    entry.hash = map->hash(*(SMEDLValue **) (mon + map->offset));
     entry.dib = 1;
     size_t i = entry.hash & map->mask;
 
@@ -228,8 +228,9 @@ MonitorInstance * monitormap_insert(MonitorMap *map, void *mon,
             map->count++;
             return entry.head;
         } else if (map->table[i].hash == entry.hash &&
-                map->equals(mon + map->offset,
-                    map->table[i].head->mon + map->offset)) {
+                map->equals(*(SMEDLValue **) (mon + map->offset),
+                    *(SMEDLValue **) (map->table[i].head->mon +
+                                      map->offset))) {
             entry.head->next = map->table[i].head;
             map->table[i].head->prev = entry.head;
             map->table[i].head = entry.head;
@@ -261,7 +262,8 @@ static size_t monitormap_lookup_index(MonitorMap *map, SMEDLValue *ids) {
             return ((size_t) -1);
         }
         if (map->table[i].hash == hash &&
-                map->equals(ids, map->table[i].head->mon + map->offset)) {
+                map->equals(ids, *(SMEDLValue **) (map->table[i].head->mon +
+                                                   map->offset))) {
             return i;
         }
         i++;
@@ -304,7 +306,7 @@ static void monitormap_remove_from_list(MonitorMap *map, MonitorInstance *inst,
     }
 
     if (inst->next_map != NULL) {
-        monitormap_removeinst(inst->next_map, inst);
+        monitormap_removeinst(inst->next_map, inst->next_inst);
     }
     free(inst);
 }
@@ -340,7 +342,7 @@ static void monitormap_remove_list(MonitorMap *map, size_t i) {
  * map - The MonitorMap to insert into
  * inst - Pointer to the MonitorInstance to be inserted */
 void monitormap_removeinst(MonitorMap *map, MonitorInstance *inst) {
-    size_t i = monitormap_lookup_index(map, inst->mon + map->offset);
+    size_t i = monitormap_lookup_index(map, *(SMEDLValue **) (inst->mon + map->offset));
     assert(i != (size_t) -1);   // Not found
     monitormap_remove_from_list(map, inst, i);
 
@@ -358,7 +360,8 @@ void monitormap_removeinst(MonitorMap *map, MonitorInstance *inst) {
  * map - The MonitorMap to insert into
  * mon - Pointer to the <monitor>Mon to be inserted */
 void monitormap_remove(MonitorMap *map, void *mon) {
-    size_t i = monitormap_lookup_index(map, mon + map->offset);
+    size_t i = monitormap_lookup_index(map,
+            *(SMEDLValue **) (mon + map->offset));
     assert(i != (size_t) -1);   // Not found
 
     /* Find the MonitorInstance and remove from its list */
