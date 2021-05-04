@@ -2,6 +2,7 @@
 #include <stdio.h>
 #endif
 #include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 #include "smedl_types.h"
 #include "monitor_map.h"
@@ -133,7 +134,7 @@ static void setup_{{mon.name}}_callbacks({{spec.name}}Monitor *mon) {
 int init_{{mon.name}}_local_wrapper() {
     {% if mon.params is nonempty %}
     {% for param_set in mon.param_subsets %}
-    if (!monitormap_init({{mon_map_name(param_set)}})) {
+    if (!monitormap_init(&{{mon_map_name(param_set)}}, offsetof({{spec.name}}Monitor, identities), {{mon_hash_name(param_set)}}, {{mon_equals_name(param_set)}})) {
         goto fail_init_{{mon_map_name(param_set)}};
     }
     {% endfor %}
@@ -162,19 +163,22 @@ fail_init_{{mon_map_name(param_set)}}:
  * wrapper and all the monitors it manages */
 void free_{{mon.name}}_local_wrapper() {
     {% if mon.params is nonempty %}
-    MonitorInstance *instances = monitormap_free(monitor_map_all, 1);
+    MonitorInstance *instances = monitormap_free(&monitor_map_all, 1);
     {% for param_set in mon.param_subsets
         if param_set != mon.full_param_subset %}
-    monitormap_free({{mon_map_name(param_set)}});
+    monitormap_free(&{{mon_map_name(param_set)}});
     {% endfor %}
 
     while (instances != NULL) {
         MonitorInstance *tmp = instances->next;
-        smedl_free_array(ids_copy, {{mon.params|length}});
+        smedl_free_array((({{spec.name}}Monitor *) instances->mon)->identities, {{mon.params|length}});
         free_{{spec.name}}_monitor(instances->mon);
         free(instances);
         instances = tmp;
     }
+    {% else %}
+    free_{{spec.name}}_monitor(monitor);
+    {% endif %}
 }
 
 /* Creation interface - Instantiate a new {{mon.name}} monitor.
@@ -190,7 +194,7 @@ void free_{{mon.name}}_local_wrapper() {
 int create_{{mon.name}}_monitor(SMEDLValue *identities, {{spec.name}}State *init_state) {
     {% if mon.params is nonempty %}
     /* Check if monitor with identities already exists */
-    if (monitormap_lookup(monitor_map_all, identities) != NULL) {
+    if (monitormap_lookup(&monitor_map_all, identities) != NULL) {
         return 1;
     }
 
@@ -266,7 +270,7 @@ int process_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
 /* Recycle a monitor instance - Used as the callback for when final states are
  * reached in the monitor. Return nonzero if successful, zero on failure. */
 int recycle_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
-    monitormap_remove(monitor_map_all, mon);
+    monitormap_remove(&monitor_map_all, mon);
     smedl_free_array(mon->identities, {{mon.params|length}});
     free_{{spec.name}}_monitor(mon);
     return 1;
@@ -277,11 +281,11 @@ int recycle_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
 MonitorInstance * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
     MonitorInstance *prev_inst = NULL;
     MonitorMap *prev_map = NULL;
-    MonitorMap *inst;
+    MonitorInstance *inst;
     {% for param_set in mon.param_subsets
         if param_set != mon.full_param_subset %}
 
-    inst = monitormap_insert({{mon_map_name(param_set)}}, mon, prev_inst, prev_map);
+    inst = monitormap_insert(&{{mon_map_name(param_set)}}, mon, prev_inst, prev_map);
     if (inst == NULL) {
         {% if not loop.first %}
         monitormap_removeinst(prev_map, prev_inst);
@@ -289,10 +293,10 @@ MonitorInstance * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
         return NULL;
     }
     prev_inst = inst;
-    prev_map = {{mon_map_name(param_set)}};
+    prev_map = &{{mon_map_name(param_set)}};
     {% endfor %}
 
-    inst = monitormap_insert(monitor_map_all, mon, prev_inst, prev_map);
+    inst = monitormap_insert(&monitor_map_all, mon, prev_inst, prev_map);
     if (inst == NULL) {
         {% if mon.param_subsets|length > 1 %}
         monitormap_removeinst(prev_map, prev_inst);
@@ -322,7 +326,7 @@ if (identities[{{tree.idx}}].t == SMEDL_NULL) {
     {{pick_mon_map(tree.bound)|indent}}
 }
 {% else %}
-instances = monitormap_lookup({{mon_map_name(tree)}}, identities);
+instances = monitormap_lookup(&{{mon_map_name(tree)}}, identities);
 {% if tree == mon.full_param_subset %}
 dynamic_instantiation = 1;
 {% endif %}
@@ -353,7 +357,7 @@ MonitorInstance * get_{{mon.name}}_monitors(SMEDLValue *identities) {
         }
         setup_{{mon.name}}_callbacks(mon);
         instances = add_{{mon.name}}_monitor(mon);
-        if (result == NULL) {
+        if (instances == NULL) {
             /* malloc fail */
             free_{{spec.name}}_monitor(mon);
             smedl_free_array(ids_copy, {{mon.params|length}});
@@ -361,6 +365,6 @@ MonitorInstance * get_{{mon.name}}_monitors(SMEDLValue *identities) {
         }
     }
 
-    return result;
+    return instances;
 }
 {% endif %}

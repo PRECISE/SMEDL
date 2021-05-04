@@ -67,5 +67,6 @@ MonitorInstance * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
  * Returns a linked list of MonitorInstance (which may be empty, i.e. NULL).
  * If dynamic instantiation fails, returns INVALID_INSTANCE. */
 MonitorInstance * get_{{mon.name}}_monitors(SMEDLValue *identities);
+{% endif %}
 
 #endif /* {{mon.name}}_LOCAL_WRAPPER_H */

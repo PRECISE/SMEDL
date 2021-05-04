@@ -132,8 +132,8 @@ MonitorInstance dummy_instance;
  * hash - Pointer to the hash function to use
  * equals - Pointer to the equality function to use */
 int monitormap_init(MonitorMap *map, size_t offset,
-                    uint64_t(*hash)(void *mon),
-                    int (*equals)(void *mon1, void *mon2)) {
+                    uint64_t(*hash)(SMEDLValue *ids),
+                    int (*equals)(SMEDLValue *ids1, SMEDLValue *ids2)) {
     map->capacity = MIN_CAPACITY;
     map->mask = map->capacity - 1;
     map->count = 0;
@@ -160,7 +160,7 @@ static int monitormap_resize(MonitorMap *map, size_t capacity) {
 
     size_t mask = capacity - 1;
 
-    for (size_t i = 0; i < map->capacity, i++) {
+    for (size_t i = 0; i < map->capacity; i++) {
         if (map->table[i].dib == 0) {
             continue;
         }
@@ -209,31 +209,31 @@ MonitorInstance * monitormap_insert(MonitorMap *map, void *mon,
     }
 
     MonitorList entry;
-    entry.instance = malloc(sizeof(MonitorInstance));
-    if (entry.instance == NULL) {
+    entry.head = malloc(sizeof(MonitorInstance));
+    if (entry.head == NULL) {
         return NULL;
     }
-    entry.instance->mon = mon;
-    entry.instance->next = NULL;
-    entry.instance->prev = NULL;
-    entry.instance->next_inst = next_inst;
-    entry.instance->mext_map = next_map;
+    entry.head->mon = mon;
+    entry.head->next = NULL;
+    entry.head->prev = NULL;
+    entry.head->next_inst = next_inst;
+    entry.head->next_map = next_map;
     entry.hash = map->hash(mon + map->offset);
     entry.dib = 1;
-    size_t i = hash & map->mask;
+    size_t i = entry.hash & map->mask;
 
     while (1) {
         if (map->table[i].dib == 0) {
             map->table[i] = entry;
             map->count++;
-            return entry.instance;
+            return entry.head;
         } else if (map->table[i].hash == entry.hash &&
                 map->equals(mon + map->offset,
                     map->table[i].head->mon + map->offset)) {
-            entry.instance->next = map->table[i].head;
-            map->table[i].head->prev = entry.instance;
-            map->table[i].head = entry.instance;
-            return entry.instance;
+            entry.head->next = map->table[i].head;
+            map->table[i].head->prev = entry.head;
+            map->table[i].head = entry.head;
+            return entry.head;
         } else if (map->table[i].dib < entry.dib) {
             MonitorList tmp = map->table[i];
             map->table[i] = entry;
@@ -262,7 +262,7 @@ static size_t monitormap_lookup_index(MonitorMap *map, SMEDLValue *ids) {
         }
         if (map->table[i].hash == hash &&
                 map->equals(ids, map->table[i].head->mon + map->offset)) {
-            return map->table[i].head;
+            return i;
         }
         i++;
         i &= map->mask;
@@ -386,7 +386,7 @@ void monitormap_remove(MonitorMap *map, void *mon) {
 MonitorInstance * monitormap_free(MonitorMap *map, int free_contents) {
     MonitorInstance *result = NULL;
     if (free_contents) {
-        for (size_t i = 0; i < capacity; i++) {
+        for (size_t i = 0; i < map->capacity; i++) {
             if (map->table[i].dib > 0) {
                 MonitorInstance *inst = map->table[i].head;
                 while (inst != NULL) {

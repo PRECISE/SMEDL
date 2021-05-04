@@ -107,8 +107,8 @@ typedef struct MonitorMap {
  * hash - Pointer to the hash function to use
  * equals - Pointer to the equality function to use */
 int monitormap_init(MonitorMap *map, size_t offset,
-                    uint64_t(*hash)(void *mon),
-                    int (*equals)(void *mon1, void *mon2));
+                    uint64_t(*hash)(SMEDLValue *ids),
+                    int (*equals)(SMEDLValue *ids1, SMEDLValue *ids2));
 
 /* Insert a monitor into a MonitorMap. Returns a pointer to the MonitorInstance
  * if successful, or NULL on failure.

@@ -47,7 +47,7 @@ COMMON_SOURCES=smedl_types.c event_queue.c monitor_map.c global_event_queue.c
 {% endif %}
 {% for syncset in syncsets %}
 SOURCES_{{syncset}}=
-{%- for spec in syncset_specs[syncset] %}{% if not loop.first %} {% endif %}{{spec}}_mon.c{% endfor %}
+{%- for spec in syncset_specs[syncset] %}{% if not loop.first %} {%+ endif %}{{spec}}_mon.c{% endfor %}
 {%- for mon in syncset_mons[syncset] %} {{mon}}_local_wrapper.c{% endfor %}
  {{syncset}}_global_wrapper.c
 {%- if transport == 'rabbitmq' %} {{syncset}}_rabbitmq.c{% endif %}
