@@ -209,6 +209,15 @@ static int handle_{{syncset}}_intra() {
             case CHANNEL_{{syncset}}_{{conn.channel}}:
                 success = success &&
                     route_{{syncset}}_{{conn.channel}}(identities, params, aux);
+                {% if conn.source_mon.params is nonempty %}
+                {% for param_type in conn.source_mon.params %}
+                {% if param_type is sameas SmedlType.STRING %}
+                free(identities[{{loop.index0}}].v.s);
+                {% elif param_type is sameas SmedlType.OPAQUE %}
+                free(identities[{{loop.index0}}].v.o.data);
+                {% endif %}
+                {% endfor %}
+                {% endif %}
                 {% for param_type in conn.source_event_params %}
                 {% if param_type is sameas SmedlType.STRING %}
                 free(params[{{loop.index0}}].v.s);
@@ -221,8 +230,9 @@ static int handle_{{syncset}}_intra() {
             {% endfor %}
         }
 
-        /* Event params were malloc'd. They are no longer needed. (String and
-         * opaque data were already free'd in the switch.) */
+        /* Event params and identites were malloc'd. They are no longer needed.
+         * (String and opaque data were already free'd in the switch.) */
+        free(identities);
         free(params);
     }
     return success;
@@ -248,6 +258,15 @@ static int handle_{{syncset}}_inter() {
                     success = success &&
                         cb_{{conn.channel}}(identities, params, aux);
                 }
+                {% if conn.source_mon.params is nonempty %}
+                {% for param_type in conn.source_mon.params %}
+                {% if param_type is sameas SmedlType.STRING %}
+                free(identities[{{loop.index0}}].v.s);
+                {% elif param_type is sameas SmedlType.OPAQUE %}
+                free(identities[{{loop.index0}}].v.o.data);
+                {% endif %}
+                {% endfor %}
+                {% endif %}
                 {% for param_type in conn.source_event_params %}
                 {% if param_type is sameas SmedlType.STRING %}
                 free(params[{{loop.index0}}].v.s);
@@ -260,8 +279,9 @@ static int handle_{{syncset}}_inter() {
             {% endfor %}
         }
 
-        /* Event params were malloc'd. They are no longer needed. (String and
-         * opaque data were already free'd in the switch.) */
+        /* Event params and identites were malloc'd. They are no longer needed.
+         * (String and opaque data were already free'd in the switch.) */
+        free(identities);
         free(params);
     }
     return success;
@@ -289,11 +309,17 @@ static int handle_{{syncset}}_queues() {
 {% for decl in mon_decls %}
 {% for event, conn in decl.ev_connections.items() %}
 int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+    {% if conn.source_mon.params is nonempty %}
+    {% set ids_len = decl.params|length %}
+    SMEDLValue *ids_copy = smedl_copy_array(identities, {{ids_len}});
+    {% else %}
+    SMEDLValue *ids_copy = NULL;
+    {% endif %}
     {% set params_len = decl.spec.exported_events[event]|length %}
     {% if conn in decl.intra_connections %}
     /* Store on intra queue */
     SMEDLValue *params_intra = smedl_copy_array(params, {{params_len}});
-    if (!push_global_event(&intra_queue, CHANNEL_{{syncset}}_{{conn.channel}}, identities, params_intra, aux)) {
+    if (!push_global_event(&intra_queue, CHANNEL_{{syncset}}_{{conn.channel}}, ids_copy, params_intra, aux)) {
         /* malloc fail */
         smedl_free_array(params_intra, {{params_len}});
         return 0;
@@ -302,7 +328,7 @@ int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, vo
     {% if conn in decl.inter_connections %}
     /* Store on inter queue */
     SMEDLValue *params_inter = smedl_copy_array(params, {{params_len}});
-    if (!push_global_event(&inter_queue, CHANNEL_{{syncset}}_{{conn.channel}}, identities, params_inter, aux)) {
+    if (!push_global_event(&inter_queue, CHANNEL_{{syncset}}_{{conn.channel}}, ids_copy, params_inter, aux)) {
         /* malloc fail */
         smedl_free_array(params_inter, {{params_len}});
         return 0;

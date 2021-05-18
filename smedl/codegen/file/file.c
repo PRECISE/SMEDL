@@ -28,6 +28,17 @@ success = write_{{conn.channel}}(identities, params, aux) && success;
 success = import_{{syncset.name}}_{{conn.channel}}(identities, params, aux) && success;
 {%- endif %}
 {% endfor %}
+{% if conn.source_mon is not none and conn.source_mon.params is nonempty %}
+{% for param in conn.source_mon.params %}
+{% if param is sameas SmedlType.STRING %}
+
+free(identities[{{loop.index0}}].v.s);
+{%- elif param is sameas SmedlType.OPAQUE %}
+
+free(identities[{{loop.index0}}].v.o.data);
+{%- endif %}
+{% endfor %}
+{% endif %}
 {% for param in conn.source_event_params %}
 {% if param is sameas SmedlType.STRING %}
 
@@ -60,9 +71,10 @@ int handle_queue() {
             {% endfor %}
             {% endfor %}
         }
-        /* Event params were malloc'd in the enqueue_*() functions. They are no
-         * longer needed. (String and opaque data were already free'd in the
-         * switch.) */
+        /* Event params and identities were malloc'd in the enqueue_*()
+         * functions. They are no longer needed. (String and opaque data were
+         * already free'd in the switch.) */
+        free(identities);
         free(params);
     }
 
@@ -76,8 +88,13 @@ int handle_queue() {
 
 int enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
         void *aux) {
+    {% if conn.source_mon is not none and conn.source_mon.params is nonempty %}
+    SMEDLValue *ids_copy = smedl_copy_array(identities, {{conn.source_mon.params|length}});
+    {% else %}
+    SMEDLValue *ids_copy = NULL;
+    {% endif %}
     SMEDLValue *params_copy = smedl_copy_array(params, {{conn.source_event_params|length}});
-    if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
+    if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, ids_copy, params_copy, aux)) {
         /* malloc fail */
         smedl_free_array(params_copy, {{conn.source_event_params|length}});
         return 0;
@@ -90,8 +107,13 @@ int enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
 
 int enqueue_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params,
         void *aux) {
+    {% if conn.source_mon is not none and conn.source_mon.params is nonempty %}
+    SMEDLValue *ids_copy = smedl_copy_array(identities, {{conn.source_mon.params|length}});
+    {% else %}
+    SMEDLValue *ids_copy = NULL;
+    {% endif %}
     SMEDLValue *params_copy = smedl_copy_array(params, {{conn.source_event_params|length}});
-    if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
+    if (!push_global_event(&queue, SYSCHANNEL_{{conn.channel}}, ids_copy, params_copy, aux)) {
         /* malloc fail */
         smedl_free_array(params_copy, {{conn.source_event_params|length}});
         return 0;
