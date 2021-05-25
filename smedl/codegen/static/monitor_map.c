@@ -230,7 +230,7 @@ MonitorInstance * monitormap_insert(MonitorMap *map, void *mon,
             map->count++;
             return entry.head;
         } else if (map->table[i].hash == entry.hash &&
-                map->equals(IDS_OF(mon), IDS_OF(map->table[i].head))) {
+                map->equals(IDS_OF(mon), IDS_OF(map->table[i].head->mon))) {
             entry.head->next = map->table[i].head;
             map->table[i].head->prev = entry.head;
             map->table[i].head = entry.head;
@@ -262,8 +262,7 @@ static size_t monitormap_lookup_index(MonitorMap *map, SMEDLValue *ids) {
             return ((size_t) -1);
         }
         if (map->table[i].hash == hash &&
-                map->equals(ids, *(SMEDLValue **) (map->table[i].head->mon +
-                                                   map->offset))) {
+                map->equals(ids, IDS_OF(map->table[i].head->mon))) {
             return i;
         }
         i++;
