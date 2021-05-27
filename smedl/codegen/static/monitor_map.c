@@ -223,18 +223,19 @@ MonitorInstance * monitormap_insert(MonitorMap *map, void *mon,
     entry.hash = map->hash(IDS_OF(mon));
     entry.dib = 1;
     size_t i = entry.hash & map->mask;
+    MonitorInstance *retval = entry.head;
 
     while (1) {
         if (map->table[i].dib == 0) {
             map->table[i] = entry;
             map->count++;
-            return entry.head;
+            return retval;
         } else if (map->table[i].hash == entry.hash &&
                 map->equals(IDS_OF(mon), IDS_OF(map->table[i].head->mon))) {
             entry.head->next = map->table[i].head;
             map->table[i].head->prev = entry.head;
             map->table[i].head = entry.head;
-            return entry.head;
+            return retval;
         } else if (map->table[i].dib < entry.dib) {
             MonitorList tmp = map->table[i];
             map->table[i] = entry;
