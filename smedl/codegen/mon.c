@@ -232,7 +232,7 @@ mon->s.{{a.var}}--;
 {% macro event_handler(event) -%}
 {% for scenario in spec.scenarios if scenario.handles_event(event) %}
 /* {{scenario.name}} scenario */
-if (!mon->ef.{{scenario.name}}_flag) {
+//if (!mon->ef.{{scenario.name}}_flag) {
     switch (mon->{{scenario.name}}_state) {
         {% for state in scenario.all_states if (state, event) in scenario.steps %}
         case STATE_{{spec.name}}_{{scenario.name}}_{{state}}:
@@ -268,8 +268,8 @@ if (!mon->ef.{{scenario.name}}_flag) {
              * from this state */
             ;
     }
-    mon->ef.{{scenario.name}}_flag = 1;
-}
+    //mon->ef.{{scenario.name}}_flag = 1;
+//}
 {%- if not loop.last %}
 
 
