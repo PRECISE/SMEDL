@@ -98,6 +98,8 @@ MonitorInstance dummy_instance;
 #define MIN_CAPACITY 16
 #define GROW_THRESHOLD 0.75
 #define SHRINK_THRESHOLD 0.1
+/* Map capacity grows/shrinks by a factor of 2^GROWTH_ORDER */
+#define GROWTH_ORDER 1
 
 /* Monitor map implementation based on https://github.com/tidwall/hashmap.c,
  * which is available under the following open source license:
@@ -205,7 +207,7 @@ MonitorInstance * monitormap_insert(MonitorMap *map, void *mon,
                                     MonitorInstance *next_inst,
                                     MonitorMap *next_map) {
     if (map->count == map->grow_at) {
-        if (!monitormap_resize(map, map->capacity * 2)) {
+        if (!monitormap_resize(map, map->capacity << GROWTH_ORDER)) {
             return NULL;
         }
     }
@@ -257,9 +259,10 @@ MonitorInstance * monitormap_insert(MonitorMap *map, void *mon,
 static size_t monitormap_lookup_index(MonitorMap *map, SMEDLValue *ids) {
     uint64_t hash = map->hash(ids);
     size_t i = hash & map->mask;
+    unsigned int dib = 1;
 
     while (1) {
-        if (map->table[i].dib == 0) {
+        if (map->table[i].dib < dib) {
             return ((size_t) -1);
         }
         if (map->table[i].hash == hash &&
@@ -268,6 +271,7 @@ static size_t monitormap_lookup_index(MonitorMap *map, SMEDLValue *ids) {
         }
         i++;
         i &= map->mask;
+        dib++;
     }
 }
 
@@ -327,11 +331,12 @@ static void monitormap_remove_list(MonitorMap *map, size_t i) {
             break;
         }
         map->table[prev_i] = map->table[i];
+        map->table[prev_i].dib--;
     }
     map->count--;
     if (map->capacity > MIN_CAPACITY && map->count <= map->shrink_at) {
         // Failure to shrink won't cause problems except extra memory usage
-        monitormap_resize(map, map->capacity / 2);
+        monitormap_resize(map, map->capacity >> 2);
     }
 }
 
