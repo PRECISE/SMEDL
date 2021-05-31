@@ -2,6 +2,7 @@
 Structures and types for monitoring system architectures (.a4smedl files)
 """
 
+import itertools
 import types
 
 from .expr import SmedlType
@@ -701,7 +702,7 @@ class DeclaredMonitor(object):
         then Mon1's param subsets would be [(0, 1, 2), (0, 2)].
         """
         result = []
-        for conn in self._sys.imported_connections.values():
+        for conn in self._sys.all_connections:
             for target in conn.targets:
                 if target.monitor is not self:
                     continue
@@ -828,6 +829,15 @@ class MonitorSystem(object):
     @property
     def imported_connections(self):
         return self._imported_connections
+
+    @property
+    def all_connections(self):
+        """Return an iterator over all connections from the target system and
+        from monitors"""
+        return itertools.chain(
+            self._imported_connections.values(),
+            *(mon.connections.values() for mon
+              in self._monitor_decls.values()))
 
     @property
     def ev_imported_connections(self):

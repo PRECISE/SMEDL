@@ -147,6 +147,10 @@ int monitormap_init(MonitorMap *map, size_t offset,
     map->hash = hash;
     map->equals = equals;
     map->table = calloc(map->capacity, sizeof(MonitorList));
+    if (map->table == NULL) {
+        return 0;
+    }
+    return 1;
 }
 
 /* Grow or shrink the monitor map to the new capacity. Return nonzero if
