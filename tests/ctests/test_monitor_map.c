@@ -1,6 +1,62 @@
+#include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 #include "unity.h"
 #include "monitor_map.h"
+
+/* Mock hash function - assumes single int value and returns the int itself */
+uint64_t mock_hash(SMEDLValue *ids) {
+    return ids[0].v.i;
+}
+
+/* Mock equal function - assumes single int value */
+int mock_equals(SMEDLValue *ids1, SMEDLValue *ids2) {
+    return ids1[0].v.i == ids2[0].v.i;
+}
+
+/* Return a new identity array with a single integer identitiy */
+SMEDLValue * new_identities(int i) {
+    SMEDLValue *result = malloc(sizeof(SMEDLValue));
+    if (result == NULL) {
+        return NULL;
+    }
+    result[0].t = SMEDL_INT;
+    result[0].v.i = i;
+    return result;
+}
+
+/* Mock monitor that contains identities that are not at offset 0 within the
+ * struct */
+typedef struct MockMon {
+    int i;
+    SMEDLValue *ids;
+} MockMon;
+
+/* Return a new mock monitor with a single integer identity */
+MockMon *new_mock_mon(int i) {
+    MockMon *mon = malloc(sizeof(MockMon));
+    if (mon == NULL) {
+        return NULL;
+    }
+    mon->ids = new_identities(i);
+    if (mon->ids == NULL) {
+        free(mon);
+        return NULL;
+    }
+    mon->i = i;
+    return mon;
+}
+
+/* Validate that the integrity of the map is intact */
+void check_map(MonitorMap *map) {
+    TEST_ASSERT_LESS_OR_EQUAL_INT64(map->grow_at, map->count);
+    TEST_ASSERT_MESSAGE(map->capacity == MIN_CAPACITY ||
+            map->shrink_at < map->count, "Map needs to shrink");
+    TEST_ASSERT_LESS_OR_EQUAL_INT64(map->grow_at, map->count);
+    TEST_ASSERT_LESS_OR_EQUAL_INT64(map->grow_at, map->count);
+}
+
+
 
 SMEDLRecordBase dummy = {0};
 SMEDLRecordBase *DUMMY = &dummy;

@@ -54,15 +54,13 @@ int perform_{{mon.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, v
  ******************************************************************************/
 {% if mon.params is nonempty %}
 
-/* Record type for monitor maps */
-typedef struct {{mon.name}}Record {
-    SMEDLRecordBase r;
-    {{spec.name}}Monitor *mon;
-} {{mon.name}}Record;
+/* Recycle a monitor instance - Used as the callback for when final states are
+ * reached in the monitor. Return nonzero if successful, zero on failure. */
+int recycle_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
 
 /* Add the provided monitor to the monitor maps. Return a
- * {{mon.name}}Record, or NULL if unsuccessful. */
-{{mon.name}}Record * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
+ * MonitorInstance, or NULL if unsuccessful. */
+MonitorInstance * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon);
 
 /* Fetch a list of monitor instances matching the given identities.
  *
@@ -73,24 +71,9 @@ typedef struct {{mon.name}}Record {
  * specified (i.e. there are no wildcards), create an instance with those
  * identities and return it.
  *
- * Returns a linked list of {{mon.name}}Record (which may be empty, i.e. NULL).
- * If dynamic instantiation fails, returns INVALID_RECORD. */
-{{mon.name}}Record * get_{{mon.name}}_monitors(SMEDLValue *identities);
-
-/* Fetch a monitor with the given identities. Identities must be fully
- * specified (i.e. no wildcards) and if the monitor does not exist, return
- * NULL.
- *
- * Returns a pointer to the {{spec.name}}Monitor or NULL.
- */
-{{spec.name}}Monitor * getsingle_{{mon.name}}_monitor(SMEDLValue *identities);
-
-/* Check if a monitor with the given identities is present. Return nonzero if
- * so, zero if not. */
-int check_{{mon.name}}_monitors(SMEDLValue *identities);
-
-/* Remove a monitor with the given identities from the monitor maps */
-void remove_{{mon.name}}_monitor(SMEDLValue *identities);
+ * Returns a linked list of MonitorInstance (which may be empty, i.e. NULL).
+ * If dynamic instantiation fails, returns INVALID_INSTANCE. */
+MonitorInstance * get_{{mon.name}}_monitors(SMEDLValue *identities);
 {% endif %}
 
 #endif /* {{mon.name}}_LOCAL_WRAPPER_H */

@@ -74,6 +74,9 @@ int write_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux
  * Return nonzero on success, zero on failure. */
 int init_global_wrappers();
 
+/* Cleanup the global wrappers and the local wrappers and monitors within */
+void free_global_wrappers();
+
 /* Receive and process events from the provided JSON parser. Any malformed
  * events are skipped (with a warning printed to stderr). */
 void read_events(JSONParser *parser);

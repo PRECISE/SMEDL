@@ -68,6 +68,9 @@ typedef struct {{spec.name}}Monitor {
     SMEDLCallback callback_{{event}};
     {% endfor %}
 
+    /* Cleanup callback pointer */
+    int (*cleanup)(struct {{spec.name}}Monitor *mon);
+
     /* Local event queue */
     EventQueue event_queue;
 
@@ -79,6 +82,12 @@ typedef struct {{spec.name}}Monitor {
 {% for event in spec.exported_events.keys() %}
 void register_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLCallback cb_func);
 {% endfor %}
+
+/* Cleanup callback registration function - Set the callback for when the
+ * monitor is ready to be recycled. The callback is responsible for calling
+ * free_{{spec.name}}_monitor(). It must accept the monitor pointer as a
+ * parameter and return nonzero on success, zero on failure. */
+void registercleanup_{{spec.name}}({{spec.name}}Monitor *mon, int (*cleanup_func)({{spec.name}}Monitor *mon));
 
 /* Event handling functions:
  *

@@ -90,7 +90,7 @@ jsmntok_t * next_message(JSONParser *parser, char **str) {
             parser->status = JSONSTATUS_READERR;
             return NULL;
         }
-        
+
         /* Attempt to parse */
         do {
             result = jsmn_parse(&parser->parser, parser->buf, parser->buf_wpos,
@@ -157,7 +157,7 @@ int free_parser(JSONParser *parser) {
 void print_escaped(const char *str) {
     fputc('\"', stdout);
     while (*str != '\0') {
-        if (*str < 0x32) {
+        if (*str < 0x20) {
             printf("\\u%.4x", (unsigned) *str);
         } else if (*str == '\\' || *str == '\"') {
             fputc('\\', stdout);
@@ -174,7 +174,7 @@ void print_escaped(const char *str) {
 void print_escaped_len(const char *str, size_t len) {
     fputc('\"', stdout);
     for (size_t i = 0; i < len; i++) {
-        if (str[i] < 0x32) {
+        if (str[i] < 0x20) {
             printf("\\u%.4x", (unsigned) str[i]);
         } else if (str[i] == '\\' || str[i] == '\"') {
             fputc('\\', stdout);

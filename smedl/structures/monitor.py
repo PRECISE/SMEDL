@@ -5,7 +5,8 @@ Structures and types for SMEDL monitors (.smedl files)
 import types
 
 from . import expr
-from smedl.parser.exceptions import NameCollision, ElseCollision
+from smedl.parser.exceptions import (NameCollision, ElseCollision,
+                                     NameNotDefined)
 
 
 class StateVariable(object):
@@ -167,6 +168,8 @@ class Scenario(object):
         #
         # In the generated code, implicit states get names like "_state0"
         self._implicit_states = 0
+        # Final state: A state name from self._states or None
+        self._final_state = None
         # Steps: Single steps from a transition.
         # Keys are 2-tuples (state, event name) representing the state the step
         #   leads from and the event it is for. State is either a string if it
@@ -191,6 +194,10 @@ class Scenario(object):
     @property
     def implicit_states(self):
         return self._implicit_states
+
+    @property
+    def final_state(self):
+        return self._final_state
 
     @property
     def all_states(self):
@@ -266,6 +273,14 @@ class Scenario(object):
 
         # Add the else
         self._add_else(from_state, event, else_state, else_actions)
+
+    def add_final_state(self, state):
+        """Check if the given state exists and if so, store it as the final
+        state for this scenario"""
+        if state not in self._states:
+            raise NameNotDefined("Final state {} for scenario {} does not "
+                                 "exist".format(state, self._name))
+        self._final_state = state
 
     def handles_event(self, event):
         """Check if this scenario has any transitions for the specified event.
@@ -396,6 +411,15 @@ class MonitorSpec(object):
             if scenario.handles_event(event):
                 return True
         return False
+
+    def get_final_states(self):
+        """Return a dict mapping scenario names to final state names, for any
+        scenario with a final state"""
+        results = dict()
+        for scenario in self._scenarios:
+            if scenario.final_state is not None:
+                results[scenario.name] = scenario.final_state
+        return results
 
     def __repr__(self):
         # TODO Proably do this by adding __repr__ to components and calling

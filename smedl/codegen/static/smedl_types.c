@@ -123,6 +123,8 @@ int smedl_equal(SMEDLValue v1, SMEDLValue v2) {
     }
 }
 
+//TODO Can likely be removed. Was used for monitor lookups when we used AVL
+// trees for monitor maps.
 /*
  * Compare two arrays of SMEDLValue and return nonzero if each element in the
  * first is equal to the corresponding element in the second. The first array
@@ -211,7 +213,7 @@ SMEDLValue * smedl_copy_array(SMEDLValue *array, size_t len) {
     for (size_t i = 0; i < len; i++) {
         copy[i] = array[i];
         if (copy[i].t == SMEDL_STRING) {
-            copy[i].v.s = malloc(strlen(array[i].v.s + 1));
+            copy[i].v.s = malloc(strlen(array[i].v.s) + 1);
             if (copy[i].v.s == NULL) {
                 smedl_free_array(copy, i);
                 return NULL;

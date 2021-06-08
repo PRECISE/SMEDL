@@ -260,13 +260,18 @@ class SMEDLParser(Parser):
         self._identifier_()
         self.name_last_node('name')
         self._token(':')
+        with self._optional():
+            self._token('finalstate')
+            self._identifier_()
+            self.name_last_node('final_state')
+            self._token(';')
 
-        def block2():
+        def block3():
             self._transition_()
-        self._closure(block2)
+        self._closure(block3)
         self.name_last_node('transitions')
         self.ast._define(
-            ['name', 'transitions'],
+            ['final_state', 'name', 'transitions'],
             []
         )
 

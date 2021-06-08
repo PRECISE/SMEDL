@@ -25,7 +25,7 @@ EXTRA_SOURCES_{{spec}}=
 # -DDEBUG=3: Notice (Significant but normal occurrences)
 # -DDEBUG=4: Debug (All debug messages on)
 CFLAGS:=-g -DDEBUG=4 $(CFLAGS)
-#CFLAGS:=-O2 $(CFLAGS)
+#CFLAGS:=-O2 -DNDEBUG $(CFLAGS)
 
 # Where to place all object files, dependency makefiles, and executables.
 # For example, to place everything in a "build" directory:
@@ -47,7 +47,7 @@ COMMON_SOURCES=smedl_types.c event_queue.c monitor_map.c global_event_queue.c
 {% endif %}
 {% for syncset in syncsets %}
 SOURCES_{{syncset}}=
-{%- for spec in syncset_specs[syncset] %}{% if not loop.first %} {% endif %}{{spec}}_mon.c{% endfor %}
+{%- for spec in syncset_specs[syncset] %}{% if not loop.first %} {%+ endif %}{{spec}}_mon.c{% endfor %}
 {%- for mon in syncset_mons[syncset] %} {{mon}}_local_wrapper.c{% endfor %}
  {{syncset}}_global_wrapper.c {{syncset}}_manager.c
 {%- if transport == 'rabbitmq' %} {{syncset}}_rabbitmq.c{% endif %}

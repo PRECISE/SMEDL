@@ -56,7 +56,29 @@ void free_{{syncset}}_syncset(void) {
 /* Run interface - Process all currently-queued events. Should be called after
  * every call to forward_*().
  *
- * Returns nonzero on success, zero on failure. */
+ * Returns nonzero on success, zero on failure. 
+{% macro route_dequeued_event(conn) -%}
+case CHANNEL_{{conn.channel}}:
+success = route_{{syncset}}_{{conn.channel}}(identities, params, aux) && success;
+{% if conn.source_mon is not none %}
+{% for param_type in conn.source_mon.params %}
+{% if param_type is sameas SmedlType.STRING %}
+free(identites[{{loop.index0}}].v.s);
+{% elif param_type is sameas SmedlType.OPAQUE %}
+free(identites[{{loop.index0}}].v.o.data);
+{% endif %}
+{% endfor %}
+{% endif %}
+{% for param_type in conn.source_event_params %}
+{% if param_type is sameas SmedlType.STRING %}
+free(params[{{loop.index0}}].v.s);
+{% elif param_type is sameas SmedlType.OPAQUE %}
+free(params[{{loop.index0}}].v.o.data);
+{% endif %}
+{% endfor %}
+break;
+{%- endmacro %}
+{# -------------------------------------------------------------------------- #}
 int run_{{syncset}}(void) {
     int success = 1;
     int channel;
@@ -66,45 +88,20 @@ int run_{{syncset}}(void) {
     while (pop_global_event(&queue, &channel, &identities, &params, &aux)) {
         switch (channel) {
             {% for conn in sys.imported_channels(syncset) %}
-            case CHANNEL_{{conn.channel}}:
-                success = route_{{syncset}}_{{conn.channel}}(identities, params, aux) && success;
-                {% if conn.source_mon is not none %}
-                {% for param_type in conn.source_mon.params %}
-                {% if param_type is sameas SmedlType.STRING %}
-                free(identites[{{loop.index0}}].v.s);
-                {% elif param_type is sameas SmedlType.OPAQUE %}
-                free(identites[{{loop.index0}}].v.o.data);
-                {% endif %}
-                {% endfor %}
-                free(identities);
-                {% endif %}
-                {% for param_type in conn.source_event_params %}
-                {% if param_type is sameas SmedlType.STRING %}
-                free(params[{{loop.index0}}].v.s);
-                {% elif param_type is sameas SmedlType.OPAQUE %}
-                free(params[{{loop.index0}}].v.o.data);
-                {% endif %}
-                {% endfor %}
-                break;
+            {{route_dequeued_event(conn)|indent(12)}}
             {% endfor %}
             {% for decl in mon_decls %}
             {% for conn in decl.connections.values() %}
             case CHANNEL_{{conn.channel}}:
-                success = route_{{syncset}}_{{conn.channel}}(identities, params, aux) && success;
-                {% for param_type in conn.source_event_params %}
-                {% if param_type is sameas SmedlType.STRING %}
-                free(params[{{loop.index0}}].v.s);
-                {% elif param_type is sameas SmedlType.OPAQUE %}
-                free(params[{{loop.index0}}].v.o.data);
-                {% endif %}
-                {% endfor %}
-                break;
+            {{route_dequeued_event(conn)|indent(12)}}
             {% endfor %}
             {% endfor %}
         }
 
-        /* Event params were malloc'd. They are no longer needed. (String and
-         * opaque data were already free'd in the switch.) */
+        /* Event params and identities were malloc'd. They are no longer
+         * needed. (String and opaque data were already free'd in the
+         * switch.) */
+        free(identities);
         free(params);
     }
     return success;
@@ -262,7 +259,6 @@ int local_{{conn.channel}}_{{target.mon_string}}_{{target.event}}(SMEDLValue *id
 {% endfor %}
 {% endfor %}
 
-//TODO implement raise_* and forwards_* to queue an event and return
 
 /* Global wrapper export interface - Called by monitors and the target program
  * to raise events for the global wrapper to process.
@@ -288,12 +284,21 @@ int local_{{conn.channel}}_{{target.mon_string}}_{{target.event}}(SMEDLValue *id
 int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     {% if event in decl.ev_connections %}
     {% set conn = decl.ev_connections[event] %}
+    {% if decl.params is nonempty %}
+    {% set ids_len = decl.params|length %}
+    SMEDLValue *ids_copy = smedl_copy_array(identities, {{ids_len}});
+    {% else %}
+    SMEDLValue *ids_copy = NULL;
+    {% endif %}
     {% set params_len = decl.spec.exported_events[event]|length %}
     SMEDLValue *params_copy = smedl_copy_array(params, {{params_len}});
     if (params_copy == NULL) {
         return 0;
     }
-    if (!push_global_event(&queue, CHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
+    if (!push_global_event(&queue, CHANNEL_{{conn.channel}}, ids_copy, params_copy, aux)) {
+        {% if decl.params is nonempty %}
+        smedl_free_array(ids_copy, {{decl.params|length}});
+        {% endif %}
         smedl_free_array(params_copy, {{params_len}});
         return 0;
     }
@@ -313,7 +318,7 @@ int raise_pedl_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) 
     if (params_copy == NULL) {
         return 0;
     }
-    if (!push_global_event(&queue, CHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
+    if (!push_global_event(&queue, CHANNEL_{{conn.channel}}, NULL, params_copy, aux)) {
         smedl_free_array(params_copy, {{params_len}});
         return 0;
     }
@@ -340,13 +345,21 @@ int raise_pedl_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) 
 {% for conn in sys.imported_channels(syncset) %}
 
 int forward_{{syncset}}_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
-    //TODO identities need to be copied here too since they are external
+    {% if conn.source_mon.params is nonempty %}
+    {% set ids_len = conn.source_mon.params|length %}
+    SMEDLValue *ids_copy = smedl_copy_array(identities, {{ids_len}});
+    {% else %}
+    SMEDLValue *ids_copy = NULL;
+    {% endif %}
     {% set params_len = conn.source_event_params|length %}
     SMEDLValue *params_copy = smedl_copy_array(params, {{params_len}});
     if (params_copy == NULL) {
         return 0;
     }
-    if (!push_global_event(&queue, CHANNEL_{{conn.channel}}, identities, params_copy, aux)) {
+    if (!push_global_event(&queue, CHANNEL_{{conn.channel}}, ids_copy, params_copy, aux)) {
+        {% if conn.source_mon.params is nonempty %}
+        smedl_free_array(ids_copy, {{conn.source_mon.params|length}});
+        {% endif %}
         smedl_free_array(params_copy, {{params_len}});
         return 0;
     }
