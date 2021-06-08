@@ -246,10 +246,11 @@ int create_{{mon.name}}(SMEDLValue *identities) {
 
 int set_{{mon.name}}_{{var.name}}(SMEDLValue *identities, SMEDLValue value) {
     {% if mon.params is nonempty %}
-    {{spec.name}}Monitor *mon = getsingle_{{mon.name}}_monitor(identities);
-    if (mon == NULL) {
+    MonitorInstance *mon_inst = monitormap_lookup(&monitor_map_all, identities);
+    if (mon_inst == NULL) {
         return 0;
     }
+    {{spec.name}}Monitor *mon = mon_inst->mon;
     return setvar_{{spec.name}}_{{var.name}}(mon, value);
     {% else %}
     /* Singleton monitor - This is a no-op */
@@ -341,26 +342,6 @@ MonitorInstance * add_{{mon.name}}_monitor({{spec.name}}Monitor *mon) {
     }
 
     return inst;
-}
-
-/* Fetch a monitor with the given identities. Identities must be fully
- * specified (i.e. no wildcards) and if the monitor does not exist, return
- * NULL.
- *
- * Returns a pointer to the {{spec.name}}Monitor or NULL.
- */
-{{spec.name}}Monitor * getsingle_{{mon.name}}_monitor(SMEDLValue *identities) {
-    /* Fetch matching monitors from monitor map 0, then iterate through to
-     * find the full match */
-    SMEDLRecordBase *candidates;
-    candidates = monitor_map_lookup((SMEDLRecordBase *) monitor_map_0, identities[0]);
-    for (SMEDLRecordBase *rec = candidates; rec != NULL; rec = rec->equal) {
-        if (smedl_equal_array(identities, (({{mon.name}}Record *) rec)->mon->identities, {{mon.params|length}})) {
-            return (({{mon.name}}Record *) rec)->mon;
-        }
-    }
-    /* No match */
-    return NULL;
 }
 
 /* Fetch a list of monitor instances matching the given identities.
