@@ -2,11 +2,10 @@
 	"title" : "smedl",
 	"summary" : "A tool for generating software monitors from SMEDL and PEDL definitions.",
 	"uri" : "https://gitlab.precise.seas.upenn.edu/smedl/smedl",
-	"version" : "2.0.0.dev0",
+	"version" : "2.0.0",
 	"author" : "The Trustees of the University of Pennsylvania",
         "author_email": "pgeb@seas.upenn.edu",
         "maintainer": "Dominick C. Pastore",
         "maintainer_email": "dpastore@seas.upenn.edu",
-	"license" : "TBD",
-	"copyright" : "Copyright (c) 2020 The Trustees of the University of Pennsylvania"
+	"copyright" : "Copyright (c) 2021 The Trustees of the University of Pennsylvania"
 }

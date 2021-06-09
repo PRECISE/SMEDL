@@ -1,6 +1,0 @@
-object SafeMonObj
-events
-    new SafeMonObj(id,upbound,lobound) =
-        create MeanderData { id = this; upbound = this.thresh_up; lobound = this.thresh_dn; }
-    SafeMonObj(id).updatePos(pos = meander.pos) = update(meander.pos) when id == main.md1 || id == main.md2
-    SafeMonObj(id).changeDir() = update(meander.d) when id == main.md1 || id == main.md2

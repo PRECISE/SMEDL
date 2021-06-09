@@ -1,9 +1,0 @@
-//for each input event with json string, output event with different order
-//test json
-object jsontest
- events
-   imported ping(string, int, float);
-   exported pong(float, int, string);
- scenarios
-   sc1:
-     Start -> ping(st,i,f){raise pong(f,i,st);} -> End

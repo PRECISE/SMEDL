@@ -1,6 +1,0 @@
-object PQueue
-events
-    new PQueue(id) =
-        create PQueueData { id = this; p1 = this.p1; p2 = this.p2; p3 = this.p3; p4 = this.p4; p5 = this.p5; }
-    PQueue(id).push(x = node.priority) = call(pqueue().enqueue) when id == pqueue().pd
-    PQueue(id).pop(x = rv.priority) = call(pqueue().dequeue) when id == pqueue().pd

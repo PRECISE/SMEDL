@@ -24,7 +24,6 @@ setup(
     author_email=__about__['author_email'],
     maintainer=__about__['maintainer'],
     maintainer_email=__about__['maintainer_email'],
-    license=__about__['license'],
     classifiers=[
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
@@ -33,6 +32,7 @@ setup(
         'Topic :: Scientific/Engineering',
         'Topic :: Software Development :: Code Generators',
         'Topic :: Software Development :: Quality Assurance',
+        'License :: OSI Approved :: MIT License',
     ],
     keywords='runtime-verification',
 

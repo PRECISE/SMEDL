@@ -1,8 +1,0 @@
-object Test
-    events
-        imported foo();
-        imported foo2(int, double);
-        exported bar();
-    scenarios
-        check:
-            Start -> foo() { raise bar(); } -> Start

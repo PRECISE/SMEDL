@@ -1,3 +1,0 @@
-# SMEDL Explorer Example
-
-## TODO
