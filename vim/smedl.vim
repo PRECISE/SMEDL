@@ -52,6 +52,7 @@ highlight default link smedlLabel       Identifier
 syntax match smedlTransition    "\v-\>"
 syntax match smedlState         "\v<[a-zA-Z][0-9a-zA-Z_]*[ \t\r\n]*-\>"me=e-2,he=e-2
 syntax match smedlState         "\v-\>[ \t\r\n]*[a-zA-Z][0-9a-zA-Z_]*[ \t\r\n]*;"hs=s+2,me=e-1,he=e-1 contains=smedlTransition
+syntax match smedlState         "\v-\>[ \t\r\n]*[a-zA-Z][0-9a-zA-Z_]*[ \t\r\n]*else"hs=s+2,me=e-4,he=e-4 contains=smedlTransition
 highlight default link smedlTransition  Delimiter
 highlight default link smedlState       Identifier
 
