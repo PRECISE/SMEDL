@@ -1124,6 +1124,7 @@ int forward_rabbitmq_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *ident
             aux->correlation_id, msg, strlen(msg));
     {% endif %}
 
+    free(msg);
     cJSON_Delete(msg_json);
     return 1;
 
