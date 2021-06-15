@@ -281,12 +281,18 @@ class CodeGenerator(object):
         # Write the global wrapper and manager
         mon_decls = [mon for mon in system.syncsets[syncset.name]
                      if isinstance(mon, smedl.structures.arch.DeclaredMonitor)]
+        pedl_in = [mon for mon in system.syncsets[syncset.name]
+                   if isinstance(mon, smedl.structures.arch.Connection)]
+        pedl_out = [mon for mon in system.syncsets[syncset.name]
+                   if isinstance(mon, smedl.structures.arch.ExportedEvent)]
         values = {
             "sys": system,
             "syncset": syncset.name,
             "pure_async": syncset.pure_async,
             "cpp": self.cpp,
             "mon_decls": mon_decls,
+            "pedl_in": pedl_in,
+            "pedl_out": pedl_out,
         }
         self._render("global_wrapper.c", syncset.name + "_global_wrapper.c",
                      values)

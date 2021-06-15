@@ -15,6 +15,9 @@ EXTRA_SOURCES=
 {% for spec in spec_names %}
 EXTRA_SOURCES_{{spec}}=
 {% endfor %}
+{% if 'PEDL' in syncsets %}
+EXTRA_SOURCES_PEDL=
+{% endif %}
 {% endif %}
 
 # Uncomment the first for a debug build. Uncomment the second for a release
@@ -75,7 +78,8 @@ OBJS_{{syncset}}:=$(OBJS_{{syncset}}:%=$(BUILD_DIR)/%)
 EXTRA_SOURCES=
 {%- for syncset in syncsets %}
 {% if not loop.first %} {% endif %}$(EXTRA_SOURCES_{{syncset}})
-{% endfor %}
+{%- endfor %}
+
 EXTRA_SOURCES:=$(sort $(EXTRA_SOURCES))
 {% endif %}
 EXTRA_OBJS=$(EXTRA_SOURCES)

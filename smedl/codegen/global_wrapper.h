@@ -86,6 +86,9 @@ int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
 int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
+{% for conn in pedl_in %}
+int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
+{% endfor %}
 
 /* Local wrapper and PEDL handoff functions - Take queued event parameters and
  * transform them for the imported monitor event or exported PEDL event, then

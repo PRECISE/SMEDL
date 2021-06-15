@@ -56,7 +56,7 @@ void free_{{syncset}}_syncset(void) {
 /* Run interface - Process all currently-queued events. Should be called after
  * every call to forward_*().
  *
- * Returns nonzero on success, zero on failure. 
+ * Returns nonzero on success, zero on failure. */
 {% macro route_dequeued_event(conn) -%}
 case CHANNEL_{{conn.channel}}:
 success = route_{{syncset}}_{{conn.channel}}(identities, params, aux) && success;
@@ -92,9 +92,11 @@ int run_{{syncset}}(void) {
             {% endfor %}
             {% for decl in mon_decls %}
             {% for conn in decl.connections.values() %}
-            case CHANNEL_{{conn.channel}}:
             {{route_dequeued_event(conn)|indent(12)}}
             {% endfor %}
+            {% endfor %}
+            {% for conn in pedl_in %}
+            {{route_dequeued_event(conn)|indent(12)}}
             {% endfor %}
         }
 
@@ -153,6 +155,12 @@ int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
     {{route(conn, false)|indent}}
 }
 {% endfor %}
+{% endfor %}
+{% for conn in pedl_in %}
+
+int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
+    {{route(conn, false)|indent(12)}}
+}
 {% endfor %}
 
 /* Local wrapper and PEDL handoff functions - Take queued event parameters and
@@ -345,7 +353,7 @@ int raise_pedl_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) 
 {% for conn in sys.imported_channels(syncset) %}
 
 int forward_{{syncset}}_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
-    {% if conn.source_mon.params is nonempty %}
+    {% if conn.source_mon is not none and conn.source_mon.params is nonempty %}
     {% set ids_len = conn.source_mon.params|length %}
     SMEDLValue *ids_copy = smedl_copy_array(identities, {{ids_len}});
     {% else %}
@@ -357,7 +365,7 @@ int forward_{{syncset}}_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *id
         return 0;
     }
     if (!push_global_event(&queue, CHANNEL_{{conn.channel}}, ids_copy, params_copy, aux)) {
-        {% if conn.source_mon.params is nonempty %}
+        {% if conn.source_mon is not none and conn.source_mon.params is nonempty %}
         smedl_free_array(ids_copy, {{conn.source_mon.params|length}});
         {% endif %}
         smedl_free_array(params_copy, {{params_len}});
