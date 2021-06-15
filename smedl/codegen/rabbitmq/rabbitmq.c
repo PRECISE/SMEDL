@@ -32,6 +32,26 @@
 InitStatus init_status;
 RabbitMQState rmq_state;
 
+/* Keep a list of aux from the previous run_rabbitmq() to be freed at the next
+ * run_rabbitmq() */
+RabbitMQAux *auxes;
+
+/* Add an aux to the aux list */
+static void add_aux(RabbitMQAux *aux) {
+    aux->next = auxes;
+    auxes = aux;
+}
+
+/* Free all the auxes in the aux list */
+static void free_auxes() {
+    while (auxes != NULL) {
+        RabbitMQAux *tmp = auxes;
+        auxes = auxes->next;
+        free(tmp->aux);
+        free(tmp);
+    }
+}
+
 /* Print a message to stderr followed by a newline. Arguments like printf. */
 static void err(const char *fmt, ...) {
     va_list args;
@@ -164,16 +184,13 @@ int init_rabbitmq(void) {
         status = init_rabbitmq_lib(&rmq_config);
     }
 
-    if (status) {
+    if (!status) {
         /* Something failed. Clean up. */
         free_rabbitmq();
-    } else {
-        /* Program was terminated. Clean up. */
-        status = free_rabbitmq();
     }
     free(conf_buf);
 
-    return !status;
+    return status;
 }
 
 /* Clean up RabbitMQ adapter.
@@ -535,6 +552,7 @@ int init_rabbitmq_lib(RabbitMQConfig *rmq_config) {
  *
  * Returns nonzero on success, zero on failure. */
 int run_rabbitmq(int blocking) {
+    free_auxes();
     {% if pure_async %}
     while (!smedl_interrupted) {
     {% else %}
@@ -582,7 +600,7 @@ int consume_message(int blocking) {
     if (reply.reply_type == AMQP_RESPONSE_LIBRARY_EXCEPTION &&
             reply.library_error == AMQP_STATUS_TIMEOUT) {
         /* Timeout. */
-        return 2;
+        return 3;
     } else if (reply.reply_type == AMQP_RESPONSE_LIBRARY_EXCEPTION &&
             reply.library_error == AMQP_STATUS_UNEXPECTED_STATE) {
         /* Received some frame besides Basic.Deliver. Handle it. */
@@ -590,6 +608,7 @@ int consume_message(int blocking) {
             /* Error, but keep chugging along? */
             //return 0;
         }
+        return 2;
     } else if (check_reply(reply, "Could not consume message")) {
         /* Message successfully received. Handle it. */
         if (!handle_message(&envelope)) {
@@ -749,24 +768,28 @@ int handle_message(amqp_envelope_t *envelope) {
     }
 
     /* Get aux data JSON, render as string, and form RabbitMQAux */
-    RabbitMQAux aux;
+    RabbitMQAux *aux = malloc(sizeof(RabbitMQAux));
+    if (aux == NULL) {
+        err("Could not malloc aux data");
+        goto fail1;
+    }
     cJSON *aux_json = cJSON_GetObjectItemCaseSensitive(msg, "aux");
     if (aux_json == NULL) {
         err("Bad message ('aux' not present)");
-        goto fail1;
+        goto fail2;
     }
-    aux.aux = cJSON_PrintUnformatted(aux_json);
-    if (aux.aux == NULL) {
+    aux->aux = cJSON_PrintUnformatted(aux_json);
+    if (aux->aux == NULL) {
         err("Could not serialize aux data");
-        goto fail1;
+        goto fail2;
     }
     if (correlation_id != NULL) {
         size_t correlation_id_len =
             correlation_id->len <= 256 ? correlation_id->len : 256;
-        memcpy(aux.correlation_id, correlation_id->bytes, correlation_id_len);
-        aux.correlation_id[correlation_id_len] = '\0';
+        memcpy(aux->correlation_id, correlation_id->bytes, correlation_id_len);
+        aux->correlation_id[correlation_id_len] = '\0';
     } else {
-        aux.correlation_id[0] = '\0';
+        aux->correlation_id[0] = '\0';
     }
 
     status = 1;
@@ -785,9 +808,9 @@ int handle_message(amqp_envelope_t *envelope) {
         cJSON *identities_json = cJSON_GetObjectItemCaseSensitive(msg, "identities");
         if (!cJSON_IsArray(identities_json)) {
             err("Bad message ('identities' not present as an array)");
-            goto fail2;
+            goto fail3;
         }
-        {% if conn.source_mon.params is nonempty %}
+        {% if conn.source_mon is not none and conn.source_mon.params is nonempty %}
         SMEDLValue identities[{{conn.source_mon.params|length}}];
         {% for param in conn.source_mon.params %}
         {% if loop.first %}
@@ -821,7 +844,7 @@ int handle_message(amqp_envelope_t *envelope) {
             if (!smedl_string_to_pointer(id_json->valuestring, &identities[{{loop.index0}}].v.p)) {
                 err("Could not extract pointer from 'identities': Overflow or "
                         "bad message");
-                goto fail2;
+                goto fail3;
             }
         {% elif param is sameas SmedlType.OPAQUE %}
         if ({{get_next}} && cJSON_IsString(id_json)) {
@@ -831,18 +854,18 @@ int handle_message(amqp_envelope_t *envelope) {
         {% endif %}
         } else {
             err("Bad message (Bad 'identities' array)");
-            goto fail2;
+            goto fail3;
         }
         {% endfor %}
         if (cJSON_ArrayNext(id_json)) {
             err("Bad message (Too many elements in 'identities' array)");
-            goto fail2;
+            goto fail3;
         }
         {% else %}
         SMEDLValue *identities = NULL;
         if (cJSON_ArrayFirst(identities_json, id_json)) {
             err("Bad message (Too many elements in 'identities' array)");
-            goto fail2;
+            goto fail3;
         }
         {% endif %}
         {% else %}
@@ -885,7 +908,7 @@ int handle_message(amqp_envelope_t *envelope) {
             if (!smedl_string_to_pointer(param_json->valuestring, &params[{{loop.index0}}].v.p)) {
                 err("Could not extract pointer from 'params': Overflow or "
                         "bad message");
-                goto fail2;
+                goto fail3;
             }
         {% elif param is sameas SmedlType.OPAQUE %}
         if ({{get_next}} && cJSON_IsString(param_json)) {
@@ -899,13 +922,13 @@ int handle_message(amqp_envelope_t *envelope) {
         {% endif %}
         } else {
             err("Bad message (Bad 'params' array)");
-            goto fail2;
+            goto fail3;
         }
         {% endfor %}
         {% if not conn.event_params_inferred %}
         if (cJSON_ArrayNext(param_json)) {
             err("Bad message (Too many elements in 'params' array)");
-            goto fail2;
+            goto fail3;
         }
         {% endif %}
         {% else %}
@@ -913,23 +936,25 @@ int handle_message(amqp_envelope_t *envelope) {
         {% if not conn.event_params_inferred %}
         if (cJSON_ArrayFirst(params_json, param_json)) {
             err("Bad message (Too many elements in 'params' array)");
-            goto fail2;
+            goto fail3;
         }
         {% endif %}
         {% endif %}
 
         /* Send to manager */
-        status = report_{{conn.mon_string}}_{{conn.source_event}}(identities, params, &aux) && status;
+        status = report_{{conn.mon_string}}_{{conn.source_event}}(identities, params, aux) && status;
     {% endfor %}
     }
 
     /* Cleanup */
-    free(aux.aux);
+    add_aux(aux);
     cJSON_Delete(msg);
     return status;
 
+fail3:
+    free(aux->aux);
 fail2:
-    free(aux.aux);
+    free(aux);
 fail1:
     cJSON_Delete(msg);
     return 0;

@@ -142,9 +142,11 @@ typedef struct {
 /* A struct to hold stored aux data from an incoming message and
  * RabbitMQState, needed when later sending a message out. Used as the aux
  * parameter for SMEDL API calls. */
-typedef struct {
+typedef struct RabbitMQAux {
     char correlation_id[257];
     void *aux;
+    struct RabbitMQAux *next; /* Malloc'd auxes are kept in a list to be freed
+                                 later */
 } RabbitMQAux;
 
 /* Open the file named "fname" in the current directory, if it exists. Strip
