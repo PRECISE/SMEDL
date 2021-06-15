@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 @@parseinfo :: False
-@@comments :: /(\/\*([^*]|[*\r\n])*\*\/)|(\/\/.*)/
+@@comments :: /(\/\*([^*]|[\r\n]|\*[^\/])*\*\/)|(\/\/.*)/
 
 identifier_list =
     ','.{identifier}*

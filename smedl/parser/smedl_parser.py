@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # CAVEAT UTILITOR
 #
@@ -10,15 +9,14 @@
 # Any changes you make to it will be overwritten the next time
 # the file is generated.
 
-
-from __future__ import generator_stop
+from __future__ import annotations
 
 import sys
 
 from tatsu.buffering import Buffer
 from tatsu.parsing import Parser
-from tatsu.parsing import tatsumasu, leftrec, nomemo
-from tatsu.parsing import leftrec, nomemo  # noqa
+from tatsu.parsing import tatsumasu
+from tatsu.parsing import leftrec, nomemo, isname # noqa
 from tatsu.util import re, generic_main  # noqa
 
 
@@ -31,7 +29,7 @@ class SMEDLBuffer(Buffer):
         text,
         whitespace=None,
         nameguard=None,
-        comments_re='(\\/\\*([^*]|[*\\r\\n])*\\*\\/)|(\\/\\/.*)',
+        comments_re='(\\/\\*([^*]|[\\r\\n]|\\*[^\\/])*\\*\\/)|(\\/\\/.*)',
         eol_comments_re=None,
         ignorecase=None,
         namechars='',
@@ -54,7 +52,7 @@ class SMEDLParser(Parser):
         self,
         whitespace=None,
         nameguard=None,
-        comments_re='(\\/\\*([^*]|[*\\r\\n])*\\*\\/)|(\\/\\/.*)',
+        comments_re='(\\/\\*([^*]|[\\r\\n]|\\*[^\\/])*\\*\\/)|(\\/\\/.*)',
         eol_comments_re=None,
         ignorecase=None,
         left_recursion=True,
@@ -123,7 +121,11 @@ class SMEDLParser(Parser):
                 self._token('pointer')
             with self._option():
                 self._token('opaque')
-            self._error('expecting one of: char double float int opaque pointer string')
+            self._error(
+                'expecting one of: '
+                "'int' 'float' 'double' 'char' 'string'"
+                "'pointer' 'opaque'"
+            )
 
     @tatsumasu()
     def _start_(self):  # noqa
@@ -140,7 +142,7 @@ class SMEDLParser(Parser):
         self._scenario_section_()
         self.name_last_node('scenarios')
         self._check_eof()
-        self.ast._define(
+        self._define(
             ['events', 'helpers', 'name', 'scenarios', 'state_vars'],
             []
         )
@@ -191,7 +193,7 @@ class SMEDLParser(Parser):
             self._signed_literal_()
             self.name_last_node('value')
         self._token(';')
-        self.ast._define(
+        self._define(
             ['name', 'type', 'value'],
             []
         )
@@ -216,7 +218,10 @@ class SMEDLParser(Parser):
                     self._token('internal')
                 with self._option():
                     self._token('exported')
-                self._error('expecting one of: exported imported internal')
+                self._error(
+                    'expecting one of: '
+                    "'imported' 'internal' 'exported'"
+                )
         self.name_last_node('type')
 
         def sep3():
@@ -227,7 +232,7 @@ class SMEDLParser(Parser):
         self._positive_gather(block3, sep3)
         self.name_last_node('signatures')
         self._token(';')
-        self.ast._define(
+        self._define(
             ['signatures', 'type'],
             []
         )
@@ -240,7 +245,7 @@ class SMEDLParser(Parser):
         self._type_list_()
         self.name_last_node('params')
         self._token(')')
-        self.ast._define(
+        self._define(
             ['name', 'params'],
             []
         )
@@ -270,7 +275,7 @@ class SMEDLParser(Parser):
             self._transition_()
         self._closure(block3)
         self.name_last_node('transitions')
-        self.ast._define(
+        self._define(
             ['final_state', 'name', 'transitions'],
             []
         )
@@ -286,7 +291,7 @@ class SMEDLParser(Parser):
             self._else_definition_()
             self.name_last_node('else_step')
         self._token(';')
-        self.ast._define(
+        self._define(
             ['else_step', 'start_state', 'steps'],
             []
         )
@@ -306,8 +311,12 @@ class SMEDLParser(Parser):
                 self._token('->')
                 self._identifier_()
                 self.name_last_node('end_state')
-            self._error('expecting one of: step_definition step_event_definition')
-        self.ast._define(
+            self._error(
+                'expecting one of: '
+                '<step_event_definition>'
+                '<step_definition>'
+            )
+        self._define(
             ['end_state', 'rest', 'step'],
             []
         )
@@ -325,7 +334,7 @@ class SMEDLParser(Parser):
         with self._optional():
             self._action_list_()
             self.name_last_node('actions')
-        self.ast._define(
+        self._define(
             ['actions', 'condition', 'event'],
             []
         )
@@ -340,7 +349,7 @@ class SMEDLParser(Parser):
         self._token('->')
         self._identifier_()
         self.name_last_node('else_state')
-        self.ast._define(
+        self._define(
             ['else_actions', 'else_state'],
             []
         )
@@ -357,7 +366,7 @@ class SMEDLParser(Parser):
         self._identifier_list_()
         self.name_last_node('params')
         self._token(')')
-        self.ast._define(
+        self._define(
             ['name', 'params'],
             []
         )
@@ -384,8 +393,12 @@ class SMEDLParser(Parser):
             with self._option():
                 self._void()
                 self.name_last_node('first')
-            self._error('expecting one of: action assignment call_stmt decrement increment raise_stmt')
-        self.ast._define(
+            self._error(
+                'expecting one of: '
+                '<assignment> <increment> <decrement>'
+                '<raise_stmt> <call_stmt> <action>'
+            )
+        self._define(
             ['first', 'rest'],
             []
         )
@@ -403,7 +416,12 @@ class SMEDLParser(Parser):
                 self._raise_stmt_()
             with self._option():
                 self._call_stmt_()
-            self._error('expecting one of: /[a-zA-Z][A-Za-z0-9_]*/ assignment call_stmt decrement identifier increment raise raise_stmt')
+            self._error(
+                'expecting one of: '
+                '[a-zA-Z][A-Za-z0-9_]* <identifier>'
+                '<assignment> <increment> <decrement>'
+                "'raise' <raise_stmt> <call_stmt>"
+            )
 
     @tatsumasu()
     def _assignment_(self):  # noqa
@@ -412,7 +430,7 @@ class SMEDLParser(Parser):
         self._token('=')
         self._expression_()
         self.name_last_node('value')
-        self.ast._define(
+        self._define(
             ['target', 'value'],
             []
         )
@@ -422,7 +440,7 @@ class SMEDLParser(Parser):
         self._identifier_()
         self.name_last_node('target')
         self._token('++')
-        self.ast._define(
+        self._define(
             ['target'],
             []
         )
@@ -432,7 +450,7 @@ class SMEDLParser(Parser):
         self._identifier_()
         self.name_last_node('target')
         self._token('--')
-        self.ast._define(
+        self._define(
             ['target'],
             []
         )
@@ -446,7 +464,7 @@ class SMEDLParser(Parser):
         self._expression_list_()
         self.name_last_node('params')
         self._token(')')
-        self.ast._define(
+        self._define(
             ['event', 'params'],
             []
         )
@@ -459,7 +477,7 @@ class SMEDLParser(Parser):
         self._expression_list_()
         self.name_last_node('params')
         self._token(')')
-        self.ast._define(
+        self._define(
             ['function', 'params'],
             []
         )
@@ -544,7 +562,10 @@ class SMEDLParser(Parser):
                         self._token('==')
                     with self._option():
                         self._token('!=')
-                    self._error('expecting one of: != ==')
+                    self._error(
+                        'expecting one of: '
+                        "'==' '!='"
+                    )
 
         def block0():
             self._comparison_expr_()
@@ -564,7 +585,10 @@ class SMEDLParser(Parser):
                         self._token('>=')
                     with self._option():
                         self._token('>')
-                    self._error('expecting one of: < <= > >=')
+                    self._error(
+                        'expecting one of: '
+                        "'<=' '<' '>=' '>'"
+                    )
 
         def block0():
             self._bitshift_expr_()
@@ -580,7 +604,10 @@ class SMEDLParser(Parser):
                         self._token('<<')
                     with self._option():
                         self._token('>>')
-                    self._error('expecting one of: << >>')
+                    self._error(
+                        'expecting one of: '
+                        "'<<' '>>'"
+                    )
 
         def block0():
             self._additive_expr_()
@@ -596,7 +623,10 @@ class SMEDLParser(Parser):
                         self._token('+')
                     with self._option():
                         self._token('-')
-                    self._error('expecting one of: + -')
+                    self._error(
+                        'expecting one of: '
+                        "'+' '-'"
+                    )
 
         def block0():
             self._multiplicative_expr_()
@@ -614,7 +644,10 @@ class SMEDLParser(Parser):
                         self._token('/')
                     with self._option():
                         self._token('%')
-                    self._error('expecting one of: % * /')
+                    self._error(
+                        'expecting one of: '
+                        "'*' '/' '%'"
+                    )
 
         def block0():
             self._unary_expr_()
@@ -641,7 +674,11 @@ class SMEDLParser(Parser):
                 self._atom_()
             with self._option():
                 self._atom_()
-            self._error('expecting one of: ! + - atom helper_call literal parenthesized var_or_param ~')
+            self._error(
+                'expecting one of: '
+                "'+' '-' '~' '!' <literal> <helper_call>"
+                '<parenthesized> <var_or_param> <atom>'
+            )
 
     @tatsumasu()
     def _atom_(self):  # noqa
@@ -654,7 +691,13 @@ class SMEDLParser(Parser):
                 self._parenthesized_()
             with self._option():
                 self._var_or_param_()
-            self._error('expecting one of: ( /[a-zA-Z][A-Za-z0-9_]*/ bool char float helper_call identifier integer literal null parenthesized string var_or_param')
+            self._error(
+                'expecting one of: '
+                '<float> <integer> <char> <string> <bool>'
+                '<null> <literal> [a-zA-Z][A-Za-z0-9_]*'
+                "<identifier> <helper_call> '('"
+                '<parenthesized> <var_or_param>'
+            )
 
     @tatsumasu()
     def _literal_(self):  # noqa
@@ -689,8 +732,18 @@ class SMEDLParser(Parser):
                 self.name_last_node('value')
                 self._constant('null')
                 self.name_last_node('type')
-            self._error('expecting one of: /"[^"\\\\\\n]*(?:\\\\.[^"\\\\\\n]*)*"/ /\'(?:[^\'\\\\\\n]|\\\\[0-7]{1,3}|\\\\x[0-9a-fA-F]{2}|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}|\\\\[\'"?\\\\abfnrtv])\'/ /[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+/ /[0-9]+/ NULL bool char false float integer null string true')
-        self.ast._define(
+            self._error(
+                'expecting one of: '
+                '[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]'
+                '+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?['
+                "0-9]+ <float> [0-9]+ <integer> '(?:[^'\\\\"
+                'n]|\\[0-7]{1,3}|\\x[0-9a-fA-F]{2}|\\u[0-9a-'
+                'fA-F]{4}|\\U[0-9a-fA-F]{8}|\\[\'"?\\abfnrtv]'
+                ')\' <char> "[^"\\\\n]*(?:\\.[^"\\\\n]*)*"'
+                "<string> 'true' 'false' <bool> 'NULL'"
+                "'null'"
+            )
+        self._define(
             ['type', 'value'],
             []
         )
@@ -704,7 +757,7 @@ class SMEDLParser(Parser):
         self._expression_list_()
         self.name_last_node('params')
         self._token(')')
-        self.ast._define(
+        self._define(
             ['function', 'params'],
             []
         )
@@ -756,7 +809,17 @@ class SMEDLParser(Parser):
                         self.name_last_node('value')
                         self._constant('null')
                         self.name_last_node('type')
-                    self._error('expecting one of: /"[^"\\\\\\n]*(?:\\\\.[^"\\\\\\n]*)*"/ /\'(?:[^\'\\\\\\n]|\\\\[0-7]{1,3}|\\\\x[0-9a-fA-F]{2}|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}|\\\\[\'"?\\\\abfnrtv])\'/ /[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+/ /[0-9]+/ NULL bool char false float integer null string true')
+                    self._error(
+                        'expecting one of: '
+                        '[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]'
+                        '+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?['
+                        "0-9]+ <float> [0-9]+ <integer> '(?:[^'\\\\"
+                        'n]|\\[0-7]{1,3}|\\x[0-9a-fA-F]{2}|\\u[0-9a-'
+                        'fA-F]{4}|\\U[0-9a-fA-F]{8}|\\[\'"?\\abfnrtv]'
+                        ')\' <char> "[^"\\\\n]*(?:\\.[^"\\\\n]*)*"'
+                        "<string> 'true' 'false' <bool> 'NULL'"
+                        "'null'"
+                    )
             with self._option():
                 with self._group():
                     self._token('+')
@@ -785,8 +848,18 @@ class SMEDLParser(Parser):
                 self.name_last_node('value')
                 self._constant('signed_int')
                 self.name_last_node('type')
-            self._error('expecting one of: + - /"[^"\\\\\\n]*(?:\\\\.[^"\\\\\\n]*)*"/ /\'(?:[^\'\\\\\\n]|\\\\[0-7]{1,3}|\\\\x[0-9a-fA-F]{2}|\\\\u[0-9a-fA-F]{4}|\\\\U[0-9a-fA-F]{8}|\\\\[\'"?\\\\abfnrtv])\'/ /[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+/ /[0-9]+/ NULL bool char false float integer null string true')
-        self.ast._define(
+            self._error(
+                'expecting one of: '
+                '[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]'
+                '+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?['
+                "0-9]+ <float> [0-9]+ <integer> '(?:[^'\\\\"
+                'n]|\\[0-7]{1,3}|\\x[0-9a-fA-F]{2}|\\u[0-9a-'
+                'fA-F]{4}|\\U[0-9a-fA-F]{8}|\\[\'"?\\abfnrtv]'
+                ')\' <char> "[^"\\\\n]*(?:\\.[^"\\\\n]*)*"'
+                "<string> 'true' 'false' <bool> 'NULL'"
+                "'null' '+' '-'"
+            )
+        self._define(
             ['type', 'value'],
             []
         )
@@ -818,7 +891,10 @@ class SMEDLParser(Parser):
                 self._token('false')
                 self._constant(0)
                 self.name_last_node('@')
-            self._error('expecting one of: false true')
+            self._error(
+                'expecting one of: '
+                "'true' 'false'"
+            )
 
     @tatsumasu()
     def _null_(self):  # noqa
@@ -829,7 +905,10 @@ class SMEDLParser(Parser):
                 self._token('null')
                 self._constant('NULL')
                 self.name_last_node('@')
-            self._error('expecting one of: NULL null')
+            self._error(
+                'expecting one of: '
+                "'NULL' 'null'"
+            )
 
 
 class SMEDLSemantics(object):
@@ -1008,7 +1087,12 @@ def main(filename, start=None, **kwargs):
         with open(filename) as f:
             text = f.read()
     parser = SMEDLParser()
-    return parser.parse(text, rule_name=start, filename=filename, **kwargs)
+    return parser.parse(
+        text,
+        rule_name=start,
+        filename=filename,
+        **kwargs
+    )
 
 
 if __name__ == '__main__':
@@ -1016,9 +1100,5 @@ if __name__ == '__main__':
     from tatsu.util import asjson
 
     ast = generic_main(main, SMEDLParser, name='SMEDL')
-    print('AST:')
-    print(ast)
-    print()
-    print('JSON:')
-    print(json.dumps(asjson(ast), indent=2))
-    print()
+    data = asjson(ast)
+    print(json.dumps(data, indent=2))

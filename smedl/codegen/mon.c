@@ -304,8 +304,8 @@ int execute_{{spec.name}}_{{event}}({{spec.name}}Monitor *mon, SMEDLValue *param
 
     {% if spec.needs_handler(event) %}
     {{event_handler(event)|indent}}
-    {% endif %}
 
+    {% endif %}
     return 1;
 }
 
