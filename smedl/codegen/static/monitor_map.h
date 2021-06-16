@@ -135,16 +135,16 @@ MonitorInstance * monitormap_lookup(MonitorMap *map, SMEDLValue *ids);
  * well.
  *
  * Parameters:
- * map - The MonitorMap to insert into
- * mon - Pointer to the <monitor>Mon to be inserted */
+ * map - The MonitorMap to remove from
+ * mon - Pointer to the <monitor>Mon to be removed */
 void monitormap_remove(MonitorMap *map, void *mon);
 
 /* Remove a MonitorInstance from the MonitorMap. Recursively remove from next
  * maps, as well.
  *
  * Parameters:
- * map - The MonitorMap to insert into
- * inst - Pointer to the MonitorInstance to be inserted */
+ * map - The MonitorMap to remove from
+ * inst - Pointer to the MonitorInstance to be removed */
 void monitormap_removeinst(MonitorMap *map, MonitorInstance *inst);
 
 /* Cleanup a MonitorMap. Optionally get a list of all the instances within

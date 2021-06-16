@@ -348,8 +348,8 @@ static void monitormap_remove_list(MonitorMap *map, size_t i) {
  * maps, as well.
  *
  * Parameters:
- * map - The MonitorMap to insert into
- * inst - Pointer to the MonitorInstance to be inserted */
+ * map - The MonitorMap to remove from
+ * inst - Pointer to the MonitorInstance to be removed */
 void monitormap_removeinst(MonitorMap *map, MonitorInstance *inst) {
     size_t i = monitormap_lookup_index(map, IDS_OF(inst->mon));
     assert(i != (size_t) -1);   // Not found
@@ -366,8 +366,8 @@ void monitormap_removeinst(MonitorMap *map, MonitorInstance *inst) {
  * well.
  *
  * Parameters:
- * map - The MonitorMap to insert into
- * mon - Pointer to the <monitor>Mon to be inserted */
+ * map - The MonitorMap to remove from
+ * mon - Pointer to the <monitor>Mon to be removed */
 void monitormap_remove(MonitorMap *map, void *mon) {
     size_t i = monitormap_lookup_index(map, IDS_OF(mon));
     assert(i != (size_t) -1);   // Not found
@@ -402,7 +402,7 @@ MonitorInstance * monitormap_free(MonitorMap *map, int free_contents) {
                 MonitorInstance *inst = map->table[i].head;
                 while (inst != NULL) {
                     if (inst->next_map != NULL) {
-                        monitormap_removeinst(inst->next_map, inst);
+                        monitormap_removeinst(inst->next_map, inst->next_inst);
                     }
                     MonitorInstance *tmp = inst->next;
                     inst->next = result;
