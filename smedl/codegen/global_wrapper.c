@@ -180,7 +180,7 @@ int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
     SMEDL_INT, {.i
     {%- elif dest_type is sameas SmedlType.FLOAT -%}
     SMEDL_FLOAT, {.d
-    {%- elif dest_type is sameas SmedlType.FLOAT -%}
+    {%- elif dest_type is sameas SmedlType.CHAR -%}
     SMEDL_CHAR, {.c
     {%- endif %} = {{array_name}}[{{param.index}}].v.
     {%- if param.source_type is sameas SmedlType.INT -%}
