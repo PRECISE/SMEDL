@@ -230,6 +230,8 @@ int localcreation_{{conn.channel}}_{{target.mon_string}}(SMEDLValue *identities,
     }
     {% endfor %}
 
+    return 1;
+
 fail:
     //TODO Need a way to free the created monitor
     return 0;
