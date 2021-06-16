@@ -439,11 +439,12 @@ int main(int argc, char **argv) {
     /* Start handling events */
     read_events(&parser);
 
-    /* Cleanup the parser */
+    /* Cleanup */
     result = free_parser(&parser);
     if (!result) {
         err("Could not clean up JSON parser");
         return 1;
     }
+    free_global_wrappers();
     return 0;
 }
