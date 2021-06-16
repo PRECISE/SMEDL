@@ -95,7 +95,7 @@ int run_{{syncset}}(void) {
             {{route_dequeued_event(conn)|indent(12)}}
             {% endfor %}
             {% endfor %}
-            {% for conn in pedl_in %}
+            {% for conn in sys.ev_imported_connections.values() if conn.syncset.name == syncset %}
             {{route_dequeued_event(conn)|indent(12)}}
             {% endfor %}
         }
@@ -156,7 +156,7 @@ int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
 }
 {% endfor %}
 {% endfor %}
-{% for conn in pedl_in %}
+{% for conn in sys.ev_imported_connections.values() if conn.syncset.name == syncset %}
 
 int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux) {
     {{route(conn, false)|indent(12)}}

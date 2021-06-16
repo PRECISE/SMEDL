@@ -86,7 +86,7 @@ int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *param
 int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 {% endfor %}
-{% for conn in pedl_in %}
+{% for conn in sys.ev_imported_connections.values() if conn.syncset.name == syncset %}
 int route_{{syncset}}_{{conn.channel}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 

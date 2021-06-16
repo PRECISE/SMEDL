@@ -265,6 +265,7 @@ class TargetCreation(Target):
                 ', ' + state_var_str + ')')
 
 
+#TODO Should be renamed to TargetPEDL
 class TargetExport(Target):
     """An event export target, for events that are exported out of a
     synchronous set back to the target system. Note that "export target" and
