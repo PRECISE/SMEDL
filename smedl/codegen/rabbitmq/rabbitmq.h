@@ -113,21 +113,13 @@ int forward_rabbitmq_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *ident
 /* A struct to keep track of what has been initialized and what has not, so
  * cleanup can happen properly */
 typedef struct {
+    char config;
     char conn_new;
     char conn;
     char channel;
     char queue;
     char syncset;
 } InitStatus;
-
-/* A struct to hold RabbitMQ data such as the connection, channel ID, queue
- * name, etc. */
-typedef struct {
-    amqp_connection_state_t conn;
-    amqp_channel_t channel;
-    amqp_bytes_t exchange;
-    amqp_bytes_t queue;
-} RabbitMQState;
 
 /* A struct to hold all the config data necessary for RabbitMQ */
 typedef struct {
@@ -138,6 +130,16 @@ typedef struct {
     char *exchange;
     char *vhost;
 } RabbitMQConfig;
+
+/* A struct to hold RabbitMQ data such as the connection, channel ID, queue
+ * name, etc. */
+typedef struct {
+    RabbitMQConfig rmq_config;
+    amqp_connection_state_t conn;
+    amqp_channel_t channel;
+    amqp_bytes_t exchange;
+    amqp_bytes_t queue;
+} RabbitMQState;
 
 /* A struct to hold stored aux data from an incoming message and
  * RabbitMQState, needed when later sending a message out. Used as the aux
@@ -154,15 +156,12 @@ typedef struct RabbitMQAux {
  * Parse the result as JSON and update the config with any values that were
  * read.
  *
- * If successful, the caller must free the pointer returned through out_buf
- * when the configuration is no longer needed (unless it is NULL).
- *
  * Return nonzero on success or if the file cannot be read, return zero
  * on failure. */
-int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf);
+int read_config(const char *fname);
 
 /* Initialize RabbitMQ. Return nonzero on success, zero on failure. */
-int init_rabbitmq_lib(RabbitMQConfig *rmq_config);
+int init_rabbitmq_lib();
 
 /* Consume and process one RabbitMQ message.
  *

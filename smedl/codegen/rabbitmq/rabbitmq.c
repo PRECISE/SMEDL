@@ -157,38 +157,34 @@ static int check_reply(amqp_rpc_reply_t reply, const char *fmt, ...) {
  *
  * Returns nonzero on success, zero on failure. */
 int init_rabbitmq(void) {
-    int status = 1;
-    char *conf_buf;
     init_status = (InitStatus) {0};
-    rmq_state = (RabbitMQState) {.channel = 1};
-    RabbitMQConfig rmq_config = {
+    rmq_state = (RabbitMQState) {.channel = 1, .rmq_config = {
         .hostname = "localhost",
         .port = 5672,
         .username = "guest",
         .password = "guest",
         .exchange = "smedl.{{sys.name}}",
         .vhost = "/"
-    };
+    }};
 
     /* Read config, if present */
 #if DEBUG >= 4
     err("Reading RabbitMQ config");
 #endif
-    status = read_config("{{sys.name}}.cfg", &rmq_config, &conf_buf);
+    if (!read_config("{{sys.name}}.cfg")) {
+        return 0;
+    }
 
     /* Initialize if reading config was successful */
-    if (status) {
 #if DEBUG >= 4
-        err("Initializing RabbitMQ");
+    err("Initializing RabbitMQ");
 #endif
-        status = init_rabbitmq_lib(&rmq_config);
-    }
+    int status = init_rabbitmq_lib();
 
     if (!status) {
         /* Something failed. Clean up. */
         free_rabbitmq();
     }
-    free(conf_buf);
 
     return status;
 }
@@ -232,46 +228,51 @@ int free_rabbitmq(void) {
         }
     }
 
+    /* Free config vars */
+    if (init_status.config) {
+        free(rmq_state.rmq_config.hostname);
+        free(rmq_state.rmq_config.username);
+        free(rmq_state.rmq_config.password);
+        free(rmq_state.rmq_config.exchange);
+        free(rmq_state.rmq_config.vhost);
+    }
+
     return result;
 }
 
-/* Read a string configuration item into the char pointer, if the item is in the
- * parsed configuration */
-static int read_config_string(cJSON *conf, const char *name,
-        char **dest, char **buf, size_t *size) {
+/* Read a string configuration item into the char pointer, if the item is in
+ * the parsed configuration */
+static int read_config_string(cJSON *conf, const char *name, char **dest) {
     cJSON *item;
-    char *new_buf;
-    size_t pos = *size;
+    const char *val;
 
     /* Try and look up item */
     item = cJSON_GetObjectItemCaseSensitive(conf, name);
     if (cJSON_IsString(item)) {
-        /* Found. Extend the buffer. */
-        *size += strlen(item->valuestring) + 1;
-        if (*size == pos) {
-            err("Config strings cannot be empty");
-            return 0;
-        }
-        new_buf = realloc(*buf, *size);
-        if (new_buf == NULL) {
-            err("Out of memory reading config file");
-            return 0;
-        }
-        *buf = new_buf;
-
-        /* Copy the string into the buffer. */
-        strcpy(*buf + pos, item->valuestring);
-
-        /* Update the dest. */
-        *dest = *buf + pos;
+        val = item->valuestring;
+    } else {
+        val = *dest;
     }
+
+    size_t len = strlen(val) + 1;
+    if (len == 1) {
+        err("Config strings cannot be empty");
+        return 0;
+    }
+    char *new_dest = malloc(len);
+    if (new_dest == NULL) {
+        err("Out of memory storing config");
+        return 0;
+    }
+    strcpy(new_dest, val);
+    *dest = new_dest;
 
     return 1;
 }
 
 /* Read an int configuration item into the int pointer, if the item is in the
  * parsed configuration */
-static int read_config_int(cJSON *conf, const char *name, unsigned int *dest) {
+static int read_config_int(cJSON *conf, const char *name, int *dest) {
     cJSON *item;
 
     /* Try and look up item */
@@ -289,13 +290,10 @@ static int read_config_int(cJSON *conf, const char *name, unsigned int *dest) {
  * Parse the result as JSON and update the config with any values that were
  * read.
  *
- * If successful, the caller must free the pointer returned through out_buf
- * when the configuration is no longer needed (unless it is NULL).
- *
  * Return nonzero on success or if the file cannot be read, return zero
  * on failure. */
-int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf) {
-    *out_buf = NULL;
+int read_config(const char *fname) {
+    RabbitMQConfig *rmq_config = &rmq_state.rmq_config;
     /* Try to open */
     FILE *f = fopen(fname, "r");
     if (f == NULL) {
@@ -306,12 +304,8 @@ int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf) {
     /* Read the file */
     size_t size = 0;
     char *buf = NULL;
-    char *new_buf;
     do {
-        size_t chunk_len;
-
-        size += 256;
-        new_buf = realloc(buf, size + 1);
+        char *new_buf = realloc(buf, size + 257);
         if (new_buf == NULL) {
             err("Out of memory reading config file");
             free(buf);
@@ -320,10 +314,8 @@ int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf) {
         }
         buf = new_buf;
 
-        chunk_len = fread(buf, 1, size, f);
-        if (chunk_len < 256) {
-            size -= 256 - chunk_len;
-        }
+        size_t chunk_size = fread(buf + size, 1, 256, f);
+        size += chunk_size;
 
         if (ferror(f)) {
             err("Warning: Could not read config file %s. Using defaults.",
@@ -382,46 +374,46 @@ int read_config(const char *fname, RabbitMQConfig *rmq_config, char **out_buf) {
     }
 
     /* Update the config from the parsed data */
-    size = 0;
-    buf = NULL;
-    int status = 1;
-    if (status) {
-        status = read_config_string(conf, "hostname", &rmq_config->hostname,
-                &buf, &size);
+    if (!read_config_string(conf, "hostname", &rmq_config->hostname)) {
+        goto fail_hostname;
     }
-    if (status) {
-        status = read_config_int(conf, "port", &rmq_config->port);
+    if (!read_config_int(conf, "port", &rmq_config->port)) {
+        goto fail_hostname;
     }
-    if (status) {
-        status = read_config_string(conf, "username", &rmq_config->username,
-                &buf, &size);
+    if (!read_config_string(conf, "username", &rmq_config->username)) {
+        goto fail_username;
     }
-    if (status) {
-        status = read_config_string(conf, "password", &rmq_config->password,
-                &buf, &size);
+    if (!read_config_string(conf, "password", &rmq_config->password)) {
+        goto fail_password;
     }
-    if (status) {
-        status = read_config_string(conf, "exchange", &rmq_config->exchange,
-                &buf, &size);
+    if (!read_config_string(conf, "exchange", &rmq_config->exchange)) {
+        goto fail_exchange;
     }
-    if (status) {
-        status = read_config_string(conf, "vhost", &rmq_config->vhost,
-                &buf, &size);
+    if (!read_config_string(conf, "vhost", &rmq_config->vhost)) {
+        goto fail_vhost;
     }
 
     /* Cleanup and return */
     cJSON_Delete(conf);
-    if (status) {
-        *out_buf = buf;
-        return 1;
-    } else {
-        free(buf);
-        return 0;
-    }
+    init_status.config = 1;
+    return 1;
+
+fail_vhost:
+    free(rmq_config->exchange);
+fail_exchange:
+    free(rmq_config->password);
+fail_password:
+    free(rmq_config->username);
+fail_username:
+    free(rmq_config->hostname);
+fail_hostname:
+    cJSON_Delete(conf);
+    return 0;
 }
 
 /* Initialize RabbitMQ. Return nonzero on success, zero on failure. */
-int init_rabbitmq_lib(RabbitMQConfig *rmq_config) {
+int init_rabbitmq_lib() {
+    RabbitMQConfig *rmq_config = &rmq_state.rmq_config;
     int status;
     amqp_rpc_reply_t reply;
     amqp_socket_t *socket = NULL;
