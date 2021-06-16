@@ -970,7 +970,7 @@ int send_message(const char *routing_key, const char *correlation_id,
     properties._flags = AMQP_BASIC_CONTENT_TYPE_FLAG | AMQP_BASIC_TYPE_FLAG;
     properties.content_type = amqp_cstring_bytes("application/json");
     properties.type = amqp_cstring_bytes(FMT_VERSION_STRING);
-    if (correlation_id[0] != '\0') {
+    if (correlation_id != NULL && correlation_id[0] != '\0') {
         properties._flags |= AMQP_BASIC_CORRELATION_ID_FLAG;
         properties.correlation_id = amqp_cstring_bytes(correlation_id);
     }
@@ -1097,7 +1097,12 @@ int forward_rabbitmq_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *ident
     {% endfor %}
 
     /* Add the Aux data */
-    if (cJSON_AddRawToObject(msg_json, "aux", aux->aux) == NULL) {
+    if (aux == NULL || aux->aux == NULL) {
+        if (cJSON_AddNullToObject(msg_json, "aux") == NULL) {
+            err("Could not add null aux data to JSON for message serialization");
+            goto fail;
+        }
+    } else if (cJSON_AddRawToObject(msg_json, "aux", aux->aux) == NULL) {
         err("Could not add aux data to JSON for message serialization");
         goto fail;
     }
