@@ -179,6 +179,8 @@ fprintf(stderr, "Global wrapper '{{syncset}}' routing for conn '{{conn.channel}}
     {% endif %}
 }
 {%- endfor %}
+
+return 1;
 {%- endmacro %}
 {# End of routing function macros ******************************************* #}
 {% for conn in sys.imported_channels(syncset) %}
