@@ -1,7 +1,9 @@
 <launch>
   <group ns="smedl/{{sys.name}}">
     {% for syncset in sys.syncsets.keys() %}
+    {%+ if syncset.name == 'PEDL' %}<!--{% endif %}
     <node pkg="smedl_{{sys.name}}" type="{{syncset}}_node" name="{{syncset}}_node" />
+    {%+ if syncset.name == 'PEDL' %}-->{% endif %}
     {% endfor %}
   </group>
 </launch>

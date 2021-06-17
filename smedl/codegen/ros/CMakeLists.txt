@@ -47,6 +47,19 @@ include_directories(
 )
 {% for syncset in sys.syncsets.values() %}
 
+{% if syncset.name == 'PEDL' %}
+# The following node is for the PEDL syncset. This syncset only contains the
+# "PEDL" events that are asynchronous to the rest of the monitor system.
+# Generally speaking, these events will come from ROS messages originating from
+# an existing node, so it is rare that the node for the PEDL syncset should
+# actually be built. Nonetheless, the code is included, but disabled by default
+# with "if(FALSE)".
+#
+# If for some reason you would like to enable it, remove the "if(FALSE)" and
+# "endif()", uncomment the node from the install section at the bottom of this
+# file, and uncomment the node from the .launch file.
+if(FALSE)
+{% endif %}
 add_executable(${PROJECT_NAME}_{{syncset.name}}_node
   src/{{syncset.name}}_node.cpp
   src/{{syncset.name}}_global_wrapper.c
@@ -73,6 +86,9 @@ add_dependencies(${PROJECT_NAME}_{{syncset.name}}_node
 target_link_libraries(${PROJECT_NAME}_{{syncset.name}}_node
   ${catkin_LIBRARIES}
 )
+{% if syncset.name == 'PEDL' %}
+endif()
+{% endif %}
 {% endfor %}
 
 #############
@@ -83,7 +99,7 @@ target_link_libraries(${PROJECT_NAME}_{{syncset.name}}_node
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 install(TARGETS
   {% for syncset in sys.syncsets.values() %}
-  ${PROJECT_NAME}_{{syncset.name}}_node
+  {%+ if syncset.name == 'PEDL'}#{% endif %}${PROJECT_NAME}_{{syncset.name}}_node
   {% endfor %}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
