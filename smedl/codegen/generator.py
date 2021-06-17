@@ -231,10 +231,16 @@ class CodeGenerator(object):
                     specs.append(decl.spec.name)
             syncset_specs[syncset.name] = specs
 
+        pedl_syncsets = []
+        for name, syncset in system.syncsets.items():
+            if not syncset.pure_async:
+                pedl_syncsets.append(name)
+
         values = {
             "transport": self.transport,
             "system": system.name,
             "syncsets": system.syncsets.keys(),
+            "pedl_syncsets": pedl_syncsets,
             "syncset_mons": syncset_mons,
             "syncset_specs": syncset_specs,
             "mon_names": system.monitor_decls.keys(),
@@ -294,6 +300,11 @@ class CodeGenerator(object):
                      values)
         self._render("manager.c", syncset.name + "_manager.c", values)
         self._render("manager.h", syncset.name + "_manager.h", values)
+
+        # Write the PEDL stub for synchronous sets with PEDL events
+        if not syncset.pure_async:
+            self._render("stub.c", syncset.name + "_stub.c", values)
+            self._render("stub.h", syncset.name + "_stub.h", values)
 
     def _write_monitor(self, monitor_spec):
         """Write the files for one monitor specification
@@ -422,6 +433,10 @@ class RabbitMQGenerator(CodeGenerator):
                          values, preserve=True)
 
 
+#TODO File adapter isn't really compatible with the manager design. Once it is
+# possible to put all PEDL events in a synchronous set, there is little reason
+# to use it, anyway. (It was essentially a synchronous transport for
+# asynchronous events.) Remove it at that point.
 class FileGenerator(CodeGenerator):
     """Generates C code for monitor systems with the File adapter."""
     def __init__(self, **kwargs):

@@ -7,18 +7,37 @@
 #LDLIBS:=$(LDLIBS)
 #RM=rm -f
 
-# Extra C/C++ source code files to be linked in with the monitors (must be .c,
-# .cc, .cpp, or .C files)
+# If any monitors use helper functions, add the C/C++ source code files to the
+# variable(s) below (must be .c, .cc, .cpp, or .C files)
 {% if transport == 'file' %}
 EXTRA_SOURCES=
 {% else %}
 {% for spec in spec_names %}
 EXTRA_SOURCES_{{spec}}=
 {% endfor %}
-{% if 'PEDL' in syncsets %}
-EXTRA_SOURCES_PEDL=
 {% endif %}
-{% endif %}
+
+# The syncset(s) named below contain PEDL events (i.e. events to/from the
+# target system). A basic stub to interface with these events is included, but
+# chances are, it will need to be modified to plug in to the rest of your
+# application. (By default, it reads input events from a basic CSV file and
+# prints output events to stdout, primarily for demonstration purposes.)
+#
+# If the only syncset listed below is "PEDL", all PEDL events are asynchronous.
+# You may wish to ignore the "PEDL" executable produced by this Makefile and
+# integrate PEDL_*.c/.h into your application's normal build system. Or you can
+# ignore them entirely and interface with the underlying message transport
+# directly (this is particularly useful with ROS, where the generated
+# configuration header allows you to specify the particular topic and fields
+# for each event).
+#
+# If there are syncsets besides "PEDL" listed, this Makefile may be of limited
+# use to you, since those syncsets all need tighter integration with your
+# existing application.
+#
+{% for syncset in pedl_syncsets %}
+# * {{syncset}}
+{% endfor %}
 
 # Uncomment the first for a debug build. Uncomment the second for a release
 # (optimized) build. DEBUG flag can be adjusted as necessary:
@@ -54,6 +73,7 @@ SOURCES_{{syncset}}=
 {%- for mon in syncset_mons[syncset] %} {{mon}}_local_wrapper.c{% endfor %}
  {{syncset}}_global_wrapper.c {{syncset}}_manager.c
 {%- if transport == 'rabbitmq' %} {{syncset}}_rabbitmq.c{% endif %}
+{%- if syncset in pedl_syncsets %} {{syncset}}_stub.c{% endif %}
 
 {% endfor %}
 SMEDL_SOURCES=$(COMMON_SOURCES){% if transport == 'file' %} {{system}}_file.c{% endif %}
@@ -65,7 +85,7 @@ SMEDL_OBJS:=$(SMEDL_OBJS:%=$(BUILD_DIR)/%)
 {% if transport != 'file' %}
 
 {% for syncset in syncsets %}
-OBJS_{{syncset}}=$(COMMON_SOURCES) $(EXTRA_SOURCES_{{syncset}}) $(SOURCES_{{syncset}})
+OBJS_{{syncset}}=$(COMMON_SOURCES){% for spec in syncset_specs[syncset] %} $(EXTRA_SOURCES_{{spec}}){% endfor %} $(SOURCES_{{syncset}})
 OBJS_{{syncset}}:=$(OBJS_{{syncset}}:.c=.o)
 OBJS_{{syncset}}:=$(OBJS_{{syncset}}:.cc=.o)
 OBJS_{{syncset}}:=$(OBJS_{{syncset}}:.cpp=.o)
@@ -76,8 +96,8 @@ OBJS_{{syncset}}:=$(OBJS_{{syncset}}:%=$(BUILD_DIR)/%)
 
 {% if transport != 'file' %}
 EXTRA_SOURCES=
-{%- for syncset in syncsets %}
-{% if not loop.first %} {% endif %}$(EXTRA_SOURCES_{{syncset}})
+{%- for spec in spec_names %}
+{% if not loop.first %} {% endif %}$(EXTRA_SOURCES_{{spec}})
 {%- endfor %}
 
 EXTRA_SOURCES:=$(sort $(EXTRA_SOURCES))

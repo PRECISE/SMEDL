@@ -7,10 +7,13 @@
 #include "{{sys.name}}_defs.h"
 #include "{{syncset}}_manager.h"
 #include "{{syncset}}_global_wrapper.h"
-//TODO Next include still needed after switching to set_* interface?
+{% if not pure_async %}
+#include "{{syncset}}_stub.h"
+{% endif %}
 {% for decl in mon_decls %}
 #include "{{decl.name}}_local_wrapper.h"
 {% endfor %}
+//TODO Next include still needed after switching to set_* interface?
 {% for spec_name in sys.syncset_spec_names(syncset) %}
 #include "{{spec_name}}_mon.h"
 {% endfor %}
