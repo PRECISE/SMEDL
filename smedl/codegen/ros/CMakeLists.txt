@@ -47,9 +47,9 @@ include_directories(
 )
 {% for syncset in sys.syncsets.values() %}
 
-{% if syncset.name == 'PEDL' %}
+{% if syncset.name == 'pedl' %}
 # The following node is for the PEDL syncset. This syncset only contains the
-# "PEDL" events that are asynchronous to the rest of the monitor system.
+# PEDL events that are asynchronous to the rest of the monitor system.
 # Generally speaking, these events will come from ROS messages originating from
 # an existing node, so it is rare that the node for the PEDL syncset should
 # actually be built. Nonetheless, the code is included, but disabled by default
@@ -86,7 +86,7 @@ add_dependencies(${PROJECT_NAME}_{{syncset.name}}_node
 target_link_libraries(${PROJECT_NAME}_{{syncset.name}}_node
   ${catkin_LIBRARIES}
 )
-{% if syncset.name == 'PEDL' %}
+{% if syncset.name == 'pedl' %}
 endif()
 {% endif %}
 {% endfor %}
@@ -99,7 +99,7 @@ endif()
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 install(TARGETS
   {% for syncset in sys.syncsets.values() %}
-  {%+ if syncset.name == 'PEDL'}#{% endif %}${PROJECT_NAME}_{{syncset.name}}_node
+  {%+ if syncset.name == 'pedl'}#{% endif %}${PROJECT_NAME}_{{syncset.name}}_node
   {% endfor %}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

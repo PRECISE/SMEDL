@@ -1009,23 +1009,7 @@ class DeclaredMonitor(object):
 
         return tree(self.param_subsets, 0, 0)
 
-    # TODO intra_connections and inter_connections still needed?
-    @property
-    def intra_connections(self):
-        """Return a list of connections where this monitor is the source and
-        at least one destination is in the same synchronous set"""
-        result = []
-        for conn in self._connections.values():
-            for target in conn.targets:
-                if target.monitor is None:
-                    if target.syncset is self._syncset:
-                        result.append(conn)
-                        break
-                elif target.monitor in self._syncset:
-                    result.append(conn)
-                    break
-        return result
-
+    #TODO No longer needed once file wrapper is removed
     @property
     def inter_connections(self):
         """Return a list of connections where this monitor is the source and
@@ -1133,7 +1117,7 @@ class MonitorSystem(object):
         """Add a synchronous set to the system.
 
         Parameters:
-        name - Name of the synchronous set
+        name - Name of the synchronous set, or None for the PEDL syncset
         members - An iterable of dicts representing the monitors and PEDL
           events to be added to this synchronous set. Each dict must contain
           two keys: 'kind' and 'name'. The 'kind' is one of the following:
@@ -1148,6 +1132,10 @@ class MonitorSystem(object):
         if name in self._syncsets:
             raise NameCollision(
                 "Synchronous set {} is already defined".format(name))
+        if name == 'pedl':
+            raise NameCollision("Synchronous set 'pedl' is reserved")
+        if name is None:
+            name = 'pedl'
 
         # Create the SynchronousSet
         syncset = SynchronousSet(name, self._default_transport)
@@ -1201,14 +1189,9 @@ class MonitorSystem(object):
             i += 1
             syncset = name + str(i)
         if syncset != name:
-            if name == 'PEDL':
-                print("Warning: 'PEDL' is already the name of a synchronous "
-                      "set. Using {} for the syncset containing asynchronous "
-                      "PEDL events.".format(syncset), file=sys.stderr)
-            else:
-                print("Warning: {0} is already the name of a synchronous set. "
-                      "Monitor {0} will be in synchronous set {1}"
-                      .format(name, syncset), file=sys.stderr)
+            print("Warning: {0} is already the name of a synchronous set. "
+                  "Monitor {0} will be in synchronous set {1}"
+                  .format(name, syncset), file=sys.stderr)
         return syncset
 
     def _check_pedl_event(self, name):
@@ -1349,7 +1332,7 @@ class MonitorSystem(object):
         1. Events that were declared but not used (print a warning)
         2. Events from the target system that are not yet in a synchronous set.
            If there are any, create a PEDL synchronous set for them, named
-           "PEDL" (or "PEDL2" etc. if "PEDL" was taken)
+           "pedl"
         In addition, check for exported monitor events that are not the source
         of a connection. For these, create implicit Connections and
         ExportedEvents and add them to the PEDL syncset as well.
@@ -1373,8 +1356,7 @@ class MonitorSystem(object):
                     {'kind': 'exported', 'name': ev.name})
 
         if len(pedl_evs_without_syncset) > 0:
-            syncset_name = self._unused_syncset('PEDL')
-            self.add_syncset(syncset_name, pedl_evs_without_syncset)
+            self.add_syncset(None, pedl_evs_without_syncset)
 
     def name_unnamed_channels(self):
         """Assign default channel names to any remaining unnamed channels in

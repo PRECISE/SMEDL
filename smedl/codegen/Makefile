@@ -23,15 +23,15 @@ EXTRA_SOURCES_{{spec}}=
 # application. (By default, it reads input events from a basic CSV file and
 # prints output events to stdout, primarily for demonstration purposes.)
 #
-# If the only syncset listed below is "PEDL", all PEDL events are asynchronous.
-# You may wish to ignore the "PEDL" executable produced by this Makefile and
-# integrate PEDL_*.c/.h into your application's normal build system. Or you can
+# If the only syncset listed below is "pedl", all PEDL events are asynchronous.
+# You may wish to ignore the "pedl" executable produced by this Makefile and
+# integrate pedl*.c/.h into your application's normal build system. Or you can
 # ignore them entirely and interface with the underlying message transport
 # directly (this is particularly useful with ROS, where the generated
 # configuration header allows you to specify the particular topic and fields
 # for each event).
 #
-# If there are syncsets besides "PEDL" listed, this Makefile may be of limited
+# If there are syncsets besides "pedl" listed, this Makefile may be of limited
 # use to you, since those syncsets all need tighter integration with your
 # existing application.
 #
