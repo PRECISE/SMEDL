@@ -102,7 +102,10 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
     def event_decl(self, ast):
         """Add an event declaration from the target system to the monitor
         system"""
-        self.system.add_connection(ast.name, ast.params)
+        if ast.kind == 'exported':
+            self.system.add_exported_event(ast.name, ast.params)
+        else:
+            self.system.add_connection(ast.name, ast.params)
         return ast
 
     def syncset_decl(self, ast):
@@ -112,6 +115,8 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
 
     def connection_defn(self, ast):
         """Do various validations and add the connection to the system"""
+        if ast.source.monitor == 'pedl':
+            ast.source.monitor = None
         self.system.add_target(
             ast.name, ast.source.monitor, ast.source.event, ast.target)
         return ast
@@ -120,6 +125,16 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         """Create a TargetEvent. Ensure the target monitor and event exist and
         have the correct number of parameters. Other checks are done by
         connection_defn."""
+        # Check if this is actually a PEDL event, in which case TargetExport
+        # should be created
+        if ast.dest_monitor == 'pedl':
+            if ast.monitor_params is not None:
+                raise ParameterError("'pedl' event {} cannot have monitor "
+                                     "identities".format(ast.dest_event))
+            ast.name = ast.dest_event
+            ast.params = ast.event_params
+            return self._exported_event(ast)
+
         # Check that destination monitor exists
         if ast.dest_monitor not in self.system.monitor_decls:
             raise NameNotDefined("Destination monitor {} is not declared"
@@ -160,33 +175,32 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                 self.system.monitor_decls[ast.dest_monitor], ast.dest_event,
                 ast.monitor_params, ast.event_params)
 
-    def monitor_initialization(self, ast):
+    def _monitor_initialization(self, ast):
         """Create a TargetCreation. Ensure the target monitor exists and has the
         correct number of parameters."""
         # Check that destination monitor exists
-        if ast.dest_monitor not in self.system.monitor_decls:
+        if ast.name not in self.system.monitor_decls:
             raise NameNotDefined("Destination monitor {} is not declared"
-                                 .format(ast.dest_monitor))
+                                 .format(ast.name))
 
         # Make sure we are not creating a monitor with no parameters. Such
         # monitors are initialized once at global wrapper startup and cannot
         # have separate instances.
-        if len(self.system.monitor_decls[ast.dest_monitor].params) == 0:
+        if len(self.system.monitor_decls[ast.name].params) == 0:
             raise ParameterError(
                 "Monitor {} without parameters cannot receive new instances"
-                .format(ast.dest_monitor))
+                .format(ast.name))
 
         # Make sure the number of monitor parameters matches. Don't need to
         # ensure there are no wildcard parameters because the grammar will not
         # allow it.
-        if ast.monitor_params is None or len(ast.monitor_params) != len(
-                self.system.monitor_decls[ast.dest_monitor].params):
+        if ast.params is None or len(ast.params) != len(
+                self.system.monitor_decls[ast.name].params):
             raise ParameterError(
                 "Expected {} parameters (identities) for montor {}, got {}"
-                .format(len(self.system.monitor_decls[
-                    ast.dest_monitor].params), ast.dest_monitor,
-                    (0 if ast.monitor_params is None else
-                        len(ast.monitor_params))))
+                .format(len(self.system.monitor_decls[ast.name].params),
+                        ast.name,
+                        (0 if ast.params is None else len(ast.params))))
 
         # Create a dict for state variable initialization and check that state
         # vars all exist
@@ -195,15 +209,48 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
             ast['state_vars'] = []
         for initializer in ast.state_vars:
             if (initializer.var_name not in
-                    self.system.monitor_decls[ast.dest_monitor].state_vars):
+                    self.system.monitor_decls[ast.name].state_vars):
                 raise NameNotDefined("Monitor {} has no state var {}".format(
-                    ast.dest_monitor, initializer.var_name))
+                    ast.name, initializer.var_name))
             state_vars[initializer.var_name] = initializer.value
 
         # Create the TargetCreation
         return arch.TargetCreation(
-            self.system.monitor_decls[ast.dest_monitor], ast.monitor_params,
-            state_vars)
+            self.system.monitor_decls[ast.name], ast.params, state_vars)
+
+    def _exported_event(self, ast):
+        """Create a TargetExport."""
+        try:
+            exported_event = self.system.exported_events[self.name]
+        except KeyError:
+            exported_event = self.system.add_exported_event(self.name)
+        else:
+            # Check number of params for existing exported event.
+            # (Types are checked when the target is added to a connection.)
+            if exported_event.params is not None and (
+                    len(ast.params) != len(exported_event.params)):
+                raise ParameterError("Expected {} parameters for PEDL event "
+                                     "{}, got {}.".format(
+                                         len(exported_event.params), self.name,
+                                         len(ast.params)))
+        return TargetExport(exported_event, ast.params)
+
+    def exported_event_or_monitor_initialization(self, ast):
+        """Determine based on the name whether this is an exported event or
+        monitor initialization and call the appropriate semantics function."""
+        if ast.name in self.system.monitor_decls:
+            return self._monitor_initialization(ast)
+        else:
+            if ast.params is None:
+                if len(ast.state_vars) > 0:
+                    # If there are any state var assignments in the parameter
+                    # list, the intention must be a monitor creation, not
+                    # exporting a PEDL event.
+                    raise NameNotDefined("Destination monitor {} is not "
+                                         "declared".format(ast.name))
+                ast.params = []
+                ast.state_vars = None
+            return self._exported_event(ast)
 
     def wildcard_parameter(self, ast):
         """Create a Parameter that might be a wildcard"""

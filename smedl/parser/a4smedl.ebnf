@@ -55,8 +55,11 @@ monitor_decl =
     ['as' renamed:identifier]
     ;
 
+# Event declarations are only required if you want to be explicit about
+# parameter types (e.g. if SMEDL infers them incorrectly).
 event_decl =
-    'event' ~ name:identifier '(' params:type_list ')'
+    kind:'imported' ~ name:identifier '(' params:type_list ')'
+    kind:'exported' ~ name:identifier '(' params:type_list ')'
     ;
 
 syncset_decl =
@@ -68,8 +71,12 @@ syncset_member_list =
     ;
 
 syncset_member =
-    # Syncsets may contain PEDL events (preceded by "event") and/or monitors
-    'event' ~ kind:`imported` name:identifier
+    # Syncsets may contain PEDL events (preceded by "imported"/"exported")
+    # and/or monitors
+    #TODO Add "pedl" as a keyword and it makes all unassigned PEDL events part
+    # of the syncset
+    kind:'imported' ~ name:identifier
+    kind:'exported' ~ name:identifier
     | kind:`monitor` name:identifier
     ;
 
@@ -95,7 +102,7 @@ source_spec =
 
 target_spec =
     target_event
-    | monitor_initialization
+    | exported_event_or_monitor_initialization
     ;
 
 target_event =
@@ -106,17 +113,27 @@ target_event =
     ['(' event_params:parameter_list ')']
     ;
 
-monitor_initialization =
-    dest_monitor:identifier
-    '(' (
-        # Two cases:
+# Monitor creation and routing to exported PEDL events have similar syntax.
+# Both are identifiers followed by a parenthesized list. The semantics sort out
+# which one it is based on the name. If the name matches both a monitor and an
+# exported event, it's assumed to be a monitor (since the exported event can be
+# specified with "pedl.<event>").
+exported_event_or_monitor_initialization =
+    name:identifier
+    '(' ~ (
+        # For monitor initialization, there are two cases:
         # 1. There is at least one parameter (in which case, separating comma is
-        #    needed)
+        #    needed if there are state vars)
         # 2. There is no parameter, and may or may not be state variable
         #    initializations. This is not allowed, but we allow it in the
         #    grammar so that we can catch it and display a more helpful error
         #    message in the semantics processor.
-        monitor_params:parameter_list_nonempty
+        # These correspond to the two alternatives below.
+        #
+        # For exported events, if there are params, state_vars should be None.
+        # If there are no params, params will be None and state_vars should be
+        # an empty list.
+        params:parameter_list_nonempty
                 [',' state_vars:initializer_list_nonempty]
         | state_vars:initializer_list
     ) ')'
@@ -131,7 +148,7 @@ initializer_list =
     ;
 
 initializer =
-    var_name:identifier '=' value:parameter
+    var_name:identifier '=' ~ value:parameter
     ;
 
 wildcard_parameter_list =
@@ -152,10 +169,10 @@ wildcard_parameter =
     ;
 
 parameter =
-    kind:'#' index:natural
-    | 'Id' kind:`'#'` '.' index:natural
-    | kind:'$' index:natural
-    | 'Param' kind:`'$'` '.' index:natural
+    kind:'#' ~ index:natural
+    | 'Id' ~ kind:`'#'` '.' index:natural
+    | kind:'$' ~ index:natural
+    | 'Param' ~ kind:`'$'` '.' index:natural
     ;
 
 natural =

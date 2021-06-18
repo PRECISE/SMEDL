@@ -28,8 +28,9 @@ import types
 
 from .expr import SmedlType
 from smedl.parser.exceptions import (
-        NameCollision, NameNotDefined, AlreadyInSyncset, ParameterError,
-        DuplicateConnection, TypeMismatch, InternalError, ChannelMismatch)
+    NameCollision, NameNotDefined, AlreadyInSyncset, ParameterError,
+    DuplicateConnection, TypeMismatch, InternalError, ChannelMismatch,
+    LoopbackError)
 
 
 class Parameter(object):
@@ -317,6 +318,7 @@ class TargetExport(Target):
         return ('TargetExport:' + str(self._exported_event))
 
 
+#TODO Should be renamed ExportedPEDLEvent
 class ExportedEvent(object):
     """An event exported back to the target system.
 
@@ -325,6 +327,8 @@ class ExportedEvent(object):
     their info stored in a MonitorSpec object. This class stores the name and
     parameter info for events exported back to the target system, since it is
     not stored anywhere else.
+
+    Note that TargetExport objects all have an ExportedEvent as an attribute.
 
     Parameters:
     name - Name of the event.
@@ -449,7 +453,7 @@ class Connection(object):
         source_mon - Source monitor decl, or None if from the target system.
         source_event - Source event name
         source_event_params - An iterable of SmedlTypes for the source event's
-          parameters. Only used for events from the target system and if the
+          parameters. Only used for events from the target system, when the
           event was declared in the architecture file.
         """
         # The channel name
@@ -750,11 +754,14 @@ class Connection(object):
         its parameters/state vars"""
         for t in self._targets:
             if target == t:
-                # TODO I think this is checking for duplicate destinations, not
-                # source and destination are the same. But both tests are
-                # important. Make sure both happen and fix the exception msg.
                 raise DuplicateConnection(
-                    "Source and destination of connections cannot match.")
+                    "Multiple connections from the same source cannot have "
+                    "the same destination.")
+        if self._source_mon is None and target.monitor is None:
+            raise LoopbackError("Event {} from the target program cannot be "
+                                "routed directly back to target program event "
+                                "{}".format(self._source_event,
+                                            target.event.name))
         self._typecheck_target(target)
         self._targets.append(target)
         target.connection = self
@@ -917,11 +924,10 @@ class DeclaredMonitor(object):
                 self._ev_connections[event] = conn
 
                 name = "_{}_{}".format(self._name, event)
-                exported_event = ExportedEvent(name)
+                exported_event = self._sys.add_exported_event(name)
                 exported_events.append(exported_event)
                 parameters = [Parameter(False, i) for i in range(len(params))]
                 conn.add_target(TargetExport(exported_event, parameters))
-                self._sys.exported_events[name] = exported_event
         return exported_events
 
     def name_unnamed_channels(self):
@@ -1167,16 +1173,14 @@ class MonitorSystem(object):
                     self._ev_imported_connections[member_name].syncset = \
                         syncset
                 except KeyError:
-                    conn = Connection(self, None, member_name)
-                    self._ev_imported_connections[member_name] = conn
+                    conn = self.add_connection(member_name)
                     conn.syncset = syncset
                 syncset.add(self._ev_imported_connections[member_name])
             elif kind == 'exported':
                 try:
                     self._exported_events[member_name].syncset = syncset
                 except KeyError:
-                    exported_ev = ExportedEvent(member_name)
-                    self._exported_events[member_name] = exported_ev
+                    exported_ev = self.add_exported_event(member_name)
                     exported_ev.syncset = syncset
                 syncset.add(self._exported_events[member_name])
             else:
@@ -1207,21 +1211,51 @@ class MonitorSystem(object):
                       .format(name, syncset), file=sys.stderr)
         return syncset
 
-    def add_connection(self, source_ev, params):
+    def _check_pedl_event(self, name):
+        """Return 'imported' or 'exported' if the given PEDL event already
+        exists, otherwise return None"""
+        if name in self._ev_imported_connections:
+            return 'imported'
+        elif name in self._exported_events:
+            return 'exported'
+        return None
+
+    def add_exported_event(self, name, params=None):
+        """Add an ExportedEvent for a PEDL event exported back to the target
+        system
+
+        name - Name of the event
+        params - An iterable of SmedlType for the event's parameters, or None
+          to infer
+        """
+        # Check if it already exists
+        if self._check_pedl_event(source_ev) is not None:
+            raise NameCollision("PEDL event {} cannot be declared multiple "
+                                "times or after it has already been used "
+                                "implicitly".format(source_ev))
+
+        # Create it
+        exported_ev = ExportedEvent(name, params)
+        self._exported_events[name] = exported_ev
+        return exported_ev
+
+    def add_connection(self, source_ev, params=None):
         """Add an empty connection for a source event from the target system
 
         source_ev - Name of the source event
-        params - An iterable of SmedlType for the event's parameters
+        params - An iterable of SmedlType for the event's parameters, or None
+          to infer
         """
         # Check if it already exists
-        if source_ev in self._ev_imported_connections:
-            raise NameCollision("Event {} cannot be declared multiple times "
-                                "or after it has already been used implicitly"
-                                .format(source_ev))
+        if self._check_pedl_event(source_ev) is not None:
+            raise NameCollision("PEDL event {} cannot be declared multiple "
+                                "times or after it has already been used "
+                                "implicitly".format(source_ev))
 
         # Create it
         conn = Connection(self, None, source_ev, params)
         self._ev_imported_connections[source_ev] = conn
+        return conn
 
     def add_target(self, channel, monitor, source_event, target):
         """Add the given target to the proper connection for the source event
@@ -1244,11 +1278,13 @@ class MonitorSystem(object):
             return
 
         # Get or create Connection
-        try:
+        if self._check_pedl_event(source_event) == 'imported':
             conn = self._ev_imported_connections[source_event]
-        except KeyError:
-            conn = Connection(self, None, source_event)
-            self._ev_imported_connections[source_event] = conn
+        elif self._check_pedl_event(source_event) == 'exported':
+            raise NameCollision("PEDL event name {} cannot be both imported "
+                                "and exported".format(source_event))
+        else:
+            conn = self.add_connection(source_event)
 
         # Validate the channel name and name the channel (also calls
         # rename_connection() to update the _imported_connections dict)
@@ -1325,13 +1361,9 @@ class MonitorSystem(object):
             if conn.channel is None:
                 print("Warning: Event {} was not used in a connection"
                       .format(conn.source_event), file=sys.stderr)
-            else:
-                # TODO Do unused connections need to go into the syncset too?
-                # Probably. If it was declared, we should be prepared to accept
-                # it and do nothing.
-                if conn.syncset is None:
-                    pedl_evs_without_syncset.append(
-                        {'kind': 'imported', 'name': conn.source_event})
+            if conn.syncset is None:
+                pedl_evs_without_syncset.append(
+                    {'kind': 'imported', 'name': conn.source_event})
 
         # Do last part of docstring (unconnected exported monitor events)
         for mon in self._monitor_decls.values():
