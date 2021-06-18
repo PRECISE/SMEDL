@@ -6,7 +6,7 @@
 #include "{{syncset}}_stub.h"
 
 /* Functions to handle events returned to the target system */
-{% for conn, targets in sys.imported_channels(syncset) %}
+{% for conn, targets in sys.dest_channels(syncset).items() %}
 {% for target in targets if target.target_type == 'export' %}
 
 int perform_{{target.mon_string}}_{{target.event}}(SMEDLValue *ids, SMEDLValue *params, void *aux) {
@@ -19,26 +19,26 @@ int perform_{{target.mon_string}}_{{target.event}}(SMEDLValue *ids, SMEDLValue *
         {%- elif dest_type is sameas SmedlType.STRING %}\"%s\"
         {%- elif dest_type is sameas SmedlType.POINTER %}%p
         {%- elif dest_type is sameas SmedlType.OPAQUE %}\"\"%*.*s\"\"
-        {%- if not loop.last %}, {% endif -%}
-        {%- endfor %})\n",
-        {% for param, dest_type in target.event_params_w_types %}
-        {% if param.indes is not none %}
-        {% if dest_type is sameas SmedlType.INT %}
+        {%- if not loop.last %}, {% endif %}
+        {% endif %}
+        {%- endfor %})\n"
+        {%- for param, dest_type in target.event_params_w_types %}
+        {% if param.index is not none %}
+        {% if dest_type is sameas SmedlType.INT %},
         params[{{loop.index0}}].v.i
-        {%- elif dest_type is sameas SmedlType.FLOAT %}
+        {%- elif dest_type is sameas SmedlType.FLOAT %},
         params[{{loop.index0}}].v.d
-        {%- elif dest_type is sameas SmedlType.CHAR %}
+        {%- elif dest_type is sameas SmedlType.CHAR %},
         params[{{loop.index0}}].v.c
-        {%- elif dest_type is sameas SmedlType.STRING %}
+        {%- elif dest_type is sameas SmedlType.STRING %},
         params[{{loop.index0}}].v.s
-        {%- elif dest_type is sameas SmedlType.POINTER %}
+        {%- elif dest_type is sameas SmedlType.POINTER %},
         params[{{loop.index0}}].v.p
-        {%- elif dest_type is sameas SmedlType.OPAQUE %}
+        {%- elif dest_type is sameas SmedlType.OPAQUE %},
         (int) params[{{loop.index0}}].v.o.size,
         (int) params[{{loop.index0}}].v.o.size,
         params[{{loop.index0}}].v.o.data
         {%- endif %}
-        {%- if not loop.last %},{% endif +%}
         {% endif %}
         {% endfor %});
     return 1;
@@ -102,6 +102,7 @@ SMEDLOpaque p{{loop.index0}}
 #endif
         return 0;
     }
+
     return 1;
 }
 {% endfor %}
@@ -132,6 +133,7 @@ int main(int argc, char **argv) {
     char line[4096];
     int lineno = 1;
     while (fgets(line, sizeof(line), stdin)) {
+        /* Read event type */
         if (sscanf(line, "%{{ev_len}}[^,\n]", event) != 1) {
 #if DEBUG >= 1
             fprintf(stderr, "Malformed line: %d\n", lineno);
@@ -140,9 +142,11 @@ int main(int argc, char **argv) {
             continue;
         }
 
+        /* Call the event's emit function */
+
         {% for event, conn in sys.ev_imported_connections.items() if conn.syncset.name == syncset %}
         {%+ if not loop.first %}} else {% endif -%}
-        if (!strcmp(event, "")) {
+        if (!strcmp(event, "{{event}}")) {
             {% for param in conn.source_event_params %}
             {% if param is none %}
             {% elif param is sameas SmedlType.INT %}
@@ -161,33 +165,29 @@ int main(int argc, char **argv) {
             p{{loop.index0}}.data = p{{loop.index0}}buf;
             {% endif %}
             {% endfor %}
-
-            if (sscanf(line, "%*[^,\n],
+            if (sscanf(line, "%*[^,\n]
                     {%- for param in conn.source_event_params %}
-                    {% if param is none -%}%*[^,\n]
-                    {%- elif param is sameas SmedlType.INT -%}%d
-                    {%- elif param is sameas SmedlType.FLOAT -%}%lf
-                    {%- elif param is sameas SmedlType.CHAR -%}%c
-                    {%- elif param is sameas SmedlType.STRING -%}%[^,\n]
-                    {%- elif param is sameas SmedlType.POINTER -%}%p
-                    {%- elif param is sameas SmedlType.OPAQUE -%}%[^,\n]
+                    {% if param is none -%},%*[^,\n]
+                    {%- elif param is sameas SmedlType.INT -%},%d
+                    {%- elif param is sameas SmedlType.FLOAT -%},%lf
+                    {%- elif param is sameas SmedlType.CHAR -%},%c
+                    {%- elif param is sameas SmedlType.STRING -%},%[^,\n]
+                    {%- elif param is sameas SmedlType.POINTER -%},%p
+                    {%- elif param is sameas SmedlType.OPAQUE -%},%[^,\n]
                     {%- endif %}
-                    {% if not loop.last %},{% endif %}
-                    {% endfor %}",
-                    {% for param in conn.source_event_params %}
+                    {% endfor %}"
+                    {%- for param in conn.source_event_params %}
                     {% if param is not none %}
-                    {% if param is sameas SmedlType.STRING %}
-                    p{{loop.index0}}
-                    {%- elif param is sameas SmedlType.OPAQUE %}
-                    p{{loop.index0}}buf
-                    {%- else %}
-                    &p{{loop.index0}}
+                    {% if param is sameas SmedlType.STRING -%}
+                    , p{{loop.index0}}
+                    {%- elif param is sameas SmedlType.OPAQUE -%}
+                    , p{{loop.index0}}buf
+                    {%- else -%}
+                    , &p{{loop.index0}}
                     {%- endif %}
-                    {% if not loop.last %}, {% endif +%}
                     {% endif %}
-                    {% endfor %}
+                    {% endfor -%}
                 ) != {{conn.source_event_params|length}}) {
-
 #if DEBUG >= 1
                 fprintf(stderr, "Malformed line: %d\n", lineno);
 #endif
@@ -199,7 +199,6 @@ int main(int argc, char **argv) {
             p{{loop.index0}}.size = strlen(p{{loop.index0}}.data);
             {% endif %}
             {% endfor %}
-
             if (!emit_pedl_{{event}}({% for param in conn.source_event_params %}
                 {% if param is none %}NULL
                 {%- else %}p{{loop.index0}}
@@ -208,6 +207,7 @@ int main(int argc, char **argv) {
                 {% endfor %})) {
                 return 3;
             }
+
         {% endfor %}
         } else {
 #if DEBUG >= 2
