@@ -779,9 +779,10 @@ class SynchronousSet(set):
     """A subclass of set customized to represent a Synchronous Set.
     Meant to contain DeclaredMonitor, Connection (only when originating at the
     target system), and ExportedEvent."""
-    def __init__(self, name, transport, *args, **kwargs):
+    def __init__(self, name, sys, transport, *args, **kwargs):
         """Create a new SynchronousSet"""
         self._name = name
+        self._sys = sys
         self._transport = transport
         super().__init__(*args, **kwargs)
 
@@ -802,6 +803,16 @@ class SynchronousSet(set):
         for member in self:
             if isinstance(member, (Connection, ExportedEvent)):
                 return False
+        return True
+
+    @property
+    def pure_sync(self):
+        """Return True if this synchronous set neither emits nor receives any
+        asynchronous events, False otherwise."""
+        if len(self._sys.imported_channels(self._name)) > 0:
+            return False
+        if len(self._sys.exported_channels(self._name)) > 0:
+            return False
         return True
 
 

@@ -10,8 +10,11 @@
 #include "global_event_queue.h"
 #include "{{sys.name}}_defs.h"
 #include "{{syncset}}_global_wrapper.h"
+{% if not pure_sync %}
 #include "{{syncset}}_{{sys.transport}}.h"
+{% endif %}
 #include "{{syncset}}_manager.h"
+{% if not pure_sync %}
 {% if pure_async %}
 #include <signal.h>
 
@@ -21,6 +24,7 @@ volatile sig_atomic_t smedl_interrupted = 0;
 
 /* Manager event queue */
 static GlobalEventQueue queue;
+{% endif %}
 
 /* Initialization interface - Initialize the manager and the attached global
  * wrapper and network interfaces.
@@ -30,17 +34,21 @@ int init_manager(void) {
     if (!init_{{syncset}}_syncset()) {
         return 0;
     }
+    {% if not pure_sync %}
     if (!init_{{sys.transport}}()) {
         free_{{syncset}}_syncset();
         return 0;
     }
+    {% endif %}
     return 1;
 }
 
 /* Cleanup interface - Tear down and free resources used by the manager and the
  * global wrapper and network interfaces attached to it. */
 void free_manager(void) {
+    {% if not pure_sync %}
     free_{{sys.transport}}();
+    {% endif %}
     free_{{syncset}}_syncset();
 }
 
@@ -51,6 +59,10 @@ void free_manager(void) {
  * the handlers for these signals).
  *
  * Returns nonzero on success and zero on failure. */
+{% elif pure_sync %}
+/* Run interface - Process all pending events in all attached synchronous sets.
+ *
+ * Returns nonzero on success and zero on failure. */
 {% else %}
 /* Run interface - Process all pending events in all attached synchronous sets
  * and network interfaces.
@@ -58,9 +70,9 @@ void free_manager(void) {
  * Returns nonzero on success and zero on failure. */
 {% endif %}
 int run_manager(void) {
+    {% if pure_async %}
     int result = 1;
 
-    {% if pure_async %}
     while (!smedl_interrupted) {
         if (!run_{{sys.transport}}(1)) {
             fprintf(stderr, "Error while running network endpoint\n");
@@ -72,7 +84,13 @@ int run_manager(void) {
             result = 0;
         }
     }
+
+    return result;
+    {% elif pure_sync %}
+    return run_{{syncset}}();
     {% else %}
+    int result = 1;
+
     // First, run syncset wrapper to process events from the target program.
     result = run_{{syncset}}() && result;
 
@@ -83,11 +101,12 @@ int run_manager(void) {
         result = process_queue() && result;
         result = run_{{sys.transport}}(0) && result;
     } while (queue.head != NULL);
-    {% endif %}
 
     return result;
+    {% endif %}
 }
 
+{% if not pure_sync %}
 /* Queue processing function - Deliver the events in the manager queue to their
  * destinations.
  *
@@ -262,4 +281,5 @@ int {% if cpp %}c_{% endif %}main(int argc, char **argv) {
     }
 }
 
+{% endif %}
 {% endif %}

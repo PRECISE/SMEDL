@@ -11,13 +11,13 @@
  ******************************************************************************/
 
 /* Initialization interface - Initialize the manager and the attached global
- * wrapper and network interfaces.
+ * wrapper{% if pure_sync %}.{% else %} and network interfaces.{% endif +%}
  *
  * Returns nonzero on success, zero on failure. */
 int init_manager(void);
 
 /* Cleanup interface - Tear down and free resources used by the manager and the
- * global wrapper and network interfaces attached to it. */
+ * global wrapper{% if pure_sync %}.{% else %} and network interfaces attached to it.{% endif %} */
 void free_manager(void);
 
 {% if pure_async %}
@@ -28,13 +28,18 @@ void free_manager(void);
  *
  * Returns nonzero on success and zero on failure. */
 {% else %}
+{% if not pure_sync %}
+/* Run interface - Process all pending events in all attached synchronous sets.
+{% else %}
 /* Run interface - Process all pending events in all attached synchronous sets
  * and network interfaces.
+{% endif %}
  *
  * Returns nonzero on success and zero on failure. */
 {% endif %}
 int run_manager(void);
 
+{% if not pure_sync %}
 /* Manager queueing interfaces - Queue events to be forwarded to monitors or
  * network interfaces.
  *
@@ -46,9 +51,11 @@ int report_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SME
 int report_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 
+{% endif %}
 /******************************************************************************
  * End of External Interface                                                  *
  ******************************************************************************/
+{% if not pure_sync %}
 {% if pure_async %}
 
 /* Set to 1 to initiate clean shutdown. */
@@ -79,5 +86,7 @@ int deliver_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SM
 {% for conn in sys.exported_channels(syncset).keys() %}
 int deliver_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
+
+{% endif %}
 
 #endif /* {{syncset}}_MANAGER_H */

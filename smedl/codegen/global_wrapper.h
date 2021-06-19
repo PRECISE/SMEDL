@@ -49,6 +49,7 @@ int raise_{{decl.name}}_{{event}}(SMEDLValue *identities, SMEDLValue *params, vo
 int raise_pedl_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 
+{% if sys.imported_channels(syncset) is nonempty %}
 /* Global wrapper import interface - Called by an external module (e.g. the
  * manager) to forward events to the global wrapper to be imported by monitors
  * or sent back to the target program. Actual processing does not happen until
@@ -69,6 +70,7 @@ int raise_pedl_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 int forward_{{syncset}}_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
 {% endfor %}
 
+{% endif %}
 /******************************************************************************
  * End of External Interface                                                  *
  ******************************************************************************/

@@ -216,25 +216,28 @@ class CodeGenerator(object):
         system - A MonitorSystem whose Makefile is to be written
         """
         syncset_mons = dict()
-        for syncset in system.syncsets.values():
-            syncset_mons[syncset.name] = [
+        syncset_specs = dict()
+        pedl_syncsets = []
+        all_sync = True
+
+        for name, syncset in system.syncsets.items():
+            syncset_mons[name] = [
                 decl.name for decl in syncset
                 if isinstance(decl, smedl.structures.arch.DeclaredMonitor)]
 
-        syncset_specs = dict()
-        for syncset in system.syncsets.values():
             specs = []
             for decl in syncset:
                 if not isinstance(decl, smedl.structures.arch.DeclaredMonitor):
                     continue
                 if decl.spec.name not in specs:
                     specs.append(decl.spec.name)
-            syncset_specs[syncset.name] = specs
+            syncset_specs[name] = specs
 
-        pedl_syncsets = []
-        for name, syncset in system.syncsets.items():
             if not syncset.pure_async:
                 pedl_syncsets.append(name)
+
+            if not syncset.pure_sync:
+                all_sync = False
 
         values = {
             "transport": self.transport,
@@ -245,7 +248,8 @@ class CodeGenerator(object):
             "syncset_specs": syncset_specs,
             "mon_names": system.monitor_decls.keys(),
             "spec_names": [decl.spec.name for decl in
-                           system.monitor_decls.values()]
+                           system.monitor_decls.values()],
+            "all_sync": all_sync,
         }
         self._render("Makefile", "Makefile", values, preserve=True)
 
@@ -291,6 +295,7 @@ class CodeGenerator(object):
             "sys": system,
             "syncset": syncset.name,
             "pure_async": syncset.pure_async,
+            "pure_sync": syncset.pure_sync,
             "cpp": self.cpp,
             "mon_decls": mon_decls,
         }
@@ -417,6 +422,8 @@ class RabbitMQGenerator(CodeGenerator):
 
         # Write RabbitMQ adapters
         for syncset in system.syncsets.values():
+            if syncset.pure_sync:
+                continue
             mon_decls = [
                 mon for mon in system.syncsets[syncset.name]
                 if isinstance(mon, smedl.structures.arch.DeclaredMonitor)]
@@ -437,6 +444,7 @@ class RabbitMQGenerator(CodeGenerator):
 # possible to put all PEDL events in a synchronous set, there is little reason
 # to use it, anyway. (It was essentially a synchronous transport for
 # asynchronous events.) Remove it at that point.
+# TODO Don't forget to remove from construct_generator()
 class FileGenerator(CodeGenerator):
     """Generates C code for monitor systems with the File adapter."""
     def __init__(self, **kwargs):
@@ -589,6 +597,8 @@ class ROSGenerator(CodeGenerator):
 
         # Write node sources
         for syncset in system.syncsets.values():
+            if syncset.pure_sync:
+                continue
             mon_decls = [
                 mon for mon in system.syncsets[syncset.name]
                 if isinstance(mon, smedl.structures.arch.DeclaredMonitor)]

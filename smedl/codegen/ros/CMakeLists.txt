@@ -61,7 +61,9 @@ include_directories(
 if(FALSE)
 {% endif %}
 add_executable(${PROJECT_NAME}_{{syncset.name}}_node
+  {% if not syncset.pure_sync %}
   src/{{syncset.name}}_node.cpp
+  {% endif %}
   src/{{syncset.name}}_global_wrapper.c
   src/{{syncset.name}}_manager.c
   {% for decl in syncset %}
