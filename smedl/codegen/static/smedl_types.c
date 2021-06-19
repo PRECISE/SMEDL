@@ -123,27 +123,6 @@ int smedl_equal(SMEDLValue v1, SMEDLValue v2) {
     }
 }
 
-//TODO Can likely be removed. Was used for monitor lookups when we used AVL
-// trees for monitor maps.
-/*
- * Compare two arrays of SMEDLValue and return nonzero if each element in the
- * first is equal to the corresponding element in the second. The first array
- * may contain wildcards (represented by type being SMEDL_NULL), which will
- * always match.
- *
- * NOTE: No type checking is performed! Results are undefined if any of the
- * corresponding elements are not of the same type (excluding SMEDL_NULL for
- * wildcards in the first array)!
- */
-int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len) {
-    for (size_t i = 0; i < len; i++) {
-        if (!smedl_equal(a1[i], a2[i])) {
-            return 0;
-        }
-    }
-    return 1;
-}
-
 /* Make a copy of the src string in dest (does not free the old value!)
  * Return nonzero on success, zero on failure */
 int smedl_assign_string(char **dest, char *src) {
@@ -160,13 +139,14 @@ int smedl_assign_string(char **dest, char *src) {
  * Return nonzero on success, zero on failure */
 int smedl_assign_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     void *tmp = malloc(src.size);
-    //TODO Can return NULL correctly if size is zero
-    if (tmp == NULL) {
+    if (tmp == NULL && src.size != 0) {
         return 0;
     }
     (*dest).data = tmp;
     (*dest).size = src.size;
-    memcpy((*dest).data, src.data, src.size);
+    if (src.size != 0) {
+        memcpy((*dest).data, src.data, src.size);
+    }
     return 1;
 }
 
@@ -187,14 +167,15 @@ int smedl_replace_string(char **dest, char *src) {
  * Return nonzero on success, zero on failure */
 int smedl_replace_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     void *tmp = malloc(src.size);
-    //TODO Can return NULL correctly if size is zero
-    if (tmp == NULL) {
+    if (tmp == NULL && src.size != 0) {
         return 0;
     }
     free((*dest).data);
     (*dest).data = tmp;
     (*dest).size = src.size;
-    memcpy((*dest).data, src.data, src.size);
+    if (src.size != 0) {
+        memcpy((*dest).data, src.data, src.size);
+    }
     return 1;
 }
 

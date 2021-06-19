@@ -116,12 +116,6 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Monitor Generator for SMEDL monitoring systems")
 
-    # TODO Add some of these back in later?
-    # parser.add_argument('-s', '--structs', help='Print internal data '
-    #        'structures', action='store_true')
-    # parser.add_argument('--noimplicit', help='Disable implicit error '
-    #        'handling in generated monitor', action='store_false')
-
     parser.add_argument(
         '--version', action='version', version=__about__['version'])
     parser.add_argument(
@@ -132,7 +126,11 @@ def parse_args():
         '-d', '--dir', help="Directory to write the generated code to (if not "
         "current directory)")
     parser.add_argument(
-        # TODO File adapter needs to be totally overhauled for new API
+        # TODO File adapter is no longer needed. It was essentially a
+        # synchronous transport for asynchronous events, and we can now
+        # accomplish that by putting everything and all PEDL events in one
+        # synchronous set. Remove it, including from the makefile and
+        # generator.py.
         # '-t', '--transport', choices=['rabbitmq', 'file', 'ros'],
         '-t', '--transport', choices=['rabbitmq', 'ros'],
         help="Generate an adapter for the given asynchronous transport "

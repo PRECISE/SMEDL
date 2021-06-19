@@ -94,18 +94,6 @@ int smedl_compare(SMEDLValue v1, SMEDLValue v2);
 int smedl_equal(SMEDLValue v1, SMEDLValue v2);
 
 /*
- * Compare two arrays of SMEDLValue and return nonzero if each element in the
- * first is equal to the corresponding element in the second. The first array
- * may contain wildcards (represented by type being SMEDL_NULL), which will
- * always match.
- *
- * NOTE: No type checking is performed! Results are undefined if any of the
- * corresponding elements are not of the same type (excluding SMEDL_NULL for
- * wildcards in the first array)!
- */
-int smedl_equal_array(SMEDLValue *a1, SMEDLValue *a2, size_t len);
-
-/*
  * Make a copy of the SMEDLValue array with the given length. This is a deep
  * copy: new buffers will be malloc'd for strings and opaques.
  *

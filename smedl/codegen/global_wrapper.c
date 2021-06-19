@@ -13,10 +13,6 @@
 {% for decl in mon_decls %}
 #include "{{decl.name}}_local_wrapper.h"
 {% endfor %}
-//TODO Next include still needed after switching to set_* interface?
-{% for spec_name in sys.syncset_spec_names(syncset) %}
-#include "{{spec_name}}_mon.h"
-{% endfor %}
 
 /* Global event queue - Stores all pending events from all sources: monitors,
  * target program, and manager. */
