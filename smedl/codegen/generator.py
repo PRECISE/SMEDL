@@ -84,7 +84,6 @@ def construct_generator(transport, **kwargs):
         None: CodeGenerator,
         'rabbitmq': RabbitMQGenerator,
         'ros': ROSGenerator,
-        'file': FileGenerator,
     }
 
     return generators[transport](**kwargs)
@@ -438,44 +437,6 @@ class RabbitMQGenerator(CodeGenerator):
             self._render("rabbitmq.h", syncset.name + "_rabbitmq.h", values)
             self._render("rabbitmq.cfg", system.name + ".cfg",
                          values, preserve=True)
-
-
-#TODO File adapter isn't really compatible with the manager design. Once it is
-# possible to put all PEDL events in a synchronous set, there is little reason
-# to use it, anyway. (It was essentially a synchronous transport for
-# asynchronous events.) Remove it at that point.
-# TODO Don't forget to remove from construct_generator()
-class FileGenerator(CodeGenerator):
-    """Generates C code for monitor systems with the File adapter."""
-    def __init__(self, **kwargs):
-        """Initialize the code generator for the file transport.
-        Parameters match the constructor for CodeGenerator."""
-        super(FileGenerator, self).__init__(**kwargs)
-
-        # Used by Makefile template
-        self.transport = "file"
-
-    def _get_jinja_loaders(self):
-        """Return a list of Jinja template loaders to use."""
-        loaders = super(FileGenerator, self)._get_jinja_loaders()
-        loaders.append(jinja2.PackageLoader('smedl.codegen.file', '.'))
-        return loaders
-
-    def _write_transport_adapters(self, system):
-        """Write the file adapters"""
-        # Write static code
-        from .file import static
-        self._write_static_files(static)
-
-        # Write file adapters
-        for syncset_name in system.syncsets.keys():
-            values = {
-                "sys": system,
-                "mon_decls": system.monitor_decls.values(),
-                "syncsets": system.syncsets,
-            }
-            self._render("file.c", system.name + "_file.c", values)
-            self._render("file.h", system.name + "_file.h", values)
 
 
 class ROSGenerator(CodeGenerator):

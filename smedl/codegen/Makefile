@@ -9,13 +9,9 @@
 
 # If any monitors use helper functions, add the C/C++ source code files to the
 # variable(s) below (must be .c, .cc, .cpp, or .C files)
-{% if transport == 'file' %}
-EXTRA_SOURCES=
-{% else %}
 {% for spec in spec_names %}
 EXTRA_SOURCES_{{spec}}=
 {% endfor %}
-{% endif %}
 
 # The syncset(s) named below contain PEDL events (i.e. events to/from the
 # target system). A basic stub to interface with these events is included, but
@@ -63,9 +59,7 @@ LDLIBS:=$(LDLIBS) -lrabbitmq
 
 COMMON_SOURCES=smedl_types.c event_queue.c monitor_map.c global_event_queue.c
 {%- if not all_sync %}
-{% if transport == 'file' %}
- file.c json.c
-{%- elif transport == 'rabbitmq' %}
+{%- if transport == 'rabbitmq' %}
  cJSON.c
 {%- endif %}
 {% endif %}
@@ -81,13 +75,12 @@ SOURCES_{{syncset}}=
 {%- if syncset in pedl_syncsets %} {{syncset}}_stub.c{% endif %}
 
 {% endfor %}
-SMEDL_SOURCES=$(COMMON_SOURCES){% if transport == 'file' %} {{system}}_file.c{% endif %}
+SMEDL_SOURCES=$(COMMON_SOURCES)
 {%- for syncset in syncsets %} $(SOURCES_{{syncset}}){% endfor %}
 
 
 SMEDL_OBJS=$(SMEDL_SOURCES:.c=.o)
 SMEDL_OBJS:=$(SMEDL_OBJS:%=$(BUILD_DIR)/%)
-{% if transport != 'file' %}
 
 {% for syncset in syncsets %}
 OBJS_{{syncset}}=$(COMMON_SOURCES){% for spec in syncset_specs[syncset] %} $(EXTRA_SOURCES_{{spec}}){% endfor %} $(SOURCES_{{syncset}})
@@ -97,16 +90,13 @@ OBJS_{{syncset}}:=$(OBJS_{{syncset}}:.cpp=.o)
 OBJS_{{syncset}}:=$(OBJS_{{syncset}}:.C=.o)
 OBJS_{{syncset}}:=$(OBJS_{{syncset}}:%=$(BUILD_DIR)/%)
 {% endfor %}
-{% endif %}
 
-{% if transport != 'file' %}
 EXTRA_SOURCES=
 {%- for spec in spec_names %}
 {% if not loop.first %} {% endif %}$(EXTRA_SOURCES_{{spec}})
 {%- endfor %}
 
 EXTRA_SOURCES:=$(sort $(EXTRA_SOURCES))
-{% endif %}
 EXTRA_OBJS=$(EXTRA_SOURCES)
 EXTRA_OBJS:=$(EXTRA_OBJS:.c=.o)
 EXTRA_OBJS:=$(EXTRA_OBJS:.cc=.o)
@@ -120,13 +110,6 @@ DEPS=$(OBJS:.o=.d)
 
 .PHONY: all clean
 
-{% if transport == 'file' %}
-all: $(BUILD_DIR)/{{system}}
-
-$(BUILD_DIR)/{{system}}: $(OBJS)
-	mkdir -p $(@D)
-	$(CC) $(LDFLAGS) $+ $(LDLIBS) -o $@
-{% else %}
 all:{% for syncset in syncsets %} $(BUILD_DIR)/{{syncset}}{% endfor %}
 {% for syncset in syncsets %}
 
@@ -134,7 +117,6 @@ $(BUILD_DIR)/{{syncset}}: $(OBJS_{{syncset}})
 	mkdir -p $(@D)
 	$(CC) $(LDFLAGS) $+ $(LDLIBS) -o $@
 {% endfor %}
-{% endif %}
 
 $(SMEDL_OBJS): $(BUILD_DIR)/%.o: %.c
 	mkdir -p $(@D)
@@ -158,10 +140,6 @@ $(BUILD_DIR)/%.o: %.C
 
 clean:
 	$(RM) $(OBJS) $(DEPS)
-{%- if transport == 'file' %}
- $(BUILD_DIR)/{{system}}
-{% else %}
-{% for syncset in syncsets %} $(BUILD_DIR)/{{syncset}}{% endfor %}
-{% endif %}
+	{%- for syncset in syncsets %} $(BUILD_DIR)/{{syncset}}{% endfor %}
 
 -include $(DEPS)

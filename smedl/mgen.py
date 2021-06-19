@@ -44,7 +44,7 @@ class MonitorGenerator(object):
         out_dir - A string or path-like object for the directory where the
           generated files are to be placed, or None for the current directory
         transport - The name of the transport mechanism to generate (e.g.
-          'rabbitmq', 'ros', 'file')
+          'rabbitmq', 'ros')
         makefile - Whether or not to generate a Makefile for monitor systems.
           True=yes (if an architecture file and transport are given), False=no,
         overwrite - Whether files that may contain customizations (Makefiles,
@@ -126,12 +126,6 @@ def parse_args():
         '-d', '--dir', help="Directory to write the generated code to (if not "
         "current directory)")
     parser.add_argument(
-        # TODO File adapter is no longer needed. It was essentially a
-        # synchronous transport for asynchronous events, and we can now
-        # accomplish that by putting everything and all PEDL events in one
-        # synchronous set. Remove it, including from the makefile and
-        # generator.py.
-        # '-t', '--transport', choices=['rabbitmq', 'file', 'ros'],
         '-t', '--transport', choices=['rabbitmq', 'ros'],
         help="Generate an adapter for the given asynchronous transport "
         "method. This option is usually recommended when the input is an "
