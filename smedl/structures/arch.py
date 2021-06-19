@@ -1061,6 +1061,11 @@ class MonitorSystem(object):
         # are ExportedEvents
         self._exported_events = dict()
 
+        # Name of the syncset to contain PEDL events not otherwise in a
+        # synchronous set, or None to put them all in an implicit 'pedl'
+        # syncset
+        self._pedl_syncset = None
+
     @property
     def name(self):
         return self._name
@@ -1171,6 +1176,12 @@ class MonitorSystem(object):
                     exported_ev = self.add_exported_event(member_name)
                     exported_ev.syncset = syncset
                 syncset.add(self._exported_events[member_name])
+            elif kind == 'pedl':
+                if self._pedl_syncset is None:
+                    self._pedl_syncset = name
+                else:
+                    raise AlreadyInSyncset("The 'pedl' keyword may only be "
+                                           "specified for one syncset.")
             else:
                 raise InternalError('Syncset "{}" conatain member "{}" with '
                                     'unknown kind "{}"'.format(
@@ -1331,8 +1342,9 @@ class MonitorSystem(object):
         """Check events from the target system for two things:
         1. Events that were declared but not used (print a warning)
         2. Events from the target system that are not yet in a synchronous set.
-           If there are any, create a PEDL synchronous set for them, named
-           "pedl"
+           If there are any, put them in the syncset that contained the 'pedl'
+           keyword, or create a new synchronous set for them named 'pedl' if
+           there was none
         In addition, check for exported monitor events that are not the source
         of a connection. For these, create implicit Connections and
         ExportedEvents and add them to the PEDL syncset as well.
@@ -1356,7 +1368,18 @@ class MonitorSystem(object):
                     {'kind': 'exported', 'name': ev.name})
 
         if len(pedl_evs_without_syncset) > 0:
-            self.add_syncset(None, pedl_evs_without_syncset)
+            if self._pedl_syncset is None:
+                self.add_syncset(None, pedl_evs_without_syncset)
+            else:
+                syncset = self._syncsets[self._pedl_syncset]
+                for ev in pedl_evs_without_syncset:
+                    if ev['kind'] == 'imported':
+                        self._ev_imported_connections[ev['name']].syncset = \
+                            syncset
+                        syncset.add(self._ev_imported_connections[ev['name']])
+                    else:
+                        self._exported_events[ev['name']].syncset = syncset
+                        syncset.add(self._exported_events[ev['name']])
 
     def name_unnamed_channels(self):
         """Assign default channel names to any remaining unnamed channels in

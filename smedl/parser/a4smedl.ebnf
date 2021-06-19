@@ -72,9 +72,9 @@ syncset_member_list =
 
 syncset_member =
     # Syncsets may contain PEDL events (preceded by "imported"/"exported")
-    # and/or monitors
-    #TODO Add "pedl" as a keyword and it makes all unassigned PEDL events part
-    # of the syncset
+    # and/or monitors. In addition, the "pedl" keyword assigns all implicit and
+    # unassigned PEDL events to the syncset.
+    kind:'pedl' ~
     kind:'imported' ~ name:identifier
     kind:'exported' ~ name:identifier
     | kind:`monitor` name:identifier

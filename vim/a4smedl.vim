@@ -37,7 +37,7 @@ highlight default link a4smedlComment   Comment
 syntax keyword a4smedlKeyword   import nextgroup=a4smedlImportFile skipwhite skipempty
 syntax keyword a4smedlKeyword   monitor as nextgroup=a4smedlMonitor skipwhite skipempty
 syntax keyword a4smedlKeyword   syncset nextgroup=a4smedlSyncset skipwhite skipempty
-syntax keyword a4smedlKeyword   system event
+syntax keyword a4smedlKeyword   system pedl imported exported
 syntax keyword a4smedlType      int float double char string pointer opaque
 highlight default link a4smedlType      Type
 highlight default link a4smedlKeyword   Keyword
