@@ -420,9 +420,12 @@ class RabbitMQGenerator(CodeGenerator):
         self._write_static_files(static)
 
         # Write RabbitMQ adapters
+        all_sync = True
         for syncset in system.syncsets.values():
             if syncset.pure_sync:
                 continue
+            all_sync = False
+
             mon_decls = [
                 mon for mon in system.syncsets[syncset.name]
                 if isinstance(mon, smedl.structures.arch.DeclaredMonitor)]
@@ -435,8 +438,13 @@ class RabbitMQGenerator(CodeGenerator):
             self._render("rabbitmq.c", syncset.name +
                          "_rabbitmq.c", values)
             self._render("rabbitmq.h", syncset.name + "_rabbitmq.h", values)
-            self._render("rabbitmq.cfg", system.name + ".cfg",
-                         values, preserve=True)
+
+        if not all_sync:
+            values = {
+                "sys": system,
+            }
+            self._render("rabbitmq.cfg", system.name + ".cfg", values,
+                         preserve=True)
 
 
 class ROSGenerator(CodeGenerator):
