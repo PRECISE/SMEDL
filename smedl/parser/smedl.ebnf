@@ -1,0 +1,332 @@
+# Copyright (c) 2021 The Trustees of the University of Pennsylvania
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# This grammar defines SMEDL in the Grako-variation of EBNF.
+
+# Grako-specific directives
+@@grammar :: SMEDL
+
+#include :: "common.ebnf"
+
+start =
+    name:declaration
+    [helpers:helper_list]
+    [state_vars:state_section]
+    events:event_section
+    scenarios:scenario_section
+    $
+    ;
+
+declaration =
+    'object' @:identifier ';'
+    ;
+
+helper_list =
+    {helper_definition}*
+    ;
+
+helper_definition =
+    '#include' ~ @:helper_filename
+    ;
+
+helper_filename =
+    /"[^"\n\r\v\f]*"|<[^>\n\r\v\f]*>/
+    ;
+
+state_section =
+    'state:' ~ @:{state_declaration}*
+    ;
+
+state_declaration =
+    type:type name:identifier
+    [ '=' value:signed_literal ]
+    ';'
+    ;
+
+event_section =
+    'events:' ~ @:{event_declaration}*
+    ;
+
+event_declaration =
+    type:('imported' | 'internal' | 'exported')
+    signatures:','.{event_signature}+
+    ';'
+    ;
+
+event_signature =
+    name:identifier
+    '(' params:type_list ')'
+    ;
+
+scenario_section =
+    'scenarios:' ~ @:{scenario}*
+    ;
+
+scenario =
+    name:identifier ':'
+    ['finalstate' final_state:identifier ';']
+    transitions:{transition}*
+    ;
+
+# Multiple steps act as if there is an implicit state between them. This
+# implicit state is the same as any other state in the eyes of SMEDL, except it
+# has no name. Thus, if we
+# have a transition like this:
+# state1 -> eventA() -> eventB() -> state2
+# And we get the following events:
+# eventA() eventC()
+# The scenario will remain in the implicit state between eventA and eventB.
+
+# Else actions:
+# - Else actions are taken when an event happens for which a transition is
+#   defined, but the condition is not met.
+# - Else actions are *NOT* taken when the current state has no transition for
+#   the current event.
+# - Each state may have one else action for each event in its outgoing
+#   transitions. (This includes implicit states, but see below when using else
+#   actions on transitions with multiple steps.)
+#   - Note that if an event is used multiple times for the same state (typically
+#   with different conditions), an else state may only appear on one of them. An
+#   error will be raised otherwise.
+# - After else actions are taken, the scenario is left in the else state
+#   designated.
+#
+# If an else action is defined on a transition with multiple steps:
+# - It will apply to each step in the transition.
+# - Event parameters cannot be used in the actions, since the else action no
+#   longer applies to a single event. State variables may still be used.
+transition =
+    start_state:identifier
+    '->' steps:step_definition_list
+    [else_step:else_definition]
+    ';'
+    ;
+
+step_definition_list =
+    step:step_definition '->' rest:step_definition_list
+    | step:step_definition '->' end_state:identifier
+    ;
+
+step_definition =
+    event:step_event_definition
+    ['when' '(' condition:expression ')']
+    [actions:action_list]
+    ;
+
+else_definition =
+    'else'
+    else_preproc
+    [else_actions:action_list]
+    '->' else_state:identifier
+    ;
+
+else_preproc = () ; # See semantic actions (smedl_semantics.py) for explanation
+
+step_event_definition =
+    name:identifier
+    '(' params:identifier_list ')'
+    ;
+
+action_list =
+    '{'
+    @:action_inner_list
+    '}'
+    ;
+
+action_inner_list =
+    first:action ';' rest:action_inner_list
+    | first:action
+    | first:()
+    ;
+
+action =
+    assignment
+    | increment
+    | decrement
+    | raise_stmt
+    | call_stmt
+    ;
+
+assignment =
+    target:identifier '=' value:expression
+    ;
+
+increment =
+    target:identifier '++'
+    ;
+
+decrement =
+    target:identifier '--'
+    ;
+
+raise_stmt =
+    'raise' event:identifier '(' params:expression_list ')'
+    ;
+
+# Should remove eventually--helpers are not supposed to have side effects.
+call_stmt =
+    function:identifier '(' params:expression_list ')'
+    ;
+
+expression_list =
+    ','.{expression}*
+    ;
+
+# SMEDL expression operators, highest to lowest precedence:
+# Unary +, Unary -, Bitwise negation ~, Logical negation !
+# Multiplication *, Division /, Modulo %
+# Addition +, subtraction -
+# Left shift <<, Right shift >>
+# Less than/or equal < <=, greater than/or equal > >=
+# Equal ==, not equal !=
+# Bitwise AND &
+# Bitwise XOR ^
+# Bitwise OR |
+# Logical AND &&
+# Logical OR ||
+#
+# All binary operators are left associative. Precedence and associativity match
+# C.
+expression =
+    or_expr
+    ;
+
+or_expr =
+    '||'<{and_expr}+
+    ;
+
+and_expr =
+    '&&'<{bitwise_or_expr}+
+    ;
+
+bitwise_or_expr =
+    # Note: The "! '|'" part prevents '||' from matching by disallowing '|'
+    # from matching when followed by a second '|'
+    ('|' ! '|')<{bitwise_xor_expr}+
+    ;
+
+bitwise_xor_expr =
+    '^'<{bitwise_and_expr}+
+    ;
+
+bitwise_and_expr =
+    # Note: The "! '&'" part prevents '&&' from matching by disallowing '&'
+    # from matching when followed by a second '&'
+    ('&' ! '&')<{equality_expr}+
+    ;
+
+equality_expr =
+    ('==' | '!=')<{comparison_expr}+
+    ;
+
+comparison_expr =
+    ('<=' | '<' | '>=' | '>')<{bitshift_expr}+
+    ;
+
+bitshift_expr =
+    ('<<' | '>>')<{additive_expr}+
+    ;
+
+additive_expr =
+    ('+' | '-')<{multiplicative_expr}+
+    ;
+
+multiplicative_expr =
+    ('*' | '/' | '%')<{unary_expr}+
+    ;
+
+unary_expr =
+    '+' ~ atom
+    | '-' ~ atom
+    | '~' ~ atom
+    | '!' ~ atom
+    | atom
+    ;
+
+atom =
+    literal
+    | helper_call
+    | parenthesized
+    | var_or_param
+    ;
+
+literal =
+    value:float type:`float`
+    | value:integer type:`int`
+    | value:char type:`char`
+    | value:string type:`string`
+    | value:bool type:`int`
+    | value:null type:`null`
+    ;
+
+helper_call =
+    function:identifier '(' ~ params:expression_list ')'
+    ;
+
+var_or_param =
+    identifier
+    ;
+
+parenthesized =
+    '(' ~ @:expression ')'
+    ;
+
+# Only meant for use in instantiations. Expressions have + and - as unary ops.
+signed_literal =
+    # Use include operation for literal as we do not want its semantic action to
+    # run
+    >literal
+    | value:('+' float) type:`signed_float`
+    | value:('-' float) type:`signed_float`
+    | value:('+' integer) type:`signed_int`
+    | value:('-' integer) type:`signed_int`
+    ;
+
+integer =
+    /[0-9]+/
+    ;
+
+float =
+    # [0-9]*\.[0-9]+(?:[Ee][+-]?[0-9]+)?
+    #   Optional digits, dot, one or more digits, optional exponent
+    # [0-9]+\.(?:[Ee][+-]?[0-9]+)?
+    #   One or more digits, dot, optional exponent
+    # [0-9]+[Ee][+-]?[0-9]+
+    #   One or more digits, mandatory exponent (no dot)
+    /[0-9]*\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+/
+    ;
+
+char =
+    /'(?:[^'\\\n]|\\[0-7]{1,3}|\\x[0-9a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F]{8}|\\['"?\\abfnrtv])'/
+    ;
+
+string =
+    /"[^"\\\n]*(?:\\.[^"\\\n]*)*"/
+    ;
+
+bool =
+    'true' @:`1` # Substitute '1' for 'true'
+    | 'false' @:`0` # Substitute '0' for 'false'
+    ;
+
+null =
+    'NULL'
+    | 'null' @:`NULL` # Return 'NULL' when 'null' is written
+    ;

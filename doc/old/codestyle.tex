@@ -1,0 +1,280 @@
+\definecolor{ltGray}{HTML}{F5F5F5}
+\definecolor{dkRed}{HTML}{A52A2A}
+\definecolor{dkBlue}{HTML}{483D8B}
+\definecolor{dkGreen}{HTML}{008070}
+\definecolor{dkYellow}{HTML}{B8860B}
+\definecolor{slate}{HTML}{778899}
+
+%\newcommand{\textcolordummy}[2]{#2}
+
+\lstset{
+  numbers=left,
+  xleftmargin=1em,
+  frame=single,
+  frameround=tttt,
+  belowcaptionskip=3ex,
+  backgroundcolor=\color{ltGray},
+  basicstyle=\ttfamily,
+  basewidth={0.5em,0.5em},
+  numberstyle=\color{slate}\tiny %line numbers
+}
+
+\lstdefinestyle{fixed}{
+  aboveskip=1em,
+  belowskip=1em
+}
+
+\lstdefinelanguage{smedl}{
+  morekeywords={object,state:,events:,scenarios:,imported,internal,exported,when,else,raise,true,false,null,NULL},
+  morekeywords=[2]{int,float,double,char,string,pointer,thread,opaque},
+  morekeywords=[3]{\#include},
+  alsoletter={\#},
+  alsodigit={:},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]"
+}
+
+\lstdefinestyle{smedlbase}{
+  language=smedl,
+  %commentstyle={\color{slate}\let\textcolor\textcolordummy},
+  commentstyle=\color{slate}\itshape,
+  keywordstyle=\color{dkBlue}\bfseries,
+  keywordstyle=[2]\color{dkGreen}\bfseries,
+  keywordstyle=[3]\color{dkYellow}\bfseries,
+  %directivestyle=\color{dkYellow}\bfseries,
+  stringstyle=\color{dkRed},
+  literate=*{0}{{\textcolor{dkRed}{0}}}{1}%
+            {1}{{\textcolor{dkRed}{1}}}{1}%
+            {2}{{\textcolor{dkRed}{2}}}{1}%
+            {3}{{\textcolor{dkRed}{3}}}{1}%
+            {4}{{\textcolor{dkRed}{4}}}{1}%
+            {5}{{\textcolor{dkRed}{5}}}{1}%
+            {6}{{\textcolor{dkRed}{6}}}{1}%
+            {7}{{\textcolor{dkRed}{7}}}{1}%
+            {8}{{\textcolor{dkRed}{8}}}{1}%
+            {9}{{\textcolor{dkRed}{9}}}{1}%
+            {.0}{{\textcolor{dkRed}{.0}}}{2}%
+            {.1}{{\textcolor{dkRed}{.1}}}{2}%
+            {.2}{{\textcolor{dkRed}{.2}}}{2}%
+            {.3}{{\textcolor{dkRed}{.3}}}{2}%
+            {.4}{{\textcolor{dkRed}{.4}}}{2}%
+            {.5}{{\textcolor{dkRed}{.5}}}{2}%
+            {.6}{{\textcolor{dkRed}{.6}}}{2}%
+            {.7}{{\textcolor{dkRed}{.7}}}{2}%
+            {.8}{{\textcolor{dkRed}{.8}}}{2}%
+            {.9}{{\textcolor{dkRed}{.9}}}{2}%
+            {+0}{{\textcolor{dkRed}{+0}}}{2}%
+            {+1}{{\textcolor{dkRed}{+1}}}{2}%
+            {+2}{{\textcolor{dkRed}{+2}}}{2}%
+            {+3}{{\textcolor{dkRed}{+3}}}{2}%
+            {+4}{{\textcolor{dkRed}{+4}}}{2}%
+            {+5}{{\textcolor{dkRed}{+5}}}{2}%
+            {+6}{{\textcolor{dkRed}{+6}}}{2}%
+            {+7}{{\textcolor{dkRed}{+7}}}{2}%
+            {+8}{{\textcolor{dkRed}{+8}}}{2}%
+            {+9}{{\textcolor{dkRed}{+9}}}{2}%
+            {-0}{{\textcolor{dkRed}{-0}}}{2}%
+            {-1}{{\textcolor{dkRed}{-1}}}{2}%
+            {-2}{{\textcolor{dkRed}{-2}}}{2}%
+            {-3}{{\textcolor{dkRed}{-3}}}{2}%
+            {-4}{{\textcolor{dkRed}{-4}}}{2}%
+            {-5}{{\textcolor{dkRed}{-5}}}{2}%
+            {-6}{{\textcolor{dkRed}{-6}}}{2}%
+            {-7}{{\textcolor{dkRed}{-7}}}{2}%
+            {-8}{{\textcolor{dkRed}{-8}}}{2}%
+            {-9}{{\textcolor{dkRed}{-9}}}{2}%
+            {e0}{{\textcolor{dkRed}{e0}}}{2}%
+            {e1}{{\textcolor{dkRed}{e1}}}{2}%
+            {e2}{{\textcolor{dkRed}{e2}}}{2}%
+            {e3}{{\textcolor{dkRed}{e3}}}{2}%
+            {e4}{{\textcolor{dkRed}{e4}}}{2}%
+            {e5}{{\textcolor{dkRed}{e5}}}{2}%
+            {e6}{{\textcolor{dkRed}{e6}}}{2}%
+            {e7}{{\textcolor{dkRed}{e7}}}{2}%
+            {e8}{{\textcolor{dkRed}{e8}}}{2}%
+            {e9}{{\textcolor{dkRed}{e9}}}{2}%
+            {e+0}{{\textcolor{dkRed}{e-0}}}{3}%
+            {e+1}{{\textcolor{dkRed}{e-1}}}{3}%
+            {e+2}{{\textcolor{dkRed}{e-2}}}{3}%
+            {e+3}{{\textcolor{dkRed}{e-3}}}{3}%
+            {e+4}{{\textcolor{dkRed}{e-4}}}{3}%
+            {e+5}{{\textcolor{dkRed}{e-5}}}{3}%
+            {e+6}{{\textcolor{dkRed}{e-6}}}{3}%
+            {e+7}{{\textcolor{dkRed}{e-7}}}{3}%
+            {e+8}{{\textcolor{dkRed}{e-8}}}{3}%
+            {e+9}{{\textcolor{dkRed}{e-9}}}{3}%
+            {e-0}{{\textcolor{dkRed}{e-0}}}{3}%
+            {e-1}{{\textcolor{dkRed}{e-1}}}{3}%
+            {e-2}{{\textcolor{dkRed}{e-2}}}{3}%
+            {e-3}{{\textcolor{dkRed}{e-3}}}{3}%
+            {e-4}{{\textcolor{dkRed}{e-4}}}{3}%
+            {e-5}{{\textcolor{dkRed}{e-5}}}{3}%
+            {e-6}{{\textcolor{dkRed}{e-6}}}{3}%
+            {e-7}{{\textcolor{dkRed}{e-7}}}{3}%
+            {e-8}{{\textcolor{dkRed}{e-8}}}{3}%
+            {e-9}{{\textcolor{dkRed}{e-9}}}{3}%
+            {->}{{\textcolor{dkYellow}{->}}}{2}
+}
+
+\lstdefinestyle{smedl}{
+  style=smedlbase,
+  float
+}
+
+\lstdefinestyle{smedlfixed}{
+  style=smedlbase,
+  style=fixed
+}
+
+\lstdefinelanguage{a4smedl}{
+  morekeywords={system,import,monitor,as,event,syncset},
+  morekeywords=[2]{int,float,double,char,string,pointer,thread,opaque},
+  morekeywords=[3]{Id.,Param.},
+  alsodigit={.},
+  sensitive=true,
+  morecomment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  morestring=[b]"
+}
+
+\lstdefinestyle{a4smedlbase}{
+  language=a4smedl,
+  commentstyle=\color{slate}\itshape,
+  keywordstyle=\color{dkBlue}\bfseries,
+  keywordstyle=[2]\color{dkGreen}\bfseries,
+  keywordstyle=[3]\color{dkRed},
+  stringstyle=\color{dkRed},
+  literate=*{0}{{\textcolor{dkRed}{0}}}{1}%
+            {1}{{\textcolor{dkRed}{1}}}{1}%
+            {2}{{\textcolor{dkRed}{2}}}{1}%
+            {3}{{\textcolor{dkRed}{3}}}{1}%
+            {4}{{\textcolor{dkRed}{4}}}{1}%
+            {5}{{\textcolor{dkRed}{5}}}{1}%
+            {6}{{\textcolor{dkRed}{6}}}{1}%
+            {7}{{\textcolor{dkRed}{7}}}{1}%
+            {8}{{\textcolor{dkRed}{8}}}{1}%
+            {9}{{\textcolor{dkRed}{9}}}{1}%
+            {$0}{{\textcolor{dkRed}{\$0}}}{2}%
+            {$1}{{\textcolor{dkRed}{\$1}}}{2}%
+            {$2}{{\textcolor{dkRed}{\$2}}}{2}%
+            {$3}{{\textcolor{dkRed}{\$3}}}{2}%
+            {$4}{{\textcolor{dkRed}{\$4}}}{2}%
+            {$5}{{\textcolor{dkRed}{\$5}}}{2}%
+            {$6}{{\textcolor{dkRed}{\$6}}}{2}%
+            {$7}{{\textcolor{dkRed}{\$7}}}{2}%
+            {$8}{{\textcolor{dkRed}{\$8}}}{2}%
+            {$9}{{\textcolor{dkRed}{\$9}}}{2}%
+            {\#0}{{\textcolor{dkRed}{\#0}}}{2}%
+            {\#1}{{\textcolor{dkRed}{\#1}}}{2}%
+            {\#2}{{\textcolor{dkRed}{\#2}}}{2}%
+            {\#3}{{\textcolor{dkRed}{\#3}}}{2}%
+            {\#4}{{\textcolor{dkRed}{\#4}}}{2}%
+            {\#5}{{\textcolor{dkRed}{\#5}}}{2}%
+            {\#6}{{\textcolor{dkRed}{\#6}}}{2}%
+            {\#7}{{\textcolor{dkRed}{\#7}}}{2}%
+            {\#8}{{\textcolor{dkRed}{\#8}}}{2}%
+            {\#9}{{\textcolor{dkRed}{\#9}}}{2}%
+            {=>}{{\textcolor{dkYellow}{=>}}}{2}
+}
+
+\lstdefinestyle{a4smedl}{
+  style=a4smedlbase,
+  float
+}
+
+\lstdefinestyle{a4smedlfixed}{
+  style=a4smedlbase,
+  style=fixed
+}
+
+\lstdefinestyle{Cbase}{
+  language=C,
+  commentstyle=\color{slate}\itshape,
+  keywordstyle=\color{dkBlue}\bfseries,
+  keywordstyle=[2]\color{dkGreen}\bfseries,
+  keywordstyle=[3]\color{dkRed},
+  stringstyle=\color{dkRed},
+  literate=*{0}{{\textcolor{dkRed}{0}}}{1}%
+            {1}{{\textcolor{dkRed}{1}}}{1}%
+            {2}{{\textcolor{dkRed}{2}}}{1}%
+            {3}{{\textcolor{dkRed}{3}}}{1}%
+            {4}{{\textcolor{dkRed}{4}}}{1}%
+            {5}{{\textcolor{dkRed}{5}}}{1}%
+            {6}{{\textcolor{dkRed}{6}}}{1}%
+            {7}{{\textcolor{dkRed}{7}}}{1}%
+            {8}{{\textcolor{dkRed}{8}}}{1}%
+            {9}{{\textcolor{dkRed}{9}}}{1}%
+            {.0}{{\textcolor{dkRed}{.0}}}{2}%
+            {.1}{{\textcolor{dkRed}{.1}}}{2}%
+            {.2}{{\textcolor{dkRed}{.2}}}{2}%
+            {.3}{{\textcolor{dkRed}{.3}}}{2}%
+            {.4}{{\textcolor{dkRed}{.4}}}{2}%
+            {.5}{{\textcolor{dkRed}{.5}}}{2}%
+            {.6}{{\textcolor{dkRed}{.6}}}{2}%
+            {.7}{{\textcolor{dkRed}{.7}}}{2}%
+            {.8}{{\textcolor{dkRed}{.8}}}{2}%
+            {.9}{{\textcolor{dkRed}{.9}}}{2}%
+            {+0}{{\textcolor{dkRed}{+0}}}{2}%
+            {+1}{{\textcolor{dkRed}{+1}}}{2}%
+            {+2}{{\textcolor{dkRed}{+2}}}{2}%
+            {+3}{{\textcolor{dkRed}{+3}}}{2}%
+            {+4}{{\textcolor{dkRed}{+4}}}{2}%
+            {+5}{{\textcolor{dkRed}{+5}}}{2}%
+            {+6}{{\textcolor{dkRed}{+6}}}{2}%
+            {+7}{{\textcolor{dkRed}{+7}}}{2}%
+            {+8}{{\textcolor{dkRed}{+8}}}{2}%
+            {+9}{{\textcolor{dkRed}{+9}}}{2}%
+            {-0}{{\textcolor{dkRed}{-0}}}{2}%
+            {-1}{{\textcolor{dkRed}{-1}}}{2}%
+            {-2}{{\textcolor{dkRed}{-2}}}{2}%
+            {-3}{{\textcolor{dkRed}{-3}}}{2}%
+            {-4}{{\textcolor{dkRed}{-4}}}{2}%
+            {-5}{{\textcolor{dkRed}{-5}}}{2}%
+            {-6}{{\textcolor{dkRed}{-6}}}{2}%
+            {-7}{{\textcolor{dkRed}{-7}}}{2}%
+            {-8}{{\textcolor{dkRed}{-8}}}{2}%
+            {-9}{{\textcolor{dkRed}{-9}}}{2}%
+            {e0}{{\textcolor{dkRed}{e0}}}{2}%
+            {e1}{{\textcolor{dkRed}{e1}}}{2}%
+            {e2}{{\textcolor{dkRed}{e2}}}{2}%
+            {e3}{{\textcolor{dkRed}{e3}}}{2}%
+            {e4}{{\textcolor{dkRed}{e4}}}{2}%
+            {e5}{{\textcolor{dkRed}{e5}}}{2}%
+            {e6}{{\textcolor{dkRed}{e6}}}{2}%
+            {e7}{{\textcolor{dkRed}{e7}}}{2}%
+            {e8}{{\textcolor{dkRed}{e8}}}{2}%
+            {e9}{{\textcolor{dkRed}{e9}}}{2}%
+            {e+0}{{\textcolor{dkRed}{e-0}}}{3}%
+            {e+1}{{\textcolor{dkRed}{e-1}}}{3}%
+            {e+2}{{\textcolor{dkRed}{e-2}}}{3}%
+            {e+3}{{\textcolor{dkRed}{e-3}}}{3}%
+            {e+4}{{\textcolor{dkRed}{e-4}}}{3}%
+            {e+5}{{\textcolor{dkRed}{e-5}}}{3}%
+            {e+6}{{\textcolor{dkRed}{e-6}}}{3}%
+            {e+7}{{\textcolor{dkRed}{e-7}}}{3}%
+            {e+8}{{\textcolor{dkRed}{e-8}}}{3}%
+            {e+9}{{\textcolor{dkRed}{e-9}}}{3}%
+            {e-0}{{\textcolor{dkRed}{e-0}}}{3}%
+            {e-1}{{\textcolor{dkRed}{e-1}}}{3}%
+            {e-2}{{\textcolor{dkRed}{e-2}}}{3}%
+            {e-3}{{\textcolor{dkRed}{e-3}}}{3}%
+            {e-4}{{\textcolor{dkRed}{e-4}}}{3}%
+            {e-5}{{\textcolor{dkRed}{e-5}}}{3}%
+            {e-6}{{\textcolor{dkRed}{e-6}}}{3}%
+            {e-7}{{\textcolor{dkRed}{e-7}}}{3}%
+            {e-8}{{\textcolor{dkRed}{e-8}}}{3}%
+            {e-9}{{\textcolor{dkRed}{e-9}}}{3}
+}
+
+\lstdefinestyle{C}{
+  style=Cbase,
+  float
+}
+
+\lstdefinestyle{Cfixed}{
+  style=Cbase,
+  style=fixed
+}
+

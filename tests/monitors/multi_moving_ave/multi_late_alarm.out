@@ -1,0 +1,10 @@
+{
+    "fmt_version": [2, 0],
+    "channel": "_Frontend_raiseAlarm",
+    "event": "Frontend.raiseAlarm",
+    "identities": [],
+    "params": [],
+    "aux": {
+        "arbitrary": "json data"
+     }
+} 

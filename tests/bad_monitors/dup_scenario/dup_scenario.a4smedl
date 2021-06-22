@@ -1,0 +1,7 @@
+system simple;
+
+import "simple.smedl";
+
+monitor Simple();
+
+conn: in => Simple.in($0);

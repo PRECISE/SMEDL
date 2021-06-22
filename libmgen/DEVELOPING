@@ -1,6 +1,0 @@
-Run ./bootstrap and the generated ./configure to use automake to create the
-buildscripts.
-
-Then use make to build and make clean to clean.
-
-To create a source distribution, use make dist.

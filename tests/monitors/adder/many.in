@@ -1,0 +1,38 @@
+{
+    "fmt_version": [2, 0],
+    "channel": "conn",
+    "event": "measurement",
+    "params": [1],
+    "aux": {
+        "arbitrary": "json data"
+     }
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "conn",
+    "event": "measurement",
+    "params": [2],
+    "aux": [1, 2, 3]
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "conn",
+    "event": "measurement",
+    "params": [3.5],
+    "aux": "foo"
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "conn",
+    "event": "measurement",
+    "params": [4.0],
+    "aux": 36
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "conn",
+    "event": "measurement",
+    "params": [5.0],
+    "aux": {
+    }
+} 

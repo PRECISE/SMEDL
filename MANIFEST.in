@@ -1,4 +1,8 @@
 include LICENSE.txt
 include README.md
+include CHANGELOG.md
+graft doc
+graft vim
+graft emacs
 
-recursive-include smedl *.py *.c *.h *.cfg *.json *.grako
+recursive-include smedl *.c *.h

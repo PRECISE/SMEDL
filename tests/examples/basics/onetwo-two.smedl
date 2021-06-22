@@ -1,7 +1,0 @@
-object OneTwoTwo
-    events
-        imported foo, bar;
-    scenarios
-        sc1:
-           OneTwo -> foo -> bar -> OneTwo
-

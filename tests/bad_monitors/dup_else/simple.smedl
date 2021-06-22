@@ -1,0 +1,18 @@
+object Simple;
+
+events:
+    imported in(int);
+    exported out(int);
+
+scenarios:
+    main:
+        idle
+            -> in(val) when (val < 0) {raise out(val);}
+            -> idle
+            else
+            -> idle;
+        idle
+            -> in(val) when (val >= 0) {raise out(val);}
+            -> idle
+            else
+            -> idle;

@@ -1,0 +1,71 @@
+object Averager;
+
+state:
+    float val1 = 0;
+    float val2 = 0;
+    float val3 = 0;
+    float val4 = 0;
+    float val5 = 0;
+    int measurementCount = 0;
+
+events:
+    imported measurement(float);
+    exported created();
+    imported averageRequest();
+    exported sendAverage(float);
+
+scenarios:
+    receiveMeasurements:
+        init
+            -> measurement(value) {
+                raise created();
+                measurementCount++;
+                val5 = val4;
+                val4 = val3;
+                val3 = val2;
+                val2 = val1;
+                val1 = value;
+            }
+            -> idle;
+        idle
+            -> measurement(value) {
+                measurementCount++;
+                val5 = val4;
+                val4 = val3;
+                val3 = val2;
+                val2 = val1;
+                val1 = value;
+            }
+            -> idle;
+
+    handleRequests:
+        idle
+            -> averageRequest() when (measurementCount == 0) {
+                raise sendAverage(0);
+            }
+            -> idle;
+        idle
+            -> averageRequest() when (measurementCount == 1) {
+                raise sendAverage(val1);
+            }
+            -> idle;
+        idle
+            -> averageRequest() when (measurementCount == 2) {
+                raise sendAverage((val1 + val2) / 2.0);
+            }
+            -> idle;
+        idle
+            -> averageRequest() when (measurementCount == 3) {
+                raise sendAverage((val1 + val2 + val3) / 3.0);
+            }
+            -> idle;
+        idle
+            -> averageRequest() when (measurementCount == 4) {
+                raise sendAverage((val1 + val2 + val3 + val4) / 4.0);
+            }
+            -> idle;
+        idle
+            -> averageRequest() when (measurementCount >= 5) {
+                raise sendAverage((val1 + val2 + val3 + val4 + val5) / 5.0);
+            }
+            -> idle;

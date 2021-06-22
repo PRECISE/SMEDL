@@ -1,0 +1,17 @@
+object Adder;
+
+state:
+  float accumulator = 0;
+
+events:
+  imported measurement(float);
+  exported sum(float);
+
+scenarios:
+  main:
+    idle
+      -> measurement(val) {
+        accumulator = accumulator + val;
+        raise sum(accumulator);
+      }
+      -> idle;

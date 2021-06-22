@@ -1,814 +1,172 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-#-------------------------------------------------------------------------------
-# mgen.py
+# Copyright (c) 2021 The Trustees of the University of Pennsylvania
 #
-# Peter Gebhard (pgeb@seas.upenn.edu)
-#-------------------------------------------------------------------------------
-
-from .parser import *
-from .fsm import *
-from .c_style import *
-from grako.ast import AST
-from jinja2 import Environment, PackageLoader
-import json
-import collections
-import re
-import shutil
-import string
-from pathlib import Path
-from .architecture import *
-import os
-
-# Turn a list of arguments into an argument string for using in a generated
-# method call. prefix determines whether a leading comma is prepended when the
-# argument list is not empty.
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 #
-# args : list of strings. The arguments to turn into an argument string.
-# prefix : boolean. Whether to prefix a comma when the list is non-empty.
-def joinArgs(args, prefix=""):
-    if (not args):
-        return ""
-    else:
-        return prefix + ", ".join(args)
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+"""
+Monitor Generator
+
+Generate code for monitors from SMEDL and architecture specifications
+"""
+
+import sys
+import os.path
+import argparse
+
+from smedl import __about__
+from smedl.parser import (smedl_parser, smedl_semantics, a4smedl_parser,
+                          a4smedl_semantics)
+from smedl import codegen
 
 
 class MonitorGenerator(object):
+    """Coordinate parsing and template filling"""
+    def __init__(
+            self, out_dir=None, transport=None, makefile=True, helpers=True,
+            overwrite=False):
+        """Initialize the MonitorGenerator with the selected options
 
-    def __init__(self, structs=False, debug=False, console=False, implicit=True):
-        self._symbolTable = SmedlSymbolTable()
-        self._printStructs = structs
-        self._debug = debug
-        self._console = console
-        self._implicitErrors = implicit
-        self.pedlAST = None
-        self.smedlAST = None
-        self.a4smedlAST = None
-        self.monitorInterface = []
-        self.archSpec = []
-        self.identities = []
+        out_dir - A string or path-like object for the directory where the
+          generated files are to be placed, or None for the current directory
+        transport - The name of the transport mechanism to generate (e.g.
+          'rabbitmq', 'ros')
+        makefile - Whether or not to generate a Makefile for monitor systems.
+          True=yes (if an architecture file and transport are given), False=no,
+        overwrite - Whether files that may contain customizations (Makefiles,
+          various ROS files, RabbitMQ config) should be overwritten
+        helpers - Whether or not to copy helper headers to the out_dir (helpers
+          are never copied if out_dir is the same directory they already
+          reside in)
+        """
+        # Keep track of if we are generating a transport adapter so we can warn
+        # when generating just a monitor (which does not include the transport
+        # adapter)
+        self.gen_transport = (transport is not None)
+        self.transport = transport
 
+        # Initialize the actual code generator
+        if out_dir is None:
+            out_dir = '.'
+        self.generator = codegen.construct_generator(
+            transport=transport,
+            dest_dir=out_dir,
+            makefile=makefile,
+            overwrite=overwrite,
+            helpers=helpers)
 
-    def generate(self, pedlsmedlName, a4smedlName=None, helper=None, output_dir=''):
-        # Parse the PEDL, if it exists
-        pedlPath = Path(pedlsmedlName + '.pedl')
-        if pedlPath.exists():
-            with pedlPath.open() as pedlFile:
-                pedlText = pedlFile.read()
-            pedlPar = pedlParser()
-            self.pedlAST = pedlPar.parse(
-                pedlText,
-                rule_name='object',
-                comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)",
-                semantics=pedlModelBuilderSemantics())
-            if self._printStructs:
-                print('PEDL AST:')
-                print(self.pedlAST)
+    def generate(self, input_file):
+        """Generate code for a given input file (which may be a string or a
+        path-like object)"""
+        # Determine whether input is an architecture file
+        ext = os.path.splitext(input_file)[1].lower()
+        dirname = os.path.dirname(input_file)
+        if ext == '.smedl':
+            if self.gen_transport:
+                print("Warning: -t/--transport option only has an effect when "
+                      "an architecture file is\ngiven", file=sys.stderr)
 
-        # Parse the SMEDL, if it exists
-        smedlPath = Path(pedlsmedlName + '.smedl')
-        if smedlPath.exists():
-            with smedlPath.open() as smedlFile:
-                smedlText = smedlFile.read()
-            smedlPar = smedlParser()
-            self.smedlAST = smedlPar.parse(
-                smedlText,
-                rule_name='object',
-                comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
-            if self._printStructs:
-                print('SMEDL AST:')
-                print(self.smedlAST)
-                print('\nSMEDL JSON:')
-                print(json.dumps(self.smedlAST, indent=2))
+            # Parse a single monitor
+            with open(input_file, "r") as f:
+                input_text = f.read()
+            parser = smedl_parser.SMEDLParser()
+            self.monitor = parser.parse(
+                input_text, rule_name='start',
+                semantics=smedl_semantics.SmedlSemantics(dirname))
+
+            # Generate the code
+            self.generator.write_one(self.monitor)
         else:
-            if '.smedl' in pedlsmedlName or '.pedl' in pedlsmedlName:
-                raise ValueError('Did you accidentally include .smedl or .pedl in the input filename? Try again without including the extension.')
-            raise ValueError('No matching SMEDL file found.')
-
-        # Parser the architecture, it exists
-        if a4smedlName is not None:
-            a4smedlPath = Path(os.path.expanduser(a4smedlName+ '.a4smedl'))
-            print(a4smedlPath)
-            if a4smedlPath.exists():
-                with a4smedlPath.open() as a4smedlFile:
-                    a4smedlText = a4smedlFile.read()
-                a4smedlPar = a4smedlParser()
-                self.a4smedlAST = a4smedlPar.parse(
-                    a4smedlText,
-                    rule_name='top',
-                    comments_re="(/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/)|(//.*)")
-                if self._printStructs:
-                    print('A4SMEDL AST:')
-                    print(self.a4smedlAST)
-                    print('\nA4SMEDL JSON:')
-                    print(json.dumps(self.a4smedlAST,indent=2))
-
-        # Process the SMEDL AST
-        self._symbolTable = SmedlSymbolTable()
-        self._parseToSymbolTable('top', self.smedlAST)
-        self._getParameterNames(self.smedlAST)
-        allFSMs = self._generateFSMs(self.smedlAST)
-
-        # Process architecture AST
-        self._parseArchitecture('top',self.a4smedlAST)
-
-        if self._debug:
-            for mon in self.monitorInterface:
-               print(mon)
-               print('\n')
-            for pattern in self.archSpec:
-               print(pattern)
-               print('\n')
-
-        # Output the internal symbol table and FSMs
-        if self._printStructs:
-            print('\nSMEDL Symbol Table:')
-            for k in self._symbolTable:
-                print('%s: %s' % (k, self._symbolTable[k]))
-            for key, fsm in list(allFSMs.items()):
-                print('\nFSM: %s\n' % key)
-                print('%s\n' % fsm)
-
-        CTemplater.output(self, allFSMs, pedlsmedlName, helper, self.pedlAST, console_output=self._console, output_dir=output_dir)
-
-
-    def _parseInter(self,object):
-        if isinstance(object, AST):
-            for k,v in list(object.items()):
-                if k == 'interfaces':
-                    if isinstance(v, list):
-                        for mon in v:
-                            self._makeMonitor(mon)
-
-
-    def _parseArchitecture(self, label, object):
-        if isinstance(object, AST):
-            for k, v in list(object.items()):
-                if k == 'monitor_declaration':
-                    self._parseInter(v)
-                elif k == 'archSpec':
-                    self._parseSpec(v)
-
-
-    def _makeMonitor(self, object):
-        if isinstance(object,list):
-            for mon in object:
-                monId = None
-                para = []
-                imported = []
-                exported = []
-                montype = None
-                for k,v in list(mon.items()):
-                    if k == 'mon_type':
-                        monType = v
-                    elif k == 'monitor_identifier':
-                        monId = v
-                    elif k == 'params':
-                        if not v == None:
-                            if isinstance(v,list):
-                                para = v
-                            else:
-                                para = [v]
-                    elif k == 'imported_events':
-                        imported = self._makeEventList(v)
-                    elif k == 'exported_events':
-                        exported = self._makeEventList(v)
-
-                interface = Interface(monType,monId,para,imported,exported)
-                self.monitorInterface.append(interface)
-
-
-    def _makeEventList(self,object):
-        lst = []
-        if object == None:
-            return lst
-        if isinstance(object,list):
-            for events in object:
-                if isinstance(events,list):
-                    for ev in events:
-                        if isinstance(ev,AST):
-                            err = None
-                            ev_id = None
-                            para = []
-                            for k,v in list(ev.items()):
-                                if k == 'error':
-                                    err = v
-                                elif k == 'event_id':
-                                    ev_id = v
-                                elif k == 'params' :
-                                    if v == None :
-                                        para = []
-                                    elif isinstance(v,list):
-                                        para = v
-                                    elif isinstance(v,str):
-                                            para = [v]
-                            event = Event(err,ev_id,para)
-                            lst.append(event)
-                elif isinstance(events,AST):
-                    err = None
-                    ev_id = None
-                    para = []
-                    for k,v in list(events.items()):
-                        if k == 'error':
-                            err = v
-                        elif k == 'event_id':
-                            ev_id = v
-                        elif k == 'params' :
-                            if v == None :
-                                para = []
-                            elif isinstance(v,list):
-                                para = v
-                            elif isinstance(v,str):
-                                para = [v]
-                    event = Event(err,ev_id,para)
-                    lst.append(event)
-        return lst
-
-
-    def _parseSpec(self,object):
-        if isinstance(object, AST):
-            for k,v in list(object.items()):
-                if k == 'conn_expr':
-                    if isinstance(v, list):
-                        for conn in v:
-                            self._makeConnExpr(conn)
-
-
-    def _makeConnExpr(self,object):
-        if isinstance(object, AST):
-            conn_name = None
-            s_i = None
-            t_i = None
-            t_e = None
-            for k,v in list(object.items()):
-                if k == 'connection':
-                    conn_name = v
-                elif k == 'source_machine_identifier':
-                    s_i = v
-                elif k == 'source_event_identifier':
-                    s_e == v
-                elif k == 'target_machine_identifier':
-                    t_i = v
-                elif k == 'target_event_identifier':
-                    t_e = v
-                elif k == 'pattern_spec':
-                    pa_spec = self._makePatternSpec(v)
-            if s_i == None:
-                s_i = ''
-            if conn_name == None:
-                conn_name = s_i + '_' + s_e
-            if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
-                raise ValueError('attributes of events do not match')
-            connEx = ConnectionExpr(s_i,s_e,t_i,t_e,pa_spec)
-            if connEx.sourceMachine == None:
-                print(connEx)
-            self.archSpec.append(connEx)
-        elif isinstance(object,list):
-            conn_name = None
-            s_i = None
-            t_i = None
-            t_e = None
-            for obj in object:
-                for k,v in list(obj.items()):
-                    pa_spec = []
-                    if k == 'connection':
-                        conn_name = v
-                    elif k == 'source_machine_identifier':
-                        s_i = v
-                    elif k == 'source_event_identifier':
-                        s_e = v
-                    elif k == 'target_machine_identifier':
-                        t_i = v
-                    elif k == 'target_event_identifier':
-                        t_e = v
-                    elif k == 'pattern_spec':
-                        pa_spec = self._makePatternSpec(v)
-                if s_i == None:
-                    s_i = ''
-                if conn_name == None:
-                    conn_name = s_i + '_'+s_e
-                # TODO: match number of attributes of the source and target events
-                if not self._checkConnExprDef(s_i,s_e,t_i,t_e):
-                    raise ValueError('attributes of events do not match')
-                connEx = ConnectionExpr(conn_name,s_i,s_e,t_i,t_e,pa_spec)
-                if connEx.sourceMachine == None:
-                    print(connEx)
-                self.archSpec.append(connEx)
-
-
-    def _makePatternSpec(self,object):
-        lst = []
-        if object == None:
-            return lst
-        if isinstance(object,AST):
-            lt = None
-            li = -1
-            rt = None
-            ri = -1
-            for k,v in list(object.items()):
-                if k == 'left':
-                    for kk,vv in list(v.items()):
-                        if kk == 'term_id':
-                            lt = vv
-                        elif kk == 'term_index':
-                            li = int(vv)
-                elif k == 'operator':
-                    op = v
-                elif k == 'right' :
-                    for kk,vv in list(v.items()):
-                        if kk == 'term_id':
-                            rt = vv
-                        elif kk == 'term_index':
-                            ri = int(vv)
-            spec = PatternExpr()
-            spec.addOperator(op)
-            spec.addTerm(lt,li,rt,ri)
-            lst.append(spec)
-
-        elif isinstance(object,list):
-            lt = None
-            li = -1
-            rt = None
-            ri = -1
-            for event in object:
-                for k,v in list(event.items()):
-                    if k == 'left':
-                        for kk,vv in list(v.items()):
-                            if kk == 'term_id':
-                                lt = vv
-                            elif kk == 'term_index':
-                                li = int(vv)
-                    elif k == 'operator':
-                        op = v
-                    elif k == 'right' :
-                        for kk,vv in list(v.items()):
-                            if kk == 'term_id':
-                                rt = vv
-                            elif kk == 'term_index':
-                                ri = int(vv)
-                spec = PatternExpr()
-                spec.addOperator(op)
-                spec.addTerm(lt,li,rt,ri)
-                lst.append(spec)
-        return lst
-
-
-    def _checkConnExprDef(self,si,se,ti,te):
-        left_mon = None
-        left_ev = None
-        right_mon = None
-        right_ev = None
-        if si == '':
-            return True
-        for mon in self.monitorInterface:
-            if si == mon.id:
-                for ev in mon.exportedEvents:
-                    if ev.event_id == se:
-                        left_ev = ev.params
-                        break
-                left_mon = mon
-            elif ti == mon.id:
-                for ev in mon.importedEvents:
-                    if ev.event_id == te:
-
-                        right_ev = ev.params
-                        break
-                right_mon = mon
-
-        if left_mon == None or right_mon == None or not left_ev == right_ev:
-            return False
-        return True
-
-
-    def _checkBound(self,conn,term,index):
-        if term == conn.sourceMachine or term == conn.targetMachine:
-            for mon in self.monitorInterface:
-                if term == mon.id:
-                    if index < len(mon.params):
-                        return True
-            return False
-        else:
-            #term must be in sourceMachine.exported events
-            for mon in self.monitorInterface:
-                if conn.sourceMachine == mon.id:
-                    for ev in  mon.exportedEvents:
-                        if ev.event_id == term:
-                            if index < len(ev.params):
-                                return True
-            return False
-
-
-    def _getBindingKeysNum(self):
-        num = 0
-        name = self._symbolTable.getSymbolsByType('object')[0]
-        for conn in self.archSpec:
-            if name==conn.targetMachine:
-                num=num+1
-        return num
-
-
-    def _getMachine(self,name):
-        for mon in self.monitorInterface:
-            if name == mon.id:
-                return mon
-        return None
-
-
-    def _getSourceEvent(self,machine,event):
-        for mon in self.monitorInterface:
-            if machine == mon.id:
-                for ev in  mon.exportedEvents:
-                    if ev.event_id == event:
-                            return ev
-        return None
-
-
-    def _getIdentityName(self,index):
-        id = 0
-        for name in self.identities:
-            if id == index:
-                return name
-            id = id + 1
-        return None
-
-
-    def _parseToSymbolTable(self, label, object):
-        if isinstance(object, AST):
-            for k, v in list(object.items()):
-                if k == 'object':
-                    self._symbolTable.add(v, {'type': 'object'})
-                elif label == 'identity' and k == 'var':
-                    if isinstance(v, list):
-                        for var in v:
-                            self._symbolTable.add(var, {'type': 'identity', 'datatype': object['type']})
-                            self.identities.append(var)
-                    else:
-                        self._symbolTable.add(v, {'type': 'identity', 'datatype': object['type']})
-                        self.identities.append(v)
-                elif label == 'state' and k == 'var':
-                    if isinstance(v, list):
-                        for var in v:
-                            self._symbolTable.add(var, {'type': 'state', 'datatype': object['type']})
-                    else:
-                        self._symbolTable.add(v, {'type': 'state', 'datatype': object['type']})
-                elif '_events' in label and k == 'event_id':
-                    if object['params'] != None:
-                        self._symbolTable.add(v, {'type': label, 'error': object['error'], 'params': object['params']})
-                    else :
-                        self._symbolTable.add(v, {'type': label, 'error': object['error'], 'params': []})
-                elif label == 'traces':
-                    if '_state' in k and v is not None:
-                        self._symbolTable.add(v, {'type': 'trace_state'})
-                elif ('_id' in k or k == 'atom') and v is not None and v[0].isalpha() and not \
-                    (v == 'true' or v == 'false' or v == 'null' or v == 'this') and v not in self._symbolTable:
-                        self._symbolTable.add(v, {'type': label})
-                #print(self._symbolTable)
-                self._parseToSymbolTable(k, v)
-        if isinstance(object, list):
-            for elem in object:
-                self._parseToSymbolTable(label, elem)
-
-
-    def _getParameterNames(self, ast):
-        for scenario in ast['scenarios'][0]:  # [0] handles grako's nested list structure
-            for trace in scenario['traces']:
-                for i in range(0, len(trace['trace_steps'])):
-                    current = trace['trace_steps'][i]['step_event']['expression']['atom']
-                    if 'event' in self._symbolTable.get(current, 'type'):
-                        # Handle events with no parameters defined:
-                        if trace['trace_steps'][i]['step_event']['expression']['trailer'] is None:
-                            self._symbolTable.update(current, "params", [])
-                        else:
-                            params = trace['trace_steps'][i]['step_event']['expression']['trailer']['params']
-                            paramsList = self._findFunctionParams(current, params, ast)
-                            #print (paramsList)
-                            self._symbolTable.update(current, "params", paramsList)
-                    if trace['trace_steps'][i]['step_actions'] is not None:
-                        for j in range(0, len(trace['trace_steps'][i]['step_actions']['actions'])):
-                            # Handle raise statement
-                            step_actions_islist = isinstance(trace['trace_steps'][i]['step_actions']['actions'], list)
-                            if (step_actions_islist and trace['trace_steps'][i]['step_actions']['actions'][j]['raise_stmt'] is not None) or (not step_actions_islist and trace['trace_steps'][i]['step_actions']['actions']['raise_stmt'] is not None):
-                                if step_actions_islist:
-                                    current = trace['trace_steps'][i]['step_actions']['actions'][j]['raise_stmt']
-                                else:
-                                    current = trace['trace_steps'][i]['step_actions']['actions']['raise_stmt']
-                                if 'event' in self._symbolTable.get(current['id'], 'type'):
-                                    # Handle events with no parameters defined:
-                                    if current['expr_list'][0] is None:
-                                        self._symbolTable.update(current['id'], "params", [])
-                                    else:
-                                        params = current['expr_list']
-                                        paramsList = self._findFunctionParams(current['id'], params, ast)
-                                        #print (paramsList)
-                                        self._symbolTable.update(current['id'], "params", paramsList)
-                if trace['else_actions'] is not None:
-                    for i in range(0, len(trace['else_actions']['actions'])):
-                        # Handle raise statement
-                        else_actions_islist = isinstance(trace['else_actions']['actions'], list)
-                        if (else_actions_islist and trace['else_actions']['actions'][i]['raise_stmt'] is not None) or (not else_actions_islist and trace['else_actions']['actions']['raise_stmt'] is not None):
-                            if else_actions_islist:
-                                current = trace['else_actions']['actions'][i]['raise_stmt']
-                            else:
-                                current = trace['else_actions']['actions']['raise_stmt']
-                            if 'event' in self._symbolTable.get(current['id'], 'type'):
-                                # Handle events with no parameters defined:
-                                if current['expr_list'][0] is None:
-                                    self._symbolTable.update(current['id'], "params", [])
-                                else:
-                                    params = current['expr_list']
-                                    paramsList = self._findFunctionParams(current['id'], params, ast)
-                                    #print (paramsList)
-                                    self._symbolTable.update(current['id'], "params", paramsList)
-
-
-    def _generateFSMs(self, ast):
-        allFSMs = collections.OrderedDict()
-
-        # Go through each scenario and build an FSM
-        for scenario in ast['scenarios'][0]:  # [0] handles grako's nested list structure
-            fsm = FSM()
-
-            # Go through each trace in the scenario
-            for trace in scenario['traces']:
-
-                # Handle the Else bits
-                elseState = None
-                elseActions = None
-                if trace['else_state']:
-                    elseState = trace['else_state']
-                    if not fsm.stateExists(elseState):
-                        fsm.addState(State(elseState))
-                    elseState = fsm.getStateByName(elseState)
-                    if trace['else_actions']:
-                        elseActions = []
-                        astActions = trace['else_actions']['actions']
-                        if not isinstance(astActions,list):
-                            astActions = [astActions]
-                        for action in astActions:
-                            if action['state_update']:
-                                elseActions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
-                            if action['raise_stmt']:
-                                if self._debug:
-                                    print("ELSE ACTION RAISE DEBUG: " + str(action['raise_stmt']['expr_list']))
-                                    print(action)
-                                elseActions.append(RaiseAction(action['raise_stmt']['id'], action['raise_stmt']['expr_list']))
-                            if action['instantiation']:
-                                elseActions.append(InstantiationAction(action['instantiation']['id'], action['instantiation']['state_update_list']))
-                            if action['call_stmt']:
-                                elseActions.append(CallAction(action['call_stmt']['target'], action['call_stmt']['expr_list']))
-
-                # Handle the traces
-                generated_state = None
-                for i in range(0, len(trace['trace_steps'])):
-                    current = trace['trace_steps'][i]['step_event']['expression']['atom']
-                    if i == 0:
-                        before = trace['start_state']
-                    else:
-                        before = trace['trace_steps'][i-1]['step_event']['expression']['atom']
-                    if i == len(trace['trace_steps']) - 1:
-                        after = trace['end_state']
-                    else:
-                        after = trace['trace_steps'][i+1]['step_event']['expression']['atom']
-                    if generated_state is not None:
-                        before = generated_state
-                        generated_state = None
-                    if 'event' in self._symbolTable.get(current, 'type'):
-                        actions = None
-                        if trace['trace_steps'][i]['step_actions']:
-                            actions = []
-                            astActions = trace['trace_steps'][i]['step_actions']['actions']
-                            if not isinstance(astActions,list):
-                                astActions = [astActions]
-                            for action in astActions:
-                                if action['state_update']:
-                                    actions.append(StateUpdateAction(action['state_update']['target'], action['state_update']['operator'], action['state_update']['expression']))
-                                if action['raise_stmt']:
-                                    if self._debug:
-                                        print("STEP ACTION RAISE DEBUG: " + str(action['raise_stmt']['expr_list']))
-                                        print(action)
-                                    actions.append(RaiseAction(action['raise_stmt']['id'], action['raise_stmt']['expr_list']))
-                                if action['instantiation']:
-                                    actions.append(InstantiationAction(action['instantiation']['id'], action['instantiation']['state_update_list']))
-                                if action['call_stmt']:
-                                    actions.append(CallAction(action['call_stmt']['target'], action['call_stmt']['expr_list']))
-                        if not fsm.stateExists(before):
-                            fsm.addState(State(before))
-                        if self._symbolTable.get(after, 'type') == 'trace_state':
-                            if not fsm.stateExists(after):
-                                fsm.addState(State(after))
-                        else:
-                            after = self._symbolTable.generateSymbol({'type': 'trace_state'})
-                            fsm.addState(State(after))
-                            generated_state = after
-                        before_state = fsm.getStateByName(before)
-                        after_state = fsm.getStateByName(after)
-                        when = self._formatExpression(trace['trace_steps'][i]['step_event']['when'])
-                        if when == 'None':
-                            when = None
-                        fsm.addTransition(Transition(before_state, current, after_state, actions, when, elseState, elseActions))
-                    else:
-                        if i > 0:
-                            raise TypeError("Named states only valid at beginning/end of trace. Invalid: %s" % current)
-                        if 'event' not in self._symbolTable.get(before, 'type') or 'event' not in self._symbolTable.get(after, 'type'):
-                            raise TypeError("Invalid state to state transition: %s -> %s" % (before, after))
-
-                # Set the start state
-                if fsm.startState is None:
-                    fsm.startState = fsm.getStateByName(trace['start_state'])
-
-            allFSMs[scenario['scenario_id']] = fsm
-        return allFSMs
-
-    def _findFunctionParams(self, function, params, ast):
-        names = []
-        types = None
-        if isinstance(params, AST):
-            names.append(str(params['atom']))
-        elif isinstance(params, list):
-            if isinstance(params[0], list):
-                params = params[0] # Unpack from extra list wrapping
-            for elem in params:
-                if isinstance(elem, AST):
-                    names.append(str(elem['atom']))
-        types = self._getParamTypes(function, ast['imported_events'])
-        if types is None and ast['exported_events']:
-            types = self._getParamTypes(function, ast['exported_events'])
-        if types is None and ast['internal_events']:
-            types = self._getParamTypes(function, ast['internal_events'])
-        if types is None:  # probably never raised - called only for events in symbolTable
-            raise ValueError("Unrecognized function, %s, found in scenarios" % function)
-
-        if self._debug:
-            print ("*** Finding function parameters ***")
-            print("Function name: ", function)
-            print("Function params: ", params)
-            print("Param names: ", names)
-            print("Param types: ", types)
-
-        if len(names) != len(types):
-            raise ValueError("Invalid number of parameters for %s" % function)
-            #return [{'type':types[i], 'true_name':names[i], 'name':'mon_var_'+names[i]} for i in range(len(names))]
-        return [{'type':types[i], 'true_name':names[i], 'name':names[i]} for i in range(len(names))]
-
-
-    def _getParamTypes(self, function, events):
-        if isinstance(events, AST):
-            if(events['event_id'] == function):
-                params = events['params']
-                types = []
-                if(params):
-                    if isinstance(params, list):
-                        types = [str(p) for p in params]
-                    else:
-                        types.append(str(params))
-                return types
-            else:
-                return None
-        elif isinstance(events, list):
-            for elem in events:
-                types = self._getParamTypes(function, elem)
-                if types is not None:
-                    return types
-            return None
-
-
-    def _formatExpression(self, expr):
-        if expr is None:
-            expr = ""
-
-        if isinstance(expr, AST):
-            exprStr = AstToPython.expr(expr)
-        else:
-            exprStr = expr
-        #print('expr:'+exprStr)
-        exprStr = self._addMonitorArrowToStateVariables(exprStr)
-        # expr = checkReferences(expr) # TODO--------
-        #print(exprStr)
-        return MonitorGenerator._removeParentheses(exprStr)
-
-
-    def _addMonitorArrowToStateVariables(self, string):
-        #print('before:'+string)
-        #print(string)
-        if len(string)>0 and string[0]=='\"':
-            return string
-        newList = list((self._symbolTable.getSymbolsByType('state')))
-        (newList).sort(key = lambda x: len(x))
-        newList.reverse()
-        #print(newList)
-        for sv in (newList):
-            #print('sv:'+sv)
-            indices = [t.start() for t in re.finditer(sv, string)]
-            idxIter = 0
-            for index in indices:
-                index = index + idxIter * 9 # 9=number of chars in 'monitor->'
-                #print('index:'+string[index])
-                i = 0
-                while(i<len(sv) and index+i<len(string)):
-                    if sv[i]!=string[index+i]:
-                        print(string[0])
-                        print('sv:'+sv[i]+'str:'+string[index+i]+'idx:'+str(index+i))
-                        break
-                    i=i+1
-                if i<len(sv):
-                    print("give up" + str(i))
-                    return string
-                if i==len(sv) and index+i < len(string):
-
-                    #print(i)
-                    #print(len(sv))
-                    #print(len(string))
-                    if string[index+i].isalpha() or string[index+i] == '_':
-                        #print(sv)
-                        #print(i)
-                        #print(len(string))
-                        #print(string[index+i])
-                        #print('return:'+string)
-                        return string
-                if string[index-5:index] != 'this.' and string[index-9:index] != 'monitor->':  # Prevent duplicated 'this.'
-                    if index == 0 or (not (string[index-1]).isalpha() and not string[index-1] == '_') :
-                        string = string[:index] + 'monitor->' + string[index:]
-                idxIter += 1;
-                    #print('after:'+string)
-        return string
-
-
-    @staticmethod
-    def _removeParentheses(guard):
-        if guard.startswith('(') and guard.endswith(')'):
-            stack = ['s']
-            for ch in guard[1:-1]:
-                if ch == '(':
-                    stack.append('(')
-                if ch == ')':
-                    stack.pop()
-            if len(stack) == 1 and stack[0] == 's':
-                return MonitorGenerator._removeParentheses(guard[1:-1])
-            else:
-                return guard
-        else:
-            return guard
-
-
-    @staticmethod
-    def _checkReferences(guard):
-        re.findall(r'\s([A-Za-z_]\w*).\w+\W+', guard)
-
-
-    def _writeAction(self, obj, action):
-        #print (action)
-        if action.type == ActionType.StateUpdate:
-            out = "monitor->" + action.target + ' ' + action.operator
-            if action.expression:
-                out += ' ' + self._formatExpression(action.expression)
-            out += ';'
-            #print(out)
-            return out
-        elif action.type == ActionType.Raise:
-            return 'raise_%s_%s(monitor%s%s);' % (obj.lower(), action.event, joinArgs([self._formatExpression(p) for p in action.params], ", "),",provenance")
-        elif action.type == ActionType.Instantiation:
-            exit("Instantiation actions are not implemented. Sorry!")
-        elif action.type == ActionType.Call:
-            out = action.target + '('
-            paramCount = len(action.params)
-            c = 0
-            for param in action.params:
-                out += self._formatExpression(param)
-                c += 1
-                if c != paramCount:
-                    out += ','
-            out += ');'
-            return out
-
-
-    def _getEventParams(self, paramString):
-        paramsList = []
-        params = [str(s).strip() for s in paramString.split(',')]
-        for p in params:
-            paramsList.append([str(s) for s in p.split(' ')])
-        return paramsList
-
-
-import argparse
-from smedl import __about__
-
-def main():
-    parser = argparse.ArgumentParser(description="Code Generator for SMEDL and PEDL.")
-    parser.add_argument('--helper', help='Include header file for helper functions')
-    parser.add_argument('-s', '--structs', help='Print internal data structures', action='store_true')
-    parser.add_argument('-d', '--debug', help='Show debug output', action='store_true')
-    parser.add_argument('-c', '--console', help='Only output to console, no file output', action='store_true')
-    parser.add_argument('--noimplicit', help='Disable implicit error handling in generated monitor', action='store_false')
-    parser.add_argument('--version', action='version', version=__about__['version'])
-    parser.add_argument('pedlsmedl', metavar="pedl_smedl_filename", help="The name of the PEDL and SMEDL files to parse")
-    parser.add_argument('--arch', metavar="a4smedl_filename", help="The name of architecture file to parse")
-    parser.add_argument('--dir', metavar="output_dir", help="Output the generated files to this directory relative to the input files")
+            # Parse an architecture file, which will also parse all monitors it
+            # imports
+            if not self.gen_transport:
+                print("Notice: No -t/--transport option was chosen. "
+                      "Generating a monitor system\nwithout transport code.",
+                      file=sys.stderr)
+            with open(input_file, "r") as f:
+                input_text = f.read()
+            parser = a4smedl_parser.A4SMEDLParser()
+            self.system = parser.parse(
+                input_text, rule_name='start',
+                semantics=a4smedl_semantics.A4smedlSemantics(dirname,
+                                                             self.transport))
+
+            # Generate the code
+            self.generator.write_all(self.system)
+
+
+def parse_args():
+    """Handle argument parsing. Return arguments as a tuple (input, options)
+    where input is the input file name and options is a dict of options ready
+    to pass to the MonitorGenerator constructor"""
+    parser = argparse.ArgumentParser(
+        description="Monitor Generator for SMEDL monitoring systems")
+
+    parser.add_argument(
+        '--version', action='version', version=__about__['version'])
+    parser.add_argument(
+        'input', help='The input file. If the extension is ".smedl", a single '
+        'monitor is generated. Otherwise, input is assumed to be an '
+        'architecture file and a full monitoring system is generated.')
+    parser.add_argument(
+        '-d', '--dir', help="Directory to write the generated code to (if not "
+        "current directory)")
+    parser.add_argument(
+        '-t', '--transport', choices=['rabbitmq', 'ros'],
+        help="Generate an adapter for the given asynchronous transport "
+        "method. This option is usually recommended when the input is an "
+        "architecture file. A Makefile will be generated (except with 'ros', "
+        "which uses its own build system). If the input is a .smedl file, "
+        "this option has no effect.")
+    m_group = parser.add_mutually_exclusive_group()
+    m_group.add_argument(
+        '-f', '--force-overwrite', action='store_true',
+        help="Certain files are meant to be customizable after generation "
+        "(Makefiles; RabbitMQ cfg; ROS CMakeLists.txt, package.xml, and "
+        "*_ros_config.inc). Normally, these are not overwritten if they are "
+        "already present to preserve any such customizations. This option "
+        "forces ALL files to be overwritten, including these.")
+    m_group.add_argument(
+        '--no-makefile', action='store_false', dest='makefile',
+        help="Never generate a Makefile")
+    parser.add_argument(
+        '-n', '--no-copy-helpers', action='store_false', dest='helpers',
+        help="Do not copy helper headers (helper headers are never copied if "
+        "the destination is the same directory they already reside in)")
+    # parser.add_argument('-t', '--thread-safe', help="Include code to enable "
+    #        "thread safety (such as mutexes)", action='store_true')
     args = parser.parse_args()
 
-    mgen = MonitorGenerator(structs=args.structs, debug=args.debug,
-        console=args.console, implicit=args.noimplicit)
-    mgen.generate(args.pedlsmedl, args.arch, helper=args.helper, output_dir=args.dir)
+    return (
+        args.input,
+        {
+            'out_dir': args.dir,
+            'transport': args.transport,
+            'makefile': args.makefile,
+            'helpers': args.helpers,
+            'overwrite': args.force_overwrite
+        })
+
+
+def main():
+    input_file, options = parse_args()
+    generator = MonitorGenerator(**options)
+    generator.generate(input_file)
+
 
 if __name__ == '__main__':
     main()

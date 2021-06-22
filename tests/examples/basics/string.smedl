@@ -1,6 +1,0 @@
-object stringtest
- events
-   imported ping(string, int);
- scenarios
-   sc1:
-     Start -> ping(st, x) when x==1 -> End

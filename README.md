@@ -1,176 +1,387 @@
-# SMEDL/PEDL Monitor Generator
-### Version 1.0.0
+SMEDL Monitor Generator
+=======================
 
-## Requirements
-1. [Python 3.5](https://docs.python.org/3.5/index.html)
-2. [pip](https://pip.pypa.io/en/stable/)
-    - [Grako 3.14](https://pythonhosted.org/grako/)
-    - [Jinja2 2.8](http://jinja.pocoo.org/)
-    - [nose 1.3.7](https://nose.readthedocs.io/en/latest/)
-    - [pika 0.10.0](https://pika.readthedocs.io/en/0.10.0/index.html)
-    - [pylibconfig2 0.2.5](https://pypi.python.org/pypi/pylibconfig2/0.2.5)
-    - [pyparsing](https://pypi.python.org/pypi/pyparsing/2.1.10)
+A generator for runtime monitors
 
-## Getting started
-A [Python virtual environment](https://docs.python.org/3/library/venv.html)
-including [Python 3.5](https://docs.python.org/3.5/index.html) and all required Python
-packages has been defined to simplify the process of getting started with the
-tool.
+Homepage: [https://gitlab.precise.seas.upenn.edu/smedl/smedl/][repo]
 
-If you want to use a virtual environment (recommended), set it up by running
-the following command from the project's root directory:
+Requirements
+------------
 
-    pyvenv-3.5 .env && source .env/bin/activate
+These lists are primarily for reference only. The "Installation" section
+below discusses all aspects of installation, including prerequisites.
 
-To install all of the required dependencies from PyPi and install the monitor
-generator `mgen` as an executable on your path, run the following command in
-the root of the repository:
+**Python requirements:**
+
+- [Python >=3.6][python]
+- [TatSu >=4.4, \<5.0][tatsu]
+- [Jinja2 >=3.0][jinja]
+- [importlib\_resources >=1.1][importlib-resources] (only for Python 3.6.x)
+- Required only for testing:
+  * [tox][tox]
+  * [pytest][pytest]
+  * [flake8][flake8]
+  * [pika][pika] (for RabbitMQ tests)
+  * A [RabbitMQ server][rabbitmq-install] (Not Python software, but required
+    for RabbitMQ tests)
+
+**Monitor build requirements:**
+
+- A C compiler (Any C99-compliant compiler should work)
+- [rabbitmq-c][rabbitmq-c] (if using the RabbitMQ transport)
+- [GNU make][make] recommended
+
+Installation
+------------
+
+These instructions are designed for users on Unix-like systems (Linux, macOS).
+Windows users might consider using Windows Subsystem for Linux or Cygwin, or
+they may be able to adapt the instructions for native use.
+
+Before you get started, make sure you have [Python][python] >=3.6 installed
+with [pip][pip] available. The recommended installation method also requires
+the `venv` module. Normally this will come with Python, but certain Linux
+distributions package it as a separate install.
+
+Download and extract a release or clone the repository:
+
+    git clone https://gitlab.precise.seas.upenn.edu/smedl/smedl.git
+    cd smedl
+
+### Virtual Environments
+
+Installing in a [virtual environment][venv] is recommended. This will keep all
+dependencies for this project separate from the rest of the system, ensuring
+there are no conflicts. Create the virtual environment like this:
+
+    python3 -m venv .env
+
+To use the virtual environment, you must activate it (note the dot at the
+beginning of the line):
+
+    . .env/bin/activate
+
+Your prompt will start with `(.env)` to show you that it is active. In the
+future, you will need to activate the virtual environment again each time you
+open a new terminal (by using the same command). You will only be able to
+install, upgrade, and use SMEDL while the virtual environment is active.
+
+You must be in the `smedl` repository to activate the environment, but once it
+is active, you can change to any directory without issue.
+
+Once the environment is active, you may want to upgrade `pip` and `setuptools`
+to the latest version (but this is not strictly necessary):
+
+    pip install --upgrade pip setuptools
+
+For more information on virtual environments, see the [virtual environment
+tutorial][venv].
+
+### Installation Proper
+
+With the virtual environment active, SMEDL can be installed with pip:
 
     pip install .
 
-To update the installation of `mgen` without updating its dependencies, run
+This will automatically install all the prerequisites as well. That's it. *You
+are now ready to run `mgen`.*
+
+### Updating an Existing Installation
+
+If you have pulled the latest commits in git or downloaded and unpacked the
+latest release, you should be able to just install the new version over the
+old version with the same command:
+
+    pip install .
+
+Nonetheless, if you would like to be extra sure, you can uninstall the previous
+version before you install again:
 
     pip uninstall smedl
     pip install .
 
+### Installation for Development
 
-## Generating the monitor
-The 'mgen' script is the primary interface for generating software monitors
-from SMEDL and PEDL definitions. This script can be run with the following
-command (from the project root directory):
+If you are installing to do development on SMEDL itself, you very likely want
+to installing in editable mode (sometimes called "develop mode") by adding the
+`-e` flag:
 
-    mgen PEDL_SMEDL_FILENAME
+    pip install -e .
 
-This script will generate C source code representing a runtime monitor as
-specified by the PEDL and SMEDL definitions, along with necessary monitor
-management infrastructure.
+This will set it up so that changes you make to the code in the repository will
+take effect immediately. Otherwise, you would have to reinstall SMEDL each time
+you want to try out a change you made.
 
-To allow the script to properly locate the PEDL and SMEDL files, the script's
-single parameter should be the name used by the PEDL and SMEDL files, and that
-name should be identical for both files except for their file extensions,
-`.pedl` and `.smedl`.
+In addition, you probably want to install `tox` and a RabbitMQ server. `tox` is
+used to run the test suite, and a RabbitMQ server is required for the RabbitMQ
+tests. Install `tox` with this command:
 
-Note: There are two debug flags that can be specified at the command-line.
-These are the '-s' flag for displaying the contents of internal data structures
-used by the monitor during its generation steps and the '-d' flag for
-outputting various debug statements written in the monitor generator code.
+    pip install tox
 
-Other useful flags:
-      --version : The current mgen version number
-      --helper <HEADER FILE> : Include the specified header file for providing helper functions
-      --console : Forces output to only show in the console; no file output will be generated
-      --noimplicit : Disables implicit error handling in the generated monitor
-      --arch <ARCH FILE> : The name of architechture file to parse (Described further below)
-      --dir <DIRECTORY> : Output the generated files to this directory relative to the input files
+On Ubuntu, a RabbitMQ server can be installed with
+`sudo apt install rabbitmq-server`. Other platforms may have versions packaged
+in their respective repositories, or you can install the latest version from
+the [RabbitMQ website]. Alternatively, if you have access to an existing
+RabbitMQ server, you can configure the tests to use that. See the "Testing"
+section for more details.
+
+The tests require additional Python dependencies. Normally, there is no need to
+install them manually, as `tox` handles that for you. But you may want to,
+since you cannot run individual tests manually without them. The testing
+dependencies can be installed like this:
+
+    pip install -e .[test]
+
+For more on testing, see the "Testing" section.
+
+### Syntax Highlighting
+
+If you use Vim, there are syntax highlighting files for SMEDL in the `vim/`
+directory. Install them like this:
+
+1. Copy both `smedl.vim` and `a4smedl.vim` to your `syntax/` directory:
+   `~/.vim/syntax/` on Linux/macOS and `$HOME/vimfiles/syntax/` on Windows.
+2. Create a `smedl.vim` file in `~/.vim/ftdetect/` (on Linux/macOS) or in
+   `$HOME/vimfiles/ftdetect/` (on Windows) with just the following line:
+
+       au BufRead,BufNewFile *.smedl set filetype=smedl
+
+3. Create an `a4smedl.vim` file in a similar fashion (being sure to replace
+   `smedl` with `a4smedl` in the line above).
+
+Alternatively, for steps 2 and 3, you can simply add the lines to your regular
+vimrc file.
+
+Highlighting rules for Emacs and Visual Studio Code are on the roadmap, but
+with fairly low priority.
+
+### Uninstalling
+
+If you installed using a virtual environment, you can uninstall simply by
+deleting the virtual environment directory:
+
+    rm -r .env/
+
+Syntax highlighting files, just as they had to be installed manually, must be
+removed manually.
+
+Usage
+-----
+
+SMEDL works by reading monitor system specifications and translating them into
+C source code. A monitor system consists of an architecture file (a.k.a. an
+`.a4smedl` file) and one or more monitor specifications (a.k.a. `.smedl`
+files). The monitor generator, `mgen`, is the program that translates these
+specification files into C code.
+
+This README assumes you already have `.smedl` and `.a4smedl` files ready for
+use. For information on how to write those files, see the SMEDL Manual in
+`doc/smedl.pdf`.
+
+In its most basic form, here is the command to translate monitor specifications
+into C code. Make sure your virtual environment is active before you run it.
+
+    mgen [OPTIONS] [-d <dest_dir>] <input_file>
+
+The `<input_file>` should be an `.a4smedl` file. This will generate all the C
+code for that architecture file and all monitors it uses. The input file can
+also be just a `.smedl` file, in which case only code for that monitor will be
+generated (no local or global wrapper—see Part 2 of the manual, `doc/smedl.pdf`,
+for more on what the wrappers do).
+
+Unless you have no asynchronous events (that is, you have one synchronous set
+and it contains all the PEDL events as well), you probably want to use the `-t`
+option to generate a transport as well. See the following section for more on
+that.
+
+If the `-d` option is given, it will generate the code in the given directory.
+Otherwise, it will generate code in the current directory.
+
+There are some additional options for `mgen`. Use `mgen --help` to see a full
+listing of options and what they do.
+
+### Transports
+
+Events may be transmitted to and from monitors synchronously or asynchonously.
+See the chapter on "A4SMEDL Specifications" in the manual (`doc/smedl.pdf`) for
+more on that distinction. But for asynchronous transmission, SMEDL offers a few
+transports to select from. This is done using the `-t <transport>` option.
+
+The options are as follows:
+
+- `rabbitmq`: Asynchronous events are transmitted as JSON-encoded RabbitMQ
+  messages. This is a good choice when there is no compelling reason to pick
+  another. You will need [rabbitmq-c][rabbitmq-c] installed to build monitors
+  with this transport and a RabbitMQ server to run them.
+- `ros`: Generates a ROS node for each synchronous set. Asynchronous events are
+  transmitted via ROS topics. Message files are automatically generated for
+  each event, or you can specifiy which existing topics and message types to
+  use (for tying into an existing system).
+
+If no transport option is chosen, the generated monitors will only support
+synchronous communication, i.e. event transmission by linking against them and
+using their C API directly. *Note that synchronous sets cannot transmit events
+to each other directly without an asynchronous transport.*
+
+For more information on the specifics of each transport, see the chapter on
+"Transport Adapters" in the SMEDL manual (`doc/smedl.pdf`).
+
+### Makefile Generation and Compiling
+
+When a transport option is chosen (`-t`), `mgen` has the ability to
+automatically generate a makefile. If there is not already a file named
+`Makefile` in the destination directory, it will do so.
+
+If no transport option is chosen, or there does already exist a file named
+`Makefile`, a makefile will not automatically be generated.
+
+You can force makefile generation, even when it would overwrite an existing
+`Makefile`, with the `-m` option (but even so, a `-t` option is still
+required). On the other hand, if you want to inhibit makefile generation, use
+the `--no-makefile` option.
+
+When `mgen` generates a makefile for you, the monitors can be built simply by
+running `make`. (This, of course, assumes you have a C compiler and GNU make
+installed.) If you like, there are some options to tweak the build at the top
+of the makefile.
+
+For cases where `mgen` does not generate a makefile, or you are opting not to
+use it, the following tips may be helpful:
+
+- Generally speaking, each synchronous set is built into its own executable.
+- Any files with the synchronous set name, files with names of monitors within
+  that synchronous set, and all the static files (e.g. `smedl_types.c`,
+  `monitor_map.c`, etc.), are compiled together as part of one synchronous set.
+- The generated code conforms to C99. You may want to use the `-std=c99` option
+  for your compiler.
+- If you want to see extra diagnostic messages, define the `DEBUG` flag with an
+  integer 1-4. Using 0 is the same as not defining it at all. These are the
+  debug levels:
+  * `-DDEBUG=0` Debug messages off
+  * `-DDEBUG=1` Errors only (serious conditions that cannot be recovered from)
+  * `-DDEBUG=2` Errors and warnings (Non-serious abnormal conditions)
+  * `-DDEBUG=3` Errors, warnings and notices (significant but normal)
+  * `-DDEBUG=4` Full debug output
+
+For information about the API for generated code and how to integrate SMEDL
+monitors into your existing systems, see Part 2 of the SMEDL manual
+(`doc/smedl.pdf`).
+
+Examples
+--------
+
+See the `tests/monitors/` directory for several examples of working monitor
+systems. The `tests/README-tests.md` file has short descriptions of each
+monitor. Note that there are extra files present in the example monitor
+directories that are only used for testing purposes. Only the `.smedl` and
+`.a4smedl` files are the actual monitors.
+
+Testing
+-------
+
+SMEDL uses [`tox`][tox] to run the test suite. See the "Installation for
+Development" section for information on installing that and a RabbitMQ server
+needed by the RabbitMQ tests.
+
+To run the full test suite, change directories to the SMEDL repository and run:
+
+    tox
+
+The test suite includes the following:
+
+- `setup.py check`: Does basic verifications on `setup.py`
+- [flake8][flake8]: Style checks and basic static code analysis for the Python
+  code
+- [pytest][pytest]: Run the test scripts in the `tests/` directory. See
+  `tests/README-tests.md` for more information.
+
+By default, `tox` will run the test suite using all Python versions that are
+still being maintained (currently 3.6, 3.7, and 3.8) to ensure there are no
+issues with any of them. If you do not have all of them installed, you will get
+errors. In that case, you can tell `tox` to run only your default version of
+Python 3:
+
+    tox -e py3
+
+The full test suite with all Python versions automatically runs on GitLab in
+certain circumstances:
+
+- Commits to the `master` branch or any `dev*` branch
+- Merge requests
+- Any tagged commits
+- Any commits whose commit message contains `run ci`
+- *Exception:* The test suite will never run if the commit message contains
+  `skip ci`
+
+### Running Tests Manually
+
+Sometimes, you may want to run specific components of the test suite or even
+specific tests manually. Normally, `tox` handles installing all the test
+dependencies in a separate, dedicated virtual environment. If you want to run
+tests outside of `tox`, you will need to install these dependencies in your
+regular virtual environment:
+
+    pip install -e .[test]
+
+Now, you can run `setup.py check`, `flake8 smedl/`, `pytest`, or
+`pytest -k <test_name>`  manually. These all should be run in the top-level
+directory of the repository.
+
+### Using an External RabbitMQ Server
+
+If you have access to an existing RabbitMQ server, you can configure the test
+framework to use that instead of a locally installed server. This is also
+useful if you need to change any other RabbitMQ options, such as the port,
+username/password, or vhost.
+
+There are two options for this:
+
+1. Provide extra arguments to `tox`:
+
+       tox -- --rabbitmq-server rabbitmq.example.com
+
+2. Store the extra arguments in an environment variable named `PYTEST_ARGS`:
+
+       export PYTEST_ARGS="--rabbitmq-server rabbitmq.example.com"
+       tox
+
+Here is the full list of options you can set:
+
+- `--rabbitmq-server`: The hostname or IP address for the RabbitMQ server
+- `--rabbitmq-port`: The port to use for the RabbitMQ server
+- `--rabbitmq-user`: The username for the RabbitMQ server
+- `--rabbitmq-pass`: The password for the RabbitMQ server
+- `--rabbitmq-vhost`: The vhost to use with the RabbitMQ server
+- `--rabbitmq-exchange`: The exchange to use with the RabbitMQ server
+
+Further Reading
+---------------
+
+The full SMEDL manual can be found in `doc/smedl.pdf`. It describes the SMEDL
+language and the API for generated monitors in detail. There are some other
+documents in the same directory that might be helpful, as well.
+
+License and Contact
+-------------------
+
+Copyright © 2021 The Trustees of the University of Pennsylvania
+
+Licensed under an MIT license. For full details, see `LICENSE.txt`.
+
+Contact: Dominick Pastore [\<dpastore@seas.upenn.edu>](mailto:dpastore@seas.upenn.edu)
 
 
-
-## Instrumenting the target
-At the moment, instrumentation of the target program must be performed
-manually. The generated event handling functions, or 'probes', can be found in
-the {object}\_mon.h file. The probe naming convention uses the monitor object
-name and the event name, separated by an underscore. Probes can be added
-anywhere in the target program (assuming the PEDL definitions are followed) and
-will be compiled with the target if the expected parameters are provided and
-the {object}\_mon.h header file is included in the respective target source
-code files.
-
-
-## Compiling the generated output
-Before executing the instrumented version of the target program, the generated
-runtime monitor must be compiled along with the target program using the
-following command:
-
-    gcc -o {{base_file_name}}_mon -std=c99 actions.c monitor_map.c {{base_file_name}}_mon.c
-
-
-## Manually run intermediate generation steps
-[Grako](https://pythonhosted.org/grako/), a PEG parser generator, is used to
-generate the SMEDL and PEDL parsers for their EBNF-defined grammars.
-
-To generate a SMEDL parser using the grammar:
-
-	  grako smedl/parser/smedl.grako -o smedl/parser/smedl_parser.py
-	( grako      GRAMMAR             -o     OUTPUT_PARSER  )
-
-To parse a SMEDL file using the generated parser:
-
-      python smedl/parser/smedl_parser.py example.smedl object
-    ( python      PARSER                   INPUT_FILE   START_RULE )
-
-(Use the `-t` command-line option to enable debug tracing)
-
-
-## RabbitMQ
-Asynchronous monitoring of events has been implemented using the [Advanced Message Queuing Protocol](http://www.amqp.org/) by the [RabbitMQ](https://www.rabbitmq.com/) message broker.
-
-### Configuring a RabbitMQ-enabled monitor
-**Hostname**: The host address of your RabbitMQ broker.
-
-**Port**: Keep this value as `5672` if your broker is using the default port, or set it to the custom port you have already configured for your broker.
-
-**Username**: Your username for the broker.
-
-**Password**: Your password for the broker.
-
-**Exchange**: The main event-handling message exchange.
-
-**Control Exchange (ctrl_exchange)**: The message exchange for passing control-related messages.
-
-###### Example SMEDL RabbitMQ configuration file
-	rabbitmq =
-	{
-		hostname = "example.com";
-		port = 5672;
-		username = "test-user";
-		password = "test-password";
-		exchange = "example.topic";
-		ctrl_exchange = "example.control";
-	};
-
-### Format of routing key
-The formal of the routing key contains four parts: the channel name, the list of identities of the monitor instance, the event name and the list of attributes of the event. Each element(including channel name, event name, each identity or attribute value) is divided by character '.'. Note that if the type of the attributes of events or identities of the monitor is not typed with integer, it will be replaced by "0" as a place holder. (Note that the string can not be the id of the monitor for now, which will be implemented in the next released version). 
-
-###### Example of routing key format
-There are two monitors RateComputation(int) and ThresholdCrossDetection(int) communicating with each other through event dataUpdate2(string, float, float),defined in channel "ch1". For the monitor instances RateComputation(0) and ThresholdCrossDetection(0), the format of the routing key sent along with the message will be "ch1.0.dataUpdates2.0.0.0". The first "0" in the routing key represents the id of RateComputation. The other three "0"s represent the place holder for three  attributes of the event dataUpdate2.  
-
-### JSON format of the asynchronous event message
-    {
-      "name" : "eventName",
-      "fmt_version" : "format version",
-      "params": {
-                  "v1" : value1,
-              "v2" : value2,
-              ...
-      }
-      "provenance" :{
-            ...
-      }
-    }
-
-Only the message is encoded in JSON string and the routing key still follows the format of the rabbitmq. As a result, the  field "name" in the JSON string is not used for now. Moreover, the field "params" is optional when there is no attribute in the event. Names in the "params" field are "v"+index where index is from 1. Types and order of the data in "params" follows the definition of the event. The option field "provenance" contains the provenance information, which is opaque to the monitor. 
-
-
-## Compiling with an architecture description
-An architecture description file can be compiled with the SMEDL specification
-using the following command:
-
-    mgen PEDL_SMEDL_FILENAME --arch=ARCH_SMEDL_FILENAME
-
-Note that `ARCH_SMEDL_FILENAME` does not contain the `.a4smedl` suffix.
-
-Moreover, it is necessary to compile separately with corresponding SMEDL
-specifications. For more info, readers can refer to the document ``Architecture_Description_Language_for_SMEDL``.
-
-
-## Running the test suite
-You may run the tool's test suite by simply calling `nose2` from the
-project's root directory.
-
-
-## Updating from the repository
-The canonical repository for this project is located on the
-[PRECISE GitLab](https://gitlab.precise.seas.upenn.edu/pgebhard/smedl).
-
-At the moment, this is an internal repository, so please contact
-[Peter Gebhard](pgeb@seas.upenn.edu) for access.
+[repo]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/
+[python]: https://www.python.org/
+[pip]: https://pip.pypa.io/en/stable/
+[tatsu]: https://github.com/neogeny/TatSu
+[jinja]: https://palletsprojects.com/p/jinja/
+[importlib-resources]: https://pypi.org/project/importlib-resources/
+[tox]: https://tox.readthedocs.io/en/latest/
+[pytest]: https://docs.pytest.org/en/latest/
+[flake8]: https://flake8.pycqa.org/en/latest/
+[pika]: https://pika.readthedocs.io/en/stable/
+[rabbitmq-install]: https://www.rabbitmq.com/download.html
+[rabbitmq-c]: http://alanxz.github.io/rabbitmq-c/
+[make]: https://www.gnu.org/software/make/
+[venv]: https://docs.python.org/3/tutorial/venv.html

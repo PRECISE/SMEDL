@@ -1,7 +1,0 @@
-Coverage.py for path coverage reporting
-
-pip install coverage
-
-command:
-coverage run --include=smedlgen.py test_smedlgen.py
-coverage report -m

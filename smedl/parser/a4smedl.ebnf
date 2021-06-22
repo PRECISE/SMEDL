@@ -1,0 +1,180 @@
+# Copyright (c) 2021 The Trustees of the University of Pennsylvania
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# This grammar defines A4SMEDL in the Grako-variation of EBNF.
+
+@@grammar :: A4SMEDL
+
+#include :: "common.ebnf"
+
+start =
+    declaration ';'
+    {(
+        import_stmt
+        | monitor_decl
+        | event_decl
+        | syncset_decl
+        | connection_defn
+    )';'}*
+    $
+    ;
+
+declaration =
+    'system' ~ @:identifier
+    ;
+
+# Filename looks like a string literal but does not accept escape sequences
+# (similar to #include "..." in C)
+import_stmt =
+    'import' ~ @:smedl_filename
+    ;
+
+smedl_filename =
+    /"[^"\n\r\v\f]*"/
+    ;
+
+monitor_decl =
+    'monitor' ~ name:identifier '(' params:type_list ')'
+    ['as' renamed:identifier]
+    ;
+
+# Event declarations are only required if you want to be explicit about
+# parameter types (e.g. if SMEDL infers them incorrectly).
+event_decl =
+    kind:'imported' ~ name:identifier '(' params:type_list ')'
+    | kind:'exported' ~ name:identifier '(' params:type_list ')'
+    ;
+
+syncset_decl =
+    'syncset' ~ name:identifier '{' members:syncset_member_list '}'
+    ;
+
+syncset_member_list =
+    ','.{syncset_member}*
+    ;
+
+syncset_member =
+    # Syncsets may contain PEDL events (preceded by "imported"/"exported")
+    # and/or monitors. In addition, the "pedl" keyword assigns all implicit and
+    # unassigned PEDL events to the syncset.
+    kind:'pedl' ~
+    | kind:'imported' ~ name:identifier
+    | kind:'exported' ~ name:identifier
+    | kind:`monitor` name:identifier
+    ;
+
+#TODO Proposed change: Instead of repeating source spec for each target spec,
+# allow multiple targets for a source, and do not allow repeating a source. That
+# way, there is no ambiguity about whether the same source can have different
+# connection/channel names (it cannot)
+#
+# This would look like this:
+#
+# connection_defn =
+#     [name:identifier ':'] source:source_spec
+#     '=>' targets:'=>'.{target_spec}+
+#     ;
+connection_defn =
+    [name:identifier ':'] source:source_spec
+    '=>' target:target_spec
+    ;
+
+source_spec =
+    [monitor:identifier '.'] event:identifier
+    ;
+
+target_spec =
+    target_event
+    | exported_event_or_monitor_initialization
+    ;
+
+target_event =
+    dest_monitor:identifier
+    ['[' monitor_params:wildcard_parameter_list ']']
+    '.'
+    dest_event:identifier
+    ['(' event_params:parameter_list ')']
+    ;
+
+# Monitor creation and routing to exported PEDL events have similar syntax.
+# Both are identifiers followed by a parenthesized list. The semantics sort out
+# which one it is based on the name. If the name matches both a monitor and an
+# exported event, it's assumed to be a monitor (since the exported event can be
+# specified with "pedl.<event>").
+exported_event_or_monitor_initialization =
+    name:identifier
+    '(' ~ (
+        # For monitor initialization, there are two cases:
+        # 1. There is at least one parameter (in which case, separating comma is
+        #    needed if there are state vars)
+        # 2. There is no parameter, and may or may not be state variable
+        #    initializations. This is not allowed, but we allow it in the
+        #    grammar so that we can catch it and display a more helpful error
+        #    message in the semantics processor.
+        # These correspond to the two alternatives below.
+        #
+        # For exported events, if there are params, state_vars should be None.
+        # If there are no params, params will be None and state_vars should be
+        # an empty list.
+        params:parameter_list_nonempty
+                [',' state_vars:initializer_list_nonempty]
+        | state_vars:initializer_list
+    ) ')'
+    ;
+
+initializer_list_nonempty =
+    ','.{initializer}+
+    ;
+
+initializer_list =
+    ','.{initializer}*
+    ;
+
+initializer =
+    var_name:identifier '=' ~ value:parameter
+    ;
+
+wildcard_parameter_list =
+    ','.{wildcard_parameter}*
+    ;
+
+parameter_list_nonempty =
+    ','.{parameter}+
+    ;
+
+parameter_list =
+    ','.{parameter}*
+    ;
+
+wildcard_parameter =
+    @:parameter
+    | kind:'*'
+    ;
+
+parameter =
+    kind:'#' ~ index:natural
+    | 'Id' ~ kind:`'#'` '.' index:natural
+    | kind:'$' ~ index:natural
+    | 'Param' ~ kind:`'$'` '.' index:natural
+    ;
+
+natural =
+    /[0-9]+/
+    ;

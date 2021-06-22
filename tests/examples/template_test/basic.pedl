@@ -1,8 +1,0 @@
-object Basic
-events
-    new Basic(data, num, x, y, total) =
-        create BasicData { data = this; num = this.num; x = this.x; y = this.y; total = this.total; }
-    Basic(data, num).upX(x = xInCode, y = yInCode) = 
-        call(basic().upXInCode(), false) when data == basic().dInCode, num == basic().nInCode
-    Basic(data, num).upY(x = xInCode, y = yInCode) = 
-        call(basic().upYInCode(), false) when data == basic().dInCdoe, num == basic().nInCode

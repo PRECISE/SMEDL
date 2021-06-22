@@ -1,18 +1,40 @@
-image: python:3.5
+# NOTE: This image provides the Python versions tox expects and the other build
+# dependencies for monitors (e.g. librabbitmq-dev). It will need to be updated
+# from time to time, e.g. when new Python versions are released or if there are
+# new build dependencies for monitors. See the "Testing and CI" section in
+# README-development.md for advice on this.
+#image: python:3.8
+image: dominickpastore/test
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+workflow:
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /skip\sci/i
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH =~ /^dev/
+    - if: $CI_COMMIT_MESSAGE =~ /run\sci/i
+    # Remove this rule after smedl2 is merged into master, then create a dev*
+    # branch for new development
+    - if: $CI_COMMIT_BRANCH == "smedl2"
+
+cache:
+  paths:
+    - .cache/pip
+      #- /var/cache/apt/archives
 
 before_script:
-  - ping -c 10 stability.cis.upenn.edu
-  - apt-get update -y
-  - apt-get upgrade -y
-  - apt-get install -y libconfig-dev librabbitmq-dev
-  - python -V
-  - which python
+#  - ping -c 4 stability.cis.upenn.edu
+#- apt-get update -y
+#- apt-get install -y librabbitmq-dev
+  - python3 -V
+  - pip3 install tox
 
 test:
+  services:
+    - rabbitmq
   script:
-  - pyvenv .env && source .env/bin/activate
-  - ls -la .env/bin
-  - python -V
-  - which python
-  - pip install .
-  - nose2
+    - tox -- --rabbitmq-server rabbitmq

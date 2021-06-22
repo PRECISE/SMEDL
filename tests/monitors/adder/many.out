@@ -1,0 +1,43 @@
+{
+    "fmt_version": [2, 0],
+    "channel": "_Adder_sum",
+    "event": "Adder.sum",
+    "identities": [],
+    "params": [1.0],
+    "aux": {
+        "arbitrary": "json data"
+     }
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "_Adder_sum",
+    "event": "Adder.sum",
+    "identities": [],
+    "params": [3.0],
+    "aux": [1, 2, 3]
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "_Adder_sum",
+    "event": "Adder.sum",
+    "identities": [],
+    "params": [6.5],
+    "aux": "foo"
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "_Adder_sum",
+    "event": "Adder.sum",
+    "identities": [],
+    "params": [10.5],
+    "aux": 36
+} 
+{
+    "fmt_version": [2, 0],
+    "channel": "_Adder_sum",
+    "event": "Adder.sum",
+    "identities": [],
+    "params": [15.5],
+    "aux": {
+    }
+} 

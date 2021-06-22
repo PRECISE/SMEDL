@@ -1,6 +1,3 @@
-[submodule "tests/examples/atif/amqptools"]
-	path = tests/examples/atif/amqptools
-	url = https://github.com/rmt/amqptools.git
-[submodule "tests/examples/provenance/amqptools"]
-	path = tests/examples/provenance/amqptools
-	url = https://github.com/rmt/amqptools.git
+[submodule "tests/ctests/unity/Unity"]
+	path = tests/ctests/unity/Unity
+	url = https://github.com/ThrowTheSwitch/Unity.git
