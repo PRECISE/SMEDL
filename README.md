@@ -15,7 +15,7 @@ below discusses all aspects of installation, including prerequisites.
 
 - [Python >=3.6][python]
 - [TatSu >=4.4, \<5.0][tatsu]
-- [Jinja2 >=2.11][jinja]
+- [Jinja2 >=3.0][jinja]
 - [importlib\_resources >=1.1][importlib-resources] (only for Python 3.6.x)
 - Required only for testing:
   * [tox][tox]
@@ -189,12 +189,16 @@ also be just a `.smedl` file, in which case only code for that monitor will be
 generated (no local or global wrapper—see Part 2 of the manual, `doc/smedl.pdf`,
 for more on what the wrappers do).
 
+Unless you have no asynchronous events (that is, you have one synchronous set
+and it contains all the PEDL events as well), you probably want to use the `-t`
+option to generate a transport as well. See the following section for more on
+that.
+
 If the `-d` option is given, it will generate the code in the given directory.
 Otherwise, it will generate code in the current directory.
 
-There are some additional options for `mgen`. Some of these are discussed
-shortly, but use `mgen --help` to see a full listing of options and what they
-do.
+There are some additional options for `mgen`. Use `mgen --help` to see a full
+listing of options and what they do.
 
 ### Transports
 
@@ -209,11 +213,10 @@ The options are as follows:
   messages. This is a good choice when there is no compelling reason to pick
   another. You will need [rabbitmq-c][rabbitmq-c] installed to build monitors
   with this transport and a RabbitMQ server to run them.
-- `file`: Meant primarily for testing and debugging. Reads JSON-encoded events
-  from a file (or stdin) and writes exported events to stdout. Events between
-  monitors are not actually asynchronous.
-
-Additional transport adapters are in development.
+- `ros`: Generates a ROS node for each synchronous set. Asynchronous events are
+  transmitted via ROS topics. Message files are automatically generated for
+  each event, or you can specifiy which existing topics and message types to
+  use (for tying into an existing system).
 
 If no transport option is chosen, the generated monitors will only support
 synchronous communication, i.e. event transmission by linking against them and
@@ -246,11 +249,9 @@ For cases where `mgen` does not generate a makefile, or you are opting not to
 use it, the following tips may be helpful:
 
 - Generally speaking, each synchronous set is built into its own executable.
-  (The exception is when using the file transport, where all synchronous sets
-  are linked into a single executable.)
 - Any files with the synchronous set name, files with names of monitors within
   that synchronous set, and all the static files (e.g. `smedl_types.c`,
-  `event_queue.c`, etc.), are compiled together as part of one synchronous set.
+  `monitor_map.c`, etc.), are compiled together as part of one synchronous set.
 - The generated code conforms to C99. You may want to use the `-std=c99` option
   for your compiler.
 - If you want to see extra diagnostic messages, define the `DEBUG` flag with an
@@ -363,9 +364,9 @@ documents in the same directory that might be helpful, as well.
 License and Contact
 -------------------
 
-Copyright © 2020 The Trustees of the University of Pennsylvania
+Copyright © 2021 The Trustees of the University of Pennsylvania
 
-Licensed under a TODO license. For full details, see `LICENSE.txt`.
+Licensed under an MIT license. For full details, see `LICENSE.txt`.
 
 Contact: Dominick Pastore [\<dpastore@seas.upenn.edu>](mailto:dpastore@seas.upenn.edu)
 

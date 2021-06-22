@@ -12,10 +12,9 @@ issues with the code.
 - A full synchronous communication API is now available, both at the monitor
   level (for single monitors) and the global wrapper level (for monitoring
   systems). RabbitMQ transport is still available for asynchronous
-  communication, now via an optional, auto-generated adapter built on top of
-  said API.
-- In addition to the RabbitMQ adapter, a file reader adapter is now available
-  for simple monitor testing.
+  communication, now via an optional, auto-generated adapter.
+- In addition to the RabbitMQ adapter, a ROS adapter is available. This
+  generates complete ROS nodes instead of a simple set of .c/.h files.
 - The same monitor specification can be used multiple times in one architecture
   file.
 - A new type of connection target is available in architecture files: monitor
@@ -39,6 +38,19 @@ issues with the code.
     syntax is more flexible and intuitive.
   * The "creation" keyword has been removed. All events can be creation events,
     and will be if the monitor identity parameters are all non-wildcards.
+  * PEDL events can be added to specific synchronous sets
+  * Exported PEDL events can be routed to explicitly
+- The C API has seen major changes as well:
+  * PEDL events now sit inside the global wrapper they belong to. They use the
+    same API as monitors importing and exporting events.
+  * There is a new manager level to the SMEDL design, sitting outside the
+    global wrapper and managing the communication between it and the transport
+    adapters (e.g. RabbitMQ). This allows for a future update where a global
+    wrapper may communicate with other global wrappers through different
+    transports simultaneously (e.g. one syncset uses RabbitMQ, another uses
+    ROS).
+  * The target program must call `run_manager()` explicitly. SMEDL no longer
+    processes PEDL events as soon as they are raised.
 - Monitor identities are now specified exclusively in the architecture file. The
   `identity` section has been removed from monitor specifications.
 - Names differing only in case will no longer result in uncompileable output
@@ -48,14 +60,17 @@ issues with the code.
   architecture file (.a4smedl) or a single monitor specification (.smedl). When
   an architecture file is provided, all monitors it imports will be generated
   automatically.
+- A better hashmap implementation for monitor instance management brings
+  massive performance improvements, especially for monitors with more than one
+  identity parameter.
 - Various bugs and memory leaks have been fixed.
 
 ### Removed
 
-- Final states. This will be reimplemented soon.
-- PEDL. This was rarely used in its old form, if at all. It is not clear that it
-  was even fully implemented. Further design planning and discussion will be
-  necessary before reimplementation.
+- PEDL, in its old form. "PEDL events" live on as the events to and from the
+  target program, but it is up to the user to instrument the target program or
+  otherwise tie them in to the target system as necessary.
+- Thread type for variables and parameters.
 
 [1.1.1] - 2019-12-13
 --------------------
