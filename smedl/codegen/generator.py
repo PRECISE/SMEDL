@@ -217,6 +217,7 @@ class CodeGenerator(object):
         syncset_mons = dict()
         syncset_specs = dict()
         pedl_syncsets = []
+        puresync_syncsets = []
         all_sync = True
 
         for name, syncset in system.syncsets.items():
@@ -235,7 +236,9 @@ class CodeGenerator(object):
             if not syncset.pure_async:
                 pedl_syncsets.append(name)
 
-            if not syncset.pure_sync:
+            if syncset.pure_sync:
+                puresync_syncsets.append(name)
+            else:
                 all_sync = False
 
         values = {
@@ -243,6 +246,7 @@ class CodeGenerator(object):
             "system": system.name,
             "syncsets": system.syncsets.keys(),
             "pedl_syncsets": pedl_syncsets,
+            "puresync_syncsets": puresync_syncsets,
             "syncset_mons": syncset_mons,
             "syncset_specs": syncset_specs,
             "mon_names": system.monitor_decls.keys(),
@@ -415,10 +419,6 @@ class RabbitMQGenerator(CodeGenerator):
 
     def _write_transport_adapters(self, system):
         """Write the RabbitMQ adapters"""
-        # Write static code
-        from .rabbitmq import static
-        self._write_static_files(static)
-
         # Write RabbitMQ adapters
         all_sync = True
         for syncset in system.syncsets.values():
@@ -440,6 +440,10 @@ class RabbitMQGenerator(CodeGenerator):
             self._render("rabbitmq.h", syncset.name + "_rabbitmq.h", values)
 
         if not all_sync:
+            # Write static code
+            from .rabbitmq import static
+            self._write_static_files(static)
+
             values = {
                 "sys": system,
             }

@@ -59,7 +59,7 @@ monitor_decl =
 # parameter types (e.g. if SMEDL infers them incorrectly).
 event_decl =
     kind:'imported' ~ name:identifier '(' params:type_list ')'
-    kind:'exported' ~ name:identifier '(' params:type_list ')'
+    | kind:'exported' ~ name:identifier '(' params:type_list ')'
     ;
 
 syncset_decl =
@@ -75,8 +75,8 @@ syncset_member =
     # and/or monitors. In addition, the "pedl" keyword assigns all implicit and
     # unassigned PEDL events to the syncset.
     kind:'pedl' ~
-    kind:'imported' ~ name:identifier
-    kind:'exported' ~ name:identifier
+    | kind:'imported' ~ name:identifier
+    | kind:'exported' ~ name:identifier
     | kind:`monitor` name:identifier
     ;
 

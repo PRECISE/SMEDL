@@ -194,16 +194,33 @@ class A4SMEDLParser(Parser):
 
     @tatsumasu()
     def _event_decl_(self):  # noqa
-        self._token('event')
-        self._cut()
-        self._identifier_()
-        self.name_last_node('name')
-        self._token('(')
-        self._type_list_()
-        self.name_last_node('params')
-        self._token(')')
+        with self._choice():
+            with self._option():
+                self._token('imported')
+                self.name_last_node('kind')
+                self._cut()
+                self._identifier_()
+                self.name_last_node('name')
+                self._token('(')
+                self._type_list_()
+                self.name_last_node('params')
+                self._token(')')
+            with self._option():
+                self._token('exported')
+                self.name_last_node('kind')
+                self._cut()
+                self._identifier_()
+                self.name_last_node('name')
+                self._token('(')
+                self._type_list_()
+                self.name_last_node('params')
+                self._token(')')
+            self._error(
+                'expecting one of: '
+                "'imported' 'exported'"
+            )
         self._define(
-            ['name', 'params'],
+            ['kind', 'name', 'params'],
             []
         )
 
@@ -236,10 +253,19 @@ class A4SMEDLParser(Parser):
     def _syncset_member_(self):  # noqa
         with self._choice():
             with self._option():
-                self._token('event')
-                self._cut()
-                self._constant('imported')
+                self._token('pedl')
                 self.name_last_node('kind')
+                self._cut()
+            with self._option():
+                self._token('imported')
+                self.name_last_node('kind')
+                self._cut()
+                self._identifier_()
+                self.name_last_node('name')
+            with self._option():
+                self._token('exported')
+                self.name_last_node('kind')
+                self._cut()
                 self._identifier_()
                 self.name_last_node('name')
             with self._option():
@@ -249,8 +275,8 @@ class A4SMEDLParser(Parser):
                 self.name_last_node('name')
             self._error(
                 'expecting one of: '
-                "'event' [a-zA-Z][A-Za-z0-9_]*"
-                '<identifier>'
+                "'pedl' 'imported' 'exported'"
+                '[a-zA-Z][A-Za-z0-9_]* <identifier>'
             )
         self._define(
             ['kind', 'name'],
@@ -292,11 +318,12 @@ class A4SMEDLParser(Parser):
             with self._option():
                 self._target_event_()
             with self._option():
-                self._monitor_initialization_()
+                self._exported_event_or_monitor_initialization_()
             self._error(
                 'expecting one of: '
                 '[a-zA-Z][A-Za-z0-9_]* <identifier>'
-                '<target_event> <monitor_initialization>'
+                '<target_event> <exported_event_or_monito'
+                'r_initialization>'
             )
 
     @tatsumasu()
@@ -322,15 +349,16 @@ class A4SMEDLParser(Parser):
         )
 
     @tatsumasu()
-    def _monitor_initialization_(self):  # noqa
+    def _exported_event_or_monitor_initialization_(self):  # noqa
         self._identifier_()
-        self.name_last_node('dest_monitor')
+        self.name_last_node('name')
         self._token('(')
+        self._cut()
         with self._group():
             with self._choice():
                 with self._option():
                     self._parameter_list_nonempty_()
-                    self.name_last_node('monitor_params')
+                    self.name_last_node('params')
                     with self._optional():
                         self._token(',')
                         self._initializer_list_nonempty_()
@@ -345,7 +373,7 @@ class A4SMEDLParser(Parser):
                 )
         self._token(')')
         self._define(
-            ['dest_monitor', 'monitor_params', 'state_vars'],
+            ['name', 'params', 'state_vars'],
             []
         )
 
@@ -374,6 +402,7 @@ class A4SMEDLParser(Parser):
         self._identifier_()
         self.name_last_node('var_name')
         self._token('=')
+        self._cut()
         self._parameter_()
         self.name_last_node('value')
         self._define(
@@ -435,10 +464,12 @@ class A4SMEDLParser(Parser):
             with self._option():
                 self._token('#')
                 self.name_last_node('kind')
+                self._cut()
                 self._natural_()
                 self.name_last_node('index')
             with self._option():
                 self._token('Id')
+                self._cut()
                 self._constant('#')
                 self.name_last_node('kind')
                 self._token('.')
@@ -447,10 +478,12 @@ class A4SMEDLParser(Parser):
             with self._option():
                 self._token('$')
                 self.name_last_node('kind')
+                self._cut()
                 self._natural_()
                 self.name_last_node('index')
             with self._option():
                 self._token('Param')
+                self._cut()
                 self._constant('$')
                 self.name_last_node('kind')
                 self._token('.')
@@ -522,7 +555,7 @@ class A4SMEDLSemantics(object):
     def target_event(self, ast):  # noqa
         return ast
 
-    def monitor_initialization(self, ast):  # noqa
+    def exported_event_or_monitor_initialization(self, ast):  # noqa
         return ast
 
     def initializer_list_nonempty(self, ast):  # noqa

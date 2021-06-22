@@ -1154,7 +1154,7 @@ class MonitorSystem(object):
             name = 'pedl'
 
         # Create the SynchronousSet
-        syncset = SynchronousSet(name, self._default_transport)
+        syncset = SynchronousSet(name, self, self._default_transport)
 
         # Iterate through the members.
         # For monitors: Check if they exist, check if they are already in a
@@ -1234,10 +1234,10 @@ class MonitorSystem(object):
           to infer
         """
         # Check if it already exists
-        if self._check_pedl_event(source_ev) is not None:
+        if self._check_pedl_event(name) is not None:
             raise NameCollision("PEDL event {} cannot be declared multiple "
                                 "times or after it has already been used "
-                                "implicitly".format(source_ev))
+                                "implicitly".format(name))
 
         # Create it
         exported_ev = ExportedEvent(name, params)

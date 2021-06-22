@@ -561,6 +561,7 @@ int run_rabbitmq(int blocking) {
             return 1;
         }
     }
+    return 1;
 }
 
 /* Consume and process one RabbitMQ message.
@@ -1113,12 +1114,14 @@ int forward_rabbitmq_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *ident
         goto fail;
     }
 
+    char *correlation_id = NULL;
+    if (aux != NULL) {
+        correlation_id = aux->correlation_id;
+    }
     {% if conn.source_mon is not none %}
-    send_message("{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}",
-            aux->correlation_id, msg, strlen(msg));
+    send_message("{{conn.channel}}.{{conn.source_mon.name}}.{{conn.source_event}}", correlation_id, msg, strlen(msg));
     {% else %}
-    send_message("{{conn.channel}}.{{conn.source_event}}",
-            aux->correlation_id, msg, strlen(msg));
+    send_message("{{conn.channel}}.{{conn.source_event}}", correlation_id, msg, strlen(msg));
     {% endif %}
 
     free(msg);
