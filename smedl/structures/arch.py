@@ -349,6 +349,8 @@ class ExportedEvent(object):
     @property
     def params(self):
         """Get a sequence of SmedlType representing the event parameters"""
+        if self._params is None:
+            return None
         return tuple(self._params)
 
     @property
@@ -1020,28 +1022,6 @@ class DeclaredMonitor(object):
 
         return tree(self.param_subsets, 0, 0)
 
-    #TODO No longer needed once file wrapper is removed
-    @property
-    def inter_connections(self):
-        """Return a list of connections where this monitor is the source and
-        at least one destination is not in the same synchronous set"""
-        result = []
-        for conn in self._connections.values():
-            for target in conn.targets:
-                if target.monitor is None:
-                    if target.syncset is not self._syncset:
-                        result.append(conn)
-                        break
-                elif target.monitor not in self._syncset:
-                    result.append(conn)
-                    break
-        return result
-
-    def __repr__(self):
-        return "monitor {}({}) as {}".format(
-            self._spec.name, ", ".join([str(p) for p in self._params]),
-            self._name)
-
 
 class MonitorSystem(object):
     """A monitor system as specified by an architecture file (a4smedl file)"""
@@ -1370,6 +1350,10 @@ class MonitorSystem(object):
             if conn.syncset is None:
                 pedl_evs_without_syncset.append(
                     {'kind': 'imported', 'name': conn.source_event})
+        for event in self._exported_events.values():
+            if event.syncset is None:
+                pedl_evs_without_syncset.append(
+                    {'kind': 'exported', 'name': event.name})
 
         # Do last part of docstring (unconnected exported monitor events)
         for mon in self._monitor_decls.values():

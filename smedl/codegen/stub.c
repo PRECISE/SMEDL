@@ -121,6 +121,28 @@ SMEDLOpaque p{{loop.index0}}
 #else
 #include <unistd.h>
 #endif
+{% if sys.ev_imported_connections.values()|selectattr('syncset.name', 'equalto', syncset)|list is not nonempty %}
+#include <signal.h>
+
+volatile sig_atomic_t interrupted = 0;
+
+/* Signal handler for SIGINT and SIGTERM to shutdown gracefully. Sets the
+ * interrupted flag to 1. */
+static void set_interrupted(int signum) {
+    /* Windows and some other platforms reset the signal handler to the default
+     * when a signal is received. Set it back to this function. This creates a
+     * race condition on these platforms, but more reliable functions are not
+     * cross platform (not that all platforms handle signal() the same way
+     * either, or even use SIGINT and SIGTERM at all, but at least they are
+     * standard C). Anyway, the worst case scenario is two SIGINT/SIGTERM
+     * arrive back to back, the second arrives before the signal handler is
+     * set back to this function, and the program is terminated immediately
+     * instead of shutting down cleanly. The only thing lost is notifying the
+     * server of our exit so it can clean up before it notices we died. */
+    signal(signum, set_interrupted);
+    interrupted = 1;
+}
+{% endif %}
 
 int main(int argc, char **argv) {
     if (!init_manager()) {
@@ -128,6 +150,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    {% if sys.ev_imported_connections.values()|selectattr('syncset.name', 'equalto', syncset)|list is nonempty %}
     {% set ev_len = sys.ev_imported_connections.keys()|map('length')|max + 1 %}
     char event[{{ev_len + 1}}];
     char line[4096];
@@ -235,6 +258,27 @@ int main(int argc, char **argv) {
 #endif
         return 4;
     }
+    {% else %}
+    /* Syncset has no exported events. Run and wait for Ctrl-C. */
+    if (signal(SIGINT, set_interrupted) == SIG_ERR) {
+        fprintf(stderr, "Could not set SIGINT handler\n");
+        return 2;
+    }
+    if (signal(SIGTERM, set_interrupted) == SIG_ERR) {
+        fprintf(stderr, "Could not set SIGTERM handler\n");
+        return 2;
+    }
+
+    while (!interrupted) {
+        if (!run_manager()) {
+#if DEBUG >= 1
+            fprintf(stderr, "Could not run manager\n");
+#endif
+            return 4;
+        }
+        sleep(1);
+    }
+    {% endif %}
 
 #if DEBUG >= 3
     fprintf(stderr, "Done.\n");

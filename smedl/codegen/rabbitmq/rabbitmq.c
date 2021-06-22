@@ -649,6 +649,7 @@ int handle_other_frame(void) {
     return 1;
 }
 
+{% if sys.imported_channels(syncset) is nonempty %}
 /* Verify that the format version is compatible, i.e. it is a string
  * "smedl-fmt<x>.<y>" where <x> matches the major version and <y> is greater
  * than or equal to the minor version. Return nonzero if so, zero if not. */
@@ -691,6 +692,7 @@ static void routing_key_to_channel(amqp_bytes_t routing_key, char *buf,
     buf[i] = '\0';
 }
 
+{% endif %}
 /* Handle an incoming message by calling the proper global wrapper import
  * function. Return nonzero on success, zero on failure. */
 int handle_message(amqp_envelope_t *envelope) {
@@ -703,18 +705,14 @@ int handle_message(amqp_envelope_t *envelope) {
         return 0;
     }
 
+    {% if sys.imported_channels(syncset) is nonempty %}
     /* Skip redeliveries */
     if (envelope->redelivered) {
         return 1;
     }
 
-    {% if sys.imported_channels(syncset) is nonempty %}
     {% set ch_len = (sys.imported_channels(syncset)|map(attribute='channel')|
             map('length')|max) + 2 %}
-    {% else %}
-    {# There are no incoming messages. #}
-    {% set ch_len = 2 %}
-    {% endif %}
     /* Get channel name using routing key
      * Max channel length is 2 greater than the longest channel name we
      * are interested in (to account for null terminator and at least one extra
@@ -951,6 +949,10 @@ fail2:
 fail1:
     cJSON_Delete(msg);
     return 0;
+    {% else %}
+    /* This syncset does not receive any incoming asynchronous events. */
+    return 1;
+    {% endif %}
 }
 
 /******************************************************************************

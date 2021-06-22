@@ -116,7 +116,7 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
     def connection_defn(self, ast):
         """Do various validations and add the connection to the system"""
         if ast.source.monitor == 'pedl':
-            ast.source.monitor = None
+            del ast.source['monitor']
         self.system.add_target(
             ast.name, ast.source.monitor, ast.source.event, ast.target)
         return ast
@@ -131,8 +131,8 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
             if ast.monitor_params is not None:
                 raise ParameterError("'pedl' event {} cannot have monitor "
                                      "identities".format(ast.dest_event))
-            ast.name = ast.dest_event
-            ast.params = ast.event_params
+            ast['name'] = ast.dest_event
+            ast['params'] = ast.event_params
             return self._exported_event(ast)
 
         # Check that destination monitor exists
@@ -221,9 +221,9 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
     def _exported_event(self, ast):
         """Create a TargetExport."""
         try:
-            exported_event = self.system.exported_events[self.name]
+            exported_event = self.system.exported_events[ast.name]
         except KeyError:
-            exported_event = self.system.add_exported_event(self.name)
+            exported_event = self.system.add_exported_event(ast.name)
         else:
             # Check number of params for existing exported event.
             # (Types are checked when the target is added to a connection.)
@@ -231,9 +231,9 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                     len(ast.params) != len(exported_event.params)):
                 raise ParameterError("Expected {} parameters for PEDL event "
                                      "{}, got {}.".format(
-                                         len(exported_event.params), self.name,
+                                         len(exported_event.params), ast.name,
                                          len(ast.params)))
-        return TargetExport(exported_event, ast.params)
+        return arch.TargetExport(exported_event, ast.params)
 
     def exported_event_or_monitor_initialization(self, ast):
         """Determine based on the name whether this is an exported event or
@@ -248,8 +248,8 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
                     # exporting a PEDL event.
                     raise NameNotDefined("Destination monitor {} is not "
                                          "declared".format(ast.name))
-                ast.params = []
-                ast.state_vars = None
+                ast['params'] = []
+                del ast['state_vars']
             return self._exported_event(ast)
 
     def wildcard_parameter(self, ast):

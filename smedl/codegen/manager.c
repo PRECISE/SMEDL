@@ -257,7 +257,7 @@ static void set_interrupted(int signum) {
 }
 
 int {% if cpp %}c_{% endif %}main(int argc, char **argv) {
-    // Set signal handlers so we can shut down cleanly
+    /* Set signal handlers so we can shut down cleanly */
     if (signal(SIGINT, set_interrupted) == SIG_ERR) {
         fprintf(stderr, "Could not set SIGINT handler\n");
         return 2;
