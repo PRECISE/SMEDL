@@ -47,8 +47,6 @@ class StateVariable(object):
                 self._initial_value = '""'
             elif self._type == expr.SmedlType.POINTER:
                 self._initial_value = "NULL"
-            elif self._type == expr.SmedlType.THREAD:
-                self._initial_value = None
             elif self._type == expr.SmedlType.OPAQUE:
                 self.initial_value = '(SMEDLOpaque) {NULL, 0}'
 

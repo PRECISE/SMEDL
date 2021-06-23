@@ -58,7 +58,6 @@ class SmedlType(Enum):
     CHAR = ('char', 'char')
     STRING = ('string', 'char *')
     POINTER = ('pointer', 'void *')
-    THREAD = ('thread', 'pthread_t')
     OPAQUE = ('opaque', 'SMEDLOpaque')
 
     def convertible_to(self, other):
