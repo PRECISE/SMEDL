@@ -58,3 +58,6 @@ from smedl_syntax import SmedlLexer, A4smedlLexer
 def setup(app):
     app.add_lexer('smedl', SmedlLexer)
     app.add_lexer('a4smedl', A4smedlLexer)
+
+#pygments_style = 'default'
+pygments_style = 'friendly'
