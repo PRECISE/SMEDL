@@ -736,12 +736,15 @@ class SMEDLParser(Parser):
                 'expecting one of: '
                 '[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]'
                 '+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?['
-                "0-9]+ <float> [0-9]+ <integer> '(?:[^'\\\\"
-                'n]|\\[0-7]{1,3}|\\x[0-9a-fA-F]{2}|\\u[0-9a-'
-                'fA-F]{4}|\\U[0-9a-fA-F]{8}|\\[\'"?\\abfnrtv]'
-                ')\' <char> "[^"\\\\n]*(?:\\.[^"\\\\n]*)*"'
-                "<string> 'true' 'false' <bool> 'NULL'"
-                "'null'"
+                '0-9]+|0[Xx][0-9A-Fa-f]*\\.[0-9A-Fa-f]+[Pp'
+                '][+-]?[0-9A-Fa-f]+|0Xx[0-9A-Fa-f]+\\.?[Pp'
+                '][+-]?[0-9A-Fa-f]+ <float>'
+                '[1-9][0-9]*|[0-7]+|0[Xx][0-9A-Fa-f]+'
+                "<integer> '(?:[^'\\\\n]|\\[0-7]{1,3}|\\x[0-9"
+                'a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F'
+                ']{8}|\\[\'"?\\abfnrtv])\' <char>'
+                '"[^"\\\\n]*(?:\\.[^"\\\\n]*)*" <string>'
+                "'true' 'false' <bool> 'NULL' 'null'"
             )
         self._define(
             ['type', 'value'],
@@ -813,12 +816,15 @@ class SMEDLParser(Parser):
                         'expecting one of: '
                         '[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]'
                         '+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?['
-                        "0-9]+ <float> [0-9]+ <integer> '(?:[^'\\\\"
-                        'n]|\\[0-7]{1,3}|\\x[0-9a-fA-F]{2}|\\u[0-9a-'
-                        'fA-F]{4}|\\U[0-9a-fA-F]{8}|\\[\'"?\\abfnrtv]'
-                        ')\' <char> "[^"\\\\n]*(?:\\.[^"\\\\n]*)*"'
-                        "<string> 'true' 'false' <bool> 'NULL'"
-                        "'null'"
+                        '0-9]+|0[Xx][0-9A-Fa-f]*\\.[0-9A-Fa-f]+[Pp'
+                        '][+-]?[0-9A-Fa-f]+|0Xx[0-9A-Fa-f]+\\.?[Pp'
+                        '][+-]?[0-9A-Fa-f]+ <float>'
+                        '[1-9][0-9]*|[0-7]+|0[Xx][0-9A-Fa-f]+'
+                        "<integer> '(?:[^'\\\\n]|\\[0-7]{1,3}|\\x[0-9"
+                        'a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F'
+                        ']{8}|\\[\'"?\\abfnrtv])\' <char>'
+                        '"[^"\\\\n]*(?:\\.[^"\\\\n]*)*" <string>'
+                        "'true' 'false' <bool> 'NULL' 'null'"
                     )
             with self._option():
                 with self._group():
@@ -852,12 +858,16 @@ class SMEDLParser(Parser):
                 'expecting one of: '
                 '[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]'
                 '+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?['
-                "0-9]+ <float> [0-9]+ <integer> '(?:[^'\\\\"
-                'n]|\\[0-7]{1,3}|\\x[0-9a-fA-F]{2}|\\u[0-9a-'
-                'fA-F]{4}|\\U[0-9a-fA-F]{8}|\\[\'"?\\abfnrtv]'
-                ')\' <char> "[^"\\\\n]*(?:\\.[^"\\\\n]*)*"'
-                "<string> 'true' 'false' <bool> 'NULL'"
-                "'null' '+' '-'"
+                '0-9]+|0[Xx][0-9A-Fa-f]*\\.[0-9A-Fa-f]+[Pp'
+                '][+-]?[0-9A-Fa-f]+|0Xx[0-9A-Fa-f]+\\.?[Pp'
+                '][+-]?[0-9A-Fa-f]+ <float>'
+                '[1-9][0-9]*|[0-7]+|0[Xx][0-9A-Fa-f]+'
+                "<integer> '(?:[^'\\\\n]|\\[0-7]{1,3}|\\x[0-9"
+                'a-fA-F]{2}|\\u[0-9a-fA-F]{4}|\\U[0-9a-fA-F'
+                ']{8}|\\[\'"?\\abfnrtv])\' <char>'
+                '"[^"\\\\n]*(?:\\.[^"\\\\n]*)*" <string>'
+                "'true' 'false' <bool> 'NULL' 'null' '+'"
+                "'-'"
             )
         self._define(
             ['type', 'value'],
@@ -866,11 +876,11 @@ class SMEDLParser(Parser):
 
     @tatsumasu()
     def _integer_(self):  # noqa
-        self._pattern('[0-9]+')
+        self._pattern('[1-9][0-9]*|[0-7]+|0[Xx][0-9A-Fa-f]+')
 
     @tatsumasu()
     def _float_(self):  # noqa
-        self._pattern('[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+')
+        self._pattern('[0-9]*\\.[0-9]+(?:[Ee][+-]?[0-9]+)?|[0-9]+\\.(?:[Ee][+-]?[0-9]+)?|[0-9]+[Ee][+-]?[0-9]+|0[Xx][0-9A-Fa-f]*\\.[0-9A-Fa-f]+[Pp][+-]?[0-9A-Fa-f]+|0Xx[0-9A-Fa-f]+\\.?[Pp][+-]?[0-9A-Fa-f]+')
 
     @tatsumasu()
     def _char_(self):  # noqa
