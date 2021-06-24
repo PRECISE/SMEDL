@@ -186,14 +186,28 @@ acts as if there is an anonymous implicit state between each chained event::
            -> confirm_auth() -> unlocked;
     locked -> auth_with_pin(code) when (code == 67890) -> unlocked_admin;
 
-.. note::
-
-   Since there is an anonymous implicit state between ``auth_with_pin`` and
-   ``confirm_auth`` in the first transition, ``auth_with_pin(67890)`` would be
-   ignored if it came between ``auth_with_pin(12345)`` and ``confirm_auth()``.
+Note that the anonymous implicit state between ``auth_with_pin`` and
+``confirm_auth`` means that ``auth_with_pin(67890)`` would be ignored if it
+came between ``auth_with_pin(12345)`` and ``confirm_auth()``.
 
 An else clause on a transition with chained events applies to every event in
 the chain.
+
+.. admonition:: Event Ordering
+
+   An imported event's actions may raise internal and exported events, some of
+   which may raise further events. The processing of this entire chain of
+   events is known as a *macro step*. Macro steps always run to completion
+   before another event is imported.
+
+   Within a macro step, if a single event triggers a simultaneous transition in
+   multiple scenarios, either scenario is permitted to run first. However, all
+   raised events are processed in the order that they were raised.
+
+   For example, if the actions for ``event_a`` raise ``event_b`` and then
+   ``event_c``, both will be queued until ``event_a``'s actions are complete.
+   Then, ``event_b`` will be handled, followed by ``event_c``. If ``event_b``'s
+   actions raised a fourth event, it would be queued until after ``event_c``.
 
 .. _types:
 
@@ -216,13 +230,13 @@ SMEDL Type  C Equivalent    Description
 
 .. note::
 
-   Opaque vs. Pointer
+   **Opaque vs. Pointer**
      While opaques contain a ``void *``, the actual value is the data pointed
      to. It is assumed that the data can be safely copied (e.g. it does not
      contain self-referential pointers). Whereas for pointers, the pointer
      itself is the value.
 
-   Opaque vs. String
+   **Opaque vs. String**
      Opaques are of a known size, good for representing an arbitrary array or
      struct. They may contain null bytes. Strings may not contain null bytes,
      since the null-terminator is used to determine their length.
