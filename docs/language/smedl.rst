@@ -280,11 +280,31 @@ have the same precedence as in C:
 3. Addition ``+``, subtraction ``-``
 4. Left shift ``<<``, right shift ``>>``
 5. Less than/or equal ``<`` ``<=``, greater than/or equal ``>`` ``>=``
-6. Bitwise AND ``&``
-7. Bitwise XOR ``^``
-8. Bitwise OR ``|``
-9. Logical AND ``&&``
-10. Logical OR ``||``
+6. Equal ``==``, not equal ``!=``
+7. Bitwise AND ``&``
+8. Bitwise XOR ``^``
+9. Bitwise OR ``|``
+10. Logical AND ``&&``
+11. Logical OR ``||``
+
+.. warning::
+
+   Equal/not equal operations on strings and opaques come with some
+   caveats.
+
+   1. Opaque equality is based on a byte-by-byte comparison with ``memcmp()``.
+      This may not always produce the intended result, e.g. when the opaque is
+      filled from a struct with padding bytes. An alternative option is to use
+      a helper function that accepts two ``SMEDLOpaque`` and returns zero or
+      nonzero (see :ref:`helpers`).
+
+   2. Due to limitations on type verification, ``==`` and ``!=`` may not work
+      properly on strings and opaques when *both* sides of the comparison are a
+      helper function. SMEDL relies on type checking to determine when to
+      generate ``strcmp()`` or ``memcmp()`` instead of plain ``==``/``!=``.
+      Unfortunately, since SMEDL cannot verify the types for helper functions,
+      when *both* sides are helpers, it must generate plain ``==``/``!=`` by
+      default.
 
 .. _helpers:
 
