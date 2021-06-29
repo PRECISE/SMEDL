@@ -45,7 +45,9 @@ allows monitors to be parameterized::
     monitor FirstCommand(int);
     monitor CommandPair(int, int);
 
-Or they can be declared parameterless::
+Monitor parameters are sometimes referred to as "identities" since they can be
+used to identify a particular instance. Monitors can also be declared
+parameterless::
 
     monitor Frontend();
 
@@ -156,7 +158,9 @@ The very simplest connections might look like this::
 
     MonA.foo => MonB.bar;   // Monitor to Monitor
     foo => MonB.bar;        // PEDL to Monitor
+    pedl.foo => MonB.bar;   // PEDL to Monitor
     MonA.foo => bar;        // Monitor to PEDL
+    MonA.foo => pedl.bar;   // Monitor to PEDL
 
 The left side of a connection is always an exported monitor event or an
 imported PEDL event. The right side is either an imported monitor event, an
@@ -172,17 +176,123 @@ Connections are normally given names::
 The names are used occasionally in the code, primarily in the transport
 adapters, e.g. the channel name for RabbitMQ or the topic name for ROS.
 
-.. TODO params
+If the destination monitor or event have parameters, the connection needs to
+specify how to fill them (otherwise, empty brackets and parentheses are
+optional)::
 
-    [<name>:] <source-mon>.<source-event> =>
-        <dest-mon>.]<dest-event>
+    foobar: MonA.foo => MonB[#0, $0].bar(#0, $1);
+    foobar: MonA.foo => MonB[Id.0, Param.0].bar(Id.0, Param.1);
 
-.. TODO
+Parameters can come from the source monitor or from the source event. The
+former are specified with ``Id.<num>`` or ``#<num>`` and the latter with
+``Param.<num>`` or ``$<num>``. The above two lines are equivalent.
+
+The same source event can be sent to multiple destinations by using it in
+multiple connections. When doing this, the connection name need not be repeated
+each time, but it cannot be changed::
+
+    // Allowed:
+    foobar: MonA.foo => MonB[#0].bar($0);
+    foobar: MonA.foo => MonC.baz(#0);
+
+    // Allowed:
+    foobar: MonA.foo => MonB[#0].bar($0);
+    MonA.foo => MonC.baz(#0);
+
+    // Allowed:
+    MonA.foo => MonB[#0].bar($0);
+    foobar: MonA.foo => MonC.baz(#0);
+
+    // NOT allowed:
+    foobar: MonA.foo => MonB[#0].bar($0);
+    foobaz: MonA.foo => MonC.baz(#0);
+
+Unicast and Multicast
+~~~~~~~~~~~~~~~~~~~~~
+
+Wildcards can be used in the destination monitor parameters, which creates a
+multicast connection::
+
+    foobar: MonA.foo => MonB[*, *].bar(#0, $1);
+    baz_in: baz => MonB[$0, *].bar();
+
+Unicast and multicast connections are fundamentally different. Unicast
+connections send the event to the specific instance identified by a full set of
+identities. If that instance does not exist, it is *dynamically instantiated*
+on the fly before the event is sent. Multicast connections send the event to
+any monitors that match the non-wildcard identities. If no such monitor exists,
+nothing happens.
+
+Explicit Creation
+~~~~~~~~~~~~~~~~~
+
+The last type of connection is an explicit creation event and it looks like
+these::
+
+    foo: MonA.foo => MonB(#0, $0);
+    bar: bar => MonB($0, $1, some_var=$2);
+
+These create a new instance of ``MonB`` explicitly. Wildcard parameters are not
+allowed. The second line shows an additional shortcut that is possible with
+explicit creation: state variable initializers can be added to the end of the
+parameter list. These override the default initial values for the given state
+variables.
+
+Note that explicit creation and exported PEDL events use similar syntax. If
+it's ever ambiguous which is intended (that is, a monitor and PEDL event share
+the same name), explicit creation takes priority. Use the ``pedl.`` prefix to
+force an exported PEDL event.
+
+Implicit PEDL Exports
+~~~~~~~~~~~~~~~~~~~~~
+
+Any events exported by a monitor that aren't used in a connection explicitly
+are assumed to be intended for the target system. Thus, implicit exported PEDL
+events are created for them, and implicit connections made between the exported
+monitor event and the exported PEDL event. The parameters for the PEDL event
+will match the parameters for the monitor event.
 
 Examples
 --------
 
-Here is the architecture specification that several snippets above came from::
+Here is an example architecture specification for monitoring online auctions::
+
+    system Auction;
+
+    import "auctionmonitor.smedl";
+
+    monitor Auctionmonitor(string);
+
+    // Params: item name, reserve, duration
+    imported new_auction(string, float, int);
+    // Params: item name, amount
+    imported bid(string, float);
+    // Params: item_name
+    imported sold(string);
+    imported endOfDay();
+
+    ch1: new_auction => Auctionmonitor($0, reserve=$1, duration=$2);
+    ch2: bid => Auctionmonitor[$0].bid($1);
+    ch3: sold => Auctionmonitor[$0].sold();
+    ch4: endOfDay => Auctionmonitor[*].end_of_day;
+
+The goal is to ensure bids monotonically increase, items never sell before
+meeting reserve, and items never sell after a certain number of days pass.
+
+* There is a single monitor specification, with a new instance created for each
+  item whenever a ``new_auction`` event comes. Explicit creation is used so the
+  reserve and duration variables can be initialized.
+* ``bid`` and ``sold`` events go to the specific instance for the item they
+  refer to.
+* ``endOfDay`` events go to all instances because of the wildcard. That way,
+  they can all tick off another day from their duration and expire if
+  necessary. If there are no auctions yet, nothing happens.
+* There are no connections for exported PEDL events, but since none of the
+  monitor's exported events are part of a connection, implicit PEDL events will
+  be created for all of them.
+
+Here is another architecture specification that several snippets above came
+from::
 
     system NestedCommands;
 
@@ -201,5 +311,19 @@ Here is the architecture specification that several snippets above came from::
     succ: succeed => CommandPair[$0, *].first_success();
     succ: succeed => FirstCommand[$0].success();
     out: CommandPair.violation => violation(#0, #1);
+
+The goal here is to validate that if command *X* starts after command *Y*, then
+command *X* must succeed before command *Y*.
+
+* Each new command that comes causes a ``FirstCommand`` to be created *and* is
+  sent to all existing ``FirstCommand`` as a second command.
+* Every time an existing ``FirstCommand`` receives a command, it emits
+  ``second_command``, which creates a ``CommandPair``
+* Every ``success`` event is sent to all ``CommandPair`` where the first
+  command matches as ``first_success`` and all ``CommandPair`` where the second
+  command matches as ``second_success``. Each ``CommandPair`` can raise a
+  ``violation`` event if its successes some out of order.
+* Every ``success`` is also sent to the matching ``FirstCommand``, so it can
+  enter its final state and be deallocated.
 
 More examples can be found in the "tests/monitors" directory.

@@ -209,6 +209,31 @@ the chain.
    Then, ``event_b`` will be handled, followed by ``event_c``. If ``event_b``'s
    actions raised a fourth event, it would be queued until after ``event_c``.
 
+Final States
+------------
+
+Sometimes, when a monitor reaches a certain state, it is known that it has
+reached the end of its useful life (e.g. if a monitored connection is closed).
+Final states allow such monitors to be deallocated to save memory and CPU
+cycles.
+
+One or more scenarios can have a final state declared right after the scenario
+label::
+
+    scenarios:
+        main:
+            finalstate closed;
+            pre -> open() -> opened;
+            opened -> close() -> closed;
+
+Once the final state is reached, the monitor signals that it can be
+deallocated. (When a full monitor system is generated, the local wrapper
+handles the actual deallocation.)
+
+If more than one scenario has a final state, they must all be reached before
+the monitor signals for deallocation. (Scenarios without final states are
+ignored during this check.)
+
 .. _types:
 
 Types
