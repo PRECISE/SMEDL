@@ -64,19 +64,11 @@ is simply a directory that contains all testing-related files. The various test
 scripts are in fact executed as top-level modules (e.g. `test_monitors`, not
 `tests.test_monitors`).
 
-Monitor Descriptions
---------------------
+Example Monitors
+----------------
 
 The monitors in the `monitors/` directory can be useful examples of how to
-write a SMEDL monitoring system. Here is a description of each one:
-
-- `simple`: A simple monitor with one imported event and one exported event. It
-  raises the exported event every time it receives the imported event. A "hello
-  world" monitor of sorts.
-- `adder`: A monitor that keeps a running total of the measurements it
-  receives.
-- `multi_moving_ave`: An example monitor that computes moving averages for
-  multiple objects (using dynamic instantiation) and raises an alarm if the
-  at least half of the averages rise above a threshold.
+write a SMEDL monitoring system. See the README with each monitor for a
+description of what it does.
 
 [pytest-docs]: https://docs.pytest.org/en/stable/

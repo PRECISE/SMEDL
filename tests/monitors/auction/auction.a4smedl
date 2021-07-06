@@ -1,0 +1,10 @@
+system Auction;
+
+import "auctionmonitor.smedl";
+
+monitor Auctionmonitor(string);
+
+ch1: create_auction => Auctionmonitor[$0].create_auction($0, $1, $2);
+ch2: bid => Auctionmonitor[$0].bid($0, $1);
+ch3: sold => Auctionmonitor[$0].sold($0);
+ch4: endOfDay => Auctionmonitor[*].end_of_day;

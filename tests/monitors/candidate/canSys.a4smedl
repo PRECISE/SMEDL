@@ -1,0 +1,28 @@
+system CanSys;
+
+import "candidateRank.smedl";
+import "candidateSelection.smedl";
+import "collect.smedl";
+import "collectV.smedl";
+
+monitor CandidateSelection(string, string);
+monitor CandidateRank(string, string, string);
+monitor CollectV(string);
+monitor Collect();
+
+syncset Candidate {CandidateSelection, CandidateRank, CollectV, Collect, pedl};
+
+ch1: member => CandidateSelection[$1, $0].member($0, $1);
+ch2: candidate => CandidateSelection[$1,*].candidate($0,$1);
+ch3: end => CandidateSelection[*,*].end;
+ch5: CandidateRank.valid => CandidateSelection[#2,#1].valid;
+ch6: CandidateSelection.shouldrank => CandidateRank[$0, #1, #0].shouldrank;
+ch7: rank => CandidateRank[$1, $0, *].rank($0, $1, $2);
+ch8: CandidateSelection.addP => CollectV[#1].addP;
+ch9: CandidateSelection.result => CollectV[#1].inRes($0);
+ch10: CollectV.addV => Collect.addV;
+ch11: CollectV.result => Collect.inRes($0);
+
+
+
+

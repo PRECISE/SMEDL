@@ -1,0 +1,45 @@
+object Auctionmonitor;
+
+
+state:
+float reserve_price;
+float current_price = 0;
+float duration;
+float days_passed = 0;
+
+events:
+imported create_auction(string, int, int);
+imported bid(string, int);
+imported sold(string);
+imported end_of_day();
+exported alarm_recreation();
+exported alarm_low_bid();
+exported alarm_sold_early();
+exported alarm_not_sold();
+exported alarm_action_after_end();
+exported alarm_action_before_start();
+
+scenarios:
+
+main:
+init -> create_auction(item, minimum, period) {reserve_price = minimum; duration = period;} -> bidding;
+
+bidding -> bid(item, amount) {current_price = amount;} -> above_reserve;
+bidding -> sold(item) {raise alarm_sold_early();} -> error;
+bidding -> end_of_day() when (days_passed < duration - 1) {days_passed++;} -> bidding
+           else -> done;
+bidding -> create_auction(item, minimum, period) {raise alarm_recreation();} -> error;
+
+above_reserve -> sold(item) when (current_price < reserve_price ) {raise alarm_low_bid();} -> error
+             else -> done;
+above_reserve -> bid(item, amount) when (amount > current_price) {current_price = amount;} -> above_reserve;
+above_reserve -> end_of_day() when (days_passed < duration - 1) {days_passed++;} -> above_reserve
+           else -> done;
+above_reserve -> create_auction(item, minimum, period) {raise alarm_recreation();} -> error;
+
+done -> end_of_day() -> done;
+done -> bid(item, amount) {raise alarm_action_after_end();} -> error;
+done -> sold(item) {raise alarm_action_after_end();} -> error;
+done  -> create_auction(item, minimum, period) {raise alarm_recreation();} -> error;
+
+

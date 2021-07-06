@@ -6,7 +6,7 @@ import "averager.smedl";
 monitor Frontend();
 monitor Averager(int); //id
 
-syncset MultiAve {Frontend, Averager};
+syncset MultiAve {Frontend, Averager, pedl};
 
 in: measurement => Frontend.newMeasurement();
 in: measurement => Averager[$0].measurement($1);

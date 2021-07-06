@@ -1,0 +1,16 @@
+system NestedCommands;
+
+import "first_command.smedl";
+import "command_pair.smedl";
+
+monitor FirstCommand(int);
+monitor CommandPair(int, int);
+
+syncset {FirstCommand, CommandPair, pedl};
+
+cmd1: command => FirstCommand[*].command($0);
+cmd1: command => FirstCommand($0);
+cmd2: FirstCommand.second_command => CommandPair(#0, $0);
+succ: succeed => CommandPair[*, $0].second_success();
+succ: succeed => CommandPair[$0, *].first_success();
+succ: succeed => FirstCommand[$0].success();
