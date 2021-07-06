@@ -138,7 +138,7 @@ static void setup_{{mon.name}}_callbacks({{spec.name}}Monitor *mon) {
 /* Initialization interface - Initialize the local wrapper. Must be called once
  * before creating any monitors or importing any events.
  * Return nonzero on success, zero on failure. */
-int init_{{mon.name}}_local_wrapper() {
+int init_{{mon.name}}_local_wrapper(void) {
     {% if mon.params is nonempty %}
     {% for param_set in mon.param_subsets %}
     if (!monitormap_init(&{{mon_map_name(param_set)}}, offsetof({{spec.name}}Monitor, identities), {{mon_hash_name(param_set)}}, {{mon_equals_name(param_set)}})) {
@@ -168,7 +168,7 @@ fail_init_{{mon_map_name(param_set)}}:
 
 /* Cleanup interface - Tear down and free the resources used by this local
  * wrapper and all the monitors it manages */
-void free_{{mon.name}}_local_wrapper() {
+void free_{{mon.name}}_local_wrapper(void) {
     {% if mon.params is nonempty %}
     MonitorInstance *instances = monitormap_free(&monitor_map_all, 1);
     {% for param_set in mon.param_subsets

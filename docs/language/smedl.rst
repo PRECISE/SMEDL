@@ -241,17 +241,17 @@ Types
 
 SMEDL uses the following data types:
 
-=========== =============== ====================================
-SMEDL Type  C Equivalent    Description
-=========== =============== ====================================
-``int``     ``int``         Integer
-``float``   ``double``      Double precision floating point
-``double``                  Alias for ``float``
-``char``    ``char``        Character or Byte
-``string``  ``char *``      Null-terminated string
-``pointer`` ``void *``      Pointer
-``opaque``  ``SMEDLOpaque`` Opaque data of known size
-=========== =============== ====================================
+=========== ======================= ====================================
+SMEDL Type  C Equivalent            Description
+=========== ======================= ====================================
+``int``     ``int``                 Integer
+``float``   ``double``              Double precision floating point
+``double``                          Alias for ``float``
+``char``    ``char``                Character or Byte
+``string``  ``char *``              Null-terminated string
+``pointer`` ``void *``              Pointer
+``opaque``  :c:struct:`SMEDLOpaque` Opaque data of known size.
+=========== ======================= ====================================
 
 .. note::
 
@@ -320,8 +320,8 @@ have the same precedence as in C:
    1. Opaque equality is based on a byte-by-byte comparison with ``memcmp()``.
       This may not always produce the intended result, e.g. when the opaque is
       filled from a struct with padding bytes. An alternative option is to use
-      a helper function that accepts two ``SMEDLOpaque`` and returns zero or
-      nonzero (see :ref:`helpers`).
+      a helper function that accepts two :c:struct:`SMEDLOpaque` and returns
+      zero or nonzero (see :ref:`helpers`).
 
    2. Due to limitations on type verification, ``==`` and ``!=`` may not work
       properly on strings and opaques when *both* sides of the comparison are a

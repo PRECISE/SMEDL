@@ -13,11 +13,11 @@
 /* Initialization interface - Initialize the local wrapper. Must be called once
  * before creating any monitors or importing any events.
  * Return nonzero on success, zero on failure. */
-int init_{{mon.name}}_local_wrapper();
+int init_{{mon.name}}_local_wrapper(void);
 
 /* Cleanup interface - Tear down and free the resources used by this local
  * wrapper and all the monitors it manages */
-void free_{{mon.name}}_local_wrapper();
+void free_{{mon.name}}_local_wrapper(void);
 
 /* Creation interface - Instantiate a new {{mon.name}} monitor.
  * Return nonzero on success or if monitor already exists, zero on failure.
