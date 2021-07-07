@@ -1,8 +1,14 @@
 include LICENSE.txt
 include README.md
 include CHANGELOG.md
-graft doc
+graft docs
 graft vim
 graft emacs
+graft tests
+prune docs/_build
+prune docs/__pycache__
+prune tests/__pycache__
+prune tests/ctests/__pycache__
+prune tests/ctests/unity/__pycache__
 
 recursive-include smedl *.c *.h

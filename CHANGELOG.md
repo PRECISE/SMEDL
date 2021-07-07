@@ -4,6 +4,13 @@ Changelog
 [Unreleased]
 ------------
 
+[2.0.1] - 2021-07-07
+--------------------
+
+### Fixed
+
+- Updated MANIFEST.in to include docs and tests in source distributions
+
 [2.0.0] - 2021-07-06
 --------------------
 
@@ -88,6 +95,7 @@ This is the first version in the changelog, and the last version of SMEDL 1.x.
 - A synchronous interface to the global wrapper was added for less overhead
   between the monitoring system and the target system
 
-[Unreleased]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/master...v2.0.0
+[Unreleased]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/master...v2.0.1
+[2.0.1]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/v2.0.1...v2.0.0
 [2.0.0]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/v2.0.0...v1.1.1
 [1.1.1]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/-/tags/v1.1.1
