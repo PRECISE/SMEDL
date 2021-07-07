@@ -1,0 +1,623 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>SMEDL Specifications &#8212; SMEDL  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Architecture Specifications" href="a4smedl.html" />
+    <link rel="prev" title="SMEDL Specification Language" href="index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SMEDL</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">SMEDL Specification Language</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">SMEDL Specifications</a></li>
+<li class="toctree-l2"><a class="reference internal" href="a4smedl.html">Architecture Specifications</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">SMEDL Programming Interface</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">SMEDL Specification Language</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">SMEDL Specification Language</a></li>
+      <li>Next: <a href="a4smedl.html" title="next chapter">Architecture Specifications</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="smedl-specifications">
+<h1>SMEDL Specifications<a class="headerlink" href="#smedl-specifications" title="Permalink to this headline">¶</a></h1>
+<p>A SMEDL specification consists of a declaration, optional helper includes, and
+three sections: state variables (which is optional), event declarations, and
+scenarios. C-style <code class="docutils literal notranslate"><span class="pre">/*</span> <span class="pre">...</span> <span class="pre">*/</span></code> and <code class="docutils literal notranslate"><span class="pre">//</span> <span class="pre">...</span></code> comments are supported, and
+whitespace is ignored except as a word separator.</p>
+<p>The declaration is a single line naming the monitor, for example:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">object</span><span class="w"> </span><span class="n">NoLightWeakUntilButton</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Identifiers in SMEDL follow nearly the same rules as in C:</p>
+<ul class="simple">
+<li><p>The first character must be a lowercase or uppercase letter</p></li>
+<li><p>Characters after may be letters, numbers, or underscore</p></li>
+</ul>
+<p>The only difference from C is that they cannot start with an underscore. (Such
+identifiers are reserved for SMEDL’s internal use.)</p>
+<p>The rest of the sections are described below.</p>
+<section id="state-variables">
+<h2>State Variables<a class="headerlink" href="#state-variables" title="Permalink to this headline">¶</a></h2>
+<p>This section declares the state variables and their initial values:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">state:</span><span class="w"></span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">light</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">button</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>State variables can be used in the conditions and actions for a transition.
+They can have any of the six types SMEDL recognizes (see <a class="reference internal" href="#types"><span class="std std-ref">Types</span></a>). Initial
+values can be omitted:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">state:</span><span class="w"></span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">light</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">button</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>In that case, default initial values will be used:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 31%" />
+<col style="width: 69%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>SMEDL Type</p></th>
+<th class="head"><p>Default Initial Value</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0.0</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">char</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">'\0'</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">string</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pointer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">NULL</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">opaque</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{.data=NULL,</span> <span class="pre">.size=0}</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>If there are no state variables, the section can be left out entirely.</p>
+</section>
+<section id="event-declarations">
+<h2>Event Declarations<a class="headerlink" href="#event-declarations" title="Permalink to this headline">¶</a></h2>
+<p>The event declarations section defines the events that the monitor works with
+and their parameters:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">events:</span><span class="w"></span>
+<span class="w">  </span><span class="kd">imported</span><span class="w"> </span><span class="nf">light_is</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+<span class="w">  </span><span class="kd">imported</span><span class="w"> </span><span class="nf">button_is</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+<span class="w">  </span><span class="kd">internal</span><span class="w"> </span><span class="nf">check</span><span class="p">();</span><span class="w"></span>
+<span class="w">  </span><span class="kd">exported</span><span class="w"> </span><span class="nf">satisfaction</span><span class="p">();</span><span class="w"></span>
+<span class="w">  </span><span class="kd">exported</span><span class="w"> </span><span class="nf">violation</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Event parameters can be any of the SMEDL types (see <a class="reference internal" href="#types"><span class="std std-ref">Types</span></a>) .If an event
+has multiple parameters, they are separated by commas:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">imported</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>There are three types of events:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">imported</span></code></dt><dd><p>Events received from outside this monitor. They may be used to trigger
+transitions.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exported</span></code></dt><dd><p>Events emitted from this monitor. They can be raised in transition actions.
+(They can also act as internal events, if that would be convenient.)</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">internal</span></code></dt><dd><p>Events raised in one scenario and received by another within the same
+monitor. They cannot enter nor leave the monitor.</p>
+</dd>
+</dl>
+</section>
+<section id="scenarios">
+<h2>Scenarios<a class="headerlink" href="#scenarios" title="Permalink to this headline">¶</a></h2>
+<p>The scenarios section describes the actual state machines that make up the
+monitor:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">scenarios:</span><span class="w"></span>
+<span class="w">  </span><span class="nl">input:</span><span class="w"></span>
+<span class="w">    </span><span class="n">idle</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">light_is</span><span class="p">(</span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="n">light</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">status</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">raise</span><span class="w"> </span><span class="nf">check</span><span class="p">();</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">idle</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">idle</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">button_is</span><span class="p">(</span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="n">button</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">status</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">raise</span><span class="w"> </span><span class="nf">check</span><span class="p">();</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">idle</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">  </span><span class="nl">verify:</span><span class="w"></span>
+<span class="w">    </span><span class="n">inconclusive</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">check</span><span class="p">()</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">light</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">button</span><span class="p">)</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">inconclusive</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">inconclusive</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">check</span><span class="p">()</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">button</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="k">raise</span><span class="w"> </span><span class="nf">satisfaction</span><span class="p">();}</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">satisfied</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="k">raise</span><span class="w"> </span><span class="nf">violation</span><span class="p">();}</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">violated</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">satisfied</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">check</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">satisfied</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">violated</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">check</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">violated</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>That example contains two scenarios, labeled <code class="docutils literal notranslate"><span class="pre">input</span></code> and <code class="docutils literal notranslate"><span class="pre">verify</span></code>. Each
+scenario is a separate state machine.</p>
+<p>Each scenario is defined as a list of transitions. Each transition contains a
+start state, one or more events, an end state, and an optional else clause:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="s">&lt;start-state&gt;</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="s">&lt;event&gt;</span><span class="p">(</span><span class="s">&lt;params&gt;</span><span class="p">)</span><span class="w"> </span>[<span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="s">&lt;condition&gt;</span><span class="p">)</span>]<span class="w"> </span>[<span class="p">{</span><span class="s">&lt;actions&gt;</span><span class="p">}</span>]<span class="w"></span>
+<span class="w">             </span>[<span class="o">-&gt;</span><span class="w"> </span><span class="s">&lt;event&gt;</span><span class="p">(</span><span class="s">&lt;params&gt;</span><span class="p">)</span><span class="w"> </span>[<span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="s">&lt;condition&gt;</span><span class="p">)</span>]<span class="w"> </span>[<span class="p">{</span><span class="s">&lt;actions&gt;</span><span class="p">}</span>]]<span class="w"></span>
+<span class="w">              </span>...<span class="w"></span>
+<span class="w">              </span><span class="o">-&gt;</span><span class="w"> </span><span class="s">&lt;end-state&gt;</span><span class="w"></span>
+<span class="w">             </span>[<span class="k">else</span><span class="w"> </span>[<span class="p">{</span><span class="s">&lt;actions&gt;</span><span class="p">}</span>]<span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="s">&lt;else-state&gt;</span>]<span class="w"> </span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The first transition’s start state becomes the initial state for the entire
+scenario.</p>
+<p>A very simple transition could look like this:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>If the <code class="docutils literal notranslate"><span class="pre">auth</span></code> event arrives while the scenario is in the <code class="docutils literal notranslate"><span class="pre">locked</span></code> state, it
+transitions to the <code class="docutils literal notranslate"><span class="pre">unlocked</span></code> state.</p>
+<p>Transitions can also have conditions:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth_with_pin</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">12345</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">auth_with_pin</span></code> event will be ignored from the <code class="docutils literal notranslate"><span class="pre">locked</span></code> state unless
+the condition is true. Conditions can be any valid expression that’s not of
+type <code class="docutils literal notranslate"><span class="pre">string</span></code> or <code class="docutils literal notranslate"><span class="pre">opaque</span></code> (see <a class="reference internal" href="#expressions"><span class="std std-ref">Expressions</span></a>). They can make use of
+state variables and the event’s parameters, and their truthiness is evaluated
+according to C rules: zero and NULL are false, anything else is true.</p>
+<p>Transitions can have actions that execute when the transition is taken. Actions
+are used to modify state variables or raise internal and exported events (see
+<a class="reference internal" href="#actions"><span class="std std-ref">Actions</span></a> for the full list):</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth_with_pin</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">12345</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="n">unlock_count</span><span class="o">++</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">raise</span><span class="w"> </span><span class="nf">audit_unlock</span><span class="p">(</span><span class="n">code</span><span class="p">,</span><span class="w"> </span><span class="n">unlock_count</span><span class="p">);</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Multiple transitions can have the same event from the same start state with
+different conditions. The first transition that matches will be taken. For
+example:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth_with_pin</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">12345</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked</span><span class="p">;</span><span class="w"></span>
+<span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth_with_pin</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">67890</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked_admin</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>An else clause on a transition specifies which state to transition to when the
+start state and event match, but the condition does not. It can optionally
+contain actions as well:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth_with_pin</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">12345</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked</span><span class="w"></span>
+<span class="w">    </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="k">raise</span><span class="w"> </span><span class="nf">audit_denial</span><span class="p">(</span><span class="n">code</span><span class="p">);}</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">locked</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>When there are multiple transitions with the same start state and event, only
+one of them may contain an else clause. That else clause applies only if <em>none</em>
+of the conditions match, regardless of order. In the following example,
+<code class="docutils literal notranslate"><span class="pre">audit_denial</span></code> is only raised if neither code matches:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth_with_pin</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">12345</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked</span><span class="w"></span>
+<span class="w">    </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="k">raise</span><span class="w"> </span><span class="nf">audit_denial</span><span class="p">(</span><span class="n">code</span><span class="p">);}</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">locked</span><span class="p">;</span><span class="w"></span>
+<span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth_with_pin</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">67890</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked_admin</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Transitions can contain multiple events chained together. In that case, SMEDL
+acts as if there is an anonymous implicit state between each chained event:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth_with_pin</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">12345</span><span class="p">)</span><span class="w"></span>
+<span class="w">       </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">confirm_auth</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked</span><span class="p">;</span><span class="w"></span>
+<span class="n">locked</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">auth_with_pin</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">code</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">67890</span><span class="p">)</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">unlocked_admin</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Note that the anonymous implicit state between <code class="docutils literal notranslate"><span class="pre">auth_with_pin</span></code> and
+<code class="docutils literal notranslate"><span class="pre">confirm_auth</span></code> means that <code class="docutils literal notranslate"><span class="pre">auth_with_pin(67890)</span></code> would be ignored if it
+came between <code class="docutils literal notranslate"><span class="pre">auth_with_pin(12345)</span></code> and <code class="docutils literal notranslate"><span class="pre">confirm_auth()</span></code>.</p>
+<p>An else clause on a transition with chained events applies to every event in
+the chain.</p>
+<div class="admonition-event-ordering admonition">
+<p class="admonition-title">Event Ordering</p>
+<p>An imported event’s actions may raise internal and exported events, some of
+which may raise further events. The processing of this entire chain of
+events is known as a <em>macro step</em>. Macro steps always run to completion
+before another event is imported.</p>
+<p>Within a macro step, if a single event triggers a simultaneous transition in
+multiple scenarios, either scenario is permitted to run first. However, all
+raised events are processed in the order that they were raised.</p>
+<p>For example, if the actions for <code class="docutils literal notranslate"><span class="pre">event_a</span></code> raise <code class="docutils literal notranslate"><span class="pre">event_b</span></code> and then
+<code class="docutils literal notranslate"><span class="pre">event_c</span></code>, both will be queued until <code class="docutils literal notranslate"><span class="pre">event_a</span></code>’s actions are complete.
+Then, <code class="docutils literal notranslate"><span class="pre">event_b</span></code> will be handled, followed by <code class="docutils literal notranslate"><span class="pre">event_c</span></code>. If <code class="docutils literal notranslate"><span class="pre">event_b</span></code>’s
+actions raised a fourth event, it would be queued until after <code class="docutils literal notranslate"><span class="pre">event_c</span></code>.</p>
+</div>
+</section>
+<section id="final-states">
+<h2>Final States<a class="headerlink" href="#final-states" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes, when a monitor reaches a certain state, it is known that it has
+reached the end of its useful life (e.g. if a monitored connection is closed).
+Final states allow such monitors to be deallocated to save memory and CPU
+cycles.</p>
+<p>One or more scenarios can have a final state declared right after the scenario
+label:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">scenarios:</span><span class="w"></span>
+<span class="w">    </span><span class="nl">main:</span><span class="w"></span>
+<span class="w">        </span><span class="kd">finalstate</span><span class="w"> </span><span class="n">closed</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="n">pre</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">open</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">opened</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="n">opened</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">close</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">closed</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Once the final state is reached, the monitor signals that it can be
+deallocated. (When a full monitor system is generated, the local wrapper
+handles the actual deallocation.)</p>
+<p>If more than one scenario has a final state, they must all be reached before
+the monitor signals for deallocation. (Scenarios without final states are
+ignored during this check.)</p>
+</section>
+<section id="types">
+<span id="id1"></span><h2>Types<a class="headerlink" href="#types" title="Permalink to this headline">¶</a></h2>
+<p>SMEDL uses the following data types:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 16%" />
+<col style="width: 33%" />
+<col style="width: 51%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>SMEDL Type</p></th>
+<th class="head"><p>C Equivalent</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p>Integer</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">double</span></code></p></td>
+<td><p>Double precision floating point</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">double</span></code></p></td>
+<td></td>
+<td><p>Alias for <code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">char</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">char</span></code></p></td>
+<td><p>Character or Byte</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">string</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">char</span> <span class="pre">*</span></code></p></td>
+<td><p>Null-terminated string</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">pointer</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span></code></p></td>
+<td><p>Pointer</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">opaque</span></code></p></td>
+<td><p><a class="reference internal" href="../api/api.html#c.SMEDLOpaque" title="SMEDLOpaque"><code class="xref c c-struct docutils literal notranslate"><span class="pre">SMEDLOpaque</span></code></a></p></td>
+<td><p>Opaque data of known size.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<dl class="simple">
+<dt><strong>Opaque vs. Pointer</strong></dt><dd><p>While opaques contain a <code class="docutils literal notranslate"><span class="pre">void</span> <span class="pre">*</span></code>, the actual value is the data pointed
+to. It is assumed that the data can be safely copied (e.g. it does not
+contain self-referential pointers). Whereas for pointers, the pointer
+itself is the value.</p>
+</dd>
+<dt><strong>Opaque vs. String</strong></dt><dd><p>Opaques are of a known size, good for representing an arbitrary array or
+struct. They may contain null bytes. Strings may not contain null bytes,
+since the null-terminator is used to determine their length.</p>
+</dd>
+</dl>
+</div>
+</section>
+<section id="expressions">
+<span id="id2"></span><h2>Expressions<a class="headerlink" href="#expressions" title="Permalink to this headline">¶</a></h2>
+<p>Expressions in SMEDL are very C-like. They can be any of the following:</p>
+<ul class="simple">
+<li><p>Literal</p>
+<ul>
+<li><p>Integer literal (decimal, hexadecimal with <code class="docutils literal notranslate"><span class="pre">0x</span></code>/<code class="docutils literal notranslate"><span class="pre">0X</span></code> prefix, or octal
+with <code class="docutils literal notranslate"><span class="pre">0</span></code> prefix)</p></li>
+<li><p>Floating point literal (decimal, hexadecimal with <code class="docutils literal notranslate"><span class="pre">0x</span></code>/<code class="docutils literal notranslate"><span class="pre">0X</span></code> prefix and
+<code class="docutils literal notranslate"><span class="pre">p</span></code>/<code class="docutils literal notranslate"><span class="pre">P</span></code> exponent)</p></li>
+<li><p>String literal (double quoted, same backslash escapes as C99)</p></li>
+<li><p>Char literal (single quoted, same backslash escapes as C99)</p></li>
+<li><p>Boolean literal (<code class="docutils literal notranslate"><span class="pre">true</span></code>, <code class="docutils literal notranslate"><span class="pre">false</span></code>)</p></li>
+<li><p>Null pointer literal (<code class="docutils literal notranslate"><span class="pre">null</span></code>, <code class="docutils literal notranslate"><span class="pre">NULL</span></code>)</p></li>
+</ul>
+</li>
+<li><p>State variable</p></li>
+<li><p>Event parameter</p></li>
+<li><p>Helper function call (see <a class="reference internal" href="#helpers"><span class="std std-ref">Helper Functions</span></a>)</p></li>
+<li><p>Compound expression</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;unary-operator&gt;&lt;expression&gt;</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&lt;expression&gt;</span> <span class="pre">&lt;binary-operator&gt;</span> <span class="pre">&lt;expression&gt;</span></code></p></li>
+</ul>
+</li>
+<li><p>Parenthesized expression (<code class="docutils literal notranslate"><span class="pre">(&lt;expression&gt;)</span></code>)</p></li>
+</ul>
+<p>The operators available are a subset of C’s, all are left associative, and they
+have the same precedence as in C:</p>
+<ol class="arabic simple">
+<li><p>Unary <code class="docutils literal notranslate"><span class="pre">+</span></code>, unary <code class="docutils literal notranslate"><span class="pre">-</span></code>, bitwise negation <code class="docutils literal notranslate"><span class="pre">~</span></code>, logical negation <code class="docutils literal notranslate"><span class="pre">!</span></code></p></li>
+<li><p>Multiplication <code class="docutils literal notranslate"><span class="pre">*</span></code>, division <code class="docutils literal notranslate"><span class="pre">/</span></code>, modulo <code class="docutils literal notranslate"><span class="pre">%</span></code></p></li>
+<li><p>Addition <code class="docutils literal notranslate"><span class="pre">+</span></code>, subtraction <code class="docutils literal notranslate"><span class="pre">-</span></code></p></li>
+<li><p>Left shift <code class="docutils literal notranslate"><span class="pre">&lt;&lt;</span></code>, right shift <code class="docutils literal notranslate"><span class="pre">&gt;&gt;</span></code></p></li>
+<li><p>Less than/or equal <code class="docutils literal notranslate"><span class="pre">&lt;</span></code> <code class="docutils literal notranslate"><span class="pre">&lt;=</span></code>, greater than/or equal <code class="docutils literal notranslate"><span class="pre">&gt;</span></code> <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code></p></li>
+<li><p>Equal <code class="docutils literal notranslate"><span class="pre">==</span></code>, not equal <code class="docutils literal notranslate"><span class="pre">!=</span></code></p></li>
+<li><p>Bitwise AND <code class="docutils literal notranslate"><span class="pre">&amp;</span></code></p></li>
+<li><p>Bitwise XOR <code class="docutils literal notranslate"><span class="pre">^</span></code></p></li>
+<li><p>Bitwise OR <code class="docutils literal notranslate"><span class="pre">|</span></code></p></li>
+<li><p>Logical AND <code class="docutils literal notranslate"><span class="pre">&amp;&amp;</span></code></p></li>
+<li><p>Logical OR <code class="docutils literal notranslate"><span class="pre">||</span></code></p></li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Equal/not equal operations on strings and opaques come with some
+caveats.</p>
+<ol class="arabic simple">
+<li><p>Opaque equality is based on a byte-by-byte comparison with <code class="docutils literal notranslate"><span class="pre">memcmp()</span></code>.
+This may not always produce the intended result, e.g. when the opaque is
+filled from a struct with padding bytes. An alternative option is to use
+a helper function that accepts two <a class="reference internal" href="../api/api.html#c.SMEDLOpaque" title="SMEDLOpaque"><code class="xref c c-struct docutils literal notranslate"><span class="pre">SMEDLOpaque</span></code></a> and returns
+zero or nonzero (see <a class="reference internal" href="#helpers"><span class="std std-ref">Helper Functions</span></a>).</p></li>
+<li><p>Due to limitations on type verification, <code class="docutils literal notranslate"><span class="pre">==</span></code> and <code class="docutils literal notranslate"><span class="pre">!=</span></code> may not work
+properly on strings and opaques when <em>both</em> sides of the comparison are a
+helper function. SMEDL relies on type checking to determine when to
+generate <code class="docutils literal notranslate"><span class="pre">strcmp()</span></code> or <code class="docutils literal notranslate"><span class="pre">memcmp()</span></code> instead of plain <code class="docutils literal notranslate"><span class="pre">==</span></code>/<code class="docutils literal notranslate"><span class="pre">!=</span></code>.
+Unfortunately, since SMEDL cannot verify the types for helper functions,
+when <em>both</em> sides are helpers, it must generate plain <code class="docutils literal notranslate"><span class="pre">==</span></code>/<code class="docutils literal notranslate"><span class="pre">!=</span></code> by
+default.</p></li>
+</ol>
+</div>
+<section id="helper-functions">
+<span id="helpers"></span><h3>Helper Functions<a class="headerlink" href="#helper-functions" title="Permalink to this headline">¶</a></h3>
+<p>For operations that SMEDL can’t do natively, helper function calls can be used.
+For example, if you want to take the sine of a floating point parameter
+<code class="docutils literal notranslate"><span class="pre">angle</span></code>, you could do <code class="docutils literal notranslate"><span class="pre">sin(angle)</span></code>. Helper functions must accept and return
+the C equivalent types listed under <a class="reference internal" href="#types"><span class="std std-ref">Types</span></a>, but SMEDL does not verify
+this when type checking.</p>
+<p>The relevant <code class="docutils literal notranslate"><span class="pre">#include</span></code> should be added between the monitor declaration and
+state variable section, for example:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">object</span><span class="w"> </span><span class="n">MyMonitor</span><span class="p">;</span><span class="w"></span>
+
+<span class="cp">#include</span><span class="w"> </span><span class="s">&lt;math.h&gt;</span><span class="w"></span>
+
+<span class="nl">state:</span><span class="w"></span>
+<span class="w">    </span>...<span class="w"></span>
+</pre></div>
+</div>
+<p>Helper functions are especially useful with the opaque type as a way to operate
+on structs and arrays. For example, you might have C code like this to work
+with X-Y coordinates:</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// point.c</span>
+
+<span class="cp">#include</span> <span class="cpf">&lt;math.h&gt;</span><span class="cp"></span>
+<span class="cp">#include</span> <span class="cpf">&quot;smedl_types.h&quot;</span><span class="cp"></span>
+
+<span class="k">struct</span> <span class="n">point</span> <span class="p">{</span>
+    <span class="kt">double</span> <span class="n">x</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">y</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="n">SMEDLOpaque</span> <span class="nf">to_opaque</span><span class="p">(</span><span class="k">struct</span> <span class="n">point</span> <span class="o">*</span><span class="n">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">SMEDLOpaque</span> <span class="n">o</span><span class="p">;</span>
+    <span class="n">o</span><span class="p">.</span><span class="n">size</span> <span class="o">=</span> <span class="k">sizeof</span><span class="p">(</span><span class="o">*</span><span class="n">p</span><span class="p">);</span>
+    <span class="n">o</span><span class="p">.</span><span class="n">data</span> <span class="o">=</span> <span class="n">p</span><span class="p">;</span>
+    <span class="k">return</span> <span class="n">o</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">struct</span> <span class="n">point</span> <span class="nf">to_point</span><span class="p">(</span><span class="n">SMEDLOpaque</span> <span class="n">o</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="o">*</span><span class="p">((</span><span class="k">struct</span> <span class="n">point</span> <span class="o">*</span><span class="p">)</span> <span class="n">o</span><span class="p">.</span><span class="n">data</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">double</span> <span class="nf">distance</span><span class="p">(</span><span class="n">SMEDLOpaque</span> <span class="n">o1</span><span class="p">,</span> <span class="n">SMEDLOpaque</span> <span class="n">o2</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">struct</span> <span class="n">point</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p2</span><span class="p">;</span>
+    <span class="n">p1</span> <span class="o">=</span> <span class="n">to_point</span><span class="p">(</span><span class="n">o1</span><span class="p">);</span>
+    <span class="n">p2</span> <span class="o">=</span> <span class="n">to_point</span><span class="p">(</span><span class="n">o2</span><span class="p">);</span>
+    <span class="k">return</span> <span class="n">sqrt</span><span class="p">(</span><span class="n">pow</span><span class="p">(</span><span class="n">p2</span><span class="p">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">p1</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">pow</span><span class="p">(</span><span class="n">p2</span><span class="p">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">p1</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Then, with <code class="docutils literal notranslate"><span class="pre">#include</span> <span class="pre">&quot;point.h&quot;</span></code>, you have a way to take the distance between
+two <code class="docutils literal notranslate"><span class="pre">struct</span> <span class="pre">point</span></code> in SMEDL.</p>
+<p>Helper functions are discouraged from keeping state or having other side
+effects.</p>
+</section>
+</section>
+<section id="actions">
+<span id="id3"></span><h2>Actions<a class="headerlink" href="#actions" title="Permalink to this headline">¶</a></h2>
+<p>An action can be one of five types of statements:</p>
+<dl class="simple">
+<dt><strong>Increment</strong></dt><dd><p><code class="docutils literal notranslate"><span class="pre">&lt;state-var&gt;++;</span></code> – Increments a state variable.</p>
+</dd>
+<dt><strong>Decrement</strong></dt><dd><p><code class="docutils literal notranslate"><span class="pre">&lt;state-var&gt;--;</span></code> – Decrements a state variable.</p>
+</dd>
+<dt><strong>Assignment</strong></dt><dd><p><code class="docutils literal notranslate"><span class="pre">&lt;state-var&gt;</span> <span class="pre">=</span> <span class="pre">&lt;expression&gt;;</span></code> – Assign the result of the expression to a
+state variable.</p>
+</dd>
+<dt><strong>Raise</strong></dt><dd><p><code class="docutils literal notranslate"><span class="pre">raise</span> <span class="pre">&lt;event&gt;([&lt;expression&gt;,</span> <span class="pre">...]);</span></code> – Raise an exported or internal
+event.</p>
+</dd>
+<dt><strong>Call helper</strong></dt><dd><p><code class="docutils literal notranslate"><span class="pre">&lt;function&gt;([&lt;expression&gt;,</span> <span class="pre">...]);</span></code> – Call a helper function (see
+<a class="reference internal" href="#helpers"><span class="std std-ref">Helper Functions</span></a>). This is only useful for helper functions with side effects,
+so ideally, it should be used sparingly.</p>
+</dd>
+</dl>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<p>Here is an example of a simple monitor that emits a running total each time it
+receives a measurement:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">object</span><span class="w"> </span><span class="n">Adder</span><span class="p">;</span><span class="w"></span>
+
+<span class="nl">state:</span><span class="w"></span>
+<span class="w">  </span><span class="kt">float</span><span class="w"> </span><span class="n">accumulator</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+
+<span class="nl">events:</span><span class="w"></span>
+<span class="w">  </span><span class="kd">imported</span><span class="w"> </span><span class="nf">measurement</span><span class="p">(</span><span class="kt">float</span><span class="p">);</span><span class="w"></span>
+<span class="w">  </span><span class="kd">exported</span><span class="w"> </span><span class="nf">sum</span><span class="p">(</span><span class="kt">float</span><span class="p">);</span><span class="w"></span>
+
+<span class="nl">scenarios:</span><span class="w"></span>
+<span class="w">  </span><span class="nl">main:</span><span class="w"></span>
+<span class="w">    </span><span class="n">idle</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">measurement</span><span class="p">(</span><span class="n">val</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="n">accumulator</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">accumulator</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">val</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">raise</span><span class="w"> </span><span class="nf">sum</span><span class="p">(</span><span class="n">accumulator</span><span class="p">);</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">idle</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Here is a more advanced monitor, used for some of the snippets above. It
+verifies that a light does not turn on until a button is pressed:</p>
+<div class="highlight-smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">object</span><span class="w"> </span><span class="n">NoLightWeakUntilButton</span><span class="p">;</span><span class="w"></span>
+
+<span class="nl">state:</span><span class="w"></span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">light</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">button</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"></span>
+
+<span class="nl">events:</span><span class="w"></span>
+<span class="w">  </span><span class="kd">imported</span><span class="w"> </span><span class="nf">light_is</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+<span class="w">  </span><span class="kd">imported</span><span class="w"> </span><span class="nf">button_is</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+<span class="w">  </span><span class="kd">internal</span><span class="w"> </span><span class="nf">check</span><span class="p">();</span><span class="w"></span>
+<span class="w">  </span><span class="kd">exported</span><span class="w"> </span><span class="nf">satisfaction</span><span class="p">();</span><span class="w"></span>
+<span class="w">  </span><span class="kd">exported</span><span class="w"> </span><span class="nf">violation</span><span class="p">();</span><span class="w"></span>
+
+<span class="nl">scenarios:</span><span class="w"></span>
+<span class="w">  </span><span class="nl">input:</span><span class="w"></span>
+<span class="w">    </span><span class="n">idle</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">light_is</span><span class="p">(</span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="n">light</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">status</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">raise</span><span class="w"> </span><span class="nf">check</span><span class="p">();</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">idle</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">idle</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">button_is</span><span class="p">(</span><span class="n">status</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="n">button</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">status</span><span class="p">;</span><span class="w"></span>
+<span class="w">        </span><span class="k">raise</span><span class="w"> </span><span class="nf">check</span><span class="p">();</span><span class="w"></span>
+<span class="w">      </span><span class="p">}</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">idle</span><span class="p">;</span><span class="w"></span>
+
+<span class="w">  </span><span class="nl">verify:</span><span class="w"></span>
+<span class="w">    </span><span class="n">inconclusive</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">check</span><span class="p">()</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">light</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">button</span><span class="p">)</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">inconclusive</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">inconclusive</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">check</span><span class="p">()</span><span class="w"> </span><span class="k">when</span><span class="w"> </span><span class="p">(</span><span class="n">button</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="k">raise</span><span class="w"> </span><span class="nf">satisfaction</span><span class="p">();}</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">satisfied</span><span class="p">;</span><span class="w"></span>
+<span class="w">      </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="k">raise</span><span class="w"> </span><span class="nf">violation</span><span class="p">();}</span><span class="w"></span>
+<span class="w">      </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">violated</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">satisfied</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">check</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">satisfied</span><span class="p">;</span><span class="w"></span>
+<span class="w">    </span><span class="n">violated</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="nf">check</span><span class="p">()</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">violated</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>More examples can be found in the “tests/monitors” directory.</p>
+</section>
+</section>
+
+
+          </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="index.html" title="Previous document">SMEDL Specification Language</a>
+        </li>
+        <li>
+          <a href="a4smedl.html" title="Next document">Architecture Specifications</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy; 2021 The Trustees of the University of Pennsylvania.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/language/smedl.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

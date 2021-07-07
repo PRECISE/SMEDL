@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>SMEDL Programming Interface &#8212; SMEDL  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Essential API" href="api.html" />
+    <link rel="prev" title="Architecture Specifications" href="../language/a4smedl.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SMEDL</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../language/index.html">SMEDL Specification Language</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">SMEDL Programming Interface</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html">Essential API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rabbitmq.html">RabbitMQ Transport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ros.html">ROS Transport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="full_api.html">Full API</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../language/a4smedl.html" title="previous chapter">Architecture Specifications</a></li>
+      <li>Next: <a href="api.html" title="next chapter">Essential API</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="smedl-programming-interface">
+<h1>SMEDL Programming Interface<a class="headerlink" href="#smedl-programming-interface" title="Permalink to this headline">¶</a></h1>
+<p>These pages describe how to interface with the generated monitors. Most
+programs will only need the information from <a class="reference internal" href="api.html"><span class="doc">Essential API</span></a> and the page for the
+chosen asynchronous transport. The <a class="reference internal" href="full_api.html"><span class="doc">Full API</span></a> page is useful for those who
+want a better understanding of how SMEDL monitors work internally or who want
+to integrate with the generated code on a deeper level.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Many file names and identifiers in this API contain placeholders for event,
+monitor, and synchronous set names. These placeholders are marked by the use
+of ALLCAPS.</p>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api.html">Essential API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#smedl-types">SMEDL Types</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#event-passing-conventions">Event Passing Conventions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#initialization-and-cleanup">Initialization and Cleanup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#emitting-pedl-events">Emitting PEDL Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#receiving-pedl-events">Receiving PEDL Events</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#running-smedl">Running SMEDL</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="rabbitmq.html">RabbitMQ Transport</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="rabbitmq.html#rabbitmq-configuration">RabbitMQ Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rabbitmq.html#message-format">Message Format</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="ros.html">ROS Transport</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ros.html#pedl-events-under-ros">PEDL Events Under ROS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ros.html#message-topic-configuration">Message/Topic Configuration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="full_api.html">Full API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="full_api.html#monitor">Monitor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="full_api.html#local-wrapper">Local Wrapper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="full_api.html#global-wrapper">Global Wrapper</a></li>
+<li class="toctree-l2"><a class="reference internal" href="full_api.html#manager">Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="full_api.html#transport-adapter">Transport Adapter</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+          </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="../language/a4smedl.html" title="Previous document">Architecture Specifications</a>
+        </li>
+        <li>
+          <a href="api.html" title="Next document">Essential API</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy; 2021 The Trustees of the University of Pennsylvania.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

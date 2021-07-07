@@ -1,0 +1,581 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Full API &#8212; SMEDL  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="ROS Transport" href="ros.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SMEDL</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../language/index.html">SMEDL Specification Language</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">SMEDL Programming Interface</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="api.html">Essential API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="rabbitmq.html">RabbitMQ Transport</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ros.html">ROS Transport</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Full API</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">SMEDL Programming Interface</a><ul>
+      <li>Previous: <a href="ros.html" title="previous chapter">ROS Transport</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="full-api">
+<h1>Full API<a class="headerlink" href="#full-api" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Many file names and identifiers in this API contain placeholders for event,
+monitor, and synchronous set names. These placeholders are marked by the use
+of ALLCAPS.</p>
+</div>
+<p>Note that most programs will not need to interact with the portions of the API
+not described on the <a class="reference internal" href="api.html"><span class="doc">Essential API</span></a> page. Developers not interfacing with SMEDL on
+a low level can safely skip this page. In any case, be sure to read that page
+before continuing here, as it contains some useful information about the code
+in general that is not reproduced below.</p>
+<p>The rest of this page is dedicated to describing the full API at each level of
+a SMEDL monitoring system.</p>
+<section id="monitor">
+<h2>Monitor<a class="headerlink" href="#monitor" title="Permalink to this headline">¶</a></h2>
+<p><strong>Header:</strong> <code class="docutils literal notranslate"><span class="pre">MONSPEC_mon.h</span></code></p>
+<dl class="c struct">
+<dt class="sig sig-object c" id="c.MONSPECMonitor">
+<span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">MONSPECMonitor</span></span></span><a class="headerlink" href="#c.MONSPECMonitor" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>A monitor instance. Should be obtained from <a class="reference internal" href="#c.init_MONSPEC_monitor" title="init_MONSPEC_monitor"><code class="xref c c-func docutils literal notranslate"><span class="pre">init_MONSPEC_monitor()</span></code></a>
+and exported event callbacks registered with <a class="reference internal" href="#c.register_MONSPEC_EVENT" title="register_MONSPEC_EVENT"><code class="xref c c-func docutils literal notranslate"><span class="pre">register_MONSPEC_EVENT()</span></code></a>.
+Cleanup callback can be set with <a class="reference internal" href="#c.registercleanup_MONSPEC" title="registercleanup_MONSPEC"><code class="xref c c-func docutils literal notranslate"><span class="pre">registercleanup_MONSPEC()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.init_MONSPEC_monitor">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_MONSPEC_monitor</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">identities</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.init_MONSPEC_monitor" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Return a new monitor instance. When no longer needed, it should be freed
+with <a class="reference internal" href="#c.free_MONSPEC_monitor" title="free_MONSPEC_monitor"><code class="xref c c-func docutils literal notranslate"><span class="pre">free_MONSPEC_monitor()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identities</strong> – Array of identities for this monitor instance</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nonzero for success, zero for malloc failure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.free_MONSPEC_monitor">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">free_MONSPEC_monitor</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#c.MONSPECMonitor" title="MONSPECMonitor"><span class="n"><span class="pre">MONSPECMonitor</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">mon</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.free_MONSPEC_monitor" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Free a monitor instance. <strong>Note:</strong> Does not free the monitor identities!
+That must be done by the caller, if necessary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mon</strong> – Monitor instance to free</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.register_MONSPEC_EVENT">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">register_MONSPEC_EVENT</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#c.MONSPECMonitor" title="MONSPECMonitor"><span class="n"><span class="pre">MONSPECMonitor</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">mon</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">cb_func</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="kt"><span class="pre">void</span></span><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">)</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.register_MONSPEC_EVENT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Set the callback for an exported event, called when that event is raised.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mon</strong> – Monitor instance to set callback for</p></li>
+<li><p><strong>cleanup_func</strong> – Pointer to callback function. Must accept monitor
+identities, event parameters, and aux pointer as
+parameters and return nonzero/zero for success/error</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.registercleanup_MONSPEC">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">registercleanup_MONSPEC</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#c.MONSPECMonitor" title="MONSPECMonitor"><span class="n"><span class="pre">MONSPECMonitor</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">mon</span></span>, <span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="p"><span class="pre">(</span></span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">cleanup_func</span></span><span class="p"><span class="pre">)</span></span><span class="p"><span class="pre">(</span></span><a class="reference internal" href="#c.MONSPECMonitor" title="MONSPECMonitor"><span class="n"><span class="pre">MONSPECMonitor</span></span></a><span class="p"><span class="pre">*</span></span><span class="p"><span class="pre">)</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.registercleanup_MONSPEC" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Set the callback for monitor cleanup, called when the monitor instance
+reaches all its final states.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mon</strong> – Monitor instance to set callback for</p></li>
+<li><p><strong>cleanup_func</strong> – Pointer to callback function. Must accept a monitor
+pointer and return nonzero/zero for success/error.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.setvar_MONSPEC_STATEVAR">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">setvar_MONSPEC_STATEVAR</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#c.MONSPECMonitor" title="MONSPECMonitor"><span class="n"><span class="pre">MONSPECMonitor</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">mon</span></span>, <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="n"><span class="pre">value</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.setvar_MONSPEC_STATEVAR" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Set a state variable. Intended to be used only on a newly created monitor
+instance to initialize a state variable to a non-default value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mon</strong> – Monitor instance to set the state variable for</p></li>
+<li><p><strong>value</strong> – Value to assign to the state variable</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nonzero for success, zero for malloc failure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.execute_MONSPEC_EVENT">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">execute_MONSPEC_EVENT</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="#c.MONSPECMonitor" title="MONSPECMonitor"><span class="n"><span class="pre">MONSPECMonitor</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">mon</span></span>, <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">aux</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.execute_MONSPEC_EVENT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Import an event into this monitor. The event is immediately handled. This
+function returns once the macro step is complete—that is, once this event
+and any internal and exported event it causes have been handled or exported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mon</strong> – Monitor instance to handle the event</p></li>
+<li><p><strong>params</strong> – Array of event parameters</p></li>
+<li><p><strong>aux</strong> – Auxiliary data pointer, passed through to events raised as a
+result of this one.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+<p>Note that when an event handler fails, it means the monitor is no longer
+consistent with its specification, has very possible dropped events, and is
+likely to misbehave when handling future events. However, it is still safe
+to free the instance, and it will not leak memory as long as that is done.</p>
+</dd></dl>
+
+</section>
+<section id="local-wrapper">
+<h2>Local Wrapper<a class="headerlink" href="#local-wrapper" title="Permalink to this headline">¶</a></h2>
+<p><strong>Header:</strong> <code class="docutils literal notranslate"><span class="pre">MONITOR_local_wrapper.h</span></code></p>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.init_MONITOR_local_wrapper">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_MONITOR_local_wrapper</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.init_MONITOR_local_wrapper" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Initialize this local wrapper. Must be called before any other functions in
+the local wrapper.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.free_MONITOR_local_wrapper">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">free_MONITOR_local_wrapper</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.free_MONITOR_local_wrapper" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Tear down and free the resources used by this local wrapper and all the
+monitors it manages</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.create_MONITOR">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">create_MONITOR</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">identities</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.create_MONITOR" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Create a new instance of the monitor with the given identities. If a monitor
+with the given identities already exists, do nothing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identities</strong> – Array of monitor identities</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.set_MONITOR_STATEVAR">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">set_MONITOR_STATEVAR</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">identities</span></span>, <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="n"><span class="pre">value</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.set_MONITOR_STATEVAR" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Set the value of a state variable on the monitor with the given identities.
+Intended to be used only on a newly created monitor instance to initialize a
+state variable to a non-default value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identities</strong> – Array of monitor identities for the instance to modify</p></li>
+<li><p><strong>value</strong> – Value to assign to the state variable</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.perform_MONITOR_EVENT">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">perform_MONITOR_EVENT</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">identities</span></span>, <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">aux</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.perform_MONITOR_EVENT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Send this event to the monitor instances matching the identities. If there
+are no wildcards in the identities and the instance does not exist yet,
+dynamically instantiate it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identities</strong> – Array of monitor identities. Wildcard identities are
+represented by a <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><code class="xref c c-struct docutils literal notranslate"><span class="pre">SMEDLValue</span></code></a> with type
+<a class="reference internal" href="api.html#c.SMEDLType.SMEDL_NULL" title="SMEDL_NULL"><code class="xref c c-enumerator docutils literal notranslate"><span class="pre">SMEDL_NULL</span></code></a>. <strong>Note:</strong> Using wildcards for
+identities where there was no wildcard in the
+architecture specification will result in undefined
+behavior.</p></li>
+<li><p><strong>params</strong> – Array of event parameters</p></li>
+<li><p><strong>aux</strong> – Auxiliary data pointer, passed through to events raised as a
+result of this one.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="global-wrapper">
+<h2>Global Wrapper<a class="headerlink" href="#global-wrapper" title="Permalink to this headline">¶</a></h2>
+<p><strong>Header:</strong> <code class="docutils literal notranslate"><span class="pre">SYNCSET_global_wrapper.h</span></code></p>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.init_SYNCSET_syncset">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_SYNCSET_syncset</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.init_SYNCSET_syncset" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Initialize this global wrapper and all local wrappers within. Must be called
+before any other functions in the global wrapper.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.free_SYNCSET_syncset">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">free_SYNCSET_syncset</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.free_SYNCSET_syncset" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Tear down and free all the resources used by this global wrapper and the
+local wrappers and monitors within</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.run_SYNCSET">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">run_SYNCSET</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.run_SYNCSET" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Process all currently queued events from PEDL and the manager. Normally
+should be called after every call to <code class="xref c c-func docutils literal notranslate"><span class="pre">forward_SYNCSET_EVENT()</span></code>. Returns
+once there are no more events queued, including events raised by monitors in
+response.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.raise_MONITOR_EVENT">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">raise_MONITOR_EVENT</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">identities</span></span>, <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">aux</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.raise_MONITOR_EVENT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Queue an exported event from one of the monitors in this synchronous set.
+Returns right away.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identities</strong> – Array of identities of the exporting monitor instance</p></li>
+<li><p><strong>params</strong> – Array of event parameters</p></li>
+<li><p><strong>aux</strong> – Auxiliary data pointer, passed through to events raised as a
+result of this one.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.raise_pedl_EVENT">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">raise_pedl_EVENT</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">identities</span></span>, <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">aux</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Queue an incoming PEDL event. Returns right away. It will be processed when
+the manager calls <a class="reference internal" href="#c.run_SYNCSET" title="run_SYNCSET"><code class="xref c c-func docutils literal notranslate"><span class="pre">run_SYNCSET()</span></code></a>, which happens when the target program
+calls <a class="reference internal" href="api.html#c.run_manager" title="run_manager"><code class="xref c c-func docutils literal notranslate"><span class="pre">run_manager()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identities</strong> – This parameter is provided for consistency with other
+event passing functions. It is ignored and may safely be
+set to NULL.</p></li>
+<li><p><strong>params</strong> – Array of event parameters</p></li>
+<li><p><strong>aux</strong> – Auxiliary data pointer, passed through to events raised as a
+result of this one.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.forward_SYNCSET_MONITOR_EVENT">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">forward_SYNCSET_MONITOR_EVENT</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">identities</span></span>, <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">aux</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.forward_SYNCSET_MONITOR_EVENT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Queue an incoming asynchronous event. “MONITOR” and “EVENT” in this case
+refer to the source monitor and event (or <code class="docutils literal notranslate"><span class="pre">pedl</span></code> if the source was a PEDL
+event). Actual processing does not happen until the manager calls
+<a class="reference internal" href="#c.run_SYNCSET" title="run_SYNCSET"><code class="xref c c-func docutils literal notranslate"><span class="pre">run_SYNCSET()</span></code></a>, which should generally happen after every call to one
+of these functions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identities</strong> – Array of the source monitor’s identities. Ignored for
+PEDL events and may be safely set to NULL.</p></li>
+<li><p><strong>params</strong> – Array of source event’s parameters</p></li>
+<li><p><strong>aux</strong> – Auxiliary data pointer, passed through to events raised as a
+result of this one.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="manager">
+<h2>Manager<a class="headerlink" href="#manager" title="Permalink to this headline">¶</a></h2>
+<p><strong>Header:</strong> <code class="docutils literal notranslate"><span class="pre">SYNCSET_manager.h</span></code></p>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.init_manager">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_manager</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Initialize SMEDL: manager, attached global wrapper, all local wrappers and
+monitors beneath it, and any transport adapter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.free_manager">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">free_manager</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Destroy all monitors and wrappers, close all connections, and free the
+resources used by SMEDL. May be called if SMEDL monitoring is no longer
+required.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.run_manager">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">run_manager</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><br /></dt>
+<dd><p>Allow SMEDL to run. When called, the following happens:</p>
+<ol class="arabic simple">
+<li><p>SMEDL processes any pending PEDL events.</p></li>
+<li><p>SMEDL processes any events raised as a result. Synchronous events are
+passed to the appropriate destination within the synchronous set.
+Asynchronous events are passed to the transport adapter to be sent
+out. This continues until there are no more events pending in the
+global wrapper.</p></li>
+<li><p>The transport adapter is given a chance to receive any incoming
+asynchronous events that are ready. These are passed along to the
+global wrapper for processing, and any events raised as a result are
+handled as in #2.</p></li>
+</ol>
+<p>Then, the function returns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.report_MONITOR_EVENT">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">report_MONITOR_EVENT</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">identities</span></span>, <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">aux</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.report_MONITOR_EVENT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Queue an event from the global wrapper to be forwarded to the transport
+adapter or vice versa.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identities</strong> – Array of source monitor identities</p></li>
+<li><p><strong>params</strong> – Array of source event parameters</p></li>
+<li><p><strong>aux</strong> – Auxiliary data pointer, passed through to events raised as a
+result of this one.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+<section id="transport-adapter">
+<h2>Transport Adapter<a class="headerlink" href="#transport-adapter" title="Permalink to this headline">¶</a></h2>
+<p><strong>Header:</strong> <code class="docutils literal notranslate"><span class="pre">SYNCSET_TRANSPORT.h</span></code></p>
+<p>Transport adapters are intended to present an API to the manager that’s similar
+to the global wrapper. There are only a couple differences:</p>
+<ol class="arabic simple">
+<li><p>Whenever there is a <code class="docutils literal notranslate"><span class="pre">SYNCSET</span></code> placeholder in the global wrapper, the name
+of the transport is used instead (e.g. <code class="docutils literal notranslate"><span class="pre">rabbitmq</span></code>, <code class="docutils literal notranslate"><span class="pre">ros</span></code>).</p></li>
+<li><p>The <a class="reference internal" href="#c.run_TRANSPORT" title="run_TRANSPORT"><code class="xref c c-func docutils literal notranslate"><span class="pre">run_TRANSPORT()</span></code></a> function accepts a parameter for blocking or
+nonblocking. The global wrapper can always process all queued events
+immediately, so it never blocks. Transport adapters may need to wait for
+incoming events to arrive. See the description for that function for more
+info.</p></li>
+</ol>
+<dl class="c function">
+<dt class="sig sig-object c" id="c.init_TRANSPORT">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">init_TRANSPORT</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.init_TRANSPORT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Initialize this transport adapter. Must be called before any other
+functions in the transport adapter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Nonzero for success, zero for error</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.free_TRANSPORT">
+<span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">free_TRANSPORT</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">void</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.free_TRANSPORT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Close all connections and free all the resources used by this transport
+adapter.</p>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.run_TRANSPORT">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">run_TRANSPORT</span></span></span><span class="sig-paren">(</span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="n"><span class="pre">blocking</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.run_TRANSPORT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Process all currently queued events from the manager and receive any events
+pending from the network. Can be used in two modes: blocking and
+nonblocking.</p>
+<p>Blocking mode is intended for synchronous sets without PEDL events. Since
+these synchronous sets normally run in their own process, it is best to
+block while waiting for the next event to arrive.</p>
+<p>Nonblocking mode is intended for synchronous sets that do have PEDL events.
+SMEDL does not want to be an unnecessary bottleneck for the target program,
+so it returns when the next asynchronous event has not arrived yet.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>blocking</strong> – Nonzero to run in blocking mode, zero to run in nonblocking
+mode.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Nonzero for success, zero for error.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="c function">
+<dt class="sig sig-object c" id="c.forward_TRANSPORT_MONITOR_EVENT">
+<span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">forward_TRANSPORT_MONITOR_EVENT</span></span></span><span class="sig-paren">(</span><a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">identities</span></span>, <a class="reference internal" href="api.html#c.SMEDLValue" title="SMEDLValue"><span class="n"><span class="pre">SMEDLValue</span></span></a><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">params</span></span>, <span class="kt"><span class="pre">void</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n"><span class="pre">aux</span></span><span class="sig-paren">)</span><a class="headerlink" href="#c.forward_TRANSPORT_MONITOR_EVENT" title="Permalink to this definition">¶</a><br /></dt>
+<dd><p>Emit an asynchronous event over this transport. “MONITOR” and “EVENT” in
+this case refer to the source monitor and event (or <code class="docutils literal notranslate"><span class="pre">pedl</span></code> if the source
+was a PEDL event).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>identities</strong> – Array of the source monitor’s identities. Ignored for
+PEDL events and may be safely set to NULL.</p></li>
+<li><p><strong>params</strong> – Array of source event’s parameters</p></li>
+<li><p><strong>aux</strong> – Auxiliary data pointer. Some transports expect the pointed-to
+data to have a certain structure. Can be set to NULL if not
+required.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="ros.html" title="Previous document">ROS Transport</a>
+        </li>
+    </ul>
+  </nav>
+              </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy; 2021 The Trustees of the University of Pennsylvania.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/full_api.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

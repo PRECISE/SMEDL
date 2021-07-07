@@ -1,0 +1,433 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>Architecture Specifications &#8212; SMEDL  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="SMEDL Programming Interface" href="../api/index.html" />
+    <link rel="prev" title="SMEDL Specifications" href="smedl.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">SMEDL</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">SMEDL Specification Language</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="smedl.html">SMEDL Specifications</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Architecture Specifications</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/index.html">SMEDL Programming Interface</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">SMEDL Specification Language</a><ul>
+      <li>Previous: <a href="smedl.html" title="previous chapter">SMEDL Specifications</a></li>
+      <li>Next: <a href="../api/index.html" title="next chapter">SMEDL Programming Interface</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="architecture-specifications">
+<h1>Architecture Specifications<a class="headerlink" href="#architecture-specifications" title="Permalink to this headline">¶</a></h1>
+<p>A SMEDL monitoring system contains a number of SMEDL monitors that pass events
+between each other and the target system. The architecture specification
+describes the monitor specifications used in the monitoring system, how those
+specifications are parameterized, and how events are passed between them.</p>
+<p>The file consists of a list of declarations, the first being the name of the
+monitor system itself:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">system</span><span class="w"> </span><span class="nc">NestedCommands</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>As with SMEDL specifications, C-style <code class="docutils literal notranslate"><span class="pre">/*</span> <span class="pre">...</span> <span class="pre">*/</span></code> and <code class="docutils literal notranslate"><span class="pre">//</span> <span class="pre">...</span></code> comments are
+supported, whitespace is ignored except as a word separator, and identifiers
+follow nearly the same rules as in C:</p>
+<ul class="simple">
+<li><p>The first character must be a lowercase or uppercase letter</p></li>
+<li><p>Characters after may be letters, numbers, or underscore</p></li>
+</ul>
+<p>The rest of the declarations are described below.</p>
+<section id="monitor-imports">
+<h2>Monitor Imports<a class="headerlink" href="#monitor-imports" title="Permalink to this headline">¶</a></h2>
+<p>SMEDL specifications must be imported before they can be used:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">import</span><span class="w"> </span><span class="sx">&quot;first_command.smedl&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="kd">import</span><span class="w"> </span><span class="sx">&quot;command_pair.smedl&quot;</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>This makes the monitors specified in these files available to be declared (see
+<a class="reference internal" href="#mondecl"><span class="std std-ref">Monitor Declarations</span></a>). Paths are relative to the directory where the architecture
+specification resides.</p>
+</section>
+<section id="monitor-declarations">
+<span id="mondecl"></span><h2>Monitor Declarations<a class="headerlink" href="#monitor-declarations" title="Permalink to this headline">¶</a></h2>
+<p>Monitors must be declared to make them part of the monitoring system. This
+allows monitors to be parameterized:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">monitor</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+<span class="kd">monitor</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Monitor parameters are sometimes referred to as “identities” since they can be
+used to identify a particular instance. Monitors can also be declared
+parameterless:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">monitor</span><span class="w"> </span><span class="nc">Frontend</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Parameterless monitors have one instance, created and destroyed along with the
+entire monitoring system. For example, they might be used to aggregate events
+from parameterized monitors. Parameterized monitors have no instances at first,
+but can be instantiated by events. For example, a monitor for connections
+might be parameterized by the connection ID, and get instantiated whenever a
+“new connection” event arrives.</p>
+<p>In either case, the SMEDL specification must be imported before the monitor can
+be declared. The monitor name must match the object declaration from the SMEDL
+specification, but it can be renamed with the <code class="docutils literal notranslate"><span class="pre">as</span></code> modifier:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">monitor</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">(</span><span class="kt">int</span><span class="p">)</span><span class="w"> </span><span class="kd">as</span><span class="w"> </span><span class="nc">FC</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>This is particularly useful for reusing the same specification in two different
+monitor declarations. For example, if you had a generic SMEDL specification
+that keeps a moving average, you might want to reuse it for different purposes
+within your monitoring system. That is possible like this:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">monitor</span><span class="w"> </span><span class="nc">MovingAverage</span><span class="p">()</span><span class="w"> </span><span class="kd">as</span><span class="w"> </span><span class="nc">RPMAverage</span><span class="p">;</span><span class="w"></span>
+<span class="kd">monitor</span><span class="w"> </span><span class="nc">MovingAverage</span><span class="p">()</span><span class="w"> </span><span class="kd">as</span><span class="w"> </span><span class="nc">ThrottleAverage</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Parameters have the same types as any other SMEDL value. See <a class="reference internal" href="smedl.html#types"><span class="std std-ref">Types</span></a>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Using <code class="docutils literal notranslate"><span class="pre">float</span></code> and <code class="docutils literal notranslate"><span class="pre">opaque</span></code> types as parameters should be done with care.
+SMEDL uses hashtables to store monitor instances, and the hash function for
+all types is based on the underlying bit representation. For <code class="docutils literal notranslate"><span class="pre">opaque</span></code>,
+this means the underlying data must be comparable with <code class="docutils literal notranslate"><span class="pre">memcmp()</span></code>, a
+potential issue if the <code class="docutils literal notranslate"><span class="pre">opaque</span></code> is filled from a struct with padding
+bytes. For <code class="docutils literal notranslate"><span class="pre">float</span></code>, apart from the usual caveats with rounding error,
+alternative representations that compare equal may not have the same hash
+value (e.g. +0 and -0).</p>
+</div>
+</section>
+<section id="event-declarations">
+<h2>Event Declarations<a class="headerlink" href="#event-declarations" title="Permalink to this headline">¶</a></h2>
+<p>Events to and from monitors are declared in their SMEDL specification. PEDL
+events—that is, events to and from the target system—have no such declaration.
+Generally, this is not a problem. SMEDL can infer their parameter types based
+on the monitor events they are connected to. But if SMEDL would infer
+incorrectly (e.g. a PEDL event parameter needs to be an <code class="docutils literal notranslate"><span class="pre">int</span></code> for some
+reason, but it’s passed to a <code class="docutils literal notranslate"><span class="pre">float</span></code> parameter at the receiving event), they
+can be declared in the architecture:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">imported</span><span class="w"> </span><span class="n">foo</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+<span class="kd">exported</span><span class="w"> </span><span class="n">bar</span><span class="p">(</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Imported events are from the target system to SMEDL, and exported events vice
+versa.</p>
+<p>If a PEDL event is declared, it must be declared before it is put into a
+synchronous set or used in a connection.</p>
+</section>
+<section id="synchronous-set-definitions">
+<h2>Synchronous Set Definitions<a class="headerlink" href="#synchronous-set-definitions" title="Permalink to this headline">¶</a></h2>
+<p>Synchronous sets determine when an event is passed synchronously vs.
+asynchronously. Within a synchronous set, events are passed synchronously. Any
+event passed between synchronous sets is sent asynchronously.</p>
+<p>A synchronous set definition looks like this:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">syncset</span><span class="w"> </span><span class="nc">Commands</span><span class="w"> </span><span class="p">{</span><span class="nc">FirstCommand</span><span class="p">,</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">,</span><span class="w"> </span><span class="nb">pedl</span><span class="p">};</span><span class="w"></span>
+</pre></div>
+</div>
+<p>In this case, a synchronous set named <code class="docutils literal notranslate"><span class="pre">Commands</span></code> is declared to contain
+monitors <code class="docutils literal notranslate"><span class="pre">FirstCommand</span></code> and <code class="docutils literal notranslate"><span class="pre">CommandPair</span></code>. The keyword <code class="docutils literal notranslate"><span class="pre">pedl</span></code> means any
+PEDL events that are not otherwise added to a synchronous set get put in this
+one. Here, by placing all monitors <em>and</em> PEDL into a single synchronous set, the
+entire monitor system is synchronous.</p>
+<p>PEDL events can also be put into synchronous sets individually. The
+<code class="docutils literal notranslate"><span class="pre">imported</span></code> and <code class="docutils literal notranslate"><span class="pre">exported</span></code> are used to do so:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">syncset</span><span class="w"> </span><span class="nc">Commands</span><span class="w"> </span><span class="p">{</span><span class="nc">FirstCommand</span><span class="p">,</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">,</span><span class="w"> </span><span class="kd">imported</span><span class="w"> </span><span class="n">command</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="kd">imported</span><span class="w"> </span><span class="n">succeed</span><span class="p">,</span><span class="w"> </span><span class="kd">exported</span><span class="w"> </span><span class="n">violation</span><span class="p">};</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Any monitor not put into a synchronous set will be implicitly put in its own
+synchronous set. If there are any PEDL events not placed in a synchronous set
+(and no synchronous set contains the <code class="docutils literal notranslate"><span class="pre">pedl</span></code> keyword), a separate <code class="docutils literal notranslate"><span class="pre">pedl</span></code>
+synchronous set is implicitly created. It follows that if no synchronous sets
+are defined explicitly, all events will be passed asynchronously.</p>
+<p>When code is generated, all monitors in a synchronous set become part of the
+same executable. The source of any PEDL events in the synchronous set normally
+must be linked in as well, so that is something to be aware of if the target
+system consists of multiple processes.</p>
+</section>
+<section id="connection-a-k-a-channel-definitions">
+<h2>Connection (a.k.a. “Channel”) Definitions<a class="headerlink" href="#connection-a-k-a-channel-definitions" title="Permalink to this headline">¶</a></h2>
+<p>Connection definitions are the main purpose of the architecture file: to
+specify how the events between monitors and the target system are linked. Here
+are several examples:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">cmd1:</span><span class="w"> </span><span class="n">command</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">[</span><span class="m">*</span><span class="p">].</span><span class="n">command</span><span class="p">(</span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">cmd1:</span><span class="w"> </span><span class="n">command</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">(</span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">cmd2:</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">.</span><span class="n">second_command</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">(</span><span class="m">#0</span><span class="p">,</span><span class="w"> </span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">succ:</span><span class="w"> </span><span class="n">succeed</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">[</span><span class="m">*</span><span class="p">,</span><span class="w"> </span><span class="m">$0</span><span class="p">].</span><span class="n">second_success</span><span class="p">();</span><span class="w"></span>
+<span class="nl">succ:</span><span class="w"> </span><span class="n">succeed</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">[</span><span class="m">$0</span><span class="p">,</span><span class="w"> </span><span class="m">*</span><span class="p">].</span><span class="n">first_success</span><span class="p">();</span><span class="w"></span>
+<span class="nl">succ:</span><span class="w"> </span><span class="n">succeed</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">[</span><span class="m">$0</span><span class="p">].</span><span class="n">success</span><span class="p">();</span><span class="w"></span>
+<span class="nl">out:</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">.</span><span class="n">violation</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">violation</span><span class="p">(</span><span class="m">#0</span><span class="p">,</span><span class="w"> </span><span class="m">#1</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The very simplest connections might look like this:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">.</span><span class="n">bar</span><span class="p">;</span><span class="w">   </span><span class="c1">// Monitor to Monitor</span>
+<span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">.</span><span class="n">bar</span><span class="p">;</span><span class="w">        </span><span class="c1">// PEDL to Monitor</span>
+<span class="nb">pedl</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">.</span><span class="n">bar</span><span class="p">;</span><span class="w">   </span><span class="c1">// PEDL to Monitor</span>
+<span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">bar</span><span class="p">;</span><span class="w">        </span><span class="c1">// Monitor to PEDL</span>
+<span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nb">pedl</span><span class="p">.</span><span class="n">bar</span><span class="p">;</span><span class="w">   </span><span class="c1">// Monitor to PEDL</span>
+</pre></div>
+</div>
+<p>The left side of a connection is always an exported monitor event or an
+imported PEDL event. The right side is either an imported monitor event, an
+exported PEDL event, or a monitor creation event (only the first two are in the
+previous example). A PEDL event cannot be connected directly to a PEDL event.</p>
+<p>Connections are normally given names:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">foobar:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">.</span><span class="n">bar</span><span class="p">;</span><span class="w"></span>
+<span class="nl">foo_in:</span><span class="w"> </span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">.</span><span class="n">bar</span><span class="p">;</span><span class="w"></span>
+<span class="nl">ch3:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">bar</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The names are used occasionally in the code, primarily in the transport
+adapters, e.g. the channel name for RabbitMQ or the topic name for ROS.</p>
+<p>If the destination monitor or event have parameters, the connection needs to
+specify how to fill them (otherwise, empty brackets and parentheses are
+optional):</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">foobar:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">[</span><span class="m">#0</span><span class="p">,</span><span class="w"> </span><span class="m">$0</span><span class="p">].</span><span class="n">bar</span><span class="p">(</span><span class="m">#0</span><span class="p">,</span><span class="w"> </span><span class="m">$1</span><span class="p">);</span><span class="w"></span>
+<span class="nl">foobar:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">[</span><span class="m">Id.0</span><span class="p">,</span><span class="w"> </span><span class="m">Param.0</span><span class="p">].</span><span class="n">bar</span><span class="p">(</span><span class="m">Id.0</span><span class="p">,</span><span class="w"> </span><span class="m">Param.1</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Parameters can come from the source monitor or from the source event. The
+former are specified with <code class="docutils literal notranslate"><span class="pre">Id.&lt;num&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">#&lt;num&gt;</span></code> and the latter with
+<code class="docutils literal notranslate"><span class="pre">Param.&lt;num&gt;</span></code> or <code class="docutils literal notranslate"><span class="pre">$&lt;num&gt;</span></code>. The above two lines are equivalent.</p>
+<p>The same source event can be sent to multiple destinations by using it in
+multiple connections. When doing this, the connection name need not be repeated
+each time, but it cannot be changed:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="c1">// Allowed:</span>
+<span class="nl">foobar:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">[</span><span class="m">#0</span><span class="p">].</span><span class="n">bar</span><span class="p">(</span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">foobar:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonC</span><span class="p">.</span><span class="n">baz</span><span class="p">(</span><span class="m">#0</span><span class="p">);</span><span class="w"></span>
+
+<span class="c1">// Allowed:</span>
+<span class="nl">foobar:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">[</span><span class="m">#0</span><span class="p">].</span><span class="n">bar</span><span class="p">(</span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonC</span><span class="p">.</span><span class="n">baz</span><span class="p">(</span><span class="m">#0</span><span class="p">);</span><span class="w"></span>
+
+<span class="c1">// Allowed:</span>
+<span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">[</span><span class="m">#0</span><span class="p">].</span><span class="n">bar</span><span class="p">(</span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">foobar:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonC</span><span class="p">.</span><span class="n">baz</span><span class="p">(</span><span class="m">#0</span><span class="p">);</span><span class="w"></span>
+
+<span class="c1">// NOT allowed:</span>
+<span class="nl">foobar:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">[</span><span class="m">#0</span><span class="p">].</span><span class="n">bar</span><span class="p">(</span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">foobaz:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonC</span><span class="p">.</span><span class="n">baz</span><span class="p">(</span><span class="m">#0</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<section id="unicast-and-multicast">
+<h3>Unicast and Multicast<a class="headerlink" href="#unicast-and-multicast" title="Permalink to this headline">¶</a></h3>
+<p>Wildcards can be used in the destination monitor parameters, which creates a
+multicast connection:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">foobar:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">[</span><span class="m">*</span><span class="p">,</span><span class="w"> </span><span class="m">*</span><span class="p">].</span><span class="n">bar</span><span class="p">(</span><span class="m">#0</span><span class="p">,</span><span class="w"> </span><span class="m">$1</span><span class="p">);</span><span class="w"></span>
+<span class="nl">baz_in:</span><span class="w"> </span><span class="n">baz</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">[</span><span class="m">$0</span><span class="p">,</span><span class="w"> </span><span class="m">*</span><span class="p">].</span><span class="n">bar</span><span class="p">();</span><span class="w"></span>
+</pre></div>
+</div>
+<p>Unicast and multicast connections are fundamentally different. Unicast
+connections send the event to the specific instance identified by a full set of
+identities. If that instance does not exist, it is <em>dynamically instantiated</em>
+on the fly before the event is sent. Multicast connections send the event to
+any monitors that match the non-wildcard identities. If no such monitor exists,
+nothing happens.</p>
+</section>
+<section id="explicit-creation">
+<h3>Explicit Creation<a class="headerlink" href="#explicit-creation" title="Permalink to this headline">¶</a></h3>
+<p>The last type of connection is an explicit creation event and it looks like
+these:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="nl">foo:</span><span class="w"> </span><span class="nc">MonA</span><span class="p">.</span><span class="n">foo</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">(</span><span class="m">#0</span><span class="p">,</span><span class="w"> </span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">bar:</span><span class="w"> </span><span class="n">bar</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">MonB</span><span class="p">(</span><span class="m">$0</span><span class="p">,</span><span class="w"> </span><span class="m">$1</span><span class="p">,</span><span class="w"> </span><span class="n">some_var</span><span class="o">=</span><span class="m">$2</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>These create a new instance of <code class="docutils literal notranslate"><span class="pre">MonB</span></code> explicitly. Wildcard parameters are not
+allowed. The second line shows an additional shortcut that is possible with
+explicit creation: state variable initializers can be added to the end of the
+parameter list. These override the default initial values for the given state
+variables.</p>
+<p>Note that explicit creation and exported PEDL events use similar syntax. If
+it’s ever ambiguous which is intended (that is, a monitor and PEDL event share
+the same name), explicit creation takes priority. Use the <code class="docutils literal notranslate"><span class="pre">pedl.</span></code> prefix to
+force an exported PEDL event.</p>
+</section>
+<section id="implicit-pedl-exports">
+<h3>Implicit PEDL Exports<a class="headerlink" href="#implicit-pedl-exports" title="Permalink to this headline">¶</a></h3>
+<p>Any events exported by a monitor that aren’t used in a connection explicitly
+are assumed to be intended for the target system. Thus, implicit exported PEDL
+events are created for them, and implicit connections made between the exported
+monitor event and the exported PEDL event. The parameters for the PEDL event
+will match the parameters for the monitor event.</p>
+</section>
+</section>
+<section id="examples">
+<h2>Examples<a class="headerlink" href="#examples" title="Permalink to this headline">¶</a></h2>
+<p>Here is an example architecture specification for monitoring online auctions:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">system</span><span class="w"> </span><span class="nc">Auction</span><span class="p">;</span><span class="w"></span>
+
+<span class="kd">import</span><span class="w"> </span><span class="sx">&quot;auctionmonitor.smedl&quot;</span><span class="p">;</span><span class="w"></span>
+
+<span class="kd">monitor</span><span class="w"> </span><span class="nc">Auctionmonitor</span><span class="p">(</span><span class="kt">string</span><span class="p">);</span><span class="w"></span>
+
+<span class="c1">// Params: item name, reserve, duration</span>
+<span class="kd">imported</span><span class="w"> </span><span class="n">new_auction</span><span class="p">(</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+<span class="c1">// Params: item name, amount</span>
+<span class="kd">imported</span><span class="w"> </span><span class="n">bid</span><span class="p">(</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="p">);</span><span class="w"></span>
+<span class="c1">// Params: item_name</span>
+<span class="kd">imported</span><span class="w"> </span><span class="n">sold</span><span class="p">(</span><span class="kt">string</span><span class="p">);</span><span class="w"></span>
+<span class="kd">imported</span><span class="w"> </span><span class="n">endOfDay</span><span class="p">();</span><span class="w"></span>
+
+<span class="nl">ch1:</span><span class="w"> </span><span class="n">new_auction</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">Auctionmonitor</span><span class="p">(</span><span class="m">$0</span><span class="p">,</span><span class="w"> </span><span class="n">reserve</span><span class="o">=</span><span class="m">$1</span><span class="p">,</span><span class="w"> </span><span class="n">duration</span><span class="o">=</span><span class="m">$2</span><span class="p">);</span><span class="w"></span>
+<span class="nl">ch2:</span><span class="w"> </span><span class="n">bid</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">Auctionmonitor</span><span class="p">[</span><span class="m">$0</span><span class="p">].</span><span class="n">bid</span><span class="p">(</span><span class="m">$1</span><span class="p">);</span><span class="w"></span>
+<span class="nl">ch3:</span><span class="w"> </span><span class="n">sold</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">Auctionmonitor</span><span class="p">[</span><span class="m">$0</span><span class="p">].</span><span class="n">sold</span><span class="p">();</span><span class="w"></span>
+<span class="nl">ch4:</span><span class="w"> </span><span class="n">endOfDay</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">Auctionmonitor</span><span class="p">[</span><span class="m">*</span><span class="p">].</span><span class="n">end_of_day</span><span class="p">;</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The goal is to ensure bids monotonically increase, items never sell before
+meeting reserve, and items never sell after a certain number of days pass.</p>
+<ul class="simple">
+<li><p>There is a single monitor specification, with a new instance created for each
+item whenever a <code class="docutils literal notranslate"><span class="pre">new_auction</span></code> event comes. Explicit creation is used so the
+reserve and duration variables can be initialized.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">bid</span></code> and <code class="docutils literal notranslate"><span class="pre">sold</span></code> events go to the specific instance for the item they
+refer to.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">endOfDay</span></code> events go to all instances because of the wildcard. That way,
+they can all tick off another day from their duration and expire if
+necessary. If there are no auctions yet, nothing happens.</p></li>
+<li><p>There are no connections for exported PEDL events, but since none of the
+monitor’s exported events are part of a connection, implicit PEDL events will
+be created for all of them.</p></li>
+</ul>
+<p>Here is another architecture specification that several snippets above came
+from:</p>
+<div class="highlight-a4smedl notranslate"><div class="highlight"><pre><span></span><span class="kd">system</span><span class="w"> </span><span class="nc">NestedCommands</span><span class="p">;</span><span class="w"></span>
+
+<span class="kd">import</span><span class="w"> </span><span class="sx">&quot;first_command.smedl&quot;</span><span class="p">;</span><span class="w"></span>
+<span class="kd">import</span><span class="w"> </span><span class="sx">&quot;command_pair.smedl&quot;</span><span class="p">;</span><span class="w"></span>
+
+<span class="kd">monitor</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+<span class="kd">monitor</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">(</span><span class="kt">int</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="p">);</span><span class="w"></span>
+
+<span class="kd">syncset</span><span class="w"> </span><span class="nc">Commands</span><span class="w"> </span><span class="p">{</span><span class="nc">FirstCommand</span><span class="p">,</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">,</span><span class="w"> </span><span class="nb">pedl</span><span class="p">};</span><span class="w"></span>
+
+<span class="nl">cmd1:</span><span class="w"> </span><span class="n">command</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">[</span><span class="m">*</span><span class="p">].</span><span class="n">command</span><span class="p">(</span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">cmd1:</span><span class="w"> </span><span class="n">command</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">(</span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">cmd2:</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">.</span><span class="n">second_command</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">(</span><span class="m">#0</span><span class="p">,</span><span class="w"> </span><span class="m">$0</span><span class="p">);</span><span class="w"></span>
+<span class="nl">succ:</span><span class="w"> </span><span class="n">succeed</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">[</span><span class="m">*</span><span class="p">,</span><span class="w"> </span><span class="m">$0</span><span class="p">].</span><span class="n">second_success</span><span class="p">();</span><span class="w"></span>
+<span class="nl">succ:</span><span class="w"> </span><span class="n">succeed</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">[</span><span class="m">$0</span><span class="p">,</span><span class="w"> </span><span class="m">*</span><span class="p">].</span><span class="n">first_success</span><span class="p">();</span><span class="w"></span>
+<span class="nl">succ:</span><span class="w"> </span><span class="n">succeed</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="nc">FirstCommand</span><span class="p">[</span><span class="m">$0</span><span class="p">].</span><span class="n">success</span><span class="p">();</span><span class="w"></span>
+<span class="nl">out:</span><span class="w"> </span><span class="nc">CommandPair</span><span class="p">.</span><span class="n">violation</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">violation</span><span class="p">(</span><span class="m">#0</span><span class="p">,</span><span class="w"> </span><span class="m">#1</span><span class="p">);</span><span class="w"></span>
+</pre></div>
+</div>
+<p>The goal here is to validate that if command <em>X</em> starts after command <em>Y</em>, then
+command <em>X</em> must succeed before command <em>Y</em>.</p>
+<ul class="simple">
+<li><p>Each new command that comes causes a <code class="docutils literal notranslate"><span class="pre">FirstCommand</span></code> to be created <em>and</em> is
+sent to all existing <code class="docutils literal notranslate"><span class="pre">FirstCommand</span></code> as a second command.</p></li>
+<li><p>Every time an existing <code class="docutils literal notranslate"><span class="pre">FirstCommand</span></code> receives a command, it emits
+<code class="docutils literal notranslate"><span class="pre">second_command</span></code>, which creates a <code class="docutils literal notranslate"><span class="pre">CommandPair</span></code></p></li>
+<li><p>Every <code class="docutils literal notranslate"><span class="pre">success</span></code> event is sent to all <code class="docutils literal notranslate"><span class="pre">CommandPair</span></code> where the first
+command matches as <code class="docutils literal notranslate"><span class="pre">first_success</span></code> and all <code class="docutils literal notranslate"><span class="pre">CommandPair</span></code> where the second
+command matches as <code class="docutils literal notranslate"><span class="pre">second_success</span></code>. Each <code class="docutils literal notranslate"><span class="pre">CommandPair</span></code> can raise a
+<code class="docutils literal notranslate"><span class="pre">violation</span></code> event if its successes some out of order.</p></li>
+<li><p>Every <code class="docutils literal notranslate"><span class="pre">success</span></code> is also sent to the matching <code class="docutils literal notranslate"><span class="pre">FirstCommand</span></code>, so it can
+enter its final state and be deallocated.</p></li>
+</ul>
+<p>More examples can be found in the “tests/monitors” directory.</p>
+</section>
+</section>
+
+
+          </div>
+              <div class="related bottom">
+                &nbsp;
+  <nav id="rellinks">
+    <ul>
+        <li>
+          &larr;
+          <a href="smedl.html" title="Previous document">SMEDL Specifications</a>
+        </li>
+        <li>
+          <a href="../api/index.html" title="Next document">SMEDL Programming Interface</a>
+          &rarr;
+        </li>
+    </ul>
+  </nav>
+              </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy; 2021 The Trustees of the University of Pennsylvania.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.3</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/language/a4smedl.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
