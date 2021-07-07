@@ -9,8 +9,6 @@ uint8 param{{loop.index0}}
 string param{{loop.index0}}
 {% elif param is sameas SmedlType.POINTER %}
 string param{{loop.index0}}
-{% elif param is sameas SmedlType.THREAD %}
-{% unsupported "'thread' type cannot be transported over ROS" %}
 {% elif param is sameas SmedlType.OPAQUE %}
 uint8[] param{{loop.index0}}
 {% endif %}
@@ -26,8 +24,6 @@ uint8 id{{loop.index0}}
 string id{{loop.index0}}
 {% elif id is sameas SmedlType.POINTER %}
 string id{{loop.index0}}
-{% elif id is sameas SmedlType.THREAD %}
-{% unsupported "'thread' type cannot be transported over ROS" %}
 {% elif id is sameas SmedlType.OPAQUE %}
 uint8[] id{{loop.index0}}
 {% endif %}

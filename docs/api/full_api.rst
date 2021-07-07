@@ -304,7 +304,7 @@ to the global wrapper. There are only a couple differences:
 .. function:: int init_TRANSPORT(void)
 
    Initialize this transport adapter. Must be called before any other
-   functioned in the transport adapter.
+   functions in the transport adapter.
 
    :return: Nonzero for success, zero for error
 
