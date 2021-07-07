@@ -1,0 +1,25 @@
+object Collect;
+
+
+state:
+  int vNum = 0;
+  int vNumTemp = 0;
+  int res = 0;
+
+events:
+  imported addV();
+  imported inRes(int);//number of un
+  exported result(int);//
+  
+
+scenarios:
+  sce:
+
+    start -> addV() {vNum ++; } -> start;
+   
+  sce1:
+    init -> inRes(i) when (vNum > 1) {res = res + i; vNumTemp = vNum; vNum --; } -> start;
+    init -> inRes(i) when (vNum == 1) {res = i - vNum; raise result(res); vNum = 0;} -> start; 
+    start -> inRes(i) when (vNum > 1) {res = res + i; vNum --; } -> start;
+    start -> inRes(i) when (vNum == 1) { res = res + i - vNumTemp; raise result(res); vNum = 0;} -> init;
+    

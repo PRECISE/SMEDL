@@ -1,0 +1,35 @@
+object Resource;
+
+state:
+    int task;
+
+events:
+    imported request();
+    imported deny();
+    imported grant();
+    imported cancel();
+    imported rescind();
+    imported end();
+    exported violation();
+
+scenarios:
+    main:
+        finalstate free;
+        free -> request() -> requested;
+        free -> deny() {raise violation();} -> fail;
+        free -> grant() {raise violation();} -> fail;
+        free -> rescind() {raise violation();} -> fail;
+        free -> cancel() {raise violation();} -> fail;
+        free -> end() -> pass;
+        requested -> deny() -> free;
+        requested -> grant() -> granted;
+        requested -> request() {raise violation();} -> fail;
+        requested -> rescind() {raise violation();} -> fail;
+        requested -> cancel() {raise violation();} -> fail;
+        requested -> end() -> pass;
+        granted -> cancel() -> free;
+        granted -> rescind() -> granted;
+        granted -> request() {raise violation();} -> fail;
+        granted -> deny() {raise violation();} -> fail;
+        granted -> grant() {raise violation();} -> fail;
+        granted -> end() {raise violation();} -> fail;

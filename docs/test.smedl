@@ -1,0 +1,35 @@
+object NoLightWeakUntilButton;
+
+state:
+  int light = 0;
+  int button = 0;
+
+events:
+  imported light_is(int);
+  imported button_is(int);
+  internal check();
+  exported satisfaction();
+  exported violation();
+
+scenarios:
+  input:
+    idle -> light_is(status) {
+        light = status;
+        raise check();
+      } -> idle;
+    idle -> button_is(status) {
+        button = status;
+        raise check();
+      } -> idle;
+
+  verify:
+    waiting
+      -> check() when (!light && !button)
+      -> waiting;
+    waiting
+      -> check() when (button) {raise satisfaction();}
+      -> satisfied;
+      else {raise violation();}
+      -> violated;
+    satisfied -> check() -> satisfied;
+    violated -> check() -> violated;

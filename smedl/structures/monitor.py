@@ -280,6 +280,9 @@ class Scenario(object):
         # If condition is None, convert to a true Expression (1)
         if condition is None:
             condition = expr.Literal('1', expr.SmedlType.INT)
+        # Otherwise, ensure it is not a string or opaque
+        else:
+            condition.condition_type_check()
 
         # Add a new entry to the steps dict
         key = (from_state, event)

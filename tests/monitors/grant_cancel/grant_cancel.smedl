@@ -1,0 +1,16 @@
+object GrantCancelResource;
+
+state:
+    int task;
+
+events:
+    imported grant(int);
+    imported cancel(int);
+    exported violation();
+
+scenarios:
+    main:
+        free -> grant(granted_task) {task = granted_task;} -> granted;
+        granted -> grant(granted_task) {raise violation();} -> granted;
+        granted -> cancel(granted_task) when (granted_task == task) -> free
+            else {raise violation();} -> granted;

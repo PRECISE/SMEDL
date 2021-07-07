@@ -4,4 +4,6 @@ import "adder.smedl";
 
 monitor Adder();
 
+syncset Adder {Adder, pedl};
+
 conn: measurement => Adder.measurement($0);

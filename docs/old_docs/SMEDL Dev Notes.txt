@@ -1,0 +1,153 @@
+SMEDL Language Design and Development Notes
+
+New language features:
+- Internal events
+- Exception-style 'when' handling
+- Multiple interacting state machines
+- Action queue
+- Helper functions
+- Helper function libraries (with import support)
+- Multi-threaded monitor support
+- Implicit vs. explicit error state support
+- Multiple interacting SMEDL objects
+
+Implementation features:
+- FSM generation
+- C code generation
+
+Component Breakdown
+----------
+-PEDL:
+    Monitor constructor
+        DONE:
+            -Defines where in the code to initialize a monitor. Placement is based on instantiation of a struct of parameters
+            (e.g. MeanderData using keyword 'create' in the PEDL)
+            -Defines initialization of internal state variable through mapping from parameter struct variables. This is specifically for monitor variables tied to the code, as opposed to internal SMEDL variables set within the monitor)
+        TODO:
+            -Automated insertion of monitor initialization in code (We have only done this manually). It needs to be done at the point where all the values are set within the struct. Hard to tell when that is, unless there's an init or validate function for that struct
+            -Support initialization helper functions (e.g. memory management for non-primitive state variables)
+            -Autogenerate header file based on PEDL constructor
+            -Do type-checking of ID values in PEDL constructor to generate appropriate type in generated code.
+        QUESTIONS:
+            -Should there be other keywords besides 'create' to specify placement of monitor instantiation?
+            -Create can get complicated because the user may declare a struct for parameters, but only after all the values within are set, can the monitor be instantiated. This makes it hard for automatic instrumentation to figure out when the struct has all the required information.
+            -Should there also be PEDL for when to turn off or deconstruct monitors? (Yes, when the monitor's ID is destroyed. Also when we reach a terminal state.)
+    Event probes
+            - What is the 'false' boolean parameter used for in call() functions
+        DONE:
+            -Define placement of probes at every update of a variable of interest, or a call or return of a function. These categories seem to cover event of interest such as system calls and inter-process communication.
+            -For call, probe is placed just inside function call
+            -For return, temp var is set to return value, probe function is called with temp var, then temp var returned
+        TODO:
+            -Generating 'return' event functions
+            -Automated probe placement
+        QUESTIONS:
+            -Extend event definitions based on other occurrences of system calls and inter-process communication? (Don't have to do anything special)
+            -Use of 'when' conditions to reduce probe placement with conditions in static analysis phase. Conditions are only used in SMEDL to determine transitions at probe. Conditions based on call stack, scope or value of variables, etc could be used to reduce the number of places to add a probe.
+-SMEDL:
+    State transitions
+        DONE:
+            -Defines state machine transitions and alarms, with optional conditions on events based on imported or internally modified variables and helper functions
+            -On an event, switch through scenarios in this SMEDL object (in the order that scenarios are defined in the SMEDL). Make stated transitions. If no transition stated, print error to stdout and continue from current state (instead of transitioning to new state or error state).
+            -Regarding actions: state variables are set immediately. A queue is used for raised events as part of an action, and executed at the end of the event function after the state transition is made.
+            -'this' keyword used to reference internal state variable and events
+            -internal SMEDL variables are initialized and set in the SMEDL, as opposed to PEDL variables that are set based on variables in the source code.
+            -Traces may contain no explicitly named states besides start and end states, only implicit states
+            -Exception semantics - if any when condition evaluates false in the trace, the 'when' clause is executed. If there is no 'when' the standard error is raised.
+            -Chose to ignore 'instantiation events', since new monitor creation can be specified with monitor constructors in the PEDL
+        TODO:
+            -Flags to disable error raises for specific events on state where transition is not explicitly defined (Options: flag for all scenarios in SMEDL object, or just specific scenarios). The intention is to reduce the number of transitions that need to be explicitly stated inthe SMEDL file. (Put modifier keyword for each event to define whether its the type of "un-expected event is an error" or "un-expected event is ignored")
+            -Handle communication between monitors; match raised events using identifiers
+            -Model checking of SMEDL FSMs - looking for potential deadlock (Low-priority!)
+                -Raising events back in forth in a circular manner is a problem
+                -Nondeterminism from same explicitly named state on same event in same scenario
+                -Can we use model checking to ensure that traces (and their 'when' clauses) are mutually exclusive?
+                -Warn about terminal states? (This is okay, it means the monitor's job is done and can be destroyed)
+            -Add boolean as state variable type
+            -Add labels to grammar for internal state variables and external state variables
+            -Support import of checker libraries (for helper functions)
+            -Think of State machine checks to detect when guards are not mutually exclusive
+        QUESTIONS:
+            -Add access to library of recovery mechanisms, to extend actions taken when an error is raised, beyond just printing an error message to stdout?
+            -Triggering multiple events (for same or different monitors) at the same point in code - is this a problem? If it leads to consecutive probes, does order matter? Should this be prevented? (Multiple events should be allowed, we should do testing to see if this can cause issues)
+            -Native timer/timeout events - traces that check time elapsed during occurrences of events can be done using a helper function extension that sets an internal smedl variable based on system time. But would it be good though to standardize this as a built-in SMEDL feature? (Add timing syntax, use system timeout events - callbacks) (Low priority until DARPA project)
+            -Cross-validate import/export events
+            -Raise queue (don't add raise to symbolTable, but check that it references int or exp event)
+            - Detect when transitions for an event have the same start state...their guards and actions should be merged?
+
+-Code generation:
+    In C:
+        DONE:
+            -Currently using probes as direct function calls that evaluate SMEDL in the process' main thread. These events are evaluated immediately, in-line with no buffer.
+            -Print SMEDL errors to stderr
+            -Monitors are added to a global linked list accessible by pointer to parameter struct (e.g. MeanderData) from multiple threads. It's only locked when adding checkers to the linked list. The user must be sure the key (parameter struct) is in scope wherever the monitor is needed. In the case study, the parameter struct is thread local. If multiple threads need to use the checker, the user must pass the key to threads that need it.
+            -A map for each identity is created, and when a monitor is created, it is added to each map. PEDL events define conditions for which monitors should be called for a given event based on their identities. The event probe uses the map for the first identity checked to create a list of monitors matching that identity. If more than one identity needs to be checked. That list is further filtered based on those identities. That seems to be more efficient than creating lists from all maps and then making of list of monitors that are part of all lists (espcially if the user used the identity that filters the list the most as the first identity checked)
+            -Helper function calls in 'when' conditions and actions: {x = helper() ; raise y(x)} or {raise y(helper())}
+            Should there be a keyword similar to 'raise' for calling helper functions? Can these helpers be a vehicle for checking system-level events such as system calls using other APIs?
+            -Helpers take in parameters by default as void*, and the function itself casts the data as needed
+            -Internal variables may be structs using the keyword 'struct' and stored in monitor as void* in C
+            -Right now generation assumes that for object <ObjectName>, the monitor will be named <ObjectName>Monitor and that the parameters from the code will be contained in struct <ObjectName>Data with matching variable names and types within
+        TODO:
+            -Generate function prototypes as separate [object]_mon.h file instead of just on top of [object]_mon.c
+            -Generate from multiple SMEDL object files, making FSM transitions on some similar and some different events
+            -Generate monitor deconstructor, and global monitor list deconstuctor
+            -Build PEDL symbol table and include some consistency checks against the SMEDL symbol table
+            -Check that all monitor internal variables are mapped from source code variables via PEDL or initialized in SMEDL. Enforce this distinction where a variable must be strictly set from code or strictly set from SMEDL?
+            -Token conflicts are common if SMEDL variables or events have the same name as source code. Will probably just add prefix to token names in SMEDL to avoid this
+            -Add auto-generation of checker storage/getter functions
+            -Search for existing source code instrumentation tools (or binary-level tools) for ideas or to see if we can integrate them into our tool
+            -Add wildcard identifier to PEDL syntax to support events being sent to multiple monitors
+            -Ensure all manual code edits are generated automatically
+        QUESTIONS:
+            -Will we still want to try asynchronous probes with buffer?
+            -Locks at instrumentation in case multiple threads changing var of interest? By default? Performance tradeoff? Ex: all robots incrementing a global counter and checking a condition based on that value.
+            -Generate functions to set/reset monitor states on errors? (Likely synchronization issues)
+    Machine level instrumentation:
+            -Potential issues with local vars of interest with changing addresses?
+
+Sample instrumentation style to be used when capturing a function's return value for checking:
+int foo() {
+    __original_code__
+    return bar();
+}
+    | |
+    | |
+    \ /
+     V
+int foo() {
+    __original_code__
+    int temp = bar();
+    __checker_update_added_here__
+    return temp;
+}
+
+Topics for Discussion
+----------
+
+Do we need to explicitly define non-error transitions that aren't already defined? On a related note, do we want to label transitions error handling mode (implicit or explicit)?
+
+"We were wondering about how we should handle a situation where one scenario defines a high-level trace of events while another scenario defines a lower-level trace of events, that trace being a subset of the high-level scenario. Would this lead to any problems, or can they both simply proceed simultaneously without concern? My thoughts are that they will be able to proceed normally, but I wanted to make sure there wasn’t any issue we may be glossing over." - Peter
+
+"Can a ‘when’ condition ever include a call to a helper function? Maybe a comparison in the ‘when' involves a very complex arithmetic operation. Where would such a function be defined?
+On the other hand, the programmer could just as easily call a function in their main program to perform the complex operation and set a variable of interest based on the result." - Brad
+
+"Different scenarios should not interfere with each other, even if they share some events.  Of course, it is possible to introduce unintended conflicts through shared checker state.  I don't think that we should aim to exclude such interactions.  Peter's example is a case in point: the purpose of the low-level scenario may be to compute conditions to be used in the higher-level scenario.
+
+I think there may be good value in "checker libraries", that is, collections of helper functions that abstract away complex calculations from 'when' conditions.  They can be linked with the checker when the C code generated from a SMEDL script is compiled.  I have not given it much thought, but proposals for infrastructure that would support such checker libraries would be very welcome.  I guess, we would need an extension of SMEDL syntax with calls to helper functions, an extension of type checking to connect with header files from the library, a mechanism for connecting helper functions with the checker state (and the program state?).  Maybe guidelines for defining these helper functions: at the very least, we should require them to avoid side effects.  OTOH, requiring application programmers to introduce functions into the program source code for the purpose of helping the checker may be problematic: not only it is an extra burden for the programmer, but also the programmer may not know about the checker state.
+
+There is also a related (but more general) question about what variables can be used in 'when' clauses.  Can the checker refer to a program variable directly?  The alternative is to create shadow copies of program variables within the checker space using update events (this is the approach MaC took).  Here, since we are targeting synchronous checking, it may be more efficient to read program variables directly, but instrumentation becomes more complex.  A third alternative is to use the MaC mechanism, but hide it from the language level.  That is, when we generate code for the script, whenever a program variable is mentioned, the generator creates a shadow copy automatically, introducing the necessary update events." - Oleg
+
+
+Make SMEDL for priority queue, send() receive(), use helper libraries? Fixed number of priorities (5 different priorities with counters of received messages at each of those priorities)
+
+
+TODO
+----
+
+Add more items to the GitLab issues list from these notes.
+Write script to automate makefile generation and automate compilation
+Write script to extract more debug info from pyelftools
+
+Illinois MOP tool for runtime verification
+
+Determine exactly what the imported and exported events mean...

@@ -1,0 +1,25 @@
+system ResourceLifecycle;
+
+import "resource.smedl";
+
+monitor Resource(int);
+
+imported deny(int);
+
+syncset ResourceLifecycle {
+    Resource,
+    imported request,
+    imported deny,
+    imported grant,
+    imported cancel,
+    imported rescind,
+    imported end,
+    exported violated};
+
+requests: pedl.request => Resource[$0].request();
+denies: deny => Resource[$0].deny();
+grants: grant => Resource[$0].grant();
+cancels: cancel => Resource[$0].cancel();
+rescinds: rescind => Resource[$0].rescind();
+ending: end => Resource[*].end();
+out: Resource.violation => violated();

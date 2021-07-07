@@ -104,9 +104,11 @@ class SmedlType(Enum):
 class Expression(object):
     """A SMEDL expression"""
     def __init__(self, type_, expr_type):
+        # Represents the SMEDL type of the expression
         self._type = type_
         self._parens = False
-        # Needed by Jinja
+        # Needed by Jinja - Represents the type of *this object* (i.e. literal,
+        # event param, binary op, etc.)
         self._expr_type = expr_type
 
     @property
@@ -281,6 +283,14 @@ class Expression(object):
         else:
             raise TypeMismatch("{} cannot be used as a {}".format(self._type,
                                dest_type))
+
+    def condition_type_check(self):
+        """Check that the expression type is compatible with being used as a
+        transition condition. If compatible, nothing happens. If not, raise
+        TypeMismatch."""
+        if self._type in (SmedlType.STRING, SmedlType.OPAQUE):
+            raise TypeMismatch("{} cannot be used as a condition."
+                               .format(self._type))
 
 
 class StateVar(Expression):

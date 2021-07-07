@@ -1,0 +1,12 @@
+object CommandPair;
+
+events:
+    imported first_success();
+    imported second_success();
+    exported violation();
+
+scenarios:
+    main:
+        finalstate done;
+        both_running -> second_success() -> done;
+        both_running -> first_success() {raise violation();} -> done;

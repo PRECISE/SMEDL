@@ -4,4 +4,6 @@ import "simple.smedl";
 
 monitor Simple();
 
+syncset Simple {Simple, pedl};
+
 conn: in => Simple.in($0);

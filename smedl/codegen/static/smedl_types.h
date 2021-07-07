@@ -12,7 +12,7 @@
  * char -> char
  * string -> char *
  * pointer -> void *
- * opaque -> void *
+ * opaque -> SMEDLOpaque
  *
  * Difference between pointer and opaque: Pointer is the pointer itself, opaque
  * is an object of unspecified structure that we have a pointer to.

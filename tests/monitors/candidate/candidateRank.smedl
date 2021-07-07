@@ -1,0 +1,12 @@
+object CandidateRank;
+
+
+events:
+  imported shouldrank();//(voter, candidate, party)
+  imported rank(string, string, int);//(voter, candidate, rank) 
+  exported valid();//(voter, party)
+
+scenarios:
+  sce:
+    init -> shouldrank() -> start;
+    start -> rank(v, c, i) {raise valid();} -> end;

@@ -62,9 +62,9 @@ success = route_{{syncset}}_{{conn.channel}}(identities, params, aux) && success
 {% if conn.source_mon is not none %}
 {% for param_type in conn.source_mon.params %}
 {% if param_type is sameas SmedlType.STRING %}
-free(identites[{{loop.index0}}].v.s);
+free(identities[{{loop.index0}}].v.s);
 {% elif param_type is sameas SmedlType.OPAQUE %}
-free(identites[{{loop.index0}}].v.o.data);
+free(identities[{{loop.index0}}].v.o.data);
 {% endif %}
 {% endfor %}
 {% endif %}
@@ -280,7 +280,7 @@ int local_{{conn.channel}}_{{target.mon_string}}_{{target.event}}(SMEDLValue *id
  * Returns nonzero on success, zero on failure.
  *
  * Parameters:
- * identites - An array of SMEDLValue of the proper length for the exporting
+ * identities - An array of SMEDLValue of the proper length for the exporting
  *   monitor. Ignored for events from the target program and may be set to
  *   NULL.
  * params - An array of SMEDLValue, one for each parameter of the exported event
@@ -344,7 +344,7 @@ int raise_pedl_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux) 
  * Returns nonzero on success, zero on failure.
  *
  * Parameters:
- * identites - An array of SMEDLValue of the proper length for the exporting
+ * identities - An array of SMEDLValue of the proper length for the exporting
  *   monitor. Ignored for events from the target program and may be set to
  *   NULL.
  * params - An array of SMEDLValue, one for each parameter of the exported event

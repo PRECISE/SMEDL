@@ -1,0 +1,30 @@
+object CollectV;
+
+
+state:
+  int pNum = 0;
+  int res = 0;
+
+events:
+  imported addP();
+  imported inRes(int);
+  internal check();
+  exported result(int);//
+  exported addV();
+  
+
+scenarios:
+  sce:
+
+    init -> addP() {pNum ++; raise addV(); } -> start;
+    start -> addP() {pNum ++; } -> start;
+   
+  sce1:
+    start -> inRes(i) when (pNum > 1) {res = res + i; pNum --; } -> start;
+    start -> inRes(i) when (pNum == 1) {res = res + i; raise check(); pNum --; } -> start;
+   
+  sce2 :
+    start -> check() when (res > 0) {raise result(1);} -> start;
+    start -> check() when (res == 0) {raise result(0);} -> start;
+
+

@@ -1,0 +1,34 @@
+object CandidateSelection;
+
+state:
+  int canNum = 0;
+
+events:
+  imported member(string, string);//(voter, party)
+  imported candidate(string, string);//(candidate, party)
+  imported countcan();//(voter, party)
+  imported valid();//(voter, party)
+  imported end();//
+  internal check();
+  exported shouldrank(string);//(voter, candidate, party)
+  exported result(int);
+  exported addP();
+
+  
+
+scenarios:
+  sce:
+
+    init -> member(v, p) {raise addP();} -> start;
+    start -> member(v, p) -> start;
+    start -> candidate(c, p) {raise shouldrank(c); canNum++; } -> start;
+
+  sce1:
+    
+    start -> valid() {canNum --;} -> start;
+    start -> end() {raise check();} -> start;
+
+  sce2:
+    start -> check() when (canNum == 0) {raise result(1); canNum = 0;} -> start;
+    start -> check() when (canNum > 0) {raise result(0); canNum = 0;} -> start;
+

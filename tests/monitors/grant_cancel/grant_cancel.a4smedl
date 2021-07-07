@@ -1,0 +1,8 @@
+system GrantCancel;
+
+import "grant_cancel.smedl";
+
+monitor GrantCancelResource(int);
+
+grants: grant => GrantCancelResource[$1].grant($0);
+cancels: cancel => GrantCancelResource[$1].cancel($0);

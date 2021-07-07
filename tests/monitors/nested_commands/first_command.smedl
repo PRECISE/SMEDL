@@ -1,0 +1,12 @@
+object FirstCommand;
+
+events:
+    imported command(int);
+    exported second_command(int);
+    imported success();
+
+scenarios:
+    export_pairs:
+        finalstate done;
+        running -> command(id) {raise second_command(id);} -> running;
+        running -> success() -> done;

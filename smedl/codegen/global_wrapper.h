@@ -63,8 +63,7 @@ int raise_pedl_{{event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
  *   monitor. Ignored for events from the target program and may be set to
  *   NULL.
  * params - An array of SMEDLValue, one for each parameter of the exported event
- * aux - Extra data that was passed from the imported event that caused this
- *   exported event
+ * aux - Extra data that was passed from the source event
  */
 {% for conn in sys.imported_channels(syncset) %}
 int forward_{{syncset}}_{{conn.mon_string}}_{{conn.source_event}}(SMEDLValue *identities, SMEDLValue *params, void *aux);
