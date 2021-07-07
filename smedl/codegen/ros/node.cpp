@@ -175,8 +175,9 @@ extern "C" {
      *
      * Returns nonzero on success, zero on failure. */
     int init_ros(void) {
-        ros::init(argc, argv, "{{syncset}}_node");
+        ros::init(smedl_argc, smedl_argv, "{{syncset}}_node");
         SMEDL::{{syncset}}_node = new SMEDL::{{syncset}}Node;
+        return 1;
     }
 
     /* Cleanup ROS node. */
@@ -191,14 +192,15 @@ extern "C" {
      * then return.
      *
      * Returns nonzero on success, zero on failure. */
-    int run_ros(blocking) {
+    int run_ros(int blocking) {
         if (blocking) {
             while (ros::ok()) {
-                ros::CallOneResult result = ros::getGlobalCallbackQueue()->
+                ros::CallbackQueue::CallOneResult result =
+                        ros::getGlobalCallbackQueue()->
                         callOne(ros::WallDuration(0.1));
-                if (result == ros::Called) {
+                if (result == ros::CallbackQueue::Called) {
                     return 1;
-                } else if (result == ros::Disabled) {
+                } else if (result == ros::CallbackQueue::Disabled) {
                     return 0;
                 }
             }
@@ -210,8 +212,8 @@ extern "C" {
                 smedl_interrupted = 1;
             }
             ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0));
-            return 1;
         }
+        return 1;
     }
 
     /* Event forwarding functions - Send an asynchronous event from the ROS

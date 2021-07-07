@@ -11,7 +11,8 @@ ROS Transport
 
 This asynchronous transport sends asynchronous events using ROS topics. Each
 synchronous set becomes a ROS node. The output from ``mgen`` in this case is a
-ROS package containing all the nodes in the monitoring system.
+ROS package containing all the nodes in the monitoring system. Use the ``-d``
+option for ``mgen`` to provide the path to your workspace's ``src/`` directory.
 
 PEDL Events Under ROS
 ---------------------

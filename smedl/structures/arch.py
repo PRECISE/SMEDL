@@ -817,6 +817,13 @@ class SynchronousSet(set):
             return False
         return True
 
+    @property
+    def monitors(self):
+        """Return an iterator over just the DeclaredMonitors in this syncset"""
+        for item in self:
+            if isinstance(item, DeclaredMonitor):
+                yield item
+
 
 class DeclaredMonitor(object):
     """A monitor delcaration from the architecture file"""

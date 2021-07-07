@@ -9,6 +9,19 @@
 /******************************************************************************
  * External Interface                                                         *
  ******************************************************************************/
+{% if not pure_sync %}
+{% if pure_async %}
+
+/* Some transports (e.g. ROS) will check for command line arguments from these
+ * variables. They are set from main's argc and argv. */
+{% else %}
+/* Some transports (e.g. ROS) will check for command line arguments from these
+ * variables. Sensible defaults are provided, but the target program can
+ * override them if desired. */
+{% endif %}
+extern int smedl_argc;
+extern char **smedl_argv;
+{% endif %}
 
 /* Initialization interface - Initialize the manager and the attached global
  * wrapper{% if pure_sync %}.{% else %} and network interfaces.{% endif +%}

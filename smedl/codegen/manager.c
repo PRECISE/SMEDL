@@ -20,6 +20,17 @@
 
 /* Set to 1 to initiate clean shutdown. */
 volatile sig_atomic_t smedl_interrupted = 0;
+
+/* Some transports (e.g. ROS) will check for command line arguments from these
+ * variables. They are set from main's argc and argv. */
+int smedl_argc;
+char **smedl_argv;
+{% else %}
+/* Some transports (e.g. ROS) will check for command line arguments from these
+ * variables. Sensible defaults are provided, but the target program can
+ * override them if desired. */
+int smedl_argc = 1;
+char **smedl_argv = {"{{syncset}}", NULL};
 {% endif %}
 
 /* Manager event queue */
@@ -266,6 +277,9 @@ int {% if cpp %}c_{% endif %}main(int argc, char **argv) {
         fprintf(stderr, "Could not set SIGTERM handler\n");
         return 2;
     }
+
+    smedl_argc = argc;
+    smedl_argv = argv;
 
     if (!init_manager()) {
         return 1;

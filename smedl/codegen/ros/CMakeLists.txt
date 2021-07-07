@@ -66,7 +66,7 @@ add_executable(${PROJECT_NAME}_{{syncset.name}}_node
   {% endif %}
   src/{{syncset.name}}_global_wrapper.c
   src/{{syncset.name}}_manager.c
-  {% for decl in syncset %}
+  {% for decl in syncset.monitors %}
   src/{{decl.name}}_local_wrapper.c
   {% endfor %}
   {% for spec in sys.syncset_spec_names(syncset.name) %}
@@ -101,7 +101,7 @@ endif()
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
 install(TARGETS
   {% for syncset in sys.syncsets.values() %}
-  {%+ if syncset.name == 'pedl'}#{% endif %}${PROJECT_NAME}_{{syncset.name}}_node
+  {%+ if syncset.name == 'pedl' %}#{% endif %}${PROJECT_NAME}_{{syncset.name}}_node
   {% endfor %}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

@@ -16,7 +16,7 @@ void free_ros(void);
  * return.
  *
  * Returns nonzero on success, zero on failure. */
-int run_ros(blocking);
+int run_ros(int blocking);
 
 /* Event forwarding functions - Send an asynchronous event from the ROS node.
  *
