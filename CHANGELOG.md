@@ -1,8 +1,11 @@
 Changelog
 =========
 
-[Unreleased] - Future 2.0.0
----------------------------
+[Unreleased]
+------------
+
+[2.0.0] - 2021-07-06
+--------------------
 
 This is a major rewrite of SMEDL to add several new features and fix various
 issues with the code.
@@ -14,7 +17,8 @@ issues with the code.
   systems). RabbitMQ transport is still available for asynchronous
   communication, now via an optional, auto-generated adapter.
 - In addition to the RabbitMQ adapter, a ROS adapter is available. This
-  generates complete ROS nodes instead of a simple set of .c/.h files.
+  generates a complete ROS package with a node for each syncset instead of a
+  simple set of .c/.h files.
 - The same monitor specification can be used multiple times in one architecture
   file.
 - A new type of connection target is available in architecture files: monitor
@@ -84,5 +88,6 @@ This is the first version in the changelog, and the last version of SMEDL 1.x.
 - A synchronous interface to the global wrapper was added for less overhead
   between the monitoring system and the target system
 
-[Unreleased]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/smedl2...v1.1.1
+[Unreleased]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/master...v2.0.0
+[2.0.0]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/v2.0.0...v1.1.1
 [1.1.1]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/-/tags/v1.1.1
