@@ -48,92 +48,6 @@ make future usage and maintenance easier and should not generally be ignored.
 
 TODO
 
-Git Branching and Tagging
--------------------------
-
-Git branches are often underutilized, but they can make managing the project
-far easier.
-
-We have two main branches in our repository:
-- `master`: Should always be at the latest release, which should be tagged
-- `develop`: Contains the latest updates, but *should always be in a working
-  state.* Meaning, all tests should be passing. If they are not, they should be
-  fixed immediately, or the changes rolled back until they can be.
-
-Commits to these two branches will always trigger CI, running the automated
-tests, so if there is a problem, you can fix it immediately.
-
-### Adding a new feature
-
-When developing a new feature, *always* start a new branch from `develop`. This
-way, you can freely make commits that might break the code without interfering
-with other features you might be developing at the same time. Once your new
-feature is tested and working, you can merge it back into `develop` and delete
-the branch if you like. Or, if the feature doesn't work out, you can delete the
-branch without ever merging it. Here are some commands that might help with
-this:
-
-```sh
-# Start from the develop branch
-git checkout develop
-# Check out a newly-created (-b) branch for your new feature
-git checkout -b my-new-feature
-# Make some changes, add some commits, then...
-# Push the branch to GitLab (you can do this at any time if you like, e.g.
-# to sync your work between multiple computers, as a backup, or to share
-# your progress, but it's only required when the feature is ready)
-git push -u origin my-new-feature
-# If you make more commits, you can push again like normal
-git push
-```
-
-To test your feature, you can run tests on your own computer (see the "Testing"
-section here and in the main README), but also, any commit you push that
-contains "run ci" will have the full tests run on the server. Be sure also to
-add the new feature to the changelog and update the documentation. When your
-new feature is ready to merge into `develop`, you have two options:
-
-- [Create a merge request on the GitLab website.][merge-request] This gives
-  other people a chance to review the changes if that would be helpful.
-- Merge in your own repository and then push the `develop` branch:
-
-  ```sh
-  git checkout develop
-  git merge my-new-feature
-  git push
-  ```
-
-Once the changes are merged (if if you decide to abandon the feature without
-merging), you can delete the branch if you like (or you can also delete from
-gitLab without deleting from your own computer):
-
-```sh
-# Delete from GitLab
-git push -d origin my-new-feature
-# Delete from your own computer
-git branch -d my-new-feature
-```
-
-### Fixing a Bug
-
-TODO
-
-- Create a branch from `master`, `bugfix-<something>` (the `bug*` prefix
-tells CI to run with every push)
-- Add new tests for the bug, if at all possible
-- Make the fixes
-- Bump the version number and update the changelog
-- Push
-- Merge into `master` and `develop`, tag the `master` commit and add release
-  notes if desired
-
-### Making a release
-
-- Bump the version number and update the changelog to contain the new version
-- Merge `develop` into `master`
-- Tag the `master` commit and add release notes if desired
-- Add a new "unreleased" section to the changelog
-
 Releases
 --------
 
@@ -152,9 +66,6 @@ When making a release:
    details under the [Unreleased] section. But in either case, make sure all the
    relevant details are there, change [Unreleased] to the version number, and
    add the date of release. Start a new [Unreleased] section after the release.
-
-TODO semantic versioning, changelog, metadata and version stuff to update, other
-info on how to do releases
 
 New Python Versions
 -------------------

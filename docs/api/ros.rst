@@ -49,7 +49,7 @@ SMEDL Type  ROS Type
 ``char``    ``uint8``
 ``float``   ``float64``
 ``string``  ``string``
-``pointer`` ``string`` (by converting to ``uintptr_t`` and then rendering that
-            in hexadecimal)
+``pointer`` ``string`` (by converting to ``uintptr_t`` in C++ and then
+            rendering that in hexadecimal)
 ``opaque``  ``uint8[]``
 =========== ===================================================================
