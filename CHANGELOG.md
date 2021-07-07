@@ -24,6 +24,7 @@ issues with the code.
      be sent to it.
   2. It provides a mechanism for state variables to be initialized to custom
      values.
+- Exported PEDL events can be given names
 - Type checking for expressions and monitor/event parameters
 - Makefiles are generated with the monitor code. These can be used as-is or
   provide inspiration for integrating monitors into a larger build system.
