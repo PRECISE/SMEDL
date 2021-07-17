@@ -64,7 +64,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -96,7 +96,8 @@ of ALLCAPS.</p>
 </div>
 <p>This asynchronous transport sends asynchronous events using ROS topics. Each
 synchronous set becomes a ROS node. The output from <code class="docutils literal notranslate"><span class="pre">mgen</span></code> in this case is a
-ROS package containing all the nodes in the monitoring system.</p>
+ROS package containing all the nodes in the monitoring system. Use the <code class="docutils literal notranslate"><span class="pre">-d</span></code>
+option for <code class="docutils literal notranslate"><span class="pre">mgen</span></code> to provide the path to your workspace’s <code class="docutils literal notranslate"><span class="pre">src/</span></code> directory.</p>
 <section id="pedl-events-under-ros">
 <h2>PEDL Events Under ROS<a class="headerlink" href="#pedl-events-under-ros" title="Permalink to this headline">¶</a></h2>
 <p>The ROS transport was designed under the assumption that PEDL events would
@@ -181,7 +182,7 @@ rendering that in hexadecimal)</p></td>
       &copy; 2021 The Trustees of the University of Pennsylvania.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

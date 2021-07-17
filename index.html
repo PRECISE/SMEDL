@@ -54,7 +54,7 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
@@ -78,8 +78,24 @@
             
   <section id="smedl">
 <h1>SMEDL<a class="headerlink" href="#smedl" title="Permalink to this headline">¶</a></h1>
-<p>SMEDL is a runtime monitor generator featuring the ability to communicate
-events both synchronously and asynchronously.</p>
+<p>Scenario-based Meta Event Language (SMEDL) is a <a class="reference external" href="https://runtime-verification.github.io/">runtime verification</a>
+framework for specifying monitors using an EFSM-style formalism, generating C
+executable monitor code from specifications, and deploying the monitors in
+centralized or distributed settings.</p>
+<ul class="simple">
+<li><p>The monitor specification language is suitable for both high-level temporal
+properties and low-level properties described as explicit state transitions
+with imperative actions such as logic or arithmetic computations.</p></li>
+<li><p>Multiple monitors can be instantiated during runtime to form a
+dynamically-scaling monitor network.</p></li>
+<li><p>Users can flexibly specify that monitors in a network be deployed with
+synchronous or asynchronous event passing between each other and the target
+system.</p></li>
+</ul>
+<p>This notion of monitor networks provides a unified way to compose verdicts of
+properties and allows for monitoring parametric properties. It is flexible
+enough to adapt to a variety of software systems, such as single-process
+programs or distributed software.</p>
 <section id="user-manual">
 <h2>User Manual<a class="headerlink" href="#user-manual" title="Permalink to this headline">¶</a></h2>
 <p>This manual consists of two parts. The first part describes how to write a
@@ -133,7 +149,7 @@ integrating monitors into your existing code.</p>
       &copy; 2021 The Trustees of the University of Pennsylvania.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.0.3</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 4.1.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
