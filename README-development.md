@@ -46,7 +46,13 @@ make future usage and maintenance easier and should not generally be ignored.
 
 ### Documentation
 
-TODO
+Main documentation is in the "docs/" directory. It uses
+[Sphinx](https://www.sphinx-doc.org/). After pushing updates to the master
+branch, there is a GitHub Actions workflow that is manually triggered to
+publish the new docs to the website.
+
+README.md contains the installation instructions and a quick usage summary that
+should be kept up-to-date as well.
 
 Releases
 --------
@@ -60,7 +66,7 @@ When making a release:
    simply making a bugfix release.
 
 2. Make sure the documentation is up-to-date. A new feature is not complete
-   until it is fully documented. More on documentation in the next section.
+   until it is fully documented.
 
 3. Update the changelog. Ideally, this should be done during development, adding
    details under the [Unreleased] section. But in either case, make sure all the
