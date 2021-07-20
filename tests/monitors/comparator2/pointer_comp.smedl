@@ -1,0 +1,23 @@
+object PointerComp;
+
+state:
+    pointer val;
+
+events:
+    imported newVal(pointer);
+    exported match(pointer);
+    exported mismatch(pointer, pointer);
+
+scenarios:
+    compare:
+        finalstate second;
+        init
+            -> newVal(next) when (next == val) {raise match(val);}
+            -> first
+            else {raise mismatch(val, next); val = next;}
+            -> first;
+        first
+            -> newVal(next) when (next == val) {raise match(val);}
+            -> second;
+            else {raise mismatch(val, next);}
+            -> second;

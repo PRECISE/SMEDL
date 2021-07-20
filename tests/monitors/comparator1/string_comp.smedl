@@ -1,0 +1,17 @@
+object StringComp;
+
+state:
+    string val;
+
+events:
+    imported newVal(string);
+    exported match(string);
+    exported mismatch(string, string);
+
+scenarios:
+    compare:
+        idle
+            -> newVal(next) when (next == val) {raise match(val);}
+            -> idle
+            else {raise mismatch(val, next); val = next;}
+            -> idle;

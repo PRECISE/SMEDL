@@ -1,0 +1,23 @@
+object OpaqueComp;
+
+state:
+    opaque val;
+
+events:
+    imported newVal(opaque);
+    exported match(opaque);
+    exported mismatch(opaque, opaque);
+
+scenarios:
+    compare:
+        finalstate second;
+        init
+            -> newVal(next) when (next == val) {raise match(val);}
+            -> first
+            else {raise mismatch(val, next); val = next;}
+            -> first;
+        first
+            -> newVal(next) when (next == val) {raise match(val);}
+            -> second;
+            else {raise mismatch(val, next);}
+            -> second;
