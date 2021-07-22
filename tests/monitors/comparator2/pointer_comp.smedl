@@ -14,7 +14,7 @@ scenarios:
         init
             -> newVal(next) when (next == val) {raise match(val);}
             -> first
-            else {raise mismatch(val, next); val = next;}
+            else {raise mismatch(val, next);}
             -> first;
         first
             -> newVal(next) when (next == val) {raise match(val);}

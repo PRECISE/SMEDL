@@ -109,7 +109,7 @@ class GeneratedMonitor:
                 stdin_full[entry.name] = this_stdin
         if len(stdin) > 0:
             raise ValueError("stdin dict contains entries for nonexistent "
-                             "executables: " + ", ".join(stdin.keys))
+                             "executables: " + ", ".join(stdin.keys()))
 
         # Call self._run_monitors coroutine
         try:

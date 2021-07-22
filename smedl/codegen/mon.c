@@ -168,7 +168,7 @@ if (!smedl_replace_string(&mon->s.{{a.var}}, {{expression(a.expr)}})) {
     /* malloc fail */
     return 0;
 }
-{%- elif spec.state_vars[a.var].type is sameas SmedlType.STRING %}
+{%- elif spec.state_vars[a.var].type is sameas SmedlType.OPAQUE %}
 if (!smedl_replace_opaque(&mon->s.{{a.var}}, {{expression(a.expr)}})) {
     /* malloc fail */
     return 0;

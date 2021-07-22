@@ -336,21 +336,36 @@ class A4SMEDLParser(Parser):
         self._token('(')
         self._cut()
         with self._group():
-            with self._choice():
-                with self._option():
-                    self._parameter_list_nonempty_()
-                    self.name_last_node('params')
-                    with self._optional():
-                        self._token(',')
-                        self._initializer_list_nonempty_()
-                        self.name_last_node('state_vars')
-                with self._option():
-                    self._initializer_list_()
-                    self.name_last_node('state_vars')
-                self._error('no available options')
+            self._initialization_parameter_list_()
+            self.name_last_node('params')
         self._token(')')
         self.ast._define(
-            ['name', 'params', 'state_vars'],
+            ['name', 'params'],
+            []
+        )
+
+    @tatsumasu()
+    def _initialization_parameter_list_(self):  # noqa
+        with self._choice():
+            with self._option():
+                self._initializer_list_nonempty_()
+                self.name_last_node('initializers')
+            with self._option():
+                self._parameter_()
+                self.name_last_node('first')
+                self._token(',')
+                self._cut()
+                self._initialization_parameter_list_()
+                self.name_last_node('rest')
+            with self._option():
+                self._parameter_()
+                self.name_last_node('first')
+            with self._option():
+                self._empty_closure()
+                self.name_last_node('initializers')
+            self._error('no available options')
+        self.ast._define(
+            ['first', 'initializers', 'rest'],
             []
         )
 
@@ -363,16 +378,6 @@ class A4SMEDLParser(Parser):
         def block0():
             self._initializer_()
         self._positive_gather(block0, sep0)
-
-    @tatsumasu()
-    def _initializer_list_(self):  # noqa
-
-        def sep0():
-            self._token(',')
-
-        def block0():
-            self._initializer_()
-        self._gather(block0, sep0)
 
     @tatsumasu()
     def _initializer_(self):  # noqa
@@ -396,16 +401,6 @@ class A4SMEDLParser(Parser):
         def block0():
             self._wildcard_parameter_()
         self._gather(block0, sep0)
-
-    @tatsumasu()
-    def _parameter_list_nonempty_(self):  # noqa
-
-        def sep0():
-            self._token(',')
-
-        def block0():
-            self._parameter_()
-        self._positive_gather(block0, sep0)
 
     @tatsumasu()
     def _parameter_list_(self):  # noqa
@@ -529,19 +524,16 @@ class A4SMEDLSemantics(object):
     def exported_event_or_monitor_initialization(self, ast):  # noqa
         return ast
 
-    def initializer_list_nonempty(self, ast):  # noqa
+    def initialization_parameter_list(self, ast):  # noqa
         return ast
 
-    def initializer_list(self, ast):  # noqa
+    def initializer_list_nonempty(self, ast):  # noqa
         return ast
 
     def initializer(self, ast):  # noqa
         return ast
 
     def wildcard_parameter_list(self, ast):  # noqa
-        return ast
-
-    def parameter_list_nonempty(self, ast):  # noqa
         return ast
 
     def parameter_list(self, ast):  # noqa

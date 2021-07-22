@@ -194,29 +194,26 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         # Make sure the number of monitor parameters matches. Don't need to
         # ensure there are no wildcard parameters because the grammar will not
         # allow it.
-        if ast.params is None or len(ast.params) != len(
+        if len(ast.params[0]) != len(
                 self.system.monitor_decls[ast.name].params):
             raise ParameterError(
                 "Expected {} parameters (identities) for montor {}, got {}"
                 .format(len(self.system.monitor_decls[ast.name].params),
-                        ast.name,
-                        (0 if ast.params is None else len(ast.params))))
+                        ast.name, len(ast.params[0])))
 
         # Create a dict for state variable initialization and check that state
         # vars all exist
         state_vars = dict()
-        if ast.state_vars is None:
-            ast['state_vars'] = []
-        for initializer in ast.state_vars:
+        for initializer in ast.params[1]:
             if (initializer.var_name not in
-                    self.system.monitor_decls[ast.name].state_vars):
+                    self.system.monitor_decls[ast.name].spec.state_vars):
                 raise NameNotDefined("Monitor {} has no state var {}".format(
                     ast.name, initializer.var_name))
             state_vars[initializer.var_name] = initializer.value
 
         # Create the TargetCreation
         return arch.TargetCreation(
-            self.system.monitor_decls[ast.name], ast.params, state_vars)
+            self.system.monitor_decls[ast.name], ast.params[0], state_vars)
 
     def _exported_event(self, ast):
         """Create a TargetExport."""
@@ -228,12 +225,12 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
             # Check number of params for existing exported event.
             # (Types are checked when the target is added to a connection.)
             if exported_event.params is not None and (
-                    len(ast.params) != len(exported_event.params)):
+                    len(ast.params[0]) != len(exported_event.params)):
                 raise ParameterError("Expected {} parameters for PEDL event "
                                      "{}, got {}.".format(
                                          len(exported_event.params), ast.name,
-                                         len(ast.params)))
-        return arch.TargetExport(exported_event, ast.params)
+                                         len(ast.params[0])))
+        return arch.TargetExport(exported_event, ast.params[0])
 
     def exported_event_or_monitor_initialization(self, ast):
         """Determine based on the name whether this is an exported event or
@@ -241,16 +238,23 @@ class A4smedlSemantics(common_semantics.CommonSemantics):
         if ast.name in self.system.monitor_decls:
             return self._monitor_initialization(ast)
         else:
-            if ast.params is None:
-                if len(ast.state_vars) > 0:
-                    # If there are any state var assignments in the parameter
-                    # list, the intention must be a monitor creation, not
-                    # exporting a PEDL event.
-                    raise NameNotDefined("Destination monitor {} is not "
-                                         "declared".format(ast.name))
-                ast['params'] = []
-                del ast['state_vars']
+            if ast.params[1] != []:
+                # If there are any state var initializations in the parameter
+                # list, the intention must be a monitor creation, not exporting
+                # a PEDL event.
+                raise NameNotDefined("Destination monitor {} is not "
+                                     "declared".format(ast.name))
             return self._exported_event(ast)
+
+    def initialization_parameter_list(self, ast):
+        """Transform AST into (list of parameters, list of initializers)"""
+        if ast.first is None:
+            return ([], ast.initializers)
+        if ast.rest is None:
+            return ([ast.first], [])
+        params, initializers = ast.rest
+        params.insert(0, ast.first)
+        return (params, initializers)
 
     def wildcard_parameter(self, ast):
         """Create a Parameter that might be a wildcard"""

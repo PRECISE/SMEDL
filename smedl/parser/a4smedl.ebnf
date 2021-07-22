@@ -121,30 +121,19 @@ target_event =
 exported_event_or_monitor_initialization =
     name:identifier
     '(' ~ (
-        # For monitor initialization, there are two cases:
-        # 1. There is at least one parameter (in which case, separating comma is
-        #    needed if there are state vars)
-        # 2. There is no parameter, and may or may not be state variable
-        #    initializations. This is not allowed, but we allow it in the
-        #    grammar so that we can catch it and display a more helpful error
-        #    message in the semantics processor.
-        # These correspond to the two alternatives below.
-        #
-        # For exported events, if there are params, state_vars should be None.
-        # If there are no params, params will be None and state_vars should be
-        # an empty list.
-        params:parameter_list_nonempty
-                [',' state_vars:initializer_list_nonempty]
-        | state_vars:initializer_list
+        params:initialization_parameter_list
     ) ')'
+    ;
+
+initialization_parameter_list =
+    initializers:initializer_list_nonempty
+    | first:parameter ',' ~ rest:initialization_parameter_list
+    | first:parameter
+    | initializers:{}
     ;
 
 initializer_list_nonempty =
     ','.{initializer}+
-    ;
-
-initializer_list =
-    ','.{initializer}*
     ;
 
 initializer =
@@ -153,10 +142,6 @@ initializer =
 
 wildcard_parameter_list =
     ','.{wildcard_parameter}*
-    ;
-
-parameter_list_nonempty =
-    ','.{parameter}+
     ;
 
 parameter_list =

@@ -11,6 +11,7 @@ import sys
 
 import smedl
 from smedl.parser.exceptions import SmedlException
+from tatsu.exceptions import FailedParse
 
 from utils import *
 
@@ -124,5 +125,5 @@ def test_invalid_monitor(tmp_path, mon):
     """
     mon_path = os.path.join(sys.path[0], 'bad_monitors', mon, mon + '.a4smedl')
     generator = smedl.MonitorGenerator(out_dir=tmp_path)
-    with pytest.raises(SmedlException):
+    with pytest.raises((SmedlException, FailedParse)):
         generator.generate(mon_path)
