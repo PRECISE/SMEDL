@@ -53,6 +53,7 @@ class DuplicateConnection(SmedlException):
     """Raised when a connection is a duplicate of another (same source and
     destination, ignoring parameters)"""
 
+
 class LoopbackError(SmedlException):
     """Raised when an event is routed from the target program immediately back
     to the target program."""
