@@ -547,86 +547,6 @@ void test_smedl_equal_opaque_equal(void) {
             "Equal strings did not compare equal");
 }
 
-void test_smedl_equal_array_empty(void) {
-    TEST_ASSERT_TRUE_MESSAGE(smedl_equal_array(NULL, NULL, 0),
-            "Empty arrays did not compare equal");
-}
-
-void test_smedl_equal_array_no_wildcard_equal(void) {
-    SMEDLValue a1[] = {
-        {.t = SMEDL_INT, .v = {.i = 2}},
-        {.t = SMEDL_INT, .v = {.i = 3}},
-        {.t = SMEDL_INT, .v = {.i = 4}},
-    };
-    SMEDLValue a2[] = {
-        {.t = SMEDL_INT, .v = {.i = 2}},
-        {.t = SMEDL_INT, .v = {.i = 3}},
-        {.t = SMEDL_INT, .v = {.i = 4}},
-    };
-    TEST_ASSERT_TRUE_MESSAGE(smedl_equal_array(a1, a2, 3),
-            "Equal arrays did not compare equal");
-}
-
-void test_smedl_equal_array_no_wildcard_different(void) {
-    SMEDLValue a1[] = {
-        {.t = SMEDL_INT, .v = {.i = 2}},
-        {.t = SMEDL_INT, .v = {.i = 3}},
-        {.t = SMEDL_INT, .v = {.i = 4}},
-    };
-    SMEDLValue a2[] = {
-        {.t = SMEDL_INT, .v = {.i = 2}},
-        {.t = SMEDL_INT, .v = {.i = 4}},
-        {.t = SMEDL_INT, .v = {.i = 4}},
-    };
-    TEST_ASSERT_FALSE_MESSAGE(smedl_equal_array(a1, a2, 3),
-            "Different arrays did not compare unequal");
-}
-
-void test_smedl_equal_array_with_wildcard_equal(void) {
-    SMEDLValue a1[] = {
-        {.t = SMEDL_INT, .v = {.i = 2}},
-        {.t = SMEDL_NULL},
-        {.t = SMEDL_INT, .v = {.i = 4}},
-    };
-    SMEDLValue a2[] = {
-        {.t = SMEDL_INT, .v = {.i = 2}},
-        {.t = SMEDL_INT, .v = {.i = 3}},
-        {.t = SMEDL_INT, .v = {.i = 4}},
-    };
-    TEST_ASSERT_TRUE_MESSAGE(smedl_equal_array(a1, a2, 3),
-            "Equal arrays with wildcard did not compare equal");
-}
-
-void test_smedl_equal_array_with_wildcard_different(void) {
-    SMEDLValue a1[] = {
-        {.t = SMEDL_INT, .v = {.i = 2}},
-        {.t = SMEDL_NULL},
-        {.t = SMEDL_INT, .v = {.i = 4}},
-    };
-    SMEDLValue a2[] = {
-        {.t = SMEDL_INT, .v = {.i = 2}},
-        {.t = SMEDL_INT, .v = {.i = 3}},
-        {.t = SMEDL_INT, .v = {.i = 5}},
-    };
-    TEST_ASSERT_FALSE_MESSAGE(smedl_equal_array(a1, a2, 3),
-            "Different arrays with wildcard did not compare unequal");
-}
-
-void test_smedl_equal_array_all_wildcard(void) {
-    SMEDLValue a1[] = {
-        {.t = SMEDL_NULL},
-        {.t = SMEDL_NULL},
-        {.t = SMEDL_NULL},
-    };
-    SMEDLValue a2[] = {
-        {.t = SMEDL_INT, .v = {.i = 2}},
-        {.t = SMEDL_INT, .v = {.i = 3}},
-        {.t = SMEDL_INT, .v = {.i = 4}},
-    };
-    TEST_ASSERT_TRUE_MESSAGE(smedl_equal_array(a1, a2, 3),
-            "All wildcard array did not compare equal");
-}
-
 void test_smedl_copy_array_empty(void) {
     /* Nothing that can be validated, so just make sure it doesn't segfault */
     SMEDLValue *dst = smedl_copy_array(NULL, 0);
@@ -885,12 +805,6 @@ int main(void) {
     RUN_TEST(test_smedl_equal_opaque_first_less);
     RUN_TEST(test_smedl_equal_opaque_second_less);
     RUN_TEST(test_smedl_equal_opaque_equal);
-    RUN_TEST(test_smedl_equal_array_empty);
-    RUN_TEST(test_smedl_equal_array_no_wildcard_equal);
-    RUN_TEST(test_smedl_equal_array_no_wildcard_different);
-    RUN_TEST(test_smedl_equal_array_with_wildcard_equal);
-    RUN_TEST(test_smedl_equal_array_with_wildcard_different);
-    RUN_TEST(test_smedl_equal_array_all_wildcard);
     RUN_TEST(test_smedl_copy_array_empty);
     RUN_TEST(test_smedl_copy_array_nonempty);
     RUN_TEST(test_smedl_copy_array_with_string);

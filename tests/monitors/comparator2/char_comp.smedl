@@ -18,6 +18,6 @@ scenarios:
             -> first;
         first
             -> newVal(next) when (next == val) {raise match(val);}
-            -> second;
+            -> second
             else {raise mismatch(val, next);}
             -> second;

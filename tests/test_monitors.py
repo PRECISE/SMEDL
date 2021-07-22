@@ -4,9 +4,10 @@ Test generated monitors using the RabbitMQ transport.
 
 import pytest
 
-import sys
+import json
 import os
 import os.path
+import sys
 
 import smedl
 from smedl.parser.exceptions import SmedlException
@@ -59,13 +60,13 @@ def test_monitor(generated_monitor, test_case, input_execs):
 
     # Run monitors
     stdouts, stderrs = generated_monitor.run(stdins, timeout=15)
-    for exec_name, stderr in stderrs.keys():
+    for exec_name, stderr in stderrs.items():
         if len(stderr) > 0:
             print(f'***** STDERR for {exec_name} *****', file=sys.stderr)
             print(stderr, file=sys.stderr)
 
     # Verify results
-    for exec_name, stdout in stdouts:
+    for exec_name, stdout in stdouts.items():
         if exec_name in expecteds:
             assert stdout.splitlines() == expecteds[exec_name].splitlines(), \
                 f'Output events for {exec_name} did not match expected'
@@ -95,8 +96,12 @@ def test_file_names(generated_monitor):
         assert f"{syncset}_manager.h" in files
         assert f"{syncset}_global_wrapper.c" in files
         assert f"{syncset}_global_wrapper.h" in files
-        assert f"{syncset}_rabbitmq.c" in files
-        assert f"{syncset}_rabbitmq.h" in files
+        if len(generated_monitor.system.syncsets) > 1:
+            assert f"{syncset}_rabbitmq.c" in files
+            assert f"{syncset}_rabbitmq.h" in files
+        else:
+            assert f"{syncset}_rabbitmq.c" not in files
+            assert f"{syncset}_rabbitmq.h" not in files
         if generated_monitor.system.syncsets[syncset].pure_async:
             assert f"{syncset}_stub.c" not in files
             assert f"{syncset}_stub.h" not in files

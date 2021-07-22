@@ -6,7 +6,7 @@ import "command_pair.smedl";
 monitor FirstCommand(int);
 monitor CommandPair(int, int);
 
-syncset {FirstCommand, CommandPair, pedl};
+syncset NestedCommands {FirstCommand, CommandPair, pedl};
 
 cmd1: command => FirstCommand[*].command($0);
 cmd1: command => FirstCommand($0);

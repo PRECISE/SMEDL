@@ -136,9 +136,9 @@ int process_queue(void) {
                 {% if conn.source_mon is not none %}
                 {% for param_type in conn.source_mon.params %}
                 {% if param_type is sameas SmedlType.STRING %}
-                free(identites[{{loop.index0}}].v.s);
+                free(identities[{{loop.index0}}].v.s);
                 {% elif param_type is sameas SmedlType.OPAQUE %}
-                free(identites[{{loop.index0}}].v.o.data);
+                free(identities[{{loop.index0}}].v.o.data);
                 {% endif %}
                 {% endfor %}
                 {% endif %}
@@ -157,9 +157,9 @@ int process_queue(void) {
                 {% if conn.source_mon is not none %}
                 {% for param_type in conn.source_mon.params %}
                 {% if param_type is sameas SmedlType.STRING %}
-                free(identites[{{loop.index0}}].v.s);
+                free(identities[{{loop.index0}}].v.s);
                 {% elif param_type is sameas SmedlType.OPAQUE %}
-                free(identites[{{loop.index0}}].v.o.data);
+                free(identities[{{loop.index0}}].v.o.data);
                 {% endif %}
                 {% endfor %}
                 {% endif %}

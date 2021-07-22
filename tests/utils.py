@@ -14,9 +14,11 @@ import tempfile
 
 import smedl
 
+
 class TestingError(Exception):
     """Raised when there was an internal error in testing"""
     __test__ = False
+
 
 def collect_test_cases():
     """Collect the list of monitors and test cases from the monitors/
@@ -111,7 +113,7 @@ class GeneratedMonitor:
 
         # Call self._run_monitors coroutine
         try:
-            loop = ayncio.new_event_loop()
+            loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             ret_val = loop.run_until_complete(
                 self._run_monitors(procs, stdin_full, timeout, env))
@@ -126,12 +128,12 @@ class GeneratedMonitor:
             return ({proc: out for proc, out, _ in ret_val},
                     {proc: err for proc, _, err in ret_val})
 
-    async def _run_single_monitor(self, proc, stdin, timeout, env)
+    async def _run_single_monitor(self, proc_name, stdin, timeout, env):
         """Run a single executable asynchronously with a timeout. Return a
         tuple with the process name and its output."""
         # Create subprocess and send stdin
         proc = await asyncio.create_subprocess_exec(
-            os.path.join('.', proc),
+            os.path.join('.', proc_name),
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -150,7 +152,7 @@ class GeneratedMonitor:
 
         # Get the output
         out, err = await comm_future
-        return proc, out, err
+        return proc_name, out, err
 
     async def _run_monitors(self, procs, stdin, timeout, env):
         """Actually run the listed executables asynchronously"""
@@ -160,3 +162,4 @@ class GeneratedMonitor:
                 self._run_single_monitor(proc, stdin[proc], timeout, env))
 
         ret_val = await asyncio.gather(*subprocesses)
+        return ret_val
