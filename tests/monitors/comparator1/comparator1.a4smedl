@@ -1,0 +1,15 @@
+system Comparator1;
+
+import "string_comp.smedl";
+import "opaque_comp.smedl";
+
+monitor StringComp();
+monitor OpaqueComp();
+
+syncset Comparator {
+    StringComp,
+    OpaqueComp
+};
+
+nextString => StringComp.newVal($0);
+nextOpaque => OpaqueComp.newVal($0);

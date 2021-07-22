@@ -224,7 +224,7 @@ int localcreation_{{conn.channel}}_{{target.mon_string}}(SMEDLValue *identities,
     }
     {% for var, param in target.state_vars.items() %}
     {% set array_name = "identities" if param.identity else "params" %}
-    if (!set_{{target.monitor.name}}_{{var.name}}(new_identities, {{array_name}}[{{param.index}}])) {
+    if (!set_{{target.monitor.name}}_{{var}}(new_identities, {{array_name}}[{{param.index}}])) {
         goto fail;
     }
     {% endfor %}

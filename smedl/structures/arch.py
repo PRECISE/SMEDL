@@ -266,7 +266,7 @@ class TargetCreation(Target):
                 ', ' + state_var_str + ')')
 
 
-#TODO Should be renamed to TargetPEDL
+# TODO Should be renamed to TargetPEDL
 class TargetExport(Target):
     """An event export target, for events that are exported out of a
     synchronous set back to the target system. Note that "export target" and
@@ -318,7 +318,7 @@ class TargetExport(Target):
         return ('TargetExport:' + str(self._exported_event))
 
 
-#TODO Should be renamed ExportedPEDLEvent
+# TODO Should be renamed ExportedPEDLEvent
 class ExportedEvent(object):
     """An event exported back to the target system.
 
@@ -1351,7 +1351,7 @@ class MonitorSystem(object):
 
         # Check (1) and (2) from docstring
         for conn in self._ev_imported_connections.values():
-            if conn.channel is None:
+            if len(conn.targets) == 0:
                 print("Warning: Event {} was not used in a connection"
                       .format(conn.source_event), file=sys.stderr)
             if conn.syncset is None:

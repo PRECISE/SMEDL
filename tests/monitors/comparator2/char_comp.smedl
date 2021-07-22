@@ -1,0 +1,23 @@
+object CharComp;
+
+state:
+    char val;
+
+events:
+    imported newVal(char);
+    exported match(char);
+    exported mismatch(char, char);
+
+scenarios:
+    compare:
+        finalstate second;
+        init
+            -> newVal(next) when (next == val) {raise match(val);}
+            -> first
+            else {raise mismatch(val, next);}
+            -> first;
+        first
+            -> newVal(next) when (next == val) {raise match(val);}
+            -> second
+            else {raise mismatch(val, next);}
+            -> second;

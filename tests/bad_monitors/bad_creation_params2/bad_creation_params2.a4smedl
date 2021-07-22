@@ -1,0 +1,7 @@
+system BadCreationParams2;
+
+import "dummy.smedl";
+
+monitor Dummy(int, int);
+
+ch1: ev => Dummy($0, foo=$1);

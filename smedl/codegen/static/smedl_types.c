@@ -142,10 +142,10 @@ int smedl_assign_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     if (tmp == NULL && src.size != 0) {
         return 0;
     }
-    (*dest).data = tmp;
-    (*dest).size = src.size;
+    dest->data = tmp;
+    dest->size = src.size;
     if (src.size != 0) {
-        memcpy((*dest).data, src.data, src.size);
+        memcpy(dest->data, src.data, src.size);
     }
     return 1;
 }
@@ -170,11 +170,11 @@ int smedl_replace_opaque(SMEDLOpaque *dest, SMEDLOpaque src) {
     if (tmp == NULL && src.size != 0) {
         return 0;
     }
-    free((*dest).data);
-    (*dest).data = tmp;
-    (*dest).size = src.size;
+    free(dest->data);
+    dest->data = tmp;
+    dest->size = src.size;
     if (src.size != 0) {
-        memcpy((*dest).data, src.data, src.size);
+        memcpy(dest->data, src.data, src.size);
     }
     return 1;
 }

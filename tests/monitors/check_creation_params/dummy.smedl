@@ -1,0 +1,13 @@
+object Dummy;
+
+state:
+    int foo;
+    int bar;
+
+events:
+    imported in();
+    exported out();
+
+scenarios:
+    main:
+        idle -> in() {raise out();} -> idle;

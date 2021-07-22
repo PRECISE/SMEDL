@@ -1,0 +1,10 @@
+system CheckCreationParams;
+
+import "dummy.smedl";
+
+monitor Dummy(int, int);
+
+ch1: ev1 => Dummy($0, $1, foo=$2, bar=$3);
+ch2: ev2 => Dummy($0, $1, foo=$0);
+ch3: ev3 => Dummy($0, $0, bar=$2);
+ch4: ev4 => Dummy($0, $2);

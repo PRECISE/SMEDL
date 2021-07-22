@@ -192,7 +192,7 @@ void free_{{mon.name}}_local_wrapper(void) {
  * Return nonzero on success or if monitor already exists, zero on failure.
  *
  * Parameters:
- * identites - An array of SMEDLValue of the proper length for this monitor.
+ * identities - An array of SMEDLValue of the proper length for this monitor.
  *   Must be fully specified; no wildcards. */
 int create_{{mon.name}}(SMEDLValue *identities) {
     {% if mon.params is nonempty %}
@@ -240,7 +240,7 @@ int create_{{mon.name}}(SMEDLValue *identities) {
  * failure.
  *
  * Parameters:
- * identites - An array of SMEDLValue of the proper length for this monitor.
+ * identities - An array of SMEDLValue of the proper length for this monitor.
  * value - The value to assign to the state variable. */
 {% for var in spec.state_vars.values() %}
 
@@ -264,7 +264,7 @@ int set_{{mon.name}}_{{var.name}}(SMEDLValue *identities, SMEDLValue value) {
  * Return nonzero on success, zero on failure.
  *
  * Parameters:
- * identites - An array of SMEDLValue of the proper length for this monitor.
+ * identities - An array of SMEDLValue of the proper length for this monitor.
  *   Wildcards can be represented with a SMEDLValue of type SMEDL_NULL.
  * params - An array of SMEDLValue, one for each parameter of the event.
  * aux - Extra data that is passed through to exported events unchanged. */

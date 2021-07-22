@@ -30,7 +30,8 @@ char **smedl_argv;
  * variables. Sensible defaults are provided, but the target program can
  * override them if desired. */
 int smedl_argc = 1;
-char **smedl_argv = {"{{syncset}}", NULL};
+char *smedl_argv_default[] = {"{{syncset}}", NULL};
+char **smedl_argv = smedl_argv_default;
 {% endif %}
 
 /* Manager event queue */
@@ -136,9 +137,9 @@ int process_queue(void) {
                 {% if conn.source_mon is not none %}
                 {% for param_type in conn.source_mon.params %}
                 {% if param_type is sameas SmedlType.STRING %}
-                free(identites[{{loop.index0}}].v.s);
+                free(identities[{{loop.index0}}].v.s);
                 {% elif param_type is sameas SmedlType.OPAQUE %}
-                free(identites[{{loop.index0}}].v.o.data);
+                free(identities[{{loop.index0}}].v.o.data);
                 {% endif %}
                 {% endfor %}
                 {% endif %}
@@ -157,9 +158,9 @@ int process_queue(void) {
                 {% if conn.source_mon is not none %}
                 {% for param_type in conn.source_mon.params %}
                 {% if param_type is sameas SmedlType.STRING %}
-                free(identites[{{loop.index0}}].v.s);
+                free(identities[{{loop.index0}}].v.s);
                 {% elif param_type is sameas SmedlType.OPAQUE %}
-                free(identites[{{loop.index0}}].v.o.data);
+                free(identities[{{loop.index0}}].v.o.data);
                 {% endif %}
                 {% endfor %}
                 {% endif %}

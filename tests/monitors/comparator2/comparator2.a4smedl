@@ -1,0 +1,37 @@
+system Comparator2;
+
+import "int_comp.smedl";
+import "float_comp.smedl";
+import "char_comp.smedl";
+import "string_comp.smedl";
+import "pointer_comp.smedl";
+import "opaque_comp.smedl";
+
+monitor IntComp(int);
+monitor FloatComp(float);
+monitor CharComp(char);
+monitor StringComp(string);
+monitor PointerComp(pointer);
+monitor OpaqueComp(opaque);
+
+syncset Comparator {
+    IntComp,
+    FloatComp,
+    CharComp,
+    StringComp,
+    PointerComp,
+    OpaqueComp
+};
+
+nextInt => IntComp[*].newVal($0);
+nextInt => IntComp($0, val=$0);
+nextFloat => FloatComp[*].newVal($0);
+nextFloat => FloatComp($0, val=$0);
+nextChar => CharComp[*].newVal($0);
+nextChar => CharComp($0, val=$0);
+nextString => StringComp[*].newVal($0);
+nextString => StringComp($0, val=$0);
+nextPointer => PointerComp[*].newVal($0);
+nextPointer => PointerComp($0, val=$0);
+nextOpaque => OpaqueComp[*].newVal($0);
+nextOpaque => OpaqueComp($0, val=$0);

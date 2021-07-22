@@ -1,15 +1,17 @@
 """
-Test generated monitors using the file transport. 
+Test generated monitors using the RabbitMQ transport.
 """
 
 import pytest
 
-import sys
+import json
 import os
 import os.path
+import sys
 
 import smedl
 from smedl.parser.exceptions import SmedlException
+from tatsu.exceptions import FailedParse
 
 from utils import *
 
@@ -19,65 +21,101 @@ test_monitors, test_cases = collect_test_cases()
 bad_monitors = os.listdir(os.path.join(sys.path[0], 'bad_monitors'))
 
 @pytest.fixture(scope='module')
-def generated_file_monitor(request):
+def generated_monitor(request, rabbitmq_config):
     """Fixture to generate a named monitor that's ready to execute"""
     mon = request.param
     mon_path = os.path.join(sys.path[0], 'monitors', mon, mon + '.a4smedl')
-    gen_mon = GeneratedMonitor(mon_path, 'file')
-    gen_mon.build()
+    gen_mon = GeneratedMonitor(mon_path, 'rabbitmq')
+    build_dir = gen_mon.build()
+
+    # Generate config (defaults for all but 'exchange' are in conftest.py
+    if rabbitmq_config['exchange'] is None:
+        rabbitmq_config['exchange'] = 'smedl.' + gen_mon.system.name
+    config_path = os.path.join(build_dir, gen_mon.system.name + '.cfg')
+    with open(config_path, 'w') as f:
+        json.dump(rabbitmq_config, f)
+
+    # Could return rabbitmq_config as well if that turns out to be useful to
+    # some tests
     return gen_mon
 
-@pytest.mark.skip(reason="File adapter needs overhaul for manager API")
-@pytest.mark.parametrize('generated_file_monitor, test_case', test_cases,
-        indirect=['generated_file_monitor'], scope='module')
-def test_monitor(generated_file_monitor, test_case):
+@pytest.mark.parametrize('generated_monitor, test_case, input_execs',
+        test_cases, indirect=['generated_monitor'], scope='module')
+def test_monitor(generated_monitor, test_case, input_execs):
     """Test the given monitor with the named testcase"""
-    path = os.path.join(sys.path[0], 'monitors', generated_file_monitor.fname)
-    with open(os.path.join(path, test_case + '.in'), 'r') as f:
-        stdin = f.read()
-    with open(os.path.join(path, test_case + '.out'), 'r') as f:
-        expected = f.read()
+    # Load stdins from .in files and expected outputs from .out files
+    path = os.path.join(sys.path[0], 'monitors', generated_monitor.fname)
+    stdins = dict()
+    expecteds = dict()
+    for input_exec in input_execs:
+        with open(os.path.join(path,
+                               f'{test_case}.{input_exec}.in'),
+                               'rb') as f:
+            stdin = f.read()
+            stdins[input_exec] = stdin
+        with open(os.path.join(path,
+                               f'{test_case}.{input_exec}.out'),
+                               'rb') as f:
+            expected = f.read()
+            expecteds[input_exec] = expected
 
-    generated_file_monitor.run(capture_output=True)
-    stdout, stderr = generated_file_monitor.communicate([stdin], timeout=15)[0]
-    print(stderr, file=sys.stderr)
+    # Run monitors
+    stdouts, stderrs = generated_monitor.run(stdins, timeout=15, text=False)
+    for exec_name, stderr in stderrs.items():
+        if len(stderr) > 0:
+            print(f'***** STDERR for {exec_name} *****', file=sys.stderr)
+            print(stderr, file=sys.stderr)
 
-    actual_json = list(parse_multiple_json(stdout))
-    expected_json = list(parse_multiple_json(expected))
-    assert actual_json == expected_json, \
-            'Output messages did not match expected'
-    #assert stderr == ''
+    # Verify results
+    for exec_name, stdout in stdouts.items():
+        if exec_name in expecteds:
+            assert stdout.split(b'\n') == expecteds[exec_name].split(b'\n'), \
+                f'Output events for {exec_name} did not match expected'
+        else:
+            assert stdout.split(b'\n') == [b''], \
+                f'Output events for {exec_name} were not empty as expected'
 
-@pytest.mark.skip(reason="File adapter needs overhaul for manager API")
-@pytest.mark.parametrize('generated_file_monitor', test_monitors,
-        indirect=True)
-def test_file_names(generated_file_monitor):
+@pytest.mark.parametrize('generated_monitor', test_monitors, indirect=True)
+def test_file_names(generated_monitor):
     """Test that generated file names are correct for the named monitor"""
     # Fetch all names
-    sys_name = generated_file_monitor.system.name
-    syncsets = generated_file_monitor.system.syncsets.keys()
-    mon_names = generated_file_monitor.system.monitor_decls.keys()
+    sys_name = generated_monitor.system.name
+    syncsets = generated_monitor.system.syncsets.keys()
+    mon_names = generated_monitor.system.monitor_decls.keys()
     spec_names = [decl.spec.name for decl in
-            generated_file_monitor.system.monitor_decls.values()]
+            generated_monitor.system.monitor_decls.values()]
 
     # Get a list of all the file names in the temp dir
-    files = os.listdir(generated_file_monitor.gen_dir)
+    files = os.listdir(generated_monitor.gen_dir)
 
     # Check that all the expected files are present
-    assert sys_name in files
-    assert sys_name + "_file.c" in files
-    assert sys_name + "_file.h" in files
+    assert f"{sys_name}.cfg" in files
+    assert f"{sys_name}_defs.h" in files
     for syncset in syncsets:
-        assert syncset + "_global_wrapper.c" in files
-        assert syncset + "_global_wrapper.h" in files
+        assert syncset in files
+        assert f"{syncset}_manager.c" in files
+        assert f"{syncset}_manager.h" in files
+        assert f"{syncset}_global_wrapper.c" in files
+        assert f"{syncset}_global_wrapper.h" in files
+        if len(generated_monitor.system.syncsets) > 1:
+            assert f"{syncset}_rabbitmq.c" in files
+            assert f"{syncset}_rabbitmq.h" in files
+        else:
+            assert f"{syncset}_rabbitmq.c" not in files
+            assert f"{syncset}_rabbitmq.h" not in files
+        if generated_monitor.system.syncsets[syncset].pure_async:
+            assert f"{syncset}_stub.c" not in files
+            assert f"{syncset}_stub.h" not in files
+        else:
+            assert f"{syncset}_stub.c" in files
+            assert f"{syncset}_stub.h" in files
     for mon in mon_names:
-        assert mon + "_local_wrapper.c" in files
-        assert mon + "_local_wrapper.h" in files
+        assert f"{mon}_local_wrapper.c" in files
+        assert f"{mon}_local_wrapper.h" in files
     for spec in spec_names:
-        assert mon + "_mon.c" in files
-        assert mon + "_mon.h" in files
+        assert f"{spec}_mon.c" in files
+        assert f"{spec}_mon.h" in files
 
-@pytest.mark.skip(reason="File adapter needs overhaul for manager API")
 @pytest.mark.parametrize('mon', bad_monitors)
 def test_invalid_monitor(tmp_path, mon):
     """Test that generation of the named monitor fails
@@ -87,5 +125,5 @@ def test_invalid_monitor(tmp_path, mon):
     """
     mon_path = os.path.join(sys.path[0], 'bad_monitors', mon, mon + '.a4smedl')
     generator = smedl.MonitorGenerator(out_dir=tmp_path)
-    with pytest.raises(SmedlException):
+    with pytest.raises((SmedlException, FailedParse)):
         generator.generate(mon_path)

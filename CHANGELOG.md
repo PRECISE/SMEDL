@@ -4,6 +4,18 @@ Changelog
 [Unreleased]
 ------------
 
+[2.0.2] - 2021-07-22
+--------------------
+
+### Changed
+
+- Automated tests updated for some of the more recent changes
+- Added an intro to the docs explaining what the project is about
+
+### Fixed
+
+- No warning about unusued PEDL events when used in an unnamed channel
+
 [2.0.1] - 2021-07-07
 --------------------
 
@@ -96,6 +108,7 @@ This is the first version in the changelog, and the last version of SMEDL 1.x.
   between the monitoring system and the target system
 
 [Unreleased]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/master...v2.0.1
+[2.0.2]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/v2.0.2...v2.0.1
 [2.0.1]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/v2.0.1...v2.0.0
 [2.0.0]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/compare/v2.0.0...v1.1.1
 [1.1.1]: https://gitlab.precise.seas.upenn.edu/smedl/smedl/-/tags/v1.1.1

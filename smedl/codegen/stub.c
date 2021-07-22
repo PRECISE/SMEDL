@@ -10,18 +10,17 @@
 {% for target in targets if target.target_type == 'export' %}
 
 int perform_{{target.mon_string}}_{{target.event}}(SMEDLValue *ids, SMEDLValue *params, void *aux) {
-    printf("Received {{target.event}}(
+    printf("{{target.event}}
         {%- for param, dest_type in target.event_params_w_types -%}
-        {%- if param.index is none %}NULL
-        {%- elif dest_type is sameas SmedlType.INT %}%d
-        {%- elif dest_type is sameas SmedlType.FLOAT %}%lf
-        {%- elif dest_type is sameas SmedlType.CHAR %}%c
-        {%- elif dest_type is sameas SmedlType.STRING %}\"%s\"
-        {%- elif dest_type is sameas SmedlType.POINTER %}%p
-        {%- elif dest_type is sameas SmedlType.OPAQUE %}\"\"%*.*s\"\"
-        {%- if not loop.last %}, {% endif %}
-        {% endif %}
-        {%- endfor %})\n"
+        {%- if param.index is none %},NULL
+        {%- elif dest_type is sameas SmedlType.INT %},%d
+        {%- elif dest_type is sameas SmedlType.FLOAT %},%lf
+        {%- elif dest_type is sameas SmedlType.CHAR %},%c
+        {%- elif dest_type is sameas SmedlType.STRING %},%s
+        {%- elif dest_type is sameas SmedlType.POINTER %},%p
+        {%- elif dest_type is sameas SmedlType.OPAQUE %},%*.*s
+        {%- endif %}
+        {%- endfor %}\n"
         {%- for param, dest_type in target.event_params_w_types %}
         {% if param.index is not none %}
         {% if dest_type is sameas SmedlType.INT %},
@@ -37,7 +36,7 @@ int perform_{{target.mon_string}}_{{target.event}}(SMEDLValue *ids, SMEDLValue *
         {%- elif dest_type is sameas SmedlType.OPAQUE %},
         (int) params[{{loop.index0}}].v.o.size,
         (int) params[{{loop.index0}}].v.o.size,
-        params[{{loop.index0}}].v.o.data
+        (char *) params[{{loop.index0}}].v.o.data
         {%- endif %}
         {% endif %}
         {% endfor %});
@@ -115,6 +114,7 @@ SMEDLOpaque p{{loop.index0}}
  * an implementation-defined format (the format printf() uses for %p).
  ******************************************************************************/
 
+#include <stdlib.h>
 #ifdef _WIN32
 #include <windows.h>
 #define sleep(x) Sleep((x) * 1000)
@@ -144,6 +144,27 @@ static void set_interrupted(int signum) {
 }
 {% endif %}
 
+static char * nexttok(char *new_str, const char *delim) {
+    static char *str = NULL;
+    if (new_str != NULL) {
+        str = new_str;
+    }
+    if (str == NULL) {
+        return NULL;
+    }
+
+    char *next = strpbrk(str, delim);
+    char *result;
+    if (next == NULL) {
+        str = NULL;
+        return NULL;
+    }
+    *next = '\0';
+    result = str;
+    str = next + 1;
+    return result;
+}
+
 int main(int argc, char **argv) {
     if (!init_manager()) {
         fprintf(stderr, "Could not initialize {{syncset}} manager.\n");
@@ -151,13 +172,13 @@ int main(int argc, char **argv) {
     }
 
     {% if sys.ev_imported_connections.values()|selectattr('syncset.name', 'equalto', syncset)|list is nonempty %}
-    {% set ev_len = sys.ev_imported_connections.keys()|map('length')|max + 1 %}
-    char event[{{ev_len + 1}}];
+    char *event, *param_str;
     char line[4096];
     int lineno = 1;
     while (fgets(line, sizeof(line), stdin)) {
         /* Read event type */
-        if (sscanf(line, "%{{ev_len}}[^,\n]", event) != 1) {
+        event = nexttok(line, ",\n");
+        if (event == NULL) {
 #if DEBUG >= 1
             fprintf(stderr, "Malformed line: %d\n", lineno);
 #endif
@@ -171,57 +192,71 @@ int main(int argc, char **argv) {
         {%+ if not loop.first %}} else {% endif -%}
         if (!strcmp(event, "{{event}}")) {
             {% for param in conn.source_event_params %}
+            param_str = nexttok(NULL, ",\n");
             {% if param is none %}
             {% elif param is sameas SmedlType.INT %}
-            int p{{loop.index0}};
-            {% elif param is sameas SmedlType.FLOAT %}
-            double p{{loop.index0}};
-            {% elif param is sameas SmedlType.CHAR %}
-            char p{{loop.index0}};
-            {% elif param is sameas SmedlType.STRING %}
-            char p{{loop.index0}}[4096];
-            {% elif param is sameas SmedlType.POINTER %}
-            void *p{{loop.index0}};
-            {% elif param is sameas SmedlType.OPAQUE %}
-            char p{{loop.index0}}buf[4096];
-            SMEDLOpaque p{{loop.index0}};
-            p{{loop.index0}}.data = p{{loop.index0}}buf;
-            {% endif %}
-            {% endfor %}
-            if (sscanf(line, "%*[^,\n]
-                    {%- for param in conn.source_event_params %}
-                    {% if param is none -%},%*[^,\n]
-                    {%- elif param is sameas SmedlType.INT -%},%d
-                    {%- elif param is sameas SmedlType.FLOAT -%},%lf
-                    {%- elif param is sameas SmedlType.CHAR -%},%c
-                    {%- elif param is sameas SmedlType.STRING -%},%[^,\n]
-                    {%- elif param is sameas SmedlType.POINTER -%},%p
-                    {%- elif param is sameas SmedlType.OPAQUE -%},%[^,\n]
-                    {%- endif %}
-                    {% endfor %}"
-                    {%- for param in conn.source_event_params %}
-                    {% if param is not none %}
-                    {% if param is sameas SmedlType.STRING -%}
-                    , p{{loop.index0}}
-                    {%- elif param is sameas SmedlType.OPAQUE -%}
-                    , p{{loop.index0}}buf
-                    {%- else -%}
-                    , &p{{loop.index0}}
-                    {%- endif %}
-                    {% endif %}
-                    {% endfor -%}
-                ) != {{conn.source_event_params|length}}) {
+            if (param_str == NULL || *param_str == '\0') {
 #if DEBUG >= 1
                 fprintf(stderr, "Malformed line: %d\n", lineno);
 #endif
                 lineno++;
                 continue;
             }
-            {% for param in conn.source_event_params %}
-            {% if param is sameas SmedlType.OPAQUE %}
+            int p{{loop.index0}} = atoi(param_str);
+            {% elif param is sameas SmedlType.FLOAT %}
+            if (param_str == NULL || *param_str == '\0') {
+#if DEBUG >= 1
+                fprintf(stderr, "Malformed line: %d\n", lineno);
+#endif
+                lineno++;
+                continue;
+            }
+            double p{{loop.index0}} = atof(param_str);
+            {% elif param is sameas SmedlType.CHAR %}
+            if (param_str == NULL || *param_str == '\0'
+                    || *(param_str + 1) != '\0') {
+#if DEBUG >= 1
+                fprintf(stderr, "Malformed line: %d\n", lineno);
+#endif
+                lineno++;
+                continue;
+            }
+            char p{{loop.index0}} = *param_str;
+            {% elif param is sameas SmedlType.STRING %}
+            if (param_str == NULL) {
+#if DEBUG >= 1
+                fprintf(stderr, "Malformed line: %d\n", lineno);
+#endif
+                lineno++;
+                continue;
+            }
+            char p{{loop.index0}}[4096];
+            strcpy(p{{loop.index0}}, param_str);
+            {% elif param is sameas SmedlType.POINTER %}
+            if (param_str == NULL || *param_str == '\0') {
+#if DEBUG >= 1
+                fprintf(stderr, "Malformed line: %d\n", lineno);
+#endif
+                lineno++;
+                continue;
+            }
+            void *p{{loop.index0}} = (void *) atol(param_str);
+            {% elif param is sameas SmedlType.OPAQUE %}
+            if (param_str == NULL) {
+#if DEBUG >= 1
+                fprintf(stderr, "Malformed line: %d\n", lineno);
+#endif
+                lineno++;
+                continue;
+            }
+            char p{{loop.index0}}buf[4096];
+            strcpy(p{{loop.index0}}buf, param_str);
+            SMEDLOpaque p{{loop.index0}};
+            p{{loop.index0}}.data = p{{loop.index0}}buf;
             p{{loop.index0}}.size = strlen(p{{loop.index0}}.data);
             {% endif %}
             {% endfor %}
+
             if (!emit_pedl_{{event}}({% for param in conn.source_event_params %}
                 {% if param is none %}NULL
                 {%- else %}p{{loop.index0}}
