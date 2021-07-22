@@ -54,7 +54,14 @@ void check_map(MonitorMap *map) {
             map->shrink_at < map->count, "Map needs to shrink");
     TEST_ASSERT_LESS_OR_EQUAL_INT64(map->grow_at, map->count);
     TEST_ASSERT_LESS_OR_EQUAL_INT64(map->grow_at, map->count);
+
+    //TODO Anything else?
 }
+
+
+//TODO Code below here was for testing the old (AVL tree) monitor maps. It
+// needs to be removed, and new test cases need to be added above for the new
+// monitor maps.
 
 
 

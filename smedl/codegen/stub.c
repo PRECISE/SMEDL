@@ -10,18 +10,17 @@
 {% for target in targets if target.target_type == 'export' %}
 
 int perform_{{target.mon_string}}_{{target.event}}(SMEDLValue *ids, SMEDLValue *params, void *aux) {
-    printf("Received {{target.event}}(
+    printf("{{target.event}}
         {%- for param, dest_type in target.event_params_w_types -%}
-        {%- if param.index is none %}NULL
-        {%- elif dest_type is sameas SmedlType.INT %}%d
-        {%- elif dest_type is sameas SmedlType.FLOAT %}%lf
-        {%- elif dest_type is sameas SmedlType.CHAR %}%c
-        {%- elif dest_type is sameas SmedlType.STRING %}\"%s\"
-        {%- elif dest_type is sameas SmedlType.POINTER %}%p
-        {%- elif dest_type is sameas SmedlType.OPAQUE %}\"\"%*.*s\"\"
-        {%- if not loop.last %}, {% endif %}
-        {% endif %}
-        {%- endfor %})\n"
+        {%- if param.index is none %},NULL
+        {%- elif dest_type is sameas SmedlType.INT %},%d
+        {%- elif dest_type is sameas SmedlType.FLOAT %},%lf
+        {%- elif dest_type is sameas SmedlType.CHAR %},%c
+        {%- elif dest_type is sameas SmedlType.STRING %},%s
+        {%- elif dest_type is sameas SmedlType.POINTER %},%p
+        {%- elif dest_type is sameas SmedlType.OPAQUE %},%*.*s
+        {%- endif %}
+        {%- endfor %}\n"
         {%- for param, dest_type in target.event_params_w_types %}
         {% if param.index is not none %}
         {% if dest_type is sameas SmedlType.INT %},

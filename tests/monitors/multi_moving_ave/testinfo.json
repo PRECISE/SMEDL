@@ -1,6 +1,0 @@
-{
-    "output_events": [
-        "Frontend.raiseAlarm",
-        "Frontend.resetAlarm"
-    ]
-}

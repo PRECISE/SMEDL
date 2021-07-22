@@ -4,6 +4,11 @@ Changelog
 [Unreleased]
 ------------
 
+### Changed
+
+- Automated tests updated for some of the more recent changes
+- Added an intro to the docs explaining what the project is about
+
 [2.0.1] - 2021-07-07
 --------------------
 

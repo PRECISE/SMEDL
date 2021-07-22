@@ -10,12 +10,9 @@ For more information on pytest, see the [pytest documentation][pytest-docs].
 
 Inside this directory, you will find the following contents:
 
-- `test_monitors.py`: Run tests on the generated monitors using the `file`
+- `test_monitors.py`: Run tests on the generated monitors using the `rabbitmq`
   transport. The tests here should fully cover all features of the generated
-  monitors. In the process, the `file` adapter is also tested.
-
-- `test_rabbitmq.py`: Run tests on the generated monitors using the `rabbitmq`
-  transport. The tests here cover the `rabbitmq` adapter.
+  monitors. In the process, the `rabbitmq` adapter is also tested.
 
 - `test_c_units.py`: Build and run C unit tests on the static C files
 
