@@ -1351,7 +1351,7 @@ class MonitorSystem(object):
 
         # Check (1) and (2) from docstring
         for conn in self._ev_imported_connections.values():
-            if conn.channel is None:
+            if len(conn.targets) == 0:
                 print("Warning: Event {} was not used in a connection"
                       .format(conn.source_event), file=sys.stderr)
             if conn.syncset is None:

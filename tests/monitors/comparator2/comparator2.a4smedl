@@ -23,15 +23,15 @@ syncset Comparator {
     OpaqueComp
 };
 
-nextInt => IntComp(val=$0)
-nextInt => IntComp[*].newVal($0)
-nextFloat => FloatComp(val=$0)
-nextFloat => FloatComp[*].newVal($0)
-nextChar => CharComp(val=$0)
-nextChar => CharComp[*].newVal($0)
-nextString => StringComp(val=$0)
-nextString => StringComp[*].newVal($0)
-nextPointer => PointerComp(val=$0)
-nextPointer => PointerComp[*].newVal($0)
-nextOpaque => OpaqueComp(val=$0)
-nextOpaque => OpaqueComp[*].newVal($0)
+nextInt => IntComp($0, val=$0);
+nextInt => IntComp[*].newVal($0);
+nextFloat => FloatComp($0, val=$0);
+nextFloat => FloatComp[*].newVal($0);
+nextChar => CharComp($0, val=$0);
+nextChar => CharComp[*].newVal($0);
+nextString => StringComp($0, val=$0);
+nextString => StringComp[*].newVal($0);
+nextPointer => PointerComp($0, val=$0);
+nextPointer => PointerComp[*].newVal($0);
+nextOpaque => OpaqueComp($0, val=$0);
+nextOpaque => OpaqueComp[*].newVal($0);

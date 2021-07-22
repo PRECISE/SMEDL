@@ -30,7 +30,8 @@ char **smedl_argv;
  * variables. Sensible defaults are provided, but the target program can
  * override them if desired. */
 int smedl_argc = 1;
-char **smedl_argv = {"{{syncset}}", NULL};
+char *smedl_argv_default[] = {"{{syncset}}", NULL};
+char **smedl_argv = smedl_argv_default;
 {% endif %}
 
 /* Manager event queue */

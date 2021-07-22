@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # CAVEAT UTILITOR
 #
@@ -9,14 +10,15 @@
 # Any changes you make to it will be overwritten the next time
 # the file is generated.
 
-from __future__ import annotations
+
+from __future__ import print_function, division, absolute_import, unicode_literals
 
 import sys
 
 from tatsu.buffering import Buffer
 from tatsu.parsing import Parser
-from tatsu.parsing import tatsumasu
-from tatsu.parsing import leftrec, nomemo, isname # noqa
+from tatsu.parsing import tatsumasu, leftrec, nomemo
+from tatsu.parsing import leftrec, nomemo  # noqa
 from tatsu.util import re, generic_main  # noqa
 
 
@@ -35,7 +37,7 @@ class A4SMEDLBuffer(Buffer):
         namechars='',
         **kwargs
     ):
-        super().__init__(
+        super(A4SMEDLBuffer, self).__init__(
             text,
             whitespace=whitespace,
             nameguard=nameguard,
@@ -59,12 +61,12 @@ class A4SMEDLParser(Parser):
         parseinfo=False,
         keywords=None,
         namechars='',
-        tokenizercls=A4SMEDLBuffer,
+        buffer_class=A4SMEDLBuffer,
         **kwargs
     ):
         if keywords is None:
             keywords = KEYWORDS
-        super().__init__(
+        super(A4SMEDLParser, self).__init__(
             whitespace=whitespace,
             nameguard=nameguard,
             comments_re=comments_re,
@@ -74,7 +76,7 @@ class A4SMEDLParser(Parser):
             parseinfo=parseinfo,
             keywords=keywords,
             namechars=namechars,
-            tokenizercls=tokenizercls,
+            buffer_class=buffer_class,
             **kwargs
         )
 
@@ -121,11 +123,7 @@ class A4SMEDLParser(Parser):
                 self._token('pointer')
             with self._option():
                 self._token('opaque')
-            self._error(
-                'expecting one of: '
-                "'int' 'float' 'double' 'char' 'string'"
-                "'pointer' 'opaque'"
-            )
+            self._error('no available options')
 
     @tatsumasu()
     def _start_(self):  # noqa
@@ -145,12 +143,7 @@ class A4SMEDLParser(Parser):
                         self._syncset_decl_()
                     with self._option():
                         self._connection_defn_()
-                    self._error(
-                        'expecting one of: '
-                        '<import_stmt> <monitor_decl>'
-                        '<event_decl> <syncset_decl>'
-                        '<connection_defn>'
-                    )
+                    self._error('no available options')
             self._token(';')
         self._closure(block0)
         self._check_eof()
@@ -187,7 +180,7 @@ class A4SMEDLParser(Parser):
             self._token('as')
             self._identifier_()
             self.name_last_node('renamed')
-        self._define(
+        self.ast._define(
             ['name', 'params', 'renamed'],
             []
         )
@@ -215,11 +208,8 @@ class A4SMEDLParser(Parser):
                 self._type_list_()
                 self.name_last_node('params')
                 self._token(')')
-            self._error(
-                'expecting one of: '
-                "'imported' 'exported'"
-            )
-        self._define(
+            self._error('no available options')
+        self.ast._define(
             ['kind', 'name', 'params'],
             []
         )
@@ -234,7 +224,7 @@ class A4SMEDLParser(Parser):
         self._syncset_member_list_()
         self.name_last_node('members')
         self._token('}')
-        self._define(
+        self.ast._define(
             ['members', 'name'],
             []
         )
@@ -273,12 +263,8 @@ class A4SMEDLParser(Parser):
                 self.name_last_node('kind')
                 self._identifier_()
                 self.name_last_node('name')
-            self._error(
-                'expecting one of: '
-                "'pedl' 'imported' 'exported'"
-                '[a-zA-Z][A-Za-z0-9_]* <identifier>'
-            )
-        self._define(
+            self._error('no available options')
+        self.ast._define(
             ['kind', 'name'],
             []
         )
@@ -294,7 +280,7 @@ class A4SMEDLParser(Parser):
         self._token('=>')
         self._target_spec_()
         self.name_last_node('target')
-        self._define(
+        self.ast._define(
             ['name', 'source', 'target'],
             []
         )
@@ -307,7 +293,7 @@ class A4SMEDLParser(Parser):
             self._token('.')
         self._identifier_()
         self.name_last_node('event')
-        self._define(
+        self.ast._define(
             ['event', 'monitor'],
             []
         )
@@ -319,12 +305,7 @@ class A4SMEDLParser(Parser):
                 self._target_event_()
             with self._option():
                 self._exported_event_or_monitor_initialization_()
-            self._error(
-                'expecting one of: '
-                '[a-zA-Z][A-Za-z0-9_]* <identifier>'
-                '<target_event> <exported_event_or_monito'
-                'r_initialization>'
-            )
+            self._error('no available options')
 
     @tatsumasu()
     def _target_event_(self):  # noqa
@@ -343,7 +324,7 @@ class A4SMEDLParser(Parser):
             self._parameter_list_()
             self.name_last_node('event_params')
             self._token(')')
-        self._define(
+        self.ast._define(
             ['dest_event', 'dest_monitor', 'event_params', 'monitor_params'],
             []
         )
@@ -366,13 +347,9 @@ class A4SMEDLParser(Parser):
                 with self._option():
                     self._initializer_list_()
                     self.name_last_node('state_vars')
-                self._error(
-                    'expecting one of: '
-                    '<parameter_list_nonempty>'
-                    '<initializer_list>'
-                )
+                self._error('no available options')
         self._token(')')
-        self._define(
+        self.ast._define(
             ['name', 'params', 'state_vars'],
             []
         )
@@ -405,7 +382,7 @@ class A4SMEDLParser(Parser):
         self._cut()
         self._parameter_()
         self.name_last_node('value')
-        self._define(
+        self.ast._define(
             ['value', 'var_name'],
             []
         )
@@ -449,11 +426,8 @@ class A4SMEDLParser(Parser):
             with self._option():
                 self._token('*')
                 self.name_last_node('kind')
-            self._error(
-                'expecting one of: '
-                "'#' 'Id' '$' 'Param' <parameter> '*'"
-            )
-        self._define(
+            self._error('no available options')
+        self.ast._define(
             ['kind'],
             []
         )
@@ -489,11 +463,8 @@ class A4SMEDLParser(Parser):
                 self._token('.')
                 self._natural_()
                 self.name_last_node('index')
-            self._error(
-                'expecting one of: '
-                "'#' 'Id' '$' 'Param'"
-            )
-        self._define(
+            self._error('no available options')
+        self.ast._define(
             ['index', 'kind'],
             []
         )
@@ -595,12 +566,7 @@ def main(filename, start=None, **kwargs):
         with open(filename) as f:
             text = f.read()
     parser = A4SMEDLParser()
-    return parser.parse(
-        text,
-        rule_name=start,
-        filename=filename,
-        **kwargs
-    )
+    return parser.parse(text, rule_name=start, filename=filename, **kwargs)
 
 
 if __name__ == '__main__':
@@ -608,5 +574,9 @@ if __name__ == '__main__':
     from tatsu.util import asjson
 
     ast = generic_main(main, A4SMEDLParser, name='A4SMEDL')
-    data = asjson(ast)
-    print(json.dumps(data, indent=2))
+    print('AST:')
+    print(ast)
+    print()
+    print('JSON:')
+    print(json.dumps(asjson(ast), indent=2))
+    print()

@@ -11,5 +11,5 @@ syncset Comparator {
     OpaqueComp
 };
 
-nextString => StringComp.newVal($0)
-nextOpaque => OpaqueComp.newVal($0)
+nextString => StringComp.newVal($0);
+nextOpaque => OpaqueComp.newVal($0);

@@ -36,7 +36,7 @@ int perform_{{target.mon_string}}_{{target.event}}(SMEDLValue *ids, SMEDLValue *
         {%- elif dest_type is sameas SmedlType.OPAQUE %},
         (int) params[{{loop.index0}}].v.o.size,
         (int) params[{{loop.index0}}].v.o.size,
-        params[{{loop.index0}}].v.o.data
+        (char *) params[{{loop.index0}}].v.o.data
         {%- endif %}
         {% endif %}
         {% endfor %});

@@ -49,17 +49,17 @@ def test_monitor(generated_monitor, test_case, input_execs):
     for input_exec in input_execs:
         with open(os.path.join(path,
                                f'{test_case}.{input_exec}.in'),
-                               'r') as f:
+                               'rb') as f:
             stdin = f.read()
             stdins[input_exec] = stdin
         with open(os.path.join(path,
                                f'{test_case}.{input_exec}.out'),
-                               'r') as f:
+                               'rb') as f:
             expected = f.read()
             expecteds[input_exec] = expected
 
     # Run monitors
-    stdouts, stderrs = generated_monitor.run(stdins, timeout=15)
+    stdouts, stderrs = generated_monitor.run(stdins, timeout=15, text=False)
     for exec_name, stderr in stderrs.items():
         if len(stderr) > 0:
             print(f'***** STDERR for {exec_name} *****', file=sys.stderr)
@@ -68,10 +68,10 @@ def test_monitor(generated_monitor, test_case, input_execs):
     # Verify results
     for exec_name, stdout in stdouts.items():
         if exec_name in expecteds:
-            assert stdout.splitlines() == expecteds[exec_name].splitlines(), \
+            assert stdout.split(b'\n') == expecteds[exec_name].split(b'\n'), \
                 f'Output events for {exec_name} did not match expected'
         else:
-            assert stdout.splitlines() == [], \
+            assert stdout.split(b'\n') == [b''], \
                 f'Output events for {exec_name} were not empty as expected'
 
 @pytest.mark.parametrize('generated_monitor', test_monitors, indirect=True)
